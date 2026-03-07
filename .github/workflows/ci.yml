@@ -34,6 +34,11 @@ jobs:
     if: needs.checks.outputs.backend-changed == 'true'
     uses: ./.github/workflows/validate-backend.yml
 
+  docker-backend:
+    needs: checks
+    if: needs.checks.outputs.backend-changed == 'true'
+    uses: ./.github/workflows/docker-backend.yml
+
   labels:
     needs: checks
     if: github.event_name == 'pull_request'
@@ -60,13 +65,13 @@ jobs:
         run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "graphql-schema"
 
   status:
-    needs: [checks, validate-web, validate-backend, labels]
+    needs: [checks, validate-web, validate-backend, docker-backend, labels]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
+          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.docker-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
             echo "One or more jobs failed"
             exit 1
           fi
