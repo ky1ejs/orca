@@ -35,7 +35,7 @@ dmg:
       y: 220
       type: link
       path: /Applications
-npmRebuild: true
-nodeGypRebuild: false
-# Native dependencies that need rebuilding for Electron
-nativeRebuilder: sequential
+# Native modules are already rebuilt for Electron by scripts/rebuild-native.mjs
+# (runs as part of `bun run setup` / `bun run build`). Skip electron-builder's
+# own @electron/rebuild step which uses an old node-gyp incompatible with Python 3.14+.
+npmRebuild: false
