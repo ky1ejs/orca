@@ -2,7 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { initDb, closeDb } from './db/client.js';
 import { sweepStaleSessions } from './db/sessions.js';
-import { registerIpcHandlers } from './ipc/handlers.js';
+import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -50,5 +50,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  getPtyManager().killAll();
   closeDb();
 });

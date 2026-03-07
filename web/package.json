@@ -5,7 +5,7 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "setup": "node scripts/rebuild-sqlite.mjs",
+    "setup": "node scripts/rebuild-native.mjs",
     "dev": "bun run setup && electron-vite dev",
     "build": "bun run setup && electron-vite build",
     "typecheck": "tsc --noEmit",
@@ -15,6 +15,7 @@
   "dependencies": {
     "@orca/shared": "file:../shared",
     "better-sqlite3": "^11.8.1",
+    "node-pty": "^1.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
