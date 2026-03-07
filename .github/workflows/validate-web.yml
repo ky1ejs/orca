@@ -1,0 +1,48 @@
+name: Validate Web
+
+on:
+  workflow_call:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+      - run: cd shared && bun install
+      - run: cd web && bun install
+
+      - run: bunx graphql-codegen
+        working-directory: web
+
+      - name: Lint
+        run: bunx eslint web/ shared/
+
+      - name: Format check
+        run: bunx prettier --check "web/" "shared/"
+
+      - name: Typecheck shared
+        run: bun run typecheck
+        working-directory: shared
+
+      - name: Typecheck web
+        run: bun run typecheck
+        working-directory: web
+
+      - name: Test shared
+        run: bun run test
+        working-directory: shared
+
+      - name: Test web
+        run: bun run test
+        working-directory: web
+
+      - name: Build web
+        run: bun run build
+        working-directory: web

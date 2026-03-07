@@ -7,49 +7,83 @@ on:
     branches: [main]
 
 jobs:
-  validate:
+  detect-changes:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-
+    outputs:
+      web-changed: ${{ steps.check-web.outputs.has-changes || github.event_name == 'push' }}
+      backend-changed: ${{ steps.check-backend.outputs.has-changes || github.event_name == 'push' }}
+      schema-changed: ${{ steps.check-schema.outputs.has-changes || github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Check web changes
+        if: github.event_name == 'pull_request'
+        id: check-web
+        uses: ky1ejs/check-diff-paths-action@main
         with:
-          bun-version: latest
+          paths: '^web/|^shared/'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: bun install
-      - run: cd shared && bun install
-      - run: cd backend && bun install
-      - run: cd web && bun install
+      - name: Check backend changes
+        if: github.event_name == 'pull_request'
+        id: check-backend
+        uses: ky1ejs/check-diff-paths-action@main
+        with:
+          paths: '^backend/|^shared/'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: bunx graphql-codegen
-        working-directory: web
+      - name: Check schema changes
+        if: github.event_name == 'pull_request'
+        id: check-schema
+        uses: ky1ejs/check-diff-paths-action@main
+        with:
+          paths: '^shared/src/schema\.graphql$'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: bunx graphql-codegen
-        working-directory: backend
+  validate-web:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/validate-web.yml
 
-      - run: bunx prisma generate
-        working-directory: backend
+  validate-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true'
+    uses: ./.github/workflows/validate-backend.yml
 
-      - run: bunx prisma migrate deploy
-        working-directory: backend
+  labels:
+    needs: detect-changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add web label
+        if: needs.detect-changes.outputs.web-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "web"
 
-      - run: bun run validate
+      - name: Add backend label
+        if: needs.detect-changes.outputs.backend-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "backend"
+
+      - name: Add graphql-schema label
+        if: needs.detect-changes.outputs.schema-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "graphql-schema"
+
+  status:
+    needs: [validate-web, validate-backend, labels]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All jobs passed (or were skipped)"
