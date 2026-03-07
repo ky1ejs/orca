@@ -234,6 +234,7 @@ After Wave 1, the following exist:
 ### Gating Check Documentation
 
 node-pty works within Electron's main process. No fallback needed. Key findings:
+
 - `prebuild-install` does not have prebuilt binaries for Electron 35.x, but `node-gyp` fallback compiles successfully
 - Tests run under `ELECTRON_RUN_AS_NODE=1` with the Electron-compiled native module
 - All spawn/write/resize/kill operations work correctly
@@ -262,6 +263,7 @@ cd web && bun run dev
 ## Merge Notes
 
 Both branches were developed in parallel worktrees from `feat/wave-2` and merged back:
+
 1. `wave-2/navigation-ui` merged first (clean)
 2. `wave-2/pty-engine` merged second — resolved conflicts in `web/package.json` (combined deps), `web/src/main/ipc/channels.ts` (kept both), `web/src/main/ipc/handlers.ts` (kept both), `web/bun.lock` (regenerated)
 
@@ -273,6 +275,7 @@ Both branches were developed in parallel worktrees from `feat/wave-2` and merged
 ### Pre-task: Auth Token IPC
 
 Added `getAuthToken` IPC channel before agent work began (shared dependency):
+
 - `web/src/main/ipc/channels.ts` — `DB_GET_AUTH_TOKEN: 'db:getAuthToken'`
 - `web/src/main/ipc/handlers.ts` — reads `~/.orca/config.json` and returns `authToken`
 - `web/src/preload/index.ts` — `getAuthToken: () => Promise<string | null>` on `OrcaAPI.db`

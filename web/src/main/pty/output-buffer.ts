@@ -54,9 +54,7 @@ function evict(sessionId: string): void {
 export function replayOutput(sessionId: string): string {
   const db = getDb();
   const rows = db
-    .prepare(
-      'SELECT chunk FROM terminal_output_buffer WHERE session_id = ? ORDER BY sequence ASC',
-    )
+    .prepare('SELECT chunk FROM terminal_output_buffer WHERE session_id = ? ORDER BY sequence ASC')
     .all(sessionId) as Array<{ chunk: Buffer }>;
 
   return Buffer.concat(rows.map((r) => r.chunk)).toString();

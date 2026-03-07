@@ -77,10 +77,7 @@ export function useUpdateProject() {
 
 export function useDeleteProject() {
   const [result, executeMutation] = useMutation(DeleteProjectDocument);
-  const deleteProject = useCallback(
-    (id: string) => executeMutation({ id }),
-    [executeMutation],
-  );
+  const deleteProject = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, deleteProject };
 }
 
@@ -104,10 +101,7 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   const [result, executeMutation] = useMutation(DeleteTaskDocument);
-  const deleteTask = useCallback(
-    (id: string) => executeMutation({ id }),
-    [executeMutation],
-  );
+  const deleteTask = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, deleteTask };
 }
 

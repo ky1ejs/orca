@@ -136,9 +136,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </button>
             </div>
           </div>
-          {project.description && (
-            <p className="text-gray-400 mt-2">{project.description}</p>
-          )}
+          {project.description && <p className="text-gray-400 mt-2">{project.description}</p>}
         </div>
       )}
 

@@ -46,9 +46,9 @@ describe('claude', () => {
 
       const mockManager = { spawn: vi.fn() };
 
-      expect(() =>
-        spawnClaudeCode(mockManager as never, 'session-1', '/tmp'),
-      ).toThrow('Claude CLI not found on PATH');
+      expect(() => spawnClaudeCode(mockManager as never, 'session-1', '/tmp')).toThrow(
+        'Claude CLI not found on PATH',
+      );
       expect(mockManager.spawn).not.toHaveBeenCalled();
     });
 
