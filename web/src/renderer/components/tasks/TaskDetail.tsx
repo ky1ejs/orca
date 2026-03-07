@@ -8,7 +8,7 @@ import {
 import { useNavigation } from '../../navigation/context.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
-import { TaskStatus } from '../../graphql/generated.js';
+import { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 interface TaskDetailProps {
   taskId: string;

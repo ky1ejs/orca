@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { Provider, Client } from 'urql';
 import { never } from 'wonka';
 import { TaskList } from './TaskList.js';
-import { TaskStatus } from '../../graphql/generated.js';
+import { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 afterEach(cleanup);
 

@@ -1,4 +1,4 @@
-import { TaskStatus } from '../../graphql/generated.js';
+import { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
   [TaskStatus.Todo]: {

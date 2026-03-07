@@ -38,6 +38,9 @@ jobs:
       - run: cd backend && bun install
       - run: cd web && bun install
 
+      - run: bunx graphql-codegen
+        working-directory: web
+
       - run: bunx prisma generate
         working-directory: backend
 

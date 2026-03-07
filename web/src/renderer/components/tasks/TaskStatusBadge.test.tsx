@@ -3,7 +3,7 @@ import { describe, expect, it, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
-import { TaskStatus } from '../../graphql/generated.js';
+import { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 afterEach(cleanup);
 

@@ -1,6 +1,7 @@
 # Orca
 
 ## Workflow
+
 You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
 ## Architecture
