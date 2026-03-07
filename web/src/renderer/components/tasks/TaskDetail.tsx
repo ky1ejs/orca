@@ -8,6 +8,8 @@ import {
 import { useNavigation } from '../../navigation/context.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
+import { AgentStatus } from '../terminal/AgentStatus.js';
+import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 interface TaskDetailProps {
@@ -21,6 +23,8 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: TaskStatus.Done, label: 'Done' },
 ];
 
+const ACTIVE_STATUSES = ['STARTING', 'RUNNING', 'WAITING_FOR_INPUT'];
+
 export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error, refetch } = useTask(taskId);
   const { updateTask } = useUpdateTask();
@@ -31,6 +35,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.Todo);
   const [workingDirectory, setWorkingDirectory] = useState('');
+  const [launching, setLaunching] = useState(false);
+  const [agentError, setAgentError] = useState<{
+    message: string;
+    suggestion: string;
+  } | null>(null);
+  const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
 
   useTaskSubscription(() => {
     refetch({ requestPolicy: 'network-only' });
@@ -89,6 +99,91 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const handleStatusChange = async (newStatus: TaskStatus) => {
     await updateTask(taskId, { status: newStatus });
     refetch({ requestPolicy: 'network-only' });
+  };
+
+  const activeSession = sessions.find((s) => ACTIVE_STATUSES.includes(s.status));
+  const errorSession = sessions.find((s) => s.status === 'ERROR');
+
+  const handleLaunchAgent = async () => {
+    setLaunching(true);
+    setAgentError(null);
+    const context = [task.title, task.description].filter(Boolean).join('\n\n');
+    const result = await window.orca.agent.launch(
+      taskId,
+      task.workingDirectory,
+      context || undefined,
+    );
+    if (!result.success && result.error) {
+      setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
+    }
+    refreshSessions();
+    setLaunching(false);
+  };
+
+  const handleRestartAgent = async () => {
+    if (!errorSession) return;
+    setLaunching(true);
+    setAgentError(null);
+    const context = [task.title, task.description].filter(Boolean).join('\n\n');
+    const result = await window.orca.agent.restart(
+      taskId,
+      errorSession.id,
+      task.workingDirectory,
+      context || undefined,
+    );
+    if (!result.success && result.error) {
+      setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
+    }
+    refreshSessions();
+    setLaunching(false);
+  };
+
+  const renderAgentButton = () => {
+    if (launching) {
+      return (
+        <button
+          disabled
+          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
+          data-testid="agent-button"
+        >
+          Launching...
+        </button>
+      );
+    }
+
+    if (activeSession) {
+      return (
+        <button
+          disabled
+          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
+          data-testid="agent-button"
+        >
+          Running...
+        </button>
+      );
+    }
+
+    if (errorSession) {
+      return (
+        <button
+          onClick={handleRestartAgent}
+          className="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
+          data-testid="agent-button"
+        >
+          Restart Agent
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={handleLaunchAgent}
+        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+        data-testid="agent-button"
+      >
+        Launch Agent
+      </button>
+    );
   };
 
   return (
@@ -201,6 +296,33 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               <span className="text-gray-500 text-sm">Working Directory:</span>
               <p className="text-gray-300 text-sm font-mono mt-1">{task.workingDirectory}</p>
             </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-gray-500 text-sm">Agent:</span>
+              {renderAgentButton()}
+              {activeSession && <AgentStatus status={activeSession.status} />}
+            </div>
+
+            {agentError && (
+              <div
+                className="p-3 bg-red-900/30 border border-red-800 rounded-md"
+                data-testid="agent-error"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-red-300 text-sm">{agentError.message}</p>
+                    <p className="text-red-400/70 text-xs mt-1">{agentError.suggestion}</p>
+                  </div>
+                  <button
+                    onClick={() => setAgentError(null)}
+                    className="text-red-400 hover:text-red-300 text-sm ml-2"
+                    data-testid="dismiss-error"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            )}
 
             {task.description && (
               <div>

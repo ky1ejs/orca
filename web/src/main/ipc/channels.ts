@@ -9,4 +9,8 @@ export const IPC_CHANNELS = {
   PTY_RESIZE: 'pty:resize',
   PTY_KILL: 'pty:kill',
   PTY_REPLAY: 'pty:replay',
+  AGENT_LAUNCH: 'agent:launch',
+  AGENT_STOP: 'agent:stop',
+  AGENT_RESTART: 'agent:restart',
+  AGENT_STATUS: 'agent:status',
 } as const;

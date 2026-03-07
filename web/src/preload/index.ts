@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface AgentLaunchResult {
+  success: boolean;
+  sessionId?: string;
+  error?: { name: string; message: string; suggestion: string };
+}
+
 export interface OrcaAPI {
   platform: string;
   db: {
@@ -25,6 +31,21 @@ export interface OrcaAPI {
     replay: (sessionId: string) => Promise<string>;
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
+  };
+  agent: {
+    launch: (
+      taskId: string,
+      workingDirectory: string,
+      initialContext?: string,
+    ) => Promise<AgentLaunchResult>;
+    stop: (sessionId: string) => Promise<void>;
+    restart: (
+      taskId: string,
+      sessionId: string,
+      workingDirectory: string,
+      initialContext?: string,
+    ) => Promise<AgentLaunchResult>;
+    status: (sessionId: string) => Promise<string | null>;
   };
 }
 
@@ -60,6 +81,14 @@ const api: OrcaAPI = {
         ipcRenderer.removeListener(channel, listener);
       };
     },
+  },
+  agent: {
+    launch: (taskId, workingDirectory, initialContext?) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, initialContext),
+    stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
+    restart: (taskId, sessionId, workingDirectory, initialContext?) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, initialContext),
+    status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
 };
 
