@@ -12,4 +12,4 @@ COPY . .
 RUN bunx prisma generate
 
 EXPOSE 4000
-CMD ["./entrypoint.sh"]
+CMD ["bun", "run", "start"]

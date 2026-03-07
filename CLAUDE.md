@@ -60,7 +60,7 @@ No workspaces — each package manages its own dependencies with `bun install`.
 - **CI/CD**: Push to `main` with backend changes auto-deploys via `.github/workflows/deploy-backend.yml`
 - **Manual deploy**: `fly deploy` from `backend/`
 - **Prod build**: `VITE_BACKEND_URL=https://orca-api.fly.dev bun run build:mac` in `web/`
-- Migrations: Run automatically at container startup via `entrypoint.sh` (`bunx prisma migrate deploy`)
+- Migrations: Run automatically via `bun run start`, which runs `prisma migrate deploy` before starting the server
 
 ## UI Validation in Browser
 
