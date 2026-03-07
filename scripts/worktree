@@ -355,11 +355,10 @@ cmd_prune() {
   else
     header "Prune" "cleaning up stale worktrees"
   fi
-  echo ""
 
-  local found=false
-  local prune_count=0
-  local skip_count=0
+  # ── Detection phase: collect prunable and non-prunable worktrees ──
+  local prune_names=() prune_slots=() prune_reasons=()
+  local skip_names=() skip_slots=() skip_reasons=()
 
   while read -r wt slot path; do
     local full_path="$MAIN_REPO/$path"
@@ -398,37 +397,92 @@ cmd_prune() {
       fi
     fi
 
-    if [[ -n "$skip_reason" ]] && $should_prune; then
-      step_warn "${BOLD}$wt${RESET}${YELLOW} — skipped: $skip_reason${RESET}"
-      ((skip_count++))
-      continue
-    fi
-
-    if $should_prune; then
-      found=true
-      ((prune_count++))
-      if $dry_run; then
-        step "${BOLD}$wt${RESET}  ${DIM}slot $slot${RESET}  ${DIM}→${RESET}  ${MAGENTA}$reason${RESET}"
-      else
-        step "Pruning ${BOLD}$wt${RESET} ${DIM}($reason)${RESET}"
-        cmd_cleanup "$wt" --force
-        step_done "${BOLD}$wt${RESET} removed"
-      fi
+    # Classify: prunable with skip reason → skip, prunable → prune, otherwise → skip
+    if $should_prune && [[ -n "$skip_reason" ]]; then
+      skip_names+=("$wt")
+      skip_slots+=("$slot")
+      skip_reasons+=("$skip_reason")
+    elif $should_prune; then
+      prune_names+=("$wt")
+      prune_slots+=("$slot")
+      prune_reasons+=("$reason")
+    else
+      local display_reason="${skip_reason:-active}"
+      skip_names+=("$wt")
+      skip_slots+=("$slot")
+      skip_reasons+=("$display_reason")
     fi
   done < <(jq -r '.slots[] | "\(.worktree) \(.slot) \(.path)"' "$REGISTRY")
 
-  # Summary
-  echo ""
-  if ! $found && [[ $skip_count -eq 0 ]]; then
+  local prune_count=${#prune_names[@]}
+  local skip_count=${#skip_names[@]}
+
+  if [[ $prune_count -eq 0 ]] && [[ $skip_count -eq 0 ]]; then
+    echo ""
     printf "  ${DIM}Nothing to prune — all worktrees are current.${RESET}\n"
-  else
+    echo ""
+    return
+  fi
+
+  # ── Output ──
+  if $dry_run; then
+    # Ready to prune section
+    if [[ $prune_count -gt 0 ]]; then
+      echo ""
+      printf "  ${BOLD_GREEN}Ready to prune${RESET}\n"
+      echo ""
+      for i in "${!prune_names[@]}"; do
+        printf "  ${SYM_CHECK} ${BOLD}%s${RESET}  ${DIM}slot %s${RESET}  ${DIM}→${RESET}  ${MAGENTA}%s${RESET}\n" \
+          "${prune_names[$i]}" "${prune_slots[$i]}" "${prune_reasons[$i]}"
+      done
+    fi
+
+    # Not ready to prune section
+    if [[ $skip_count -gt 0 ]]; then
+      echo ""
+      printf "  ${BOLD_RED}Not ready to prune${RESET}\n"
+      echo ""
+      for i in "${!skip_names[@]}"; do
+        printf "  ${SYM_CROSS} ${BOLD}%s${RESET}  ${DIM}slot %s${RESET}  ${DIM}→${RESET}  ${YELLOW}%s${RESET}\n" \
+          "${skip_names[$i]}" "${skip_slots[$i]}" "${skip_reasons[$i]}"
+      done
+    fi
+
+    # Summary
+    echo ""
     local parts=()
     if [[ $prune_count -gt 0 ]]; then
-      if $dry_run; then
-        parts+=("${BOLD}$prune_count${RESET} to prune")
-      else
-        parts+=("${BOLD_GREEN}$prune_count${RESET} pruned")
-      fi
+      parts+=("${BOLD}$prune_count${RESET} to prune")
+    fi
+    if [[ $skip_count -gt 0 ]]; then
+      parts+=("${BOLD_YELLOW}$skip_count${RESET} skipped")
+    fi
+    local summary=""
+    for i in "${!parts[@]}"; do
+      if [[ $i -gt 0 ]]; then summary+=", "; fi
+      summary+="${parts[$i]}"
+    done
+    printf "  %b\n" "$summary"
+  else
+    # Prune phase: iterate collected names (safe — not reading registry during cleanup)
+    echo ""
+    for i in "${!prune_names[@]}"; do
+      step "Pruning ${BOLD}${prune_names[$i]}${RESET} ${DIM}(${prune_reasons[$i]})${RESET}"
+      cmd_cleanup "${prune_names[$i]}" --force
+      step_done "${BOLD}${prune_names[$i]}${RESET} removed"
+    done
+
+    if [[ $skip_count -gt 0 ]]; then
+      for i in "${!skip_names[@]}"; do
+        step_warn "${BOLD}${skip_names[$i]}${RESET}${YELLOW} — skipped: ${skip_reasons[$i]}${RESET}"
+      done
+    fi
+
+    # Summary
+    echo ""
+    local parts=()
+    if [[ $prune_count -gt 0 ]]; then
+      parts+=("${BOLD_GREEN}$prune_count${RESET} pruned")
     fi
     if [[ $skip_count -gt 0 ]]; then
       parts+=("${BOLD_YELLOW}$skip_count${RESET} skipped")
