@@ -3,3 +3,14 @@ dist
 .env
 .env.local
 *.log
+*.test.ts
+*.test.tsx
+src/scripts/
+eslint.config.js
+codegen.ts
+tsconfig.json
+vitest.config.ts
+.prettierrc
+.github
+.git
+README.md
