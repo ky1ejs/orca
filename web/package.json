@@ -5,8 +5,8 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "npx @electron/rebuild -o better-sqlite3 && electron-vite dev",
-    "build": "npx @electron/rebuild -o better-sqlite3 && electron-vite build",
+    "dev": "node scripts/rebuild-sqlite.mjs && electron-vite dev",
+    "build": "node scripts/rebuild-sqlite.mjs && electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "pnpm rebuild better-sqlite3 && vitest run"
   },
@@ -29,7 +29,6 @@
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
-    "@electron/rebuild": "^3.7.1",
     "electron": "^35.1.2",
     "electron-vite": "^5.0.0",
     "tailwindcss": "^4.1.0",
