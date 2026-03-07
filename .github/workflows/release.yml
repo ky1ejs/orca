@@ -1,0 +1,164 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'shared/**'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      should_release: ${{ steps.bump.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Bump version and tag
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./web/package.json').version")
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1 || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags exist yet — use current version as first release
+            NEW_VERSION="$CURRENT"
+          else
+            TAGGED_VERSION="${LATEST_TAG#v}"
+            if [ "$CURRENT" != "$TAGGED_VERSION" ]; then
+              # Version was manually bumped in package.json — use it as-is
+              NEW_VERSION="$CURRENT"
+            else
+              # Auto-bump patch
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+              PATCH=$((PATCH + 1))
+              NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+              # Update package.json
+              node -e "
+                const fs = require('fs');
+                const pkg = JSON.parse(fs.readFileSync('web/package.json', 'utf8'));
+                pkg.version = '$NEW_VERSION';
+                fs.writeFileSync('web/package.json', JSON.stringify(pkg, null, 2) + '\n');
+              "
+            fi
+          fi
+
+          TAG="v$NEW_VERSION"
+
+          # Check if this tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping release"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/package.json
+          git diff --cached --quiet || git commit -m "chore: bump version to $NEW_VERSION"
+          git tag "$TAG"
+          git push origin main --tags
+
+  build:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install shared dependencies
+        run: bun install
+        working-directory: shared
+
+      - name: Install backend dependencies
+        run: bun install
+        working-directory: backend
+
+      - name: Install web dependencies
+        run: bun install
+        working-directory: web
+
+      - name: Generate GraphQL types (backend)
+        run: bun run codegen
+        working-directory: backend
+
+      - name: Generate GraphQL types (web)
+        run: bun run codegen
+        working-directory: web
+
+      - name: Build Electron app
+        run: bun run build
+        working-directory: web
+
+      - name: Import code signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain \
+            -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm certificate.p12
+
+      - name: Build, sign, notarize, and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npx electron-builder --mac --${{ matrix.arch }} \
+            --config electron-builder.yml \
+            --publish always
+        working-directory: web
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-mac-${{ matrix.arch }}
+          path: |
+            web/dist-electron/*.dmg
+            web/dist-electron/*.zip
+            web/dist-electron/*.yml
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view ${{ needs.version.outputs.tag }} \
+            --repo ${{ github.repository }}

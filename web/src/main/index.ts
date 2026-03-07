@@ -1,9 +1,11 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { initDb, closeDb } from './db/client.js';
 import { sweepStaleSessions } from './db/sessions.js';
 import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
+import { IPC_CHANNELS } from './ipc/channels.js';
 import { PidSweepManager } from './pty/pid-sweep.js';
+import { initAutoUpdater, installUpdate } from './updater.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -60,6 +62,12 @@ app.whenReady().then(() => {
 
   // Register IPC handlers
   registerIpcHandlers();
+
+  // Auto-update
+  initAutoUpdater();
+  ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
+    installUpdate();
+  });
 
   // Start periodic PID sweep (every 60s)
   pidSweepManager = new PidSweepManager();
