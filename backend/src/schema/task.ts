@@ -1,36 +1,30 @@
-import type { ServerContext } from '../context.js';
+import type { Task } from '@prisma/client';
+import type {
+  TaskResolvers,
+  QueryResolvers,
+  MutationResolvers,
+  SubscriptionResolvers,
+} from '../__generated__/graphql.js';
 
 export const taskResolvers = {
   Query: {
-    tasks: (_parent: unknown, args: { projectId: string }, context: ServerContext) => {
+    tasks: (_parent, args, context) => {
       return context.prisma.task.findMany({
         where: { projectId: args.projectId },
         orderBy: { createdAt: 'desc' },
       });
     },
-    task: (_parent: unknown, args: { id: string }, context: ServerContext) => {
+    task: (_parent, args, context) => {
       return context.prisma.task.findUnique({ where: { id: args.id } });
     },
-  },
+  } satisfies Pick<QueryResolvers, 'tasks' | 'task'>,
   Mutation: {
-    createTask: async (
-      _parent: unknown,
-      args: {
-        input: {
-          title: string;
-          description?: string | null;
-          status?: string | null;
-          projectId: string;
-          workingDirectory: string;
-        };
-      },
-      context: ServerContext,
-    ) => {
+    createTask: async (_parent, args, context) => {
       const task = await context.prisma.task.create({
         data: {
           title: args.input.title,
           description: args.input.description,
-          status: (args.input.status as 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE') ?? 'TODO',
+          status: args.input.status ?? 'TODO',
           projectId: args.input.projectId,
           workingDirectory: args.input.workingDirectory,
         },
@@ -38,19 +32,7 @@ export const taskResolvers = {
       context.pubsub.publish('taskChanged', task);
       return task;
     },
-    updateTask: async (
-      _parent: unknown,
-      args: {
-        id: string;
-        input: {
-          title?: string | null;
-          description?: string | null;
-          status?: string | null;
-          workingDirectory?: string | null;
-        };
-      },
-      context: ServerContext,
-    ) => {
+    updateTask: async (_parent, args, context) => {
       const data: Record<string, unknown> = {};
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
@@ -63,22 +45,22 @@ export const taskResolvers = {
       context.pubsub.publish('taskChanged', task);
       return task;
     },
-    deleteTask: async (_parent: unknown, args: { id: string }, context: ServerContext) => {
+    deleteTask: async (_parent, args, context) => {
       await context.prisma.task.delete({ where: { id: args.id } });
       return true;
     },
-  },
+  } satisfies Pick<MutationResolvers, 'createTask' | 'updateTask' | 'deleteTask'>,
   Subscription: {
     taskChanged: {
-      subscribe: (_parent: unknown, _args: unknown, context: ServerContext) => {
+      subscribe: (_parent: unknown, _args: unknown, context) => {
         return context.pubsub.subscribe('taskChanged');
       },
-      resolve: (payload: unknown) => payload,
+      resolve: (payload: Task) => payload,
     },
-  },
+  } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {
-    project: (parent: { projectId: string }, _args: unknown, context: ServerContext) => {
-      return context.prisma.project.findUnique({ where: { id: parent.projectId } });
+    project: (parent, _args, context) => {
+      return context.prisma.project.findUniqueOrThrow({ where: { id: parent.projectId } });
     },
-  },
+  } satisfies TaskResolvers,
 };
