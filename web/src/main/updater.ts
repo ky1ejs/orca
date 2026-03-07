@@ -1,5 +1,7 @@
-import { autoUpdater } from 'electron-updater';
 import { BrowserWindow } from 'electron';
+import electronUpdater from 'electron-updater';
+
+const { autoUpdater } = electronUpdater;
 
 export function initAutoUpdater(): void {
   // Don't check for updates in development

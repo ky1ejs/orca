@@ -66,6 +66,8 @@ jobs:
         arch: [arm64, x64]
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -185,7 +187,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.version.outputs.tag }}"
-          gh release create "$TAG" artifacts/* \
-            --repo ${{ github.repository }} \
+          VERSION="${{ needs.version.outputs.version }}"
+
+          # Create release with DMGs as primary downloads
+          DMG_FILES=$(find artifacts -name '*.dmg' | sort)
+          REPO="${{ github.repository }}"
+          NOTES="## Download
+          | Platform | Download |
+          |----------|----------|
+          | macOS (Apple Silicon) | [Orca-${VERSION}-arm64.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}-arm64.dmg) |
+          | macOS (Intel) | [Orca-${VERSION}.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}.dmg) |"
+          gh release create "$TAG" $DMG_FILES \
+            --repo "$REPO" \
             --title "$TAG" \
-            --generate-notes
+            --notes "$NOTES"
+
+          # Upload auto-update files (ZIPs + yml) — needed by electron-updater
+          AUTO_UPDATE_FILES=$(find artifacts -name '*.zip' -o -name '*.yml' | sort)
+          if [ -n "$AUTO_UPDATE_FILES" ]; then
+            gh release upload "$TAG" $AUTO_UPDATE_FILES \
+              --repo ${{ github.repository }}
+          fi
