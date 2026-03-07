@@ -17,8 +17,45 @@ WORKTREE_BASE="$MAIN_REPO/../worktrees/orca"
 REGISTRY="$MAIN_REPO/.worktree-registry.json"
 
 VERBOSE=false
-log() { echo "==> $*"; }
-vlog() { $VERBOSE && echo "    $*" || true; }
+
+# ─── Colors & Symbols ────────────────────────────────────────────────────────
+
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+BOLD_GREEN='\033[1;32m'
+BOLD_RED='\033[1;31m'
+BOLD_YELLOW='\033[1;33m'
+BOLD_BLUE='\033[1;34m'
+BOLD_CYAN='\033[1;36m'
+BOLD_MAGENTA='\033[1;35m'
+
+SYM_CHECK="${BOLD_GREEN}✓${RESET}"
+SYM_CROSS="${BOLD_RED}✗${RESET}"
+SYM_ARROW="${BOLD_BLUE}▸${RESET}"
+SYM_WARN="${BOLD_YELLOW}!${RESET}"
+SYM_DOT="${DIM}·${RESET}"
+SYM_TREE="${DIM}├─${RESET}"
+SYM_TREE_END="${DIM}└─${RESET}"
+
+step() { printf "  ${SYM_ARROW} %b\n" "$*"; }
+step_done() { printf "  ${SYM_CHECK} %b\n" "$*"; }
+step_skip() { printf "  ${SYM_DOT} %b\n" "${DIM}$*${RESET}"; }
+step_warn() { printf "  ${SYM_WARN} %b\n" "${YELLOW}$*${RESET}"; }
+step_fail() { printf "  ${SYM_CROSS} %b\n" "${RED}$*${RESET}"; }
+vlog() { $VERBOSE && printf "    ${DIM}%s${RESET}\n" "$*" || true; }
+
+header() {
+  echo ""
+  printf "  ${BOLD}%s${RESET}  ${DIM}%s${RESET}\n" "$1" "$2"
+  printf "  ${DIM}%s${RESET}\n" "$(printf '%.0s─' $(seq 1 50))"
+}
 
 # ─── create ───────────────────────────────────────────────────────────────────
 
@@ -31,13 +68,13 @@ cmd_create() {
       --branch)  branch="$2"; shift 2 ;;
       --no-bootstrap) bootstrap=false; shift ;;
       -v|--verbose) VERBOSE=true; shift ;;
-      -*)        echo "Unknown option: $1" >&2; exit 1 ;;
+      -*)        step_fail "Unknown option: $1"; exit 1 ;;
       *)         name="$1"; shift ;;
     esac
   done
 
   if [[ -z "$name" ]]; then
-    echo "Usage: worktree create <name> [--base <branch>] [--branch <name>] [--no-bootstrap] [-v]" >&2
+    printf "${RED}Usage:${RESET} worktree create <name> [--base <branch>] [--branch <name>] [--no-bootstrap] [-v]\n" >&2
     exit 1
   fi
 
@@ -45,80 +82,92 @@ cmd_create() {
   local wt_path="$WORKTREE_BASE/$name"
 
   if [[ -d "$wt_path" ]]; then
-    echo "Error: Worktree directory already exists: $wt_path" >&2
+    step_fail "Worktree directory already exists: ${BOLD}$wt_path${RESET}"
     exit 1
   fi
 
+  header "Creating worktree" "$name"
+
   # 1. Create git worktree
-  log "Creating git worktree '$name' from '$base'..."
+  step "Creating git worktree from ${CYAN}$base${RESET}"
   mkdir -p "$WORKTREE_BASE"
-  git -C "$MAIN_REPO" worktree add -b "$branch" "$wt_path" "$base"
+  git -C "$MAIN_REPO" worktree add -b "$branch" "$wt_path" "$base" >/dev/null 2>&1
+  step_done "Git worktree created"
 
   # 2. Allocate resource slot
-  log "Allocating resource slot..."
+  step "Allocating resource slot"
   local slot
   slot=$("$SCRIPTS/allocate-slot.sh" "$name")
   local port=$((4000 + slot * 10))
   local db_name="orca_wt_${slot}"
-  log "Slot $slot allocated (port: $port, database: $db_name)"
+  step_done "Slot ${BOLD}$slot${RESET} allocated ${DIM}(port: $port, db: $db_name)${RESET}"
 
   # 3. Ensure Docker Postgres is running
-  log "Ensuring Postgres is running..."
+  step "Ensuring Postgres is running"
   if ! docker compose -f "$MAIN_REPO/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
     vlog "Starting Postgres..."
-    docker compose -f "$MAIN_REPO/docker-compose.yml" up -d
+    docker compose -f "$MAIN_REPO/docker-compose.yml" up -d >/dev/null 2>&1
   fi
+  step_done "Postgres running"
 
   # 4. Create database
-  log "Creating database $db_name..."
+  step "Creating database ${CYAN}$db_name${RESET}"
   docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
     psql -U postgres -c "CREATE DATABASE $db_name;" 2>/dev/null || \
     vlog "Database $db_name already exists"
+  step_done "Database ready"
 
   # 5. Generate .env files
-  log "Generating environment files..."
-  "$SCRIPTS/generate-worktree-env.sh" "$slot" "$wt_path"
+  step "Generating environment files"
+  "$SCRIPTS/generate-worktree-env.sh" "$slot" "$wt_path" >/dev/null 2>&1
+  step_done "Environment files written"
 
   # 6. Bootstrap (unless --no-bootstrap)
   if $bootstrap; then
-    log "Bootstrapping worktree..."
+    echo ""
+    printf "  ${BOLD}Bootstrapping${RESET}\n"
+    printf "  ${DIM}%s${RESET}\n" "$(printf '%.0s─' $(seq 1 50))"
 
-    vlog "Installing dependencies in shared/..."
-    (cd "$wt_path/shared" && bun install)
+    step "Installing dependencies"
+    vlog "shared/"
+    (cd "$wt_path/shared" && bun install) >/dev/null 2>&1
+    vlog "backend/"
+    (cd "$wt_path/backend" && bun install) >/dev/null 2>&1
+    vlog "web/"
+    (cd "$wt_path/web" && bun install) >/dev/null 2>&1
+    step_done "Dependencies installed"
 
-    vlog "Installing dependencies in backend/..."
-    (cd "$wt_path/backend" && bun install)
+    step "Generating Prisma client"
+    (cd "$wt_path/backend" && bunx prisma generate) >/dev/null 2>&1
+    step_done "Prisma client generated"
 
-    vlog "Installing dependencies in web/..."
-    (cd "$wt_path/web" && bun install)
+    step "Running GraphQL codegen"
+    (cd "$wt_path/web" && bun run codegen) >/dev/null 2>&1
+    step_done "GraphQL types generated"
 
-    # 7. Run service bootstrap scripts
-    log "Running service bootstrap scripts..."
+    step "Rebuilding native modules for Electron"
+    (cd "$wt_path/web" && bun run setup) >/dev/null 2>&1
+    step_done "Native modules rebuilt"
 
-    vlog "Generating Prisma client..."
-    (cd "$wt_path/backend" && bunx prisma generate)
-
-    vlog "Running GraphQL codegen..."
-    (cd "$wt_path/web" && bun run codegen)
-
-    vlog "Rebuilding native modules for Electron..."
-    (cd "$wt_path/web" && bun run setup)
-
-    # 8. Run Prisma migrations
-    log "Running Prisma migrations..."
-    (cd "$wt_path/backend" && bunx prisma migrate deploy)
+    step "Running Prisma migrations"
+    (cd "$wt_path/backend" && bunx prisma migrate deploy) >/dev/null 2>&1
+    step_done "Migrations applied"
   else
-    log "Skipping bootstrap (--no-bootstrap)"
+    step_skip "Skipping bootstrap (--no-bootstrap)"
   fi
 
+  # Summary
   echo ""
-  log "Worktree '$name' is ready!"
-  echo "  Path:     $wt_path"
-  echo "  Slot:     $slot"
-  echo "  Port:     $port"
-  echo "  Database: $db_name"
+  printf "  ${BOLD_GREEN}Worktree ready!${RESET}\n"
   echo ""
-  echo "  cd $wt_path && bun run dev"
+  printf "  ${DIM}Path${RESET}      %s\n" "$wt_path"
+  printf "  ${DIM}Branch${RESET}    %s\n" "$branch"
+  printf "  ${DIM}Slot${RESET}      %s\n" "$slot"
+  printf "  ${DIM}Port${RESET}      %s\n" "$port"
+  printf "  ${DIM}Database${RESET}  %s\n" "$db_name"
+  echo ""
+  printf "  ${DIM}Run:${RESET} cd %s && bun run dev\n" "$wt_path"
+  echo ""
 }
 
 # ─── cleanup ──────────────────────────────────────────────────────────────────
@@ -129,13 +178,13 @@ cmd_cleanup() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --force) force=true; shift ;;
-      -*)      echo "Unknown option: $1" >&2; exit 1 ;;
+      -*)      step_fail "Unknown option: $1"; exit 1 ;;
       *)       name="$1"; shift ;;
     esac
   done
 
   if [[ -z "$name" ]]; then
-    echo "Usage: worktree cleanup <name> [--force]" >&2
+    printf "${RED}Usage:${RESET} worktree cleanup <name> [--force]\n" >&2
     exit 1
   fi
 
@@ -151,7 +200,6 @@ cmd_cleanup() {
   if ! $force; then
     local warnings=()
 
-    # Check for uncommitted changes in the worktree
     if [[ -d "$wt_path" ]]; then
       local dirty
       dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null || true)
@@ -160,12 +208,10 @@ cmd_cleanup() {
       fi
     fi
 
-    # Check if branch is merged into main
     if ! git -C "$MAIN_REPO" branch --merged main 2>/dev/null | grep -qw "$name"; then
       warnings+=("Branch '$name' is not merged into main")
     fi
 
-    # Check for an open GitHub PR
     if command -v gh &>/dev/null; then
       local pr_state
       pr_state=$(gh pr view "$name" --repo "$(git -C "$MAIN_REPO" remote get-url origin)" --json state --jq '.state' 2>/dev/null || true)
@@ -175,57 +221,68 @@ cmd_cleanup() {
     fi
 
     if [[ ${#warnings[@]} -gt 0 ]]; then
-      echo "WARNING: The following issues were found:"
+      echo ""
+      printf "  ${BOLD_YELLOW}Warnings${RESET}\n"
       for w in "${warnings[@]}"; do
-        echo "  - $w"
+        step_warn "$w"
       done
       echo ""
     fi
 
-    echo "This will remove worktree '$name':"
-    [[ -n "$slot" ]] && echo "  - Drop database orca_wt_${slot}"
-    echo "  - Remove git worktree at $wt_path"
-    echo "  - Delete local branch '$name'"
+    header "Cleanup" "$name"
+    printf "  This will remove:\n"
+    [[ -n "$slot" ]] && printf "    ${SYM_TREE} Database ${CYAN}orca_wt_${slot}${RESET}\n"
+    printf "    ${SYM_TREE} Git worktree at ${DIM}$wt_path${RESET}\n"
+    printf "    ${SYM_TREE_END} Local branch ${CYAN}$name${RESET}\n"
     echo ""
-    read -p "Continue? [y/N] " -r
+    read -p "  Continue? [y/N] " -r
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "Aborted."
+      step_skip "Aborted"
       exit 0
     fi
+    echo ""
   fi
 
   # 1. Drop database
   if [[ -n "$slot" ]]; then
     local db_name="orca_wt_${slot}"
-    log "Dropping database $db_name..."
+    step "Dropping database ${CYAN}$db_name${RESET}"
     docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
       psql -U postgres -c "DROP DATABASE IF EXISTS $db_name;" 2>/dev/null || true
+    step_done "Database dropped"
   fi
 
   # 2. Free slot
   if [[ -n "$slot" ]]; then
-    log "Releasing slot $slot..."
-    "$SCRIPTS/allocate-slot.sh" --release "$name"
+    step "Releasing slot ${BOLD}$slot${RESET}"
+    "$SCRIPTS/allocate-slot.sh" --release "$name" >/dev/null 2>&1
+    step_done "Slot released"
   fi
 
   # 3. Remove git worktree
   if [[ -d "$wt_path" ]]; then
-    log "Removing git worktree..."
+    step "Removing git worktree"
     git -C "$MAIN_REPO" worktree remove "$wt_path" --force 2>/dev/null || true
+    step_done "Worktree removed"
   fi
 
   # 4. Delete local branch
-  log "Deleting local branch '$name'..."
+  step "Deleting local branch ${CYAN}$name${RESET}"
   git -C "$MAIN_REPO" branch -D "$name" 2>/dev/null || true
+  step_done "Branch deleted"
 
-  log "Worktree '$name' cleaned up."
+  echo ""
+  printf "  ${BOLD_GREEN}Done${RESET} ${DIM}— worktree '$name' cleaned up${RESET}\n"
+  echo ""
 }
 
 # ─── status ───────────────────────────────────────────────────────────────────
 
 cmd_status() {
   if [[ ! -f "$REGISTRY" ]]; then
-    echo "No worktrees registered."
+    echo ""
+    printf "  ${DIM}No worktrees registered.${RESET}\n"
+    echo ""
     exit 0
   fi
 
@@ -233,24 +290,45 @@ cmd_status() {
   count=$(jq '.slots | length' "$REGISTRY")
 
   if [[ "$count" == "0" ]]; then
-    echo "No worktrees registered."
+    echo ""
+    printf "  ${DIM}No worktrees registered.${RESET}\n"
+    echo ""
     exit 0
   fi
 
-  printf "%-20s %-5s %-6s %-15s %-8s %s\n" "WORKTREE" "SLOT" "PORT" "DATABASE" "STATUS" "CREATED"
-  printf "%-20s %-5s %-6s %-15s %-8s %s\n" "--------" "----" "----" "--------" "------" "-------"
+  header "Worktrees" "$count registered"
+  echo ""
+
+  # Find longest worktree name for dynamic column width
+  local max_name_len=4 # minimum: "NAME"
+  while read -r wt_name; do
+    if [[ ${#wt_name} -gt $max_name_len ]]; then
+      max_name_len=${#wt_name}
+    fi
+  done < <(jq -r '.slots[].worktree' "$REGISTRY")
+  local name_col=$((max_name_len + 2))
+
+  # Table header
+  printf "  ${BOLD}%-${name_col}s %-6s %-6s %-16s %-10s %s${RESET}\n" "NAME" "SLOT" "PORT" "DATABASE" "STATUS" "CREATED"
+  printf "  ${DIM}%-${name_col}s %-6s %-6s %-16s %-10s %s${RESET}\n" \
+    "$(printf '%*s' "$name_col" '' | tr ' ' '─')" "──────" "──────" "────────────────" "──────────" "──────────"
 
   jq -r '.slots[] | "\(.worktree) \(.slot) \(.path) \(.created)"' "$REGISTRY" | \
   while read -r wt slot path created; do
     local port=$((4000 + slot * 10))
     local db="orca_wt_${slot}"
     local full_path="$MAIN_REPO/$path"
-    local status="active"
-    if [[ ! -d "$full_path" ]]; then
-      status="missing"
+    local status_text status_color
+    if [[ -d "$full_path" ]]; then
+      status_text="active"
+      status_color="${GREEN}"
+    else
+      status_text="missing"
+      status_color="${RED}"
     fi
-    printf "%-20s %-5s %-6s %-15s %-8s %s\n" "$wt" "$slot" "$port" "$db" "$status" "$created"
+    printf "  %-${name_col}s %-6s %-6s %-16s ${status_color}%-10s${RESET} ${DIM}%s${RESET}\n" "$wt" "$slot" "$port" "$db" "$status_text" "$created"
   done
+  echo ""
 }
 
 # ─── prune ────────────────────────────────────────────────────────────────────
@@ -261,18 +339,27 @@ cmd_prune() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
-      *)         echo "Unknown option: $1" >&2; exit 1 ;;
+      *)         step_fail "Unknown option: $1"; exit 1 ;;
     esac
   done
 
   if [[ ! -f "$REGISTRY" ]]; then
-    echo "No worktrees registered."
+    echo ""
+    printf "  ${DIM}No worktrees registered.${RESET}\n"
+    echo ""
     exit 0
   fi
 
-  local found=false
+  if $dry_run; then
+    header "Prune" "dry run"
+  else
+    header "Prune" "cleaning up stale worktrees"
+  fi
+  echo ""
 
-  local prunable=()
+  local found=false
+  local prune_count=0
+  local skip_count=0
 
   while read -r wt slot path; do
     local full_path="$MAIN_REPO/$path"
@@ -312,24 +399,48 @@ cmd_prune() {
     fi
 
     if [[ -n "$skip_reason" ]] && $should_prune; then
-      echo "Skipping '$wt' (slot $slot): $skip_reason"
+      step_warn "${BOLD}$wt${RESET}${YELLOW} — skipped: $skip_reason${RESET}"
+      ((skip_count++))
       continue
     fi
 
     if $should_prune; then
       found=true
+      ((prune_count++))
       if $dry_run; then
-        echo "[dry-run] Would prune '$wt' (slot $slot): $reason"
+        step "${BOLD}$wt${RESET}  ${DIM}slot $slot${RESET}  ${DIM}→${RESET}  ${MAGENTA}$reason${RESET}"
       else
-        echo "Pruning '$wt' (slot $slot): $reason"
+        step "Pruning ${BOLD}$wt${RESET} ${DIM}($reason)${RESET}"
         cmd_cleanup "$wt" --force
+        step_done "${BOLD}$wt${RESET} removed"
       fi
     fi
   done < <(jq -r '.slots[] | "\(.worktree) \(.slot) \(.path)"' "$REGISTRY")
 
-  if ! $found; then
-    echo "Nothing to prune."
+  # Summary
+  echo ""
+  if ! $found && [[ $skip_count -eq 0 ]]; then
+    printf "  ${DIM}Nothing to prune — all worktrees are current.${RESET}\n"
+  else
+    local parts=()
+    if [[ $prune_count -gt 0 ]]; then
+      if $dry_run; then
+        parts+=("${BOLD}$prune_count${RESET} to prune")
+      else
+        parts+=("${BOLD_GREEN}$prune_count${RESET} pruned")
+      fi
+    fi
+    if [[ $skip_count -gt 0 ]]; then
+      parts+=("${BOLD_YELLOW}$skip_count${RESET} skipped")
+    fi
+    local summary=""
+    for i in "${!parts[@]}"; do
+      if [[ $i -gt 0 ]]; then summary+=", "; fi
+      summary+="${parts[$i]}"
+    done
+    printf "  %b\n" "$summary"
   fi
+  echo ""
 }
 
 # ─── main ─────────────────────────────────────────────────────────────────────
@@ -340,13 +451,24 @@ case "${1:-}" in
   status)  shift; cmd_status "$@" ;;
   prune)   shift; cmd_prune "$@" ;;
   *)
-    echo "Usage: worktree <command> [options]"
     echo ""
-    echo "Commands:"
-    echo "  create <name>   Create a new worktree with isolated resources"
-    echo "  cleanup <name>  Remove a worktree and its resources"
-    echo "  status          Show all worktrees and their resource assignments"
-    echo "  prune           Remove stale/merged worktrees"
+    printf "  ${BOLD}worktree${RESET} ${DIM}— slot-based worktree management for Orca${RESET}\n"
+    echo ""
+    printf "  ${BOLD}Usage${RESET}\n"
+    printf "    worktree ${CYAN}<command>${RESET} [options]\n"
+    echo ""
+    printf "  ${BOLD}Commands${RESET}\n"
+    printf "    ${CYAN}create${RESET} <name>    Create a new worktree with isolated resources\n"
+    printf "    ${CYAN}cleanup${RESET} <name>   Remove a worktree and its resources\n"
+    printf "    ${CYAN}status${RESET}           Show all worktrees and their resource assignments\n"
+    printf "    ${CYAN}prune${RESET}            Remove stale/merged worktrees\n"
+    echo ""
+    printf "  ${BOLD}Options${RESET} ${DIM}(create)${RESET}\n"
+    printf "    ${DIM}--base <branch>${RESET}   Base branch (default: main)\n"
+    printf "    ${DIM}--branch <name>${RESET}   Branch name (default: same as worktree name)\n"
+    printf "    ${DIM}--no-bootstrap${RESET}    Skip dependency install and migrations\n"
+    printf "    ${DIM}-v, --verbose${RESET}     Show detailed output\n"
+    echo ""
     exit 1
     ;;
 esac
