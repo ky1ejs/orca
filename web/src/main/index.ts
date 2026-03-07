@@ -31,7 +31,11 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // Set dock icon on macOS
-  app.dock?.setIcon(iconPath);
+  try {
+    app.dock?.setIcon(iconPath);
+  } catch (err) {
+    console.warn('Failed to set dock icon:', err);
+  }
 
   // Initialize database
   initDb();

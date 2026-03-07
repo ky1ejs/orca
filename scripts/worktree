@@ -72,7 +72,7 @@ cmd_create() {
   # 4. Create database
   log "Creating database $db_name..."
   docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
-    psql -U orca -c "CREATE DATABASE $db_name;" 2>/dev/null || \
+    psql -U postgres -c "CREATE DATABASE $db_name;" 2>/dev/null || \
     vlog "Database $db_name already exists"
 
   # 5. Generate .env files
@@ -92,7 +92,19 @@ cmd_create() {
     vlog "Installing dependencies in web/..."
     (cd "$wt_path/web" && bun install)
 
-    # 7. Run Prisma migrations
+    # 7. Run service bootstrap scripts
+    log "Running service bootstrap scripts..."
+
+    vlog "Generating Prisma client..."
+    (cd "$wt_path/backend" && bunx prisma generate)
+
+    vlog "Running GraphQL codegen..."
+    (cd "$wt_path/web" && bun run codegen)
+
+    vlog "Rebuilding native modules for Electron..."
+    (cd "$wt_path/web" && bun run setup)
+
+    # 8. Run Prisma migrations
     log "Running Prisma migrations..."
     (cd "$wt_path/backend" && bunx prisma migrate deploy)
   else
@@ -187,7 +199,7 @@ cmd_cleanup() {
     local db_name="orca_wt_${slot}"
     log "Dropping database $db_name..."
     docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
-      psql -U orca -c "DROP DATABASE IF EXISTS $db_name;" 2>/dev/null || true
+      psql -U postgres -c "DROP DATABASE IF EXISTS $db_name;" 2>/dev/null || true
   fi
 
   # 2. Free slot
