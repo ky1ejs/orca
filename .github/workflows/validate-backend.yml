@@ -46,23 +46,15 @@ jobs:
         working-directory: backend
 
       - name: Lint
-        run: bunx eslint backend/ shared/
+        run: bunx eslint backend/
 
       - name: Format check
-        run: bunx prettier --check "backend/" "shared/"
+        run: bunx prettier --check "backend/"
 
-      - name: Typecheck shared
-        run: bun run typecheck
-        working-directory: shared
-
-      - name: Typecheck backend
+      - name: Typecheck
         run: bun run typecheck
         working-directory: backend
 
-      - name: Test shared
-        run: bun run test
-        working-directory: shared
-
-      - name: Test backend
+      - name: Test
         run: bun run test
         working-directory: backend

@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  detect-changes:
+  checks:
     runs-on: ubuntu-latest
     outputs:
       web-changed: ${{ steps.check-web.outputs.has-changes || github.event_name == 'push' }}
@@ -40,49 +40,70 @@ jobs:
           paths: '^shared/src/schema\.graphql$'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+      - run: cd shared && bun install
+
+      - name: Lint shared
+        run: bunx eslint shared/
+
+      - name: Format check shared
+        run: bunx prettier --check "shared/"
+
+      - name: Typecheck shared
+        run: bun run typecheck
+        working-directory: shared
+
+      - name: Test shared
+        run: bun run test
+        working-directory: shared
+
   validate-web:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.web-changed == 'true'
+    needs: checks
+    if: needs.checks.outputs.web-changed == 'true'
     uses: ./.github/workflows/validate-web.yml
 
   validate-backend:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    needs: checks
+    if: needs.checks.outputs.backend-changed == 'true'
     uses: ./.github/workflows/validate-backend.yml
 
   labels:
-    needs: detect-changes
+    needs: checks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
       - name: Add web label
-        if: needs.detect-changes.outputs.web-changed == 'true'
+        if: needs.checks.outputs.web-changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "web"
 
       - name: Add backend label
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        if: needs.checks.outputs.backend-changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "backend"
 
       - name: Add graphql-schema label
-        if: needs.detect-changes.outputs.schema-changed == 'true'
+        if: needs.checks.outputs.schema-changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "graphql-schema"
 
   status:
-    needs: [validate-web, validate-backend, labels]
+    needs: [checks, validate-web, validate-backend, labels]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          if [[ "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
+          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
             echo "One or more jobs failed"
             exit 1
           fi
