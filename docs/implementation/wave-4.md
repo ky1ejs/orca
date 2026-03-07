@@ -137,7 +137,7 @@ After Wave 3, auth exists but is basic (token generated on first run). PID track
   - [ ] Token displayed on first run with copy instructions
   - [ ] Client stores token in SQLite `auth_token` table
   - [ ] All GraphQL requests require valid token
-  - [ ] WebSocket subscriptions authenticated via connection params
+  - [ ] SSE subscriptions authenticated (graphql-yoga uses SSE, NOT WebSocket)
   - [ ] Clear error when token is missing or invalid
 - [ ] **PID management improvements**:
   - [ ] Periodic sweep every 60s checking if tracked PIDs are alive (`process.kill(pid, 0)`)
@@ -152,7 +152,7 @@ After Wave 3, auth exists but is basic (token generated on first run). PID track
   - [ ] Verify packaged app opens and functions
 - [ ] **README.md** (repo root):
   - [ ] Prerequisites (Bun, Docker, Claude Code)
-  - [ ] Setup instructions (clone, install, docker compose up, run)
+  - [ ] Setup instructions (clone, `bun install` in root + each package, docker compose up, run)
   - [ ] How to get the auth token
   - [ ] How to share with testers
 
@@ -168,7 +168,7 @@ After Wave 3, auth exists but is basic (token generated on first run). PID track
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
+bun run validate                     # Must pass (from repo root)
 # Auth test:
 # - Start server, attempt GraphQL query without token -> rejected
 # - Use valid token -> succeeds
@@ -185,8 +185,8 @@ cd web && bun run build:mac
 
 After both Wave 4 PRs are merged, run through the full checklist:
 
-- [ ] `docker compose up` starts Postgres
-- [ ] `bun run dev` starts backend + Electron client
+- [ ] `docker compose up -d` starts Postgres
+- [ ] `bun run dev` (from repo root) starts backend + Electron client
 - [ ] Create project and tasks through sidebar UI
 - [ ] Markdown renders in project/task descriptions
 - [ ] Click "Launch Agent" -> Claude Code starts in embedded terminal

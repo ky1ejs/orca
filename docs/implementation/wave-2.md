@@ -61,7 +61,7 @@ After Wave 1, the following exist:
 
 - [ ] **GraphQL client** (`web/src/renderer/graphql/`):
   - [ ] urql client with HTTP transport (to `http://localhost:4000/graphql`)
-  - [ ] WebSocket transport for subscriptions
+  - [ ] SSE transport for subscriptions (graphql-yoga uses Server-Sent Events, NOT WebSocket)
   - [ ] Auth token retrieval from local SQLite via IPC
   - [ ] Provider wrapping the app
 - [ ] **graphql-codegen for client** (`web/codegen.ts`):
@@ -201,7 +201,7 @@ After Wave 1, the following exist:
   - [ ] `spawnClaudeCode(sessionId, cwd, initialContext?)` function
   - [ ] Detect if `claude` is on PATH
   - [ ] Clear error message if not found
-- [ ] **electron-rebuild**: configured for node-pty native module
+- [ ] **node-pty native module rebuild**: Add node-pty to `web/scripts/rebuild-sqlite.mjs` (rename to `rebuild-native.mjs`) so it rebuilds both better-sqlite3 and node-pty for Electron's ABI via `prebuild-install`. Do NOT use `@electron/rebuild` — it doesn't work with bun's module layout.
 
 ### Tests
 
@@ -220,11 +220,17 @@ If node-pty fails in Electron, the agent MUST:
 3. Describe the fallback: Node.js `child_process` with pseudo-TTY
 4. Stop and flag for developer review — do NOT proceed to implement the fallback
 
+### Important: Native Module & Testing Notes
+
+- **No workspaces**: `web/` manages its own dependencies with `bun install`. Shared code is linked via `"@orca/shared": "file:../shared"` in `web/package.json`.
+- **Native modules**: Do NOT use `@electron/rebuild`. Instead, extend `web/scripts/rebuild-sqlite.mjs` to also rebuild node-pty for Electron's ABI using `prebuild-install --runtime electron --target <electron-version>`.
+- **Tests run under Electron's Node.js**: The test script uses `ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run`, so native modules compiled for Electron work in tests too. No ABI swapping needed.
+- **Validation**: Run `bun run validate` from the repo root, or `bun run validate` from `web/`.
+
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
-cd web && bun run test               # PTY tests pass
+bun run validate                     # Must pass (from repo root)
 cd web && bun run dev
 # Verify via dev tools or temp test button:
 # - Spawn a PTY with /bin/bash, verify output

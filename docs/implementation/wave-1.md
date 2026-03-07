@@ -233,7 +233,7 @@ Do NOT touch any files in `shared/` or `backend/`.
   - [x] `components/layout/AppShell.tsx` — Main layout wrapper (sidebar + content)
   - [x] `components/layout/Sidebar.tsx` — Placeholder sidebar (static, no data)
   - [x] Tailwind CSS configured and working
-- [x] **Native module rebuild**: handled by electron-vite's `externalizeDepsPlugin()` (no separate electron-rebuild needed)
+- [x] **Native module rebuild**: `web/scripts/rebuild-sqlite.mjs` calls `prebuild-install` directly to rebuild better-sqlite3 for Electron's ABI
 
 ### Tests
 
@@ -246,12 +246,14 @@ Do NOT touch any files in `shared/` or `backend/`.
 
 - **Tailwind v4 with `@tailwindcss/vite`**: No `tailwind.config.js` or `postcss.config.js` needed. Tailwind v4 uses the Vite plugin directly with `@import 'tailwindcss'` in CSS.
 - **Session default status is `STARTING`**: Changed from `IDLE` to `STARTING` as the more common initial state when creating a session.
-- **No electron-rebuild**: electron-vite's `externalizeDepsPlugin()` handles native module externalization, making a separate rebuild step unnecessary.
+- **No workspaces**: Each package (`shared/`, `backend/`, `web/`) manages its own dependencies with `bun install`. Shared code linked via `file:../shared`.
+- **Native module ABI handling**: better-sqlite3 is rebuilt for Electron via `web/scripts/rebuild-sqlite.mjs` (calls `prebuild-install` directly — `@electron/rebuild` doesn't work with bun or pnpm symlinks). Tests run under Electron's Node.js via `ELECTRON_RUN_AS_NODE=1` so the Electron-rebuilt binary works in both dev and test.
+- **electron-vite v5**: Upgraded from v3 to v5 for Vite 7 compatibility.
 
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
+bun run validate                     # Must pass (runs from repo root)
 cd web && bun run dev                # Electron app opens with React shell
 # Verify: window opens, dev tools work, SQLite DB created in app data dir
 ```

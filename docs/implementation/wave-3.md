@@ -96,7 +96,7 @@ After Wave 2, the following exist:
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
+bun run validate                     # Must pass (from repo root)
 # Full-stack test:
 docker compose up -d && cd backend && bun run dev &
 cd web && bun run dev
@@ -224,7 +224,7 @@ After Wave 2, the following exist:
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
+bun run validate                     # Must pass (from repo root)
 # Full-stack test:
 docker compose up -d && cd backend && bun run dev &
 cd web && bun run dev
