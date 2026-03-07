@@ -47,6 +47,10 @@ export interface OrcaAPI {
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
+  lifecycle: {
+    onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
+    onInterruptedSessions: (cb: (count: number) => void) => () => void;
+  };
 }
 
 const api: OrcaAPI = {
@@ -89,6 +93,22 @@ const api: OrcaAPI = {
     restart: (taskId, sessionId, workingDirectory, initialContext?) =>
       ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, initialContext),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
+  },
+  lifecycle: {
+    onSessionsDied: (cb) => {
+      const listener = (_event: unknown, sessionIds: string[]) => cb(sessionIds);
+      ipcRenderer.on('pid-sweep:sessions-died', listener);
+      return () => {
+        ipcRenderer.removeListener('pid-sweep:sessions-died', listener);
+      };
+    },
+    onInterruptedSessions: (cb) => {
+      const listener = (_event: unknown, count: number) => cb(count);
+      ipcRenderer.on('startup:interrupted-sessions', listener);
+      return () => {
+        ipcRenderer.removeListener('startup:interrupted-sessions', listener);
+      };
+    },
   },
 };
 

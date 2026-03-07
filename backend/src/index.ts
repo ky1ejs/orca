@@ -6,9 +6,23 @@ import { getOrCreateToken, validateToken } from './auth/token.js';
 import type { ServerContext } from './context.js';
 
 const pubsub = createPubSub();
-const authToken = getOrCreateToken();
+const { token: authToken, isNew: isNewToken } = getOrCreateToken();
 
-console.log(`Auth token: ${authToken}`);
+if (isNewToken) {
+  console.log('');
+  console.log('='.repeat(60));
+  console.log('  FIRST RUN - Auth token generated and saved to:');
+  console.log('  ~/.orca/config.json');
+  console.log('');
+  console.log(`  Token: ${authToken}`);
+  console.log('');
+  console.log('  The Electron client reads this token automatically.');
+  console.log('  For browser testing, set VITE_AUTH_TOKEN in web/.env');
+  console.log('='.repeat(60));
+  console.log('');
+} else {
+  console.log(`Auth token loaded from ~/.orca/config.json`);
+}
 
 const yoga = createYoga({
   schema,

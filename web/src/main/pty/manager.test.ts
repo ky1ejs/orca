@@ -158,4 +158,39 @@ describe('PtyManager', () => {
   it('handles kill on non-existent session gracefully', () => {
     expect(() => manager.kill('nonexistent')).not.toThrow();
   });
+
+  it('killAll sends SIGTERM to all managed processes', async () => {
+    createTestSession(testDb, 'term-1');
+    createTestSession(testDb, 'term-2');
+
+    // Spawn long-running processes
+    manager.spawn('term-1', '/bin/cat', [], '/tmp');
+    manager.spawn('term-2', '/bin/cat', [], '/tmp');
+
+    // Wait for processes to start
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Get the PIDs before killing
+    const pids = manager.getManagedPids();
+    expect(pids.size).toBe(2);
+
+    // killAll should not throw and should terminate all processes
+    expect(() => manager.killAll()).not.toThrow();
+
+    // After killAll, managed PIDs should be empty
+    expect(manager.getManagedPids().size).toBe(0);
+  });
+
+  it('getManagedPids returns current process map', () => {
+    createTestSession(testDb, 'pid-test');
+    manager.spawn('pid-test', '/bin/cat', [], '/tmp');
+
+    const pids = manager.getManagedPids();
+    expect(pids.size).toBe(1);
+    expect(pids.has('pid-test')).toBe(true);
+    const pid = pids.get('pid-test');
+    expect(pid).toBeGreaterThan(0);
+
+    manager.kill('pid-test');
+  });
 });

@@ -32,12 +32,25 @@ for (const mod of modules) {
       `"${prebuildInstall}" --runtime electron --target ${electronVersion} --arch ${process.arch}`,
       { cwd: mod.dir, stdio: 'inherit' },
     );
+    console.log(`${mod.name} rebuild complete.`);
   } catch {
     console.log(`prebuild-install failed for ${mod.name}, falling back to node-gyp...`);
-    execSync(
-      `npx node-gyp rebuild --target=${electronVersion} --arch=${process.arch} --dist-url=https://electronjs.org/headers`,
-      { cwd: mod.dir, stdio: 'inherit' },
-    );
+    try {
+      execSync(
+        `npx node-gyp@12 rebuild --target=${electronVersion} --arch=${process.arch} --dist-url=https://electronjs.org/headers`,
+        { cwd: mod.dir, stdio: 'inherit' },
+      );
+      console.log(`${mod.name} rebuild complete.`);
+    } catch (e) {
+      // Check if prebuilds exist as a last resort
+      const prebuildDir = resolve(mod.dir, 'prebuilds', `${process.platform}-${process.arch}`);
+      if (existsSync(prebuildDir)) {
+        console.warn(
+          `WARNING: node-gyp rebuild also failed for ${mod.name}, but prebuilds exist at ${prebuildDir}. Continuing with prebuilds (may not work with Electron).`,
+        );
+      } else {
+        throw e;
+      }
+    }
   }
-  console.log(`${mod.name} rebuild complete.`);
 }

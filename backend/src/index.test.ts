@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PORT = 4444;
@@ -33,11 +35,23 @@ describe('server integration', () => {
       let output = '';
       serverProcess.stdout!.on('data', (chunk: Buffer) => {
         output += chunk.toString();
-        const tokenMatch = output.match(/Auth token: (\S+)/);
-        if (tokenMatch) {
-          authToken = tokenMatch[1];
+        // Match both first-run format ("  Token: <token>") and loaded format ("Auth token loaded")
+        const firstRunMatch = output.match(/Token: (\S+)/);
+        if (firstRunMatch) {
+          authToken = firstRunMatch[1];
         }
         if (output.includes('Orca server running')) {
+          // If we didn't capture the token from stdout, read it from config
+          if (!authToken) {
+            try {
+              const config = JSON.parse(
+                readFileSync(join(homedir(), '.orca', 'config.json'), 'utf-8'),
+              );
+              authToken = config.authToken;
+            } catch {
+              // Token will be captured from output
+            }
+          }
           resolve();
         }
       });

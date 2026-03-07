@@ -78,9 +78,21 @@ export class PtyManager {
   killAll(): void {
     this.disposed = true;
     for (const [, proc] of this.processes) {
-      proc.pty.kill();
+      // Send SIGTERM for graceful shutdown
+      proc.pty.kill('SIGTERM');
     }
     this.processes.clear();
+  }
+
+  /**
+   * Get the PIDs of all currently managed processes.
+   */
+  getManagedPids(): Map<string, number> {
+    const pids = new Map<string, number>();
+    for (const [sessionId, proc] of this.processes) {
+      pids.set(sessionId, proc.pty.pid);
+    }
+    return pids;
   }
 
   private sendToRenderer(channel: string, data: unknown): void {

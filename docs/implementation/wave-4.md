@@ -1,6 +1,6 @@
 # Wave 4: Polish || Hardening + Distribution
 
-**Status**: Not Started
+**Status**: Complete (4A merged, 4B in review)
 **Depends on**: Wave 3 fully merged to `main`
 **Agents**: 2 in parallel (4A and 4B)
 **Merge order**: Either order
@@ -13,7 +13,7 @@ Polish work focuses on renderer-side UI components and interactions. Hardening f
 
 ## Agent 4A: Polish + Onboarding + Keyboard Shortcuts
 
-**Status**: Not Started
+**Status**: Merged (PR #17)
 **Branch**: `wave-4/polish`
 
 ### Agent Startup
@@ -40,36 +40,36 @@ After Wave 3, the full app works end-to-end: create projects/tasks, launch agent
 
 ### Deliverables
 
-- [ ] **Onboarding flow**:
-  - [ ] First-run detection (no projects exist)
-  - [ ] Guided steps: create project -> create task (with working dir) -> launch agent
-  - [ ] Empty state designs for: project list, task list, terminal area
-- [ ] **Keyboard shortcuts**:
-  - [ ] `Cmd+N` — new task in current project
-  - [ ] `Cmd+Shift+N` — new project
-  - [ ] `Cmd+T` — new standalone terminal (not task-attached)
-  - [ ] `Cmd+1` through `Cmd+9` — switch terminal tabs
-  - [ ] `Cmd+W` — close current terminal tab
-  - [ ] `Cmd+Enter` — launch or restart agent on current task
-  - [ ] `Cmd+/` or `?` — shortcut help modal
-  - [ ] Keyboard event handler (register globally, prevent conflicts with terminal input)
+- [x] **Onboarding flow**:
+  - [x] First-run detection (no projects exist)
+  - [x] Guided steps: create project -> create task (with working dir) -> launch agent
+  - [x] Empty state designs for: project list, task list, terminal area
+- [x] **Keyboard shortcuts**:
+  - [x] `Cmd+N` — new task in current project
+  - [x] `Cmd+Shift+N` — new project
+  - [x] `Cmd+T` — new standalone terminal (not task-attached)
+  - [x] `Cmd+1` through `Cmd+9` — switch terminal tabs
+  - [x] `Cmd+W` — close current terminal tab
+  - [x] `Cmd+Enter` — launch or restart agent on current task
+  - [x] `Cmd+/` or `?` — shortcut help modal
+  - [x] Keyboard event handler (register globally, prevent conflicts with terminal input)
 - [ ] **UI polish**:
-  - [ ] Loading states for all GraphQL operations (skeletons or spinners)
-  - [ ] Optimistic updates for mutations (instant feedback)
-  - [ ] Sidebar collapse/expand toggle
-  - [ ] Consistent spacing, colors, typography across all views
-  - [ ] Terminal/task detail split view refinement
-- [ ] **Real-time subscription verification**:
-  - [ ] Confirm subscriptions update UI in real-time
-  - [ ] Test: change task status via GraphQL directly, UI updates without refresh
+  - [x] Loading states for all GraphQL operations (skeletons or spinners)
+  - [ ] Optimistic updates for mutations (instant feedback) — deferred, subscriptions provide near-instant refresh
+  - [x] Sidebar collapse/expand toggle
+  - [x] Consistent spacing, colors, typography across all views
+  - [x] Terminal/task detail split view refinement
+- [x] **Real-time subscription verification**:
+  - [x] Confirm subscriptions update UI in real-time
+  - [x] Test: change task status via GraphQL directly, UI updates without refresh
 
 ### Tests
 
-- [ ] Keyboard shortcuts: each shortcut triggers correct action
-- [ ] Keyboard shortcuts: terminal input not intercepted when terminal focused
-- [ ] Onboarding: first-run detection works when no projects exist
-- [ ] Empty states: render correctly for each view
-- [ ] Loading states: display during async operations
+- [x] Keyboard shortcuts: each shortcut triggers correct action
+- [x] Keyboard shortcuts: terminal input not intercepted when terminal focused
+- [x] Onboarding: first-run detection works when no projects exist
+- [x] Empty states: render correctly for each view
+- [x] Loading states: display during async operations
 
 ### Validation
 
@@ -90,7 +90,7 @@ cd web && bun run dev
 
 ## Agent 4B: Auth Hardening + PID Management + Distribution
 
-**Status**: Not Started
+**Status**: In Review (PR #18)
 **Branch**: `wave-4/hardening`
 
 ### Agent Startup
@@ -127,38 +127,38 @@ After Wave 3, auth exists but is basic (token generated on first run). PID track
 
 ### Deliverables
 
-- [ ] **Auth hardening**:
-  - [ ] Server generates persistent token, stores in `~/.orca/config.json` (already implemented)
-  - [ ] Token displayed on first run with copy instructions
-  - [ ] Client reads token from `~/.orca/config.json` via `db:getAuthToken` IPC (already implemented)
-  - [ ] All GraphQL requests require valid token
-  - [ ] SSE subscriptions authenticated (graphql-yoga uses SSE, NOT WebSocket)
-  - [ ] Clear error when token is missing or invalid
-- [ ] **PID management improvements**:
-  - [ ] Periodic sweep every 60s checking if tracked PIDs are alive (`process.kill(pid, 0)`)
-  - [ ] Dead PIDs: update session to ERROR, notify renderer
-  - [ ] Graceful cleanup on app close: SIGTERM all managed PTY processes
-  - [ ] On startup: sweep all RUNNING/STARTING sessions, verify PIDs
-  - [ ] Surface to user: "N sessions were interrupted since last run"
-- [ ] **Distribution prep**:
-  - [ ] electron-builder config for macOS (DMG + zip)
-  - [ ] App icon (placeholder — simple icon or text-based)
-  - [ ] Build scripts: `build:mac` in `web/package.json`
+- [x] **Auth hardening**:
+  - [x] Server generates persistent token, stores in `~/.orca/config.json` (already implemented)
+  - [x] Token displayed on first run with copy instructions
+  - [x] Client reads token from `~/.orca/config.json` via `db:getAuthToken` IPC (already implemented)
+  - [x] All GraphQL requests require valid token
+  - [x] SSE subscriptions authenticated (graphql-yoga uses SSE, NOT WebSocket)
+  - [x] Clear error when token is missing or invalid
+- [x] **PID management improvements**:
+  - [x] Periodic sweep every 60s checking if tracked PIDs are alive (`process.kill(pid, 0)`)
+  - [x] Dead PIDs: update session to ERROR, notify renderer
+  - [x] Graceful cleanup on app close: SIGTERM all managed PTY processes
+  - [x] On startup: sweep all RUNNING/STARTING sessions, verify PIDs
+  - [x] Surface to user: "N sessions were interrupted since last run"
+- [x] **Distribution prep**:
+  - [x] electron-builder config for macOS (DMG + zip)
+  - [x] App icon (placeholder — simple icon or text-based)
+  - [x] Build scripts: `build:mac` in `web/package.json`
   - [ ] Verify packaged app opens and functions
-- [ ] **README.md** (repo root):
-  - [ ] Prerequisites (Bun, Docker, Claude Code)
-  - [ ] Setup instructions (clone, `bun install` in root + each package, docker compose up, run)
-  - [ ] How to get the auth token
-  - [ ] How to share with testers
+- [x] **README.md** (repo root):
+  - [x] Prerequisites (Bun, Docker, Claude Code)
+  - [x] Setup instructions (clone, `bun install` in root + each package, docker compose up, run)
+  - [x] How to get the auth token
+  - [x] How to share with testers
 
 ### Tests
 
-- [ ] Auth: request without token returns 401/error
-- [ ] Auth: request with invalid token returns 401/error
-- [ ] Auth: request with valid token succeeds
-- [ ] PID sweep: detects dead PID and updates session
-- [ ] Cleanup: app close sends SIGTERM to managed PTYs
-- [ ] Startup sweep: stale RUNNING sessions marked ERROR
+- [x] Auth: request without token returns 401/error
+- [x] Auth: request with invalid token returns 401/error
+- [x] Auth: request with valid token succeeds
+- [x] PID sweep: detects dead PID and updates session
+- [x] Cleanup: app close sends SIGTERM to managed PTYs
+- [x] Startup sweep: stale RUNNING sessions marked ERROR
 
 ### Validation
 
