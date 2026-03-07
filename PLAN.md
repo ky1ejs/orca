@@ -2,7 +2,7 @@
 
 ## Context
 
-Orca is a work management tool for orchestrating AI agents (starting with Claude Code). The core hypothesis to validate: **an agent orchestration UI is meaningfully better than managing agents in terminal tabs — for developers and non-developers alike.** The prototype targets initial self-validation, then 5-10 teammates for early feedback.
+Orca is a work management tool for orchestrating AI agents (starting with Claude Code). The core hypothesis to validate: **an agent orchestration UI that directly connected to project management is meaningfully better than managing agents in terminal tabs — for developers and non-developers alike.** The prototype targets initial self-validation, then 5-10 teammates for early feedback.
 
 The architecture is client/server from day one — Electron desktop client connecting to a Bun backend over GraphQL and WebSockets. The server holds shared state (projects, tasks) in Postgres so teammates can collaborate and the system is deployable. The Electron client holds local state (terminal sessions, agent process tracking) in SQLite, because local agents are local — their runtime state should not live on a server.
 
@@ -165,7 +165,6 @@ model Project {
   id          String   @id @default(uuid())
   name        String
   description String?  // Markdown supported
-  path        String   // Working directory for the project (repo root)
   tasks       Task[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -178,7 +177,7 @@ model Task {
   status           TaskStatus @default(TODO)
   project          Project    @relation(fields: [projectId], references: [id])
   projectId        String
-  workingDirectory String?    // Override project path for this task
+  workingDirectory String     // Local path where the agent runs (e.g. repo checkout)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 }
@@ -358,7 +357,7 @@ orca/
 **Goal**: Launch Claude Code from a task, see live terminal output, manage multiple agents. Error handling is core to this phase.
 
 - PTY Manager in Electron main process:
-  - Spawn Claude Code via node-pty with configurable working directory (from Project.path or Task.workingDirectory)
+  - Spawn Claude Code via node-pty in the task's working directory (Task.workingDirectory)
   - Track session in local SQLite (PID, status, task association)
   - SIGTERM/SIGINT handlers to clean up PTY processes on app quit
   - On app startup: sweep local SQLite for stale sessions (check PIDs), mark dead sessions as ERROR/COMPLETED
@@ -367,7 +366,7 @@ orca/
   - On tab switch or reconnect, replay buffer into xterm.js
 - xterm.js terminal component connected to node-pty via Electron IPC
 - Agent launch UX:
-  - "Launch Agent" button on tasks → spawns Claude Code in the task's working directory
+  - "Launch Agent" button on tasks → spawns Claude Code in Task.workingDirectory
   - Default: start a blank Claude Code TUI
   - Optional: user can choose to pass task title/description as initial context
 - Agent status indicators on task cards (color-coded, including WAITING_FOR_INPUT to elevate tasks needing attention)
@@ -395,7 +394,7 @@ orca/
   - Periodic sweep (e.g., every 60s) checking if tracked PIDs are still alive
   - Graceful cleanup on app close (SIGTERM all managed PTY processes)
 - UI polish:
-  - Onboarding flow (create project with path → create task → launch agent)
+  - Onboarding flow (create project → create task with working directory → launch agent)
   - Keyboard shortcuts for common actions
   - Terminal resizing support
 - README with setup instructions for testers
@@ -407,7 +406,7 @@ orca/
 1. `docker compose up` starts Postgres
 2. `bun run dev` starts both backend and Electron client
 3. Local SQLite database initializes in Electron on first run
-4. Create a project (with path) and tasks through the sidebar UI
+4. Create a project and tasks (with working directory) through the sidebar UI
 5. Markdown renders correctly in project/task descriptions
 6. Click "Launch Agent" on a task → Claude Code starts in the embedded terminal
 7. See live terminal output in the embedded xterm.js terminal
