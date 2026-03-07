@@ -104,16 +104,11 @@ Before writing any code, read these files in order:
 5. `web/src/main/db/sessions.ts` — session CRUD (stale session sweep)
 6. `backend/src/auth/token.ts` — existing auth implementation
 
-### Reference: Auth Token Schema (Client-side SQLite)
+### Reference: Auth Token Storage
 
-```sql
-CREATE TABLE auth_token (
-  id          TEXT PRIMARY KEY,
-  token       TEXT NOT NULL,
-  server_url  TEXT NOT NULL,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-```
+Auth tokens are stored in `~/.orca/config.json` (shared between backend and client). The backend generates the token on first run and writes it to this file. The client reads it via the `db:getAuthToken` IPC handler.
+
+> **Note**: Auth storage will need revisiting for deployment (e.g., proper token exchange, Electron `safeStorage`, per-user credentials). The current shared config file approach is sufficient for local development.
 
 ### File Ownership
 
@@ -133,9 +128,9 @@ After Wave 3, auth exists but is basic (token generated on first run). PID track
 ### Deliverables
 
 - [ ] **Auth hardening**:
-  - [ ] Server generates persistent token, stores in `~/.orca/config.json`
+  - [ ] Server generates persistent token, stores in `~/.orca/config.json` (already implemented)
   - [ ] Token displayed on first run with copy instructions
-  - [ ] Client stores token in SQLite `auth_token` table
+  - [ ] Client reads token from `~/.orca/config.json` via `db:getAuthToken` IPC (already implemented)
   - [ ] All GraphQL requests require valid token
   - [ ] SSE subscriptions authenticated (graphql-yoga uses SSE, NOT WebSocket)
   - [ ] Clear error when token is missing or invalid
@@ -192,10 +187,10 @@ After both Wave 4 PRs are merged, run through the full checklist:
 - [ ] Click "Launch Agent" -> Claude Code starts in embedded terminal
 - [ ] Live terminal output in xterm.js
 - [ ] Switch between terminal tabs, ring buffer replays
-- [ ] Agent status updates display correctly (RUNNING, WAITING_FOR_INPUT, COMPLETED, ERROR)
+- [ ] Agent status updates display correctly (RUNNING, WAITING_FOR_INPUT, EXITED, ERROR)
 - [ ] Task status auto-transitions (IN_PROGRESS, IN_REVIEW)
 - [ ] Multiple simultaneous agents stable (test 2-3)
-- [ ] Stop agent -> COMPLETED, task -> IN_REVIEW
+- [ ] Stop agent -> EXITED, task -> IN_REVIEW
 - [ ] Close and reopen Electron -> stale sessions detected
 - [ ] Error scenarios show clear messages with suggestions
 - [ ] Test with 2-3 simultaneous agents

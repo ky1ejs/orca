@@ -62,7 +62,7 @@ There are **no workspaces**. Each package (`shared/`, `backend/`, `web/`) is ind
 - Run `bun install` in each package directory when adding dependencies
 - Shared code is imported as `@orca/shared` (resolved via `"file:../shared"` in each package.json)
 - Web tests run under Electron's Node.js (`ELECTRON_RUN_AS_NODE=1`) so native modules work
-- Native modules (better-sqlite3, node-pty) must be rebuilt for Electron via `web/scripts/rebuild-sqlite.mjs` — do NOT use `@electron/rebuild`
+- Native modules (better-sqlite3, node-pty) must be rebuilt for Electron via `web/scripts/rebuild-native.mjs` — do NOT use `@electron/rebuild`
 
 ## PR Description
 

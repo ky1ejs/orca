@@ -133,14 +133,16 @@ Task status (server-side) and terminal session status (client-side) are coordina
 | Event                             | Session Status       | Task Status (GraphQL mutation) |
 | --------------------------------- | -------------------- | ------------------------------ |
 | Agent starts (PTY spawns)         | STARTING -> RUNNING  | -> IN_PROGRESS                 |
-| Agent completes (exit 0)          | -> COMPLETED         | -> IN_REVIEW                   |
+| Agent completes (exit 0)          | -> EXITED            | -> IN_REVIEW                   |
 | Agent errors (non-zero exit)      | -> ERROR             | stays IN_PROGRESS              |
 | Agent waiting for input           | -> WAITING_FOR_INPUT | stays IN_PROGRESS              |
 | User manually changes task status | no effect            | user's choice                  |
 
 #### Terminal Session Statuses
 
-`IDLE` -> `STARTING` -> `RUNNING` -> `WAITING_FOR_INPUT` (bidirectional with RUNNING) -> `COMPLETED` or `ERROR`
+`STARTING` -> `RUNNING` -> `WAITING_FOR_INPUT` (bidirectional with RUNNING) -> `EXITED` or `ERROR`
+
+> **Note**: The PTY manager (from Wave 2B) already sets `EXITED` on exit code 0 and `ERROR` on non-zero exit. Wave 3B adds `WAITING_FOR_INPUT` as a new status and wires up task status transitions via GraphQL mutations.
 
 #### Task Statuses (GraphQL enum)
 
@@ -175,12 +177,12 @@ After Wave 2, the following exist:
 
 - [ ] **"Launch Agent" button** (modify `TaskDetail.tsx`):
   - [ ] Button on task detail view
-  - [ ] Pre-launch checks: `claude` on PATH, working directory exists
+  - [ ] Pre-launch checks: working directory exists (`findClaudePath()` already exists in `web/src/main/pty/claude.ts`)
   - [ ] Launch options: blank TUI (default) or pass task context (title + description)
   - [ ] Button states: "Launch" (no agent), "Running..." (agent active), "Restart" (agent errored)
 - [ ] **Status transition engine** (`web/src/main/pty/status.ts`):
   - [ ] Agent starts -> session STARTING -> RUNNING; task -> IN_PROGRESS (GraphQL mutation)
-  - [ ] Agent completes (exit 0) -> session COMPLETED; task -> IN_REVIEW (GraphQL mutation)
+  - [ ] Agent completes (exit 0) -> session EXITED; task -> IN_REVIEW (GraphQL mutation)
   - [ ] Agent errors (non-zero exit) -> session ERROR; task stays IN_PROGRESS
   - [ ] Agent waiting -> session WAITING_FOR_INPUT; task stays IN_PROGRESS
   - [ ] Updates both local SQLite and server-side task status
@@ -192,9 +194,9 @@ After Wave 2, the following exist:
   - [ ] Color-coded status badge:
     - Green = RUNNING
     - Yellow = WAITING_FOR_INPUT
-    - Gray = COMPLETED
+    - Gray = EXITED
     - Red = ERROR
-    - Blue = IDLE/STARTING
+    - Blue = STARTING
   - [ ] WAITING_FOR_INPUT displays prominently (pulsing or attention-grabbing)
   - [ ] Used on: task cards, terminal tabs, task detail
 - [ ] **Error handling** (`web/src/main/pty/errors.ts`):
@@ -217,7 +219,7 @@ After Wave 2, the following exist:
 - [ ] Error handling: each error type produces correct message + suggestion
 - [ ] WAITING_FOR_INPUT: detects known prompt patterns in mock output
 - [ ] WAITING_FOR_INPUT: debounce prevents rapid state flickering
-- [ ] Pre-launch: missing `claude` binary produces ClaudeNotFoundError
+- [ ] Pre-launch: missing `claude` binary produces ClaudeNotFoundError (uses existing `findClaudePath()`)
 - [ ] Pre-launch: invalid working directory produces InvalidWorkingDirectoryError
 - [ ] Launch button: correct state for each agent status
 
