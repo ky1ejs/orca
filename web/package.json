@@ -8,20 +8,13 @@
     "dev": "node scripts/rebuild-sqlite.mjs && electron-vite dev",
     "build": "node scripts/rebuild-sqlite.mjs && electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm rebuild better-sqlite3 && vitest run"
+    "test": "node scripts/rebuild-sqlite-node.mjs && vitest run"
   },
   "dependencies": {
-    "@orca/shared": "link:../shared",
+    "@orca/shared": "file:../shared",
     "better-sqlite3": "^11.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "electron",
-      "esbuild"
-    ]
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",

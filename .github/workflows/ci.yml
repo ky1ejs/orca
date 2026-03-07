@@ -33,14 +33,10 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
       - run: bun install
-
-      - run: pnpm install
-        working-directory: web
+      - run: cd shared && bun install
+      - run: cd backend && bun install
+      - run: cd web && bun install
 
       - run: bunx prisma generate
         working-directory: backend

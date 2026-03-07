@@ -2,18 +2,14 @@
   "name": "orca",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "backend",
-    "shared"
-  ],
   "scripts": {
-    "dev": "concurrently --names backend,web --prefix-colors blue,green \"bun run --filter @orca/backend dev\" \"pnpm --dir web run dev\"",
+    "dev": "concurrently --names backend,web --prefix-colors blue,green \"cd backend && bun run dev\" \"cd web && bun run dev\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "bun run --filter '*' typecheck && pnpm --dir web run typecheck",
-    "test": "vitest run && pnpm --dir web run test",
+    "typecheck": "cd shared && bun run typecheck && cd ../backend && bun run typecheck && cd ../web && bun run typecheck",
+    "test": "cd shared && bun run test && cd ../backend && bun run test && cd ../web && bun run test",
     "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
   },
   "devDependencies": {
@@ -24,7 +20,6 @@
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "prettier": "^3.5.3",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.9"
+    "typescript": "^5.8.2"
   }
 }

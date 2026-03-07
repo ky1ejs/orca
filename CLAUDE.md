@@ -12,13 +12,13 @@ The server holds data multiple users need (projects, tasks, status). The client 
 
 ## Monorepo Structure
 
-Bun workspaces for backend + shared, pnpm for web (Electron):
+Three independent packages, each with its own `bun install`:
 
-- `@orca/shared` — shared types, GraphQL schema (bun workspace)
-- `@orca/backend` — Bun server (bun workspace)
-- `@orca/web` — Electron + React client (pnpm, separate from bun workspace)
+- `@orca/shared` — shared types, GraphQL schema
+- `@orca/backend` — Bun server
+- `@orca/web` — Electron + React client
 
-Web uses pnpm because Bun's module hoisting breaks `@electron/rebuild` for native modules (better-sqlite3). Import shared code as `@orca/shared` (resolved via `link:../shared` in web, workspace linking in backend).
+No workspaces — each package manages its own dependencies with `bun install`. Import shared code as `@orca/shared` (resolved via `file:../shared`).
 
 ## Code Style
 
