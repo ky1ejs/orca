@@ -15,6 +15,7 @@ export interface OrcaAPI {
       id: string,
       input: { pid?: number; status?: string; stoppedAt?: string },
     ) => Promise<unknown | undefined>;
+    getAuthToken: () => Promise<string | null>;
   };
 }
 
@@ -25,6 +26,7 @@ const api: OrcaAPI = {
     getSession: (id) => ipcRenderer.invoke('db:getSession', id),
     createSession: (input) => ipcRenderer.invoke('db:createSession', input),
     updateSession: (id, input) => ipcRenderer.invoke('db:updateSession', id, input),
+    getAuthToken: () => ipcRenderer.invoke('db:getAuthToken'),
   },
 };
 

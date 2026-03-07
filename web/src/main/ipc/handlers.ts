@@ -1,4 +1,7 @@
 import { ipcMain } from 'electron';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { IPC_CHANNELS } from './channels.js';
 import {
   getSessions,
@@ -28,4 +31,14 @@ export function registerIpcHandlers(): void {
       return updateSession(id, input);
     },
   );
+
+  ipcMain.handle(IPC_CHANNELS.DB_GET_AUTH_TOKEN, () => {
+    try {
+      const configPath = join(homedir(), '.orca', 'config.json');
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return (config.authToken as string) ?? null;
+    } catch {
+      return null;
+    }
+  });
 }
