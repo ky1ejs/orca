@@ -1,0 +1,216 @@
+import { useState } from 'react';
+import {
+  useTask,
+  useUpdateTask,
+  useDeleteTask,
+  useTaskSubscription,
+} from '../../hooks/useGraphQL.js';
+import { useNavigation } from '../../navigation/context.js';
+import { TaskStatusBadge } from './TaskStatusBadge.js';
+import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
+import { TaskStatus } from '../../graphql/generated.js';
+
+interface TaskDetailProps {
+  taskId: string;
+}
+
+const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+  { value: TaskStatus.Todo, label: 'Todo' },
+  { value: TaskStatus.InProgress, label: 'In Progress' },
+  { value: TaskStatus.InReview, label: 'In Review' },
+  { value: TaskStatus.Done, label: 'Done' },
+];
+
+export function TaskDetail({ taskId }: TaskDetailProps) {
+  const { data, fetching, error, refetch } = useTask(taskId);
+  const { updateTask } = useUpdateTask();
+  const { deleteTask } = useDeleteTask();
+  const { goBack, navigate } = useNavigation();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<TaskStatus>(TaskStatus.Todo);
+  const [workingDirectory, setWorkingDirectory] = useState('');
+
+  useTaskSubscription(() => {
+    refetch({ requestPolicy: 'network-only' });
+  });
+
+  if (fetching) {
+    return (
+      <div className="p-6 text-gray-400">
+        <p>Loading task...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-400">
+        <p>Error loading task: {error.message}</p>
+      </div>
+    );
+  }
+
+  const task = data?.task;
+
+  if (!task) {
+    return (
+      <div className="p-6 text-gray-400">
+        <p>Task not found.</p>
+      </div>
+    );
+  }
+
+  const startEditing = () => {
+    setTitle(task.title);
+    setDescription(task.description ?? '');
+    setStatus(task.status);
+    setWorkingDirectory(task.workingDirectory);
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    await updateTask(taskId, {
+      title: title.trim() || undefined,
+      description: description.trim() || undefined,
+      status,
+      workingDirectory: workingDirectory.trim() || undefined,
+    });
+    setEditing(false);
+    refetch({ requestPolicy: 'network-only' });
+  };
+
+  const handleDelete = async () => {
+    await deleteTask(taskId);
+    goBack();
+  };
+
+  const handleStatusChange = async (newStatus: TaskStatus) => {
+    await updateTask(taskId, { status: newStatus });
+    refetch({ requestPolicy: 'network-only' });
+  };
+
+  return (
+    <div className="p-6">
+      <button
+        onClick={goBack}
+        className="text-gray-400 hover:text-white text-sm mb-4 inline-flex items-center transition-colors"
+      >
+        &larr; Back
+      </button>
+
+      <div className="mb-2">
+        <button
+          onClick={() => navigate({ view: 'project', id: task.projectId })}
+          className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+        >
+          {task.project.name}
+        </button>
+      </div>
+
+      {editing ? (
+        <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              autoFocus
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description (supports Markdown)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 resize-none"
+              rows={6}
+            />
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as TaskStatus)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={workingDirectory}
+              onChange={(e) => setWorkingDirectory(e.target.value)}
+              placeholder="Working directory"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleSave}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-white">{task.title}</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={startEditing}
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+              >
+                Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-red-300 text-sm rounded-md transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="text-gray-500 text-sm">Status:</span>
+              <select
+                value={task.status}
+                onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <TaskStatusBadge status={task.status} />
+            </div>
+
+            <div>
+              <span className="text-gray-500 text-sm">Working Directory:</span>
+              <p className="text-gray-300 text-sm font-mono mt-1">{task.workingDirectory}</p>
+            </div>
+
+            {task.description && (
+              <div>
+                <span className="text-gray-500 text-sm block mb-2">Description:</span>
+                <MarkdownRenderer content={task.description} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

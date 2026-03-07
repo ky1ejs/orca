@@ -1,14 +1,30 @@
 import { Sidebar } from './Sidebar.js';
+import { useNavigation } from '../../navigation/context.js';
+import { ProjectList } from '../projects/ProjectList.js';
+import { ProjectDetail } from '../projects/ProjectDetail.js';
+import { TaskDetail } from '../tasks/TaskDetail.js';
+
+function MainContent() {
+  const { current } = useNavigation();
+
+  switch (current.view) {
+    case 'projects':
+      return <ProjectList />;
+    case 'project':
+      return current.id ? <ProjectDetail projectId={current.id} /> : <ProjectList />;
+    case 'task':
+      return current.id ? <TaskDetail taskId={current.id} /> : <ProjectList />;
+    default:
+      return <ProjectList />;
+  }
+}
 
 export function AppShell() {
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100">
       <Sidebar />
-      <main className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white mb-2">Orca</h1>
-          <p className="text-gray-400">Work management for AI agents</p>
-        </div>
+      <main className="flex-1 overflow-y-auto">
+        <MainContent />
       </main>
     </div>
   );
