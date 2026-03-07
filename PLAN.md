@@ -12,9 +12,10 @@ This is not exclusively for developers. Orca aims to democratize access to AI ag
 
 ## What We're Validating
 
-The prototype needs to answer one question: *Do I (and then my teammates) prefer managing Claude Code agents through Orca over raw terminal tabs?*
+The prototype needs to answer one question: _Do I (and then my teammates) prefer managing Claude Code agents through Orca over raw terminal tabs?_
 
 To answer this, the MVP must deliver:
+
 1. A project list view with navigation, and task list within each project
 2. Launch Claude Code from a task with one click (or start a blank TUI and optionally pass task context)
 3. Embedded terminal (xterm.js) to see and interact with each agent
@@ -24,6 +25,7 @@ To answer this, the MVP must deliver:
 ### Success Criteria
 
 Success is progressive:
+
 1. **Stage 1**: I personally find this useful for managing my work and reach for Orca instead of going directly to the terminal
 2. **Stage 2**: My teammates find it useful to manage their work
 3. If neither stage is reached, stop building
@@ -31,6 +33,7 @@ Success is progressive:
 ### Kill Criteria
 
 Stop building if any of these prove true:
+
 1. We are not able to keep the UX close to using the terminal directly
 2. We cannot safely and reliably manage terminal state in line with tasks
 3. I do not reach for this tool instead of going directly to the terminal myself
@@ -88,6 +91,7 @@ The prototype must be in testers' hands within 6 weeks of development start. Sel
 **Server-side (Postgres):** Shared, collaborative state — projects, tasks, task status, descriptions. This is the data multiple users need to see and modify.
 
 **Client-side (SQLite):** Local agent/terminal state — PIDs, terminal session info, output ring buffers, agent runtime status. Local agents are local; their runtime state should not live on a server. This means:
+
 - The server does NOT know about running agent processes
 - Each Electron client tracks its own terminal sessions independently
 - Agent status displayed in the UI comes from the local SQLite, not from the server
@@ -97,6 +101,7 @@ The prototype must be in testers' hands within 6 weeks of development start. Sel
 ### PTY Architecture: node-pty in the Client
 
 Because agents are local, the PTY management (node-pty) lives in the Electron main process, not on the backend server. This means:
+
 - Terminal I/O does NOT traverse the network — xterm.js connects to node-pty within the same Electron app via IPC
 - The backend is purely for shared data (projects, tasks) and collaboration
 - No PTY WebSocket endpoint on the server (eliminating server-side PTY security concerns entirely)
@@ -105,6 +110,7 @@ Because agents are local, the PTY management (node-pty) lives in the Electron ma
 ### tmux Consideration
 
 node-pty is sufficient for Orca's needs:
+
 - node-pty spawns PTY sessions directly, giving full control over the process lifecycle
 - xterm.js renders the terminal output in the Electron app natively
 - tmux would add an external dependency users must install
@@ -114,6 +120,7 @@ node-pty is sufficient for Orca's needs:
 ### WebSocket Channels
 
 Two separate concerns, simplified by the client-side PTY architecture:
+
 1. **GraphQL subscriptions** (client ↔ server): Real-time task status updates, project changes, and collaboration events between multiple users
 2. **Terminal I/O** (within Electron): node-pty streams directly to xterm.js via Electron IPC — no network WebSocket needed
 
@@ -140,21 +147,21 @@ For team testing, the server generates a token that is shared with testers (e.g.
 
 ## Stack
 
-| Layer | Technology | Rationale |
-|-------|-----------|-----------|
-| Runtime | Bun | Fast, TS-native, built-in WebSocket support |
-| Server Database | Postgres (Docker) | Production-ready, deployable from day one for team testing |
-| Client Database | better-sqlite3 | Local terminal/agent state; synchronous, embedded, zero-config |
-| ORM | Prisma (server) | Strong TS integration, migration tooling for Postgres |
-| API | GraphQL (graphql-yoga, schema-first) | Flexible, future-proof for multiple clients (mobile, VS Code extension). Declarative contract between client and server |
-| Schema | GraphQL SDL in shared/ | Source-of-truth schema as SDL, shared across backend and web |
-| Type Generation | graphql-codegen | Generate TypeScript types for both backend and web from the SDL |
-| Real-time | GraphQL Subscriptions over WebSocket | Task/project status updates across clients |
-| Client | Electron + React (via electron-vite) | Desktop app with embedded terminal; accessible to non-developers |
-| Terminal | xterm.js | Embedded terminal rendering in Electron |
-| Agent PTY | node-pty (in Electron main process) | Spawning and managing Claude Code CLI sessions locally |
-| Styling | Tailwind CSS | Fast UI iteration |
-| Monorepo | Bun workspaces | Shared GraphQL schema/types between backend and web |
+| Layer           | Technology                           | Rationale                                                                                                               |
+| --------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Runtime         | Bun                                  | Fast, TS-native, built-in WebSocket support                                                                             |
+| Server Database | Postgres (Docker)                    | Production-ready, deployable from day one for team testing                                                              |
+| Client Database | better-sqlite3                       | Local terminal/agent state; synchronous, embedded, zero-config                                                          |
+| ORM             | Prisma (server)                      | Strong TS integration, migration tooling for Postgres                                                                   |
+| API             | GraphQL (graphql-yoga, schema-first) | Flexible, future-proof for multiple clients (mobile, VS Code extension). Declarative contract between client and server |
+| Schema          | GraphQL SDL in shared/               | Source-of-truth schema as SDL, shared across backend and web                                                            |
+| Type Generation | graphql-codegen                      | Generate TypeScript types for both backend and web from the SDL                                                         |
+| Real-time       | GraphQL Subscriptions over WebSocket | Task/project status updates across clients                                                                              |
+| Client          | Electron + React (via electron-vite) | Desktop app with embedded terminal; accessible to non-developers                                                        |
+| Terminal        | xterm.js                             | Embedded terminal rendering in Electron                                                                                 |
+| Agent PTY       | node-pty (in Electron main process)  | Spawning and managing Claude Code CLI sessions locally                                                                  |
+| Styling         | Tailwind CSS                         | Fast UI iteration                                                                                                       |
+| Monorepo        | Bun workspaces                       | Shared GraphQL schema/types between backend and web                                                                     |
 
 ## Data Model
 
@@ -223,18 +230,19 @@ CREATE TABLE auth_token (
 
 ### Terminal Session Status Values
 
-| Status | Meaning |
-|--------|---------|
-| IDLE | Session created but not yet started |
-| STARTING | PTY process is spawning |
-| RUNNING | Agent is actively executing |
+| Status            | Meaning                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| IDLE              | Session created but not yet started                                                                                            |
+| STARTING          | PTY process is spawning                                                                                                        |
+| RUNNING           | Agent is actively executing                                                                                                    |
 | WAITING_FOR_INPUT | Agent is blocked waiting for user input (detected via PTY output patterns). Surfaces in UI to elevate tasks needing attention. |
-| COMPLETED | Agent finished successfully |
-| ERROR | Agent crashed or was terminated unexpectedly |
+| COMPLETED         | Agent finished successfully                                                                                                    |
+| ERROR             | Agent crashed or was terminated unexpectedly                                                                                   |
 
 ### Status Transition Rules
 
 Task status and terminal session status are coordinated:
+
 - Agent starts (PTY spawns) → session becomes STARTING then RUNNING; task moves to IN_PROGRESS (synced to server)
 - Agent completes → session becomes COMPLETED; task moves to IN_REVIEW (synced to server)
 - Agent errors → session becomes ERROR; task stays IN_PROGRESS (user can retry)
@@ -424,30 +432,30 @@ orca/
 
 ### Technical Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| node-pty + Electron compatibility | Medium | High | Gating test in Phase 1. Fallback: Node.js child_process with pseudo-TTY |
-| node-pty native module rebuild for Electron | Medium | High | electron-rebuild handles native modules; test early |
-| better-sqlite3 in Electron | Low | Medium | Well-established pattern (used by Signal, VS Code extensions). Native module rebuild required |
-| xterm.js rendering performance with verbose output | Low | Medium | Ring buffer caps memory; xterm.js handles high throughput well in practice |
-| Electron + Vite setup complexity | Low | Medium | Use electron-vite which handles the config |
-| Claude Code interactive prompt detection | Medium | Medium | Pattern match on PTY output for known prompt patterns. May need updates as Claude Code UI changes |
-| graphql-codegen + Bun compatibility | Low | Low | Runs as a build step; can use Node.js for codegen if needed |
+| Risk                                               | Likelihood | Impact | Mitigation                                                                                        |
+| -------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------------------------------------------- |
+| node-pty + Electron compatibility                  | Medium     | High   | Gating test in Phase 1. Fallback: Node.js child_process with pseudo-TTY                           |
+| node-pty native module rebuild for Electron        | Medium     | High   | electron-rebuild handles native modules; test early                                               |
+| better-sqlite3 in Electron                         | Low        | Medium | Well-established pattern (used by Signal, VS Code extensions). Native module rebuild required     |
+| xterm.js rendering performance with verbose output | Low        | Medium | Ring buffer caps memory; xterm.js handles high throughput well in practice                        |
+| Electron + Vite setup complexity                   | Low        | Medium | Use electron-vite which handles the config                                                        |
+| Claude Code interactive prompt detection           | Medium     | Medium | Pattern match on PTY output for known prompt patterns. May need updates as Claude Code UI changes |
+| graphql-codegen + Bun compatibility                | Low        | Low    | Runs as a build step; can use Node.js for codegen if needed                                       |
 
 ### Product Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| Users don't need a GUI for agent management | Medium | Critical | Kill criterion #3: if I don't reach for Orca over raw terminal, stop |
-| UX adds too much friction over raw terminal | Medium | High | Kill criterion #1: keep UX close to terminal. Default to blank TUI, don't force context |
-| Terminal state management is unreliable | Medium | High | Kill criterion #2: invest in PID tracking, stale session cleanup, error recovery |
-| Scope creep delays getting to testers | Medium | High | 6-week time-box. Self-testing starts end of Phase 2 |
-| Non-developer users find the terminal intimidating | Low | Medium | UX should make the terminal approachable; consider guided onboarding |
+| Risk                                               | Likelihood | Impact   | Mitigation                                                                              |
+| -------------------------------------------------- | ---------- | -------- | --------------------------------------------------------------------------------------- |
+| Users don't need a GUI for agent management        | Medium     | Critical | Kill criterion #3: if I don't reach for Orca over raw terminal, stop                    |
+| UX adds too much friction over raw terminal        | Medium     | High     | Kill criterion #1: keep UX close to terminal. Default to blank TUI, don't force context |
+| Terminal state management is unreliable            | Medium     | High     | Kill criterion #2: invest in PID tracking, stale session cleanup, error recovery        |
+| Scope creep delays getting to testers              | Medium     | High     | 6-week time-box. Self-testing starts end of Phase 2                                     |
+| Non-developer users find the terminal intimidating | Low        | Medium   | UX should make the terminal approachable; consider guided onboarding                    |
 
 ## Deviations from BEGINNING.md
 
-| BEGINNING.md | This Plan | Why |
-|---|---|---|
-| Workspace → Project → Task | Project → Task | Workspaces add an entity-creation step before users reach the core action. Projects and Tasks are sufficient for the prototype. Can add Workspaces later if team/org separation is needed. |
-| tmux | node-pty + xterm.js | tmux is an external dependency users must install. node-pty spawns PTY sessions directly in the Electron process, and xterm.js renders them in-app. Cleaner UX, fewer external dependencies, and full programmatic control. |
+| BEGINNING.md                 | This Plan                      | Why                                                                                                                                                                                                                                                |
+| ---------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace → Project → Task   | Project → Task                 | Workspaces add an entity-creation step before users reach the core action. Projects and Tasks are sufficient for the prototype. Can add Workspaces later if team/org separation is needed.                                                         |
+| tmux                         | node-pty + xterm.js            | tmux is an external dependency users must install. node-pty spawns PTY sessions directly in the Electron process, and xterm.js renders them in-app. Cleaner UX, fewer external dependencies, and full programmatic control.                        |
 | Server-side agent management | Client-side PTY + local SQLite | Local agents are local. Their runtime state (PIDs, terminal output, session status) belongs on the client, not the server. The server stores only shared collaborative state (projects, tasks). This eliminates server-side PTY security concerns. |

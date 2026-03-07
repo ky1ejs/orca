@@ -14,7 +14,7 @@ Lay the foundation that every subsequent agent depends on. This must be solid â€
 - [ ] **Root `package.json`**: Bun workspaces with `["backend", "web", "shared"]`
 - [ ] **`bunfig.toml`**: Bun configuration
 - [ ] **`tsconfig.base.json`**: Strict mode, shared compiler options
-- [ ] **`.gitignore`**: node_modules, dist, .env, *.db, prisma generated, etc.
+- [ ] **`.gitignore`**: node_modules, dist, .env, \*.db, prisma generated, etc.
 - [ ] **ESLint config**: Root config with TypeScript support
 - [ ] **Prettier config**: Root `.prettierrc`
 - [ ] **Vitest config**: `vitest.workspace.ts` for monorepo

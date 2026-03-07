@@ -19,6 +19,7 @@ Polish work focuses on renderer-side UI components and interactions. Hardening f
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-4.md) — your deliverables are in the "Agent 4A" section only
@@ -27,6 +28,7 @@ Before writing any code, read these files in order:
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/renderer/**` (modify/create)
 - `web/package.json` (add dependencies if needed)
 
@@ -94,6 +96,7 @@ cd web && bun run dev
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-4.md) — your deliverables are in the "Agent 4B" section only
@@ -115,6 +118,7 @@ CREATE TABLE auth_token (
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/main/**` (modify — auth, PID management)
 - `web/src/preload/index.ts` (extend if needed)
 - `web/package.json` (add dependencies, build scripts)

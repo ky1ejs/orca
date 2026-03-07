@@ -19,6 +19,7 @@ Backend work (`shared/`, `backend/`) has zero file overlap with Electron work (`
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-1.md) — your deliverables are in the "Agent 1A" section only
@@ -60,6 +61,7 @@ enum TaskStatus {
 #### GraphQL Schema (to define in `shared/src/schema.graphql`)
 
 The GraphQL SDL should mirror the Prisma models above. Include:
+
 - Types: `Project`, `Task`, `TaskStatus` enum
 - Queries: `projects: [Project!]!`, `project(id: ID!): Project`, `tasks(projectId: ID!): [Task!]!`, `task(id: ID!): Task`
 - Mutations: `createProject`, `updateProject`, `deleteProject`, `createTask`, `updateTask`, `deleteTask` with appropriate input types
@@ -68,6 +70,7 @@ The GraphQL SDL should mirror the Prisma models above. Include:
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `shared/src/schema.graphql` (create)
 - `shared/src/generated/` (create — codegen output)
 - `shared/codegen.ts` (create)
@@ -139,6 +142,7 @@ cd backend && bun run dev            # Server starts on :4000
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-1.md) — your deliverables are in the "Agent 1B" section only
@@ -176,18 +180,19 @@ CREATE TABLE auth_token (
 
 #### Terminal Session Status Values
 
-| Status | Meaning |
-|--------|---------|
-| IDLE | Session created but not yet started |
-| STARTING | PTY process is spawning |
-| RUNNING | Agent is actively executing |
-| WAITING_FOR_INPUT | Agent blocked waiting for user input |
-| COMPLETED | Agent finished successfully |
-| ERROR | Agent crashed or terminated unexpectedly |
+| Status            | Meaning                                  |
+| ----------------- | ---------------------------------------- |
+| IDLE              | Session created but not yet started      |
+| STARTING          | PTY process is spawning                  |
+| RUNNING           | Agent is actively executing              |
+| WAITING_FOR_INPUT | Agent blocked waiting for user input     |
+| COMPLETED         | Agent finished successfully              |
+| ERROR             | Agent crashed or terminated unexpectedly |
 
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/**` (create/modify)
 - `web/electron.vite.config.ts` (create)
 - `web/package.json` (add dependencies)

@@ -94,46 +94,59 @@ Focuses on the experience:
 <!-- Write your thoughts below -->
 
 ### Thoughts on the Plan
+
 #### tRPC vs GraphQL
+
 I'm not so sure on choosing tRPC over GraphQL. I do think GraphQL is more flexible and better for future-proofing if we want to add more clients (e.g. mobile, VS Code extension). The boilerplate is a bit higher but I think the benefits outweigh that cost.
 
-We can use graphql-codegen to generate types for both client and server. 
+We can use graphql-codegen to generate types for both client and server.
 
 #### lack of tmux
+
 Do we need to consider tmux to run terminal processes?
 
 #### Data model
+
 I would probably focus less on a task having a relationship to agent and more so having a relationship to a terminal window?
 
 #### Project structure
+
 I would prefer to keep each service at the top level rather than place inside `packages`. So `server` (lets rename to `backend`) and `client` (lets rename to `web`) should be at the root.
 
 #### Auth
+
 The plan does not specify auth, how will we handle that?
 
 ### Thoughts on the feedback from our personas
+
 #### SQLite vs Postgres
+
 I want to go with Postgres from the beginning because it's easy to run via docker and will enable us to deploy quickly to start testing with others.
 
 #### Workspace/Project/Task hierarchy
+
 I'm happy to skip workspaces for now, but would like to keep projects. This order of work grouping will be useful for my team to validate this.
 
 One thing that I'd like to see in the model is markdown super for descriptions.
 
 #### No success metrics defined
+
 I agree with this. I suppose the user success criteria is that I personally find this useful for managing my work. The next level will be my teammates finding it useful to manage their work. If it doesn't progress through both those stages, we shouldn't not carry it any further.
 
 #### The riskiest assumptions are product risks, not technical
+
 This is not just about developers, it's also about democratising access to agents to less experienced users. On top of that, the terminal UX will remain directly in reach and we should aim for that to feel as seamless as possible, which should give minimal trade-offs for users who prefer the terminal.
 
 #### Per-Persona Highlights
 
 ##### Simplifier
+
 - I want Electron from the beginning because I've not tried this stack before and would like to explore it personally. In addition, it also gives an easier path for non-developers to test it.
 - I like the "WAITING_FOR_INPUT", if we can detect that, to elevate tasks that are blocked until we give input
 - Don't drop shared types – we will use graphql to have a declarative contact between clients and server for typesafety and development speed.
 
 ##### Product Strategist
+
 - I'll do the interviews another time, lets continue. I want to test with myself first.
 - The point about it not being a PM tool because it's only a board is fair. We need to have view that list projects and that list tasks within those projects. Ideally with a sidebar to navigate all of this.
 - VS Code is not a valid alternative – too non-developer heavy. Also, people do use other IDEs, like IntelliJ.
@@ -143,12 +156,13 @@ This is not just about developers, it's also about democratising access to agent
   - I don't reach for this tool instead of going directly to the terminal myself
 
 ##### Pragmatic Architect
+
 All great. Thanks.
 
 ##### User Advocate
+
 - For now, lets keep tasks 1:1 to agents until we have a better understanding of how users will want to retry and manage multiple runs. We can always migrate to a one-to-many model later if we need to.
 - I think we should create ways for users to pass this data in by choice, otherwise we perhaps start a blank TUI for now.
 - **Server crash reconciliation**: this is a key point. We should not track local agent status on the server side. This should be a local side state, since local agents we just that... local. This means we perhaps need a SQLite database on the client side to track this state.
 
 ---
-

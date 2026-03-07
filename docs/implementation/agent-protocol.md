@@ -47,6 +47,7 @@ If any check fails, fix the issue before proceeding. Do not create a PR with fai
 ## CI
 
 GitHub Actions runs the same checks on every PR:
+
 1. `bun install`
 2. `bun run lint`
 3. `bun run format:check`
@@ -58,6 +59,7 @@ Your PR will not be merged if CI fails.
 ## PR Description
 
 Include in your PR description:
+
 1. What was built (reference your wave file deliverables)
 2. How to test it (manual steps if applicable)
 3. Any deviations from the wave file and why
@@ -65,6 +67,7 @@ Include in your PR description:
 ## Dependencies
 
 When adding npm packages, follow `/DEPS.md`:
+
 - Use latest stable versions
 - Prefer small, well-maintained packages
 - If the code needed is small, write it yourself

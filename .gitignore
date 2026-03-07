@@ -1,0 +1,28 @@
+node_modules/
+dist/
+out/
+.vite/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-journal
+
+# Prisma
+backend/prisma/generated/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+*.swp
+*.swo
+
+# Build
+*.tsbuildinfo

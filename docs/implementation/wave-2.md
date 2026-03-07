@@ -19,6 +19,7 @@ Navigation UI lives in `web/src/renderer/`. PTY engine lives in `web/src/main/pt
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-2.md) — your deliverables are in the "Agent 2A" section only
@@ -39,6 +40,7 @@ The backend (from Wave 1A) exposes these operations at `http://localhost:4000/gr
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/renderer/**` (create/modify)
 - `web/codegen.ts` (create)
 - `web/package.json` (add dependencies)
@@ -48,6 +50,7 @@ Do NOT touch `web/src/main/`, `web/src/preload/`, `shared/`, or `backend/`.
 ### Context
 
 After Wave 1, the following exist:
+
 - GraphQL schema at `shared/src/schema.graphql` with Project/Task types
 - Generated TypeScript types at `shared/src/generated/graphql.ts`
 - Backend server running graphql-yoga with all CRUD resolvers
@@ -109,6 +112,7 @@ cd web && bun run dev
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-2.md) — your deliverables are in the "Agent 2B" section only
@@ -149,6 +153,7 @@ This is the most critical technical risk in the project. If node-pty does not wo
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/main/pty/**` (create)
 - `web/src/main/ipc/handlers.ts` (extend with PTY handlers)
 - `web/src/preload/index.ts` (extend with PTY IPC channels)
@@ -159,6 +164,7 @@ Do NOT touch `web/src/renderer/`, `shared/`, or `backend/`.
 ### Context
 
 After Wave 1, the following exist:
+
 - Electron main process with BrowserWindow and app lifecycle
 - better-sqlite3 with terminal_session and terminal_output_buffer tables
 - IPC bridge with typed channels and contextBridge API
@@ -208,6 +214,7 @@ After Wave 1, the following exist:
 ### Gating Check Documentation
 
 If node-pty fails in Electron, the agent MUST:
+
 1. Document the exact error
 2. Document what was attempted
 3. Describe the fallback: Node.js `child_process` with pseudo-TTY

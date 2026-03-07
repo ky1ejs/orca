@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@orca/shared": ["./shared/src"],
+      "@orca/shared/*": ["./shared/src/*"],
+      "@orca/backend": ["./backend/src"],
+      "@orca/backend/*": ["./backend/src/*"],
+      "@orca/web": ["./web/src"],
+      "@orca/web/*": ["./web/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

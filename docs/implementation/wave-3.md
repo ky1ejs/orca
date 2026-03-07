@@ -19,6 +19,7 @@ Terminal UI is renderer-side (`web/src/renderer/components/terminal/`). Agent la
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-3.md) — your deliverables are in the "Agent 3A" section only
@@ -28,6 +29,7 @@ Before writing any code, read these files in order:
 ### Reference: IPC Channels Available (from Wave 2B)
 
 These PTY IPC channels are exposed via the preload script:
+
 - `pty:spawn` — create new PTY session (params: command, cwd)
 - `pty:write` — send data to PTY (params: sessionId, data)
 - `pty:resize` — resize PTY (params: sessionId, cols, rows)
@@ -39,6 +41,7 @@ These PTY IPC channels are exposed via the preload script:
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/renderer/components/terminal/**` (create)
 - `web/src/renderer/hooks/useTerminal.ts` (create)
 - `web/src/renderer/hooks/useTerminalSessions.ts` (create)
@@ -50,6 +53,7 @@ Do NOT touch `web/src/main/`, `web/src/preload/`, `shared/`, or `backend/`.
 ### Context
 
 After Wave 2, the following exist:
+
 - PTY manager in main process with IPC handlers (`pty:spawn`, `pty:write`, `pty:resize`, `pty:kill`, `pty:replay`, `pty:onData`, `pty:onExit`)
 - Output ring buffer storing terminal output in SQLite
 - Full navigation UI with project/task CRUD
@@ -113,6 +117,7 @@ cd web && bun run dev
 ### Agent Startup
 
 Before writing any code, read these files in order:
+
 1. `CLAUDE.md` — project conventions and architecture
 2. `docs/implementation/agent-protocol.md` — git workflow and validation rules
 3. This file (wave-3.md) — your deliverables are in the "Agent 3B" section only
@@ -125,23 +130,26 @@ Before writing any code, read these files in order:
 
 Task status (server-side) and terminal session status (client-side) are coordinated:
 
-| Event | Session Status | Task Status (GraphQL mutation) |
-|-------|---------------|-------------------------------|
-| Agent starts (PTY spawns) | STARTING -> RUNNING | -> IN_PROGRESS |
-| Agent completes (exit 0) | -> COMPLETED | -> IN_REVIEW |
-| Agent errors (non-zero exit) | -> ERROR | stays IN_PROGRESS |
-| Agent waiting for input | -> WAITING_FOR_INPUT | stays IN_PROGRESS |
-| User manually changes task status | no effect | user's choice |
+| Event                             | Session Status       | Task Status (GraphQL mutation) |
+| --------------------------------- | -------------------- | ------------------------------ |
+| Agent starts (PTY spawns)         | STARTING -> RUNNING  | -> IN_PROGRESS                 |
+| Agent completes (exit 0)          | -> COMPLETED         | -> IN_REVIEW                   |
+| Agent errors (non-zero exit)      | -> ERROR             | stays IN_PROGRESS              |
+| Agent waiting for input           | -> WAITING_FOR_INPUT | stays IN_PROGRESS              |
+| User manually changes task status | no effect            | user's choice                  |
 
 #### Terminal Session Statuses
+
 `IDLE` -> `STARTING` -> `RUNNING` -> `WAITING_FOR_INPUT` (bidirectional with RUNNING) -> `COMPLETED` or `ERROR`
 
 #### Task Statuses (GraphQL enum)
+
 `TODO`, `IN_PROGRESS`, `IN_REVIEW`, `DONE`
 
 ### File Ownership
 
 This agent may ONLY modify files in:
+
 - `web/src/main/pty/status.ts` (create)
 - `web/src/main/pty/input-detection.ts` (create)
 - `web/src/main/pty/errors.ts` (create)
@@ -156,6 +164,7 @@ Do NOT touch `shared/`, `backend/`, or terminal rendering components (`AgentTerm
 ### Context
 
 After Wave 2, the following exist:
+
 - PTY manager: `spawn`, `write`, `resize`, `kill` via IPC
 - Session records in SQLite (terminal_session table)
 - Claude Code spawn helper with PATH detection
