@@ -4,6 +4,10 @@
 
 You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
+Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
+
+When making changes, always check for documentation that may need updating (e.g., README files, CLAUDE.md, inline docs, code comments). Update any documentation that is affected by your changes.
+
 ## Architecture
 
 Orca is a work management tool for orchestrating AI agents (starting with Claude Code). It uses a **split-state client/server architecture**:
