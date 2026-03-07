@@ -61,7 +61,6 @@ Run `bun run dev` in `web/`, expand the sidebar, confirm version + hash appear a
 |--------|---------|---------------|
 | `MACOS_CERTIFICATE` | Base64-encoded .p12 containing Developer ID Application cert + private key | Keychain Access > export cert as .p12, then `base64 -i cert.p12` |
 | `MACOS_CERTIFICATE_PWD` | Password used when exporting the .p12 | Set during export |
-| `KEYCHAIN_PASSWORD` | Arbitrary password for the temporary CI keychain | Make one up |
 | `APPLE_ID` | Apple ID email used for notarization | Your Apple Developer account email |
 | `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for notarization API | appleid.apple.com > Sign-In and Security > App-Specific Passwords |
 | `APPLE_TEAM_ID` | 10-character Apple Developer Team ID | developer.apple.com > Membership |
