@@ -1,4 +1,7 @@
 import { ipcMain } from 'electron';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { IPC_CHANNELS } from './channels.js';
 import {
   getSessions,
@@ -8,8 +11,21 @@ import {
   type CreateSessionInput,
   type UpdateSessionInput,
 } from '../db/sessions.js';
+import { PtyManager } from '../pty/manager.js';
+
+let ptyManager: PtyManager | null = null;
+
+export function getPtyManager(): PtyManager {
+  if (!ptyManager) {
+    ptyManager = new PtyManager();
+  }
+  return ptyManager;
+}
 
 export function registerIpcHandlers(): void {
+  const manager = getPtyManager();
+
+  // Database handlers
   ipcMain.handle(IPC_CHANNELS.DB_GET_SESSIONS, () => {
     return getSessions();
   });
@@ -28,4 +44,42 @@ export function registerIpcHandlers(): void {
       return updateSession(id, input);
     },
   );
+
+  ipcMain.handle(IPC_CHANNELS.DB_GET_AUTH_TOKEN, () => {
+    try {
+      const configPath = join(homedir(), '.orca', 'config.json');
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return (config.authToken as string) ?? null;
+    } catch (err) {
+      console.warn('Failed to read auth token:', err);
+      return null;
+    }
+  });
+
+  // PTY handlers
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_SPAWN,
+    (_event, sessionId: string, command: string, args: string[], cwd: string) => {
+      manager.spawn(sessionId, command, args, cwd);
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.PTY_WRITE, (_event, sessionId: string, data: string) => {
+    manager.write(sessionId, data);
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_RESIZE,
+    (_event, sessionId: string, cols: number, rows: number) => {
+      manager.resize(sessionId, cols, rows);
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.PTY_KILL, (_event, sessionId: string) => {
+    manager.kill(sessionId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PTY_REPLAY, (_event, sessionId: string) => {
+    return manager.replay(sessionId);
+  });
 }
