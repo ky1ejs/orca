@@ -411,7 +411,7 @@ cmd_prune() {
         step "${BOLD}$wt${RESET}  ${DIM}slot $slot${RESET}  ${DIM}→${RESET}  ${MAGENTA}$reason${RESET}"
       else
         step "Pruning ${BOLD}$wt${RESET} ${DIM}($reason)${RESET}"
-        cmd_cleanup "$wt" --force
+        cmd_cleanup "$wt" --force </dev/null
         step_done "${BOLD}$wt${RESET} removed"
       fi
     fi
