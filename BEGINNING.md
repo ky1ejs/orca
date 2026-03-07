@@ -48,3 +48,4 @@ Still being figure out, but likely:
 ### Future Problems to Solve
 
 - Company Wide skill and workflow management
+- How swarms of agents can attack projects together with Orca
