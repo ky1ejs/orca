@@ -60,8 +60,34 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
-  build:
+  create-release:
     needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push tag
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --draft \
+            --notes "Release $TAG"
+
+  build:
+    needs: [version, create-release]
     if: needs.version.outputs.should_release == 'true'
     runs-on: macos-latest
     strategy:
@@ -127,75 +153,69 @@ jobs:
             --publish never
         working-directory: web
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: orca-mac-${{ matrix.arch }}
-          path: |
-            web/dist-electron/*.dmg
-            web/dist-electron/*.zip
-            web/dist-electron/latest-mac*.yml
-
-  release:
-    needs: [version, build]
-    if: ${{ !cancelled() && needs.version.outputs.should_release == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: orca-mac-*
-          path: artifacts
-          merge-multiple: true
-
-      - name: Check for artifacts
-        id: check
-        run: |
-          ARTIFACTS=$(find artifacts -name '*.dmg' -o -name '*.zip' 2>/dev/null | head -1)
-          if [ -z "$ARTIFACTS" ]; then
-            echo "No build artifacts found — all builds failed"
-            echo "has_artifacts=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Found artifacts:"
-            ls -la artifacts/
-            echo "has_artifacts=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Tag and push
-        if: steps.check.outputs.has_artifacts == 'true'
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.version.outputs.tag }}"
-          git tag "$TAG"
-          git push origin "$TAG"
+          REPO="${{ github.repository }}"
 
-      - name: Create GitHub Release
-        if: steps.check.outputs.has_artifacts == 'true'
+          for file in web/dist-electron/*.dmg web/dist-electron/*.zip web/dist-electron/latest-mac*.yml; do
+            [ -f "$file" ] || continue
+            echo "Uploading $(basename "$file")..."
+            gh release upload "$TAG" "$file" --repo "$REPO" --clobber
+          done
+
+  finalize-release:
+    needs: [version, build]
+    if: always() && needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check build results
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          # Check if any assets were uploaded
+          ASSET_COUNT=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets | length')
+          echo "Assets uploaded: $ASSET_COUNT"
+
+          if [ "$ASSET_COUNT" -gt 0 ]; then
+            echo "has_assets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_assets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish release
+        if: steps.check.outputs.has_assets == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.version.outputs.tag }}"
           VERSION="${{ needs.version.outputs.version }}"
-
-          # Create release with DMGs as primary downloads
-          DMG_FILES=$(find artifacts -name '*.dmg' | sort)
           REPO="${{ github.repository }}"
+
           NOTES="## Download
           | Platform | Download |
           |----------|----------|
           | macOS (Apple Silicon) | [Orca-${VERSION}-arm64.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}-arm64.dmg) |
           | macOS (Intel) | [Orca-${VERSION}.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}.dmg) |"
-          gh release create "$TAG" $DMG_FILES \
-            --repo "$REPO" \
-            --title "$TAG" \
-            --notes "$NOTES"
 
-          # Upload auto-update files (ZIPs + yml) — needed by electron-updater
-          AUTO_UPDATE_FILES=$(find artifacts -name '*.zip' -o -name '*.yml' | sort)
-          if [ -n "$AUTO_UPDATE_FILES" ]; then
-            gh release upload "$TAG" $AUTO_UPDATE_FILES \
-              --repo ${{ github.repository }}
-          fi
+          gh release edit "$TAG" \
+            --repo "$REPO" \
+            --notes "$NOTES" \
+            --draft=false
+
+      - name: Clean up failed release
+        if: steps.check.outputs.has_assets == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          echo "No assets uploaded — deleting draft release and tag"
+          gh release delete "$TAG" --repo "$REPO" --yes --cleanup-tag
