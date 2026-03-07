@@ -8,9 +8,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "cd shared && bun run typecheck && cd ../backend && bun run typecheck && cd ../web && bun run typecheck",
-    "test": "cd shared && bun run test && cd ../backend && bun run test && cd ../web && bun run test",
-    "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
+    "validate": "bun run lint && bun run format:check && cd shared && bun run validate && cd ../backend && bun run validate && cd ../web && bun run validate"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.28.0",
