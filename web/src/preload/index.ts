@@ -17,6 +17,15 @@ export interface OrcaAPI {
     ) => Promise<unknown | undefined>;
     getAuthToken: () => Promise<string | null>;
   };
+  pty: {
+    spawn: (sessionId: string, command: string, args: string[], cwd: string) => Promise<void>;
+    write: (sessionId: string, data: string) => Promise<void>;
+    resize: (sessionId: string, cols: number, rows: number) => Promise<void>;
+    kill: (sessionId: string) => Promise<void>;
+    replay: (sessionId: string) => Promise<string>;
+    onData: (sessionId: string, cb: (data: string) => void) => () => void;
+    onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
+  };
 }
 
 const api: OrcaAPI = {
@@ -27,6 +36,30 @@ const api: OrcaAPI = {
     createSession: (input) => ipcRenderer.invoke('db:createSession', input),
     updateSession: (id, input) => ipcRenderer.invoke('db:updateSession', id, input),
     getAuthToken: () => ipcRenderer.invoke('db:getAuthToken'),
+  },
+  pty: {
+    spawn: (sessionId, command, args, cwd) =>
+      ipcRenderer.invoke('pty:spawn', sessionId, command, args, cwd),
+    write: (sessionId, data) => ipcRenderer.invoke('pty:write', sessionId, data),
+    resize: (sessionId, cols, rows) => ipcRenderer.invoke('pty:resize', sessionId, cols, rows),
+    kill: (sessionId) => ipcRenderer.invoke('pty:kill', sessionId),
+    replay: (sessionId) => ipcRenderer.invoke('pty:replay', sessionId),
+    onData: (sessionId, cb) => {
+      const channel = `pty:data:${sessionId}`;
+      const listener = (_event: unknown, data: string) => cb(data);
+      ipcRenderer.on(channel, listener);
+      return () => {
+        ipcRenderer.removeListener(channel, listener);
+      };
+    },
+    onExit: (sessionId, cb) => {
+      const channel = `pty:exit:${sessionId}`;
+      const listener = (_event: unknown, exitCode: number) => cb(exitCode);
+      ipcRenderer.on(channel, listener);
+      return () => {
+        ipcRenderer.removeListener(channel, listener);
+      };
+    },
   },
 };
 
