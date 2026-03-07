@@ -10,34 +10,18 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     outputs:
-      web-changed: ${{ steps.check-web.outputs.has-changes || github.event_name == 'push' }}
-      backend-changed: ${{ steps.check-backend.outputs.has-changes || github.event_name == 'push' }}
-      schema-changed: ${{ steps.check-schema.outputs.has-changes || github.event_name == 'push' }}
+      web-changed: ${{ steps.diff.outputs.web || github.event_name == 'push' }}
+      backend-changed: ${{ steps.diff.outputs.backend || github.event_name == 'push' }}
+      schema-changed: ${{ steps.diff.outputs.schema || github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check web changes
+      - name: Check diff paths
         if: github.event_name == 'pull_request'
-        id: check-web
-        uses: ky1ejs/check-diff-paths-action@main
+        id: diff
+        uses: ky1ejs/check-diff-paths-action@v0.3.0
         with:
-          paths: '^web/|^shared/'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check backend changes
-        if: github.event_name == 'pull_request'
-        id: check-backend
-        uses: ky1ejs/check-diff-paths-action@main
-        with:
-          paths: '^backend/|^shared/'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check schema changes
-        if: github.event_name == 'pull_request'
-        id: check-schema
-        uses: ky1ejs/check-diff-paths-action@main
-        with:
-          paths: '^shared/src/schema\.graphql$'
+          paths: '{"web": "^web/|^shared/", "backend": "^backend/|^shared/", "schema": "^shared/src/schema\\.graphql$"}'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   validate-shared:
