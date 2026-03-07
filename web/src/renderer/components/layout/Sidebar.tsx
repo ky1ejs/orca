@@ -15,17 +15,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps) {
-  const { data, fetching, refetch } = useProjects();
+  const { data, fetching } = useProjects();
   const { navigate, current } = useNavigation();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
-  useProjectSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
-
-  useTaskSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
+  useProjectSubscription();
+  useTaskSubscription();
 
   const toggleExpand = (projectId: string) => {
     setExpandedProjects((prev) => {

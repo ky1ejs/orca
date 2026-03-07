@@ -1,4 +1,5 @@
 import { Client, fetchExchange, subscriptionExchange, mapExchange } from 'urql';
+import { cacheExchange } from '@urql/exchange-graphcache';
 import { createClient as createSSEClient } from 'graphql-sse';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
@@ -65,6 +66,42 @@ export async function createGraphQLClient(): Promise<Client> {
     }),
     exchanges: [
       authErrorExchange,
+      cacheExchange({
+        updates: {
+          Mutation: {
+            createProject(_result, _args, cache) {
+              cache.invalidate('Query', 'projects');
+            },
+            deleteProject(_result, args, cache) {
+              cache.invalidate({ __typename: 'Project', id: args.id as string });
+              cache.invalidate('Query', 'projects');
+            },
+            createTask(_result, _args, cache) {
+              const task = _result.createTask as { projectId: string } | undefined;
+              if (task) {
+                cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                cache.invalidate('Query', 'projects');
+              }
+            },
+            deleteTask(_result, args, cache) {
+              cache.invalidate({ __typename: 'Task', id: args.id as string });
+              cache.invalidate('Query', 'projects');
+            },
+          },
+          Subscription: {
+            projectChanged(_result, _args, cache) {
+              cache.invalidate('Query', 'projects');
+            },
+            taskChanged(_result, _args, cache) {
+              const task = _result.taskChanged as { projectId: string } | undefined;
+              if (task) {
+                cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                cache.invalidate('Query', 'projects');
+              }
+            },
+          },
+        },
+      }),
       fetchExchange,
       subscriptionExchange({
         forwardSubscription(operation) {

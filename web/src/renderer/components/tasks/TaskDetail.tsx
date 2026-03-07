@@ -27,7 +27,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 const ACTIVE_STATUSES = ['STARTING', 'RUNNING', 'WAITING_FOR_INPUT'];
 
 export function TaskDetail({ taskId }: TaskDetailProps) {
-  const { data, fetching, error, refetch } = useTask(taskId);
+  const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { deleteTask } = useDeleteTask();
   const { goBack, navigate } = useNavigation();
@@ -43,9 +43,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   } | null>(null);
   const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
 
-  useTaskSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
+  useTaskSubscription();
 
   if (fetching && !data) {
     return <TaskDetailSkeleton />;
@@ -85,7 +83,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       workingDirectory: workingDirectory.trim() || undefined,
     });
     setEditing(false);
-    refetch({ requestPolicy: 'network-only' });
   };
 
   const handleDelete = async () => {
@@ -95,7 +92,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     await updateTask(taskId, { status: newStatus });
-    refetch({ requestPolicy: 'network-only' });
   };
 
   const activeSession = sessions.find((s) => ACTIVE_STATUSES.includes(s.status));
