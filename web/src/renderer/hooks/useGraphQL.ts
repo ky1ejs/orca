@@ -13,13 +13,13 @@ import {
   DeleteTaskDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
-} from '../graphql/generated.js';
+} from '../graphql/__generated__/generated.js';
 import type {
   CreateProjectInput,
   UpdateProjectInput,
   CreateTaskInput,
   UpdateTaskInput,
-} from '../graphql/generated.js';
+} from '../graphql/__generated__/generated.js';
 
 // Query hooks
 

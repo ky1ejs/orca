@@ -1,2 +1,2 @@
 export { TaskStatus } from './types.js';
-export type * from './generated/graphql.js';
+export type * from './__generated__/graphql.js';

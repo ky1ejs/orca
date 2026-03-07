@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { useCreateTask } from '../../hooks/useGraphQL.js';
-import type { TaskStatus } from '../../graphql/generated.js';
+import type { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 interface TaskSummary {
   id: string;

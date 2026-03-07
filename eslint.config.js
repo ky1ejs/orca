@@ -5,7 +5,13 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/out/**', '**/.vite/**', '**/generated/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/out/**',
+      '**/.vite/**',
+      '**/__generated__/**',
+    ],
   },
   {
     files: ['**/*.ts'],
