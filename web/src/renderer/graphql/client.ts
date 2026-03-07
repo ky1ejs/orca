@@ -1,9 +1,7 @@
 import { Client, fetchExchange, subscriptionExchange, mapExchange } from 'urql';
 import { createClient as createSSEClient } from 'graphql-sse';
 
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ||
-  `http://localhost:${import.meta.env.VITE_BACKEND_PORT || '4000'}`;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
 export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 
 let cachedToken: string | null = null;

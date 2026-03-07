@@ -41,7 +41,7 @@ const mockOrca = {
 (window as unknown as Record<string, unknown>).orca = mockOrca;
 
 // Point the GraphQL client at our test server
-vi.stubEnv('VITE_BACKEND_PORT', String(TEST_PORT));
+vi.stubEnv('VITE_BACKEND_URL', `http://127.0.0.1:${TEST_PORT}`);
 
 describe('App smoke test', () => {
   beforeAll(async () => {

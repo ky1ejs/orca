@@ -23,7 +23,7 @@ export function getPtyManager(): PtyManager {
 }
 
 function getBackendUrl(): string {
-  return process.env.BACKEND_URL || `http://localhost:${process.env.BACKEND_PORT ?? '4000'}`;
+  return process.env.BACKEND_URL || __BACKEND_URL__;
 }
 
 function getStatusManager(): StatusManager {
