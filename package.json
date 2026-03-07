@@ -4,17 +4,16 @@
   "type": "module",
   "workspaces": [
     "backend",
-    "web",
     "shared"
   ],
   "scripts": {
-    "dev": "concurrently --names backend,web --prefix-colors blue,green \"bun run --filter @orca/backend dev\" \"bun run --filter @orca/web dev\"",
+    "dev": "concurrently --names backend,web --prefix-colors blue,green \"bun run --filter @orca/backend dev\" \"pnpm --dir web run dev\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "bun run --filter '*' typecheck",
-    "test": "vitest run",
+    "typecheck": "bun run --filter '*' typecheck && pnpm --dir web run typecheck",
+    "test": "vitest run && pnpm --dir web run test",
     "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
   },
   "devDependencies": {

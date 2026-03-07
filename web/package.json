@@ -5,16 +5,23 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-rebuild -o better-sqlite3 && electron-vite dev",
-    "build": "electron-rebuild -o better-sqlite3 && electron-vite build",
+    "dev": "npx @electron/rebuild -o better-sqlite3 && electron-vite dev",
+    "build": "npx @electron/rebuild -o better-sqlite3 && electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "pnpm rebuild better-sqlite3 && vitest run"
   },
   "dependencies": {
-    "@orca/shared": "workspace:*",
+    "@orca/shared": "link:../shared",
     "better-sqlite3": "^11.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
