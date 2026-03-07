@@ -60,7 +60,7 @@ No workspaces — each package manages its own dependencies with `bun install`.
 - **Database**: Neon Postgres in production, Docker Compose locally
 - **CI/CD**: Push to `main` with backend changes auto-deploys via `.github/workflows/deploy-backend.yml`
 - **Manual deploy**: `fly deploy` from `backend/`
-- **Prod build**: `VITE_BACKEND_URL=https://orca-api.fly.dev bun run build:mac` in `web/`
+- **Prod build**: `bun run build:mac` in `web/` (production backend URL is the default; override with `VITE_BACKEND_URL` env var if needed)
 - Migrations: Run automatically via `bun run start`, which runs `prisma migrate deploy` before starting the server
 
 ## UI Validation in Browser
