@@ -25,38 +25,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Bump version and tag
+      - name: Determine next version
         id: bump
         run: |
           CURRENT=$(node -p "require('./web/package.json').version")
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1 || echo "")
 
           if [ -z "$LATEST_TAG" ]; then
-            # No tags exist yet — use current version as first release
             NEW_VERSION="$CURRENT"
           else
             TAGGED_VERSION="${LATEST_TAG#v}"
             if [ "$CURRENT" != "$TAGGED_VERSION" ]; then
-              # Version was manually bumped in package.json — use it as-is
               NEW_VERSION="$CURRENT"
             else
-              # Auto-bump patch
               IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
               PATCH=$((PATCH + 1))
               NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-              # Update package.json
-              node -e "
-                const fs = require('fs');
-                const pkg = JSON.parse(fs.readFileSync('web/package.json', 'utf8'));
-                pkg.version = '$NEW_VERSION';
-                fs.writeFileSync('web/package.json', JSON.stringify(pkg, null, 2) + '\n');
-              "
             fi
           fi
 
           TAG="v$NEW_VERSION"
 
-          # Check if this tag already exists
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, skipping release"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
@@ -67,28 +56,29 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add web/package.json
-          git diff --cached --quiet || git commit -m "chore: bump version to $NEW_VERSION"
-          git tag "$TAG"
-          git push origin main --tags
-
   build:
     needs: version
     if: needs.version.outputs.should_release == 'true'
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, x64]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.version.outputs.tag }}
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Set version in package.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('web/package.json', 'utf8'));
+            pkg.version = '${{ needs.version.outputs.version }}';
+            fs.writeFileSync('web/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       - name: Install web dependencies
         run: bun install
@@ -118,9 +108,8 @@ jobs:
             -s -k "$KEYCHAIN_PASSWORD" build.keychain
           rm certificate.p12
 
-      - name: Build, sign, notarize, and publish
+      - name: Package, sign, and notarize
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -129,7 +118,7 @@ jobs:
         run: |
           npx electron-builder --mac --${{ matrix.arch }} \
             --config electron-builder.yml \
-            --publish always
+            --publish never
         working-directory: web
 
       - name: Upload build artifacts
@@ -139,15 +128,64 @@ jobs:
           path: |
             web/dist-electron/*.dmg
             web/dist-electron/*.zip
-            web/dist-electron/*.yml
+            web/dist-electron/latest-mac*.yml
 
   release:
     needs: [version, build]
+    if: ${{ !cancelled() && needs.version.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Verify release exists
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: orca-mac-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Check for artifacts
+        id: check
+        run: |
+          ARTIFACTS=$(find artifacts -name '*.dmg' -o -name '*.zip' 2>/dev/null | head -1)
+          if [ -z "$ARTIFACTS" ]; then
+            echo "No build artifacts found — all builds failed"
+            echo "has_artifacts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found artifacts:"
+            ls -la artifacts/
+            echo "has_artifacts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version, tag, and push
+        if: steps.check.outputs.has_artifacts == 'true'
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          TAG="${{ needs.version.outputs.tag }}"
+
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('web/package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('web/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/package.json
+          git diff --cached --quiet || git commit -m "chore: bump version to $VERSION"
+          git tag "$TAG"
+          git push origin main --tags
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.has_artifacts == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view ${{ needs.version.outputs.tag }} \
-            --repo ${{ github.repository }}
+          TAG="${{ needs.version.outputs.tag }}"
+          gh release create "$TAG" artifacts/* \
+            --repo ${{ github.repository }} \
+            --title "$TAG" \
+            --generate-notes
