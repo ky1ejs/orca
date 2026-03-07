@@ -1,45 +1,57 @@
-import { createYoga, createPubSub } from 'graphql-yoga';
-import { GraphQLError } from 'graphql';
+import { createYoga, createPubSub, type Plugin } from 'graphql-yoga';
+import { GraphQLError, type DefinitionNode, type SelectionNode } from 'graphql';
 import { schema } from './schema/index.js';
 import { prisma } from './db/client.js';
-import { getOrCreateToken, validateToken } from './auth/token.js';
+import { verifyJwt } from './auth/jwt.js';
 import type { ServerContext } from './context.js';
 
 const pubsub = createPubSub();
-const { token: authToken, isNew: isNewToken } = getOrCreateToken();
 
-if (isNewToken) {
-  console.log('');
-  console.log('='.repeat(60));
-  console.log('  FIRST RUN - Auth token generated and saved to:');
-  console.log('  ~/.orca/config.json');
-  console.log('');
-  console.log(`  Token: ${authToken}`);
-  console.log('');
-  console.log('  The Electron client reads this token automatically.');
-  console.log('  For browser testing, set VITE_AUTH_TOKEN in web/.env');
-  console.log('='.repeat(60));
-  console.log('');
-} else {
-  console.log(`Auth token loaded from ~/.orca/config.json`);
+// Plugin that enforces auth on all operations except the login mutation
+function useAuth(): Plugin<ServerContext> {
+  return {
+    onExecute({ args }) {
+      // Check if this is the login mutation
+      const operation = args.document.definitions.find(
+        (def: DefinitionNode) => def.kind === 'OperationDefinition',
+      );
+      if (
+        operation &&
+        operation.kind === 'OperationDefinition' &&
+        operation.operation === 'mutation'
+      ) {
+        const hasLogin = operation.selectionSet.selections.some(
+          (sel: SelectionNode) => sel.kind === 'Field' && sel.name.value === 'login',
+        );
+        if (hasLogin) return;
+      }
+
+      // Require auth for everything else
+      if (!args.contextValue.userId) {
+        throw new GraphQLError('Missing or invalid authentication', {
+          extensions: { code: 'UNAUTHENTICATED' },
+        });
+      }
+    },
+  };
 }
 
 const yoga = createYoga({
   schema,
-  context: ({ request }): ServerContext => {
+  cors: { origin: '*', credentials: true },
+  plugins: [useAuth()],
+  context: async ({ request }): Promise<ServerContext> => {
     const header = request.headers.get('authorization');
     if (!header) {
-      throw new GraphQLError('Missing Authorization header', {
-        extensions: { code: 'UNAUTHENTICATED' },
-      });
+      return { prisma, pubsub, userId: '' };
     }
     const token = header.replace('Bearer ', '');
-    if (!validateToken(token, authToken)) {
-      throw new GraphQLError('Invalid auth token', {
-        extensions: { code: 'UNAUTHENTICATED' },
-      });
+    try {
+      const payload = await verifyJwt(token);
+      return { prisma, pubsub, userId: payload.sub };
+    } catch {
+      return { prisma, pubsub, userId: '' };
     }
-    return { prisma, pubsub, authToken };
   },
   graphqlEndpoint: '/graphql',
 });
@@ -48,10 +60,16 @@ const PORT = Number(process.env.PORT ?? 4000);
 
 const server = Bun.serve({
   port: PORT,
-  hostname: '127.0.0.1',
-  fetch: yoga.fetch,
+  hostname: '0.0.0.0',
+  fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === '/health') {
+      return new Response('ok', { status: 200 });
+    }
+    return yoga.fetch(request);
+  },
 });
 
-console.log(`Orca server running at http://127.0.0.1:${server.port}/graphql`);
+console.log(`Orca server running at http://0.0.0.0:${server.port}/graphql`);
 
-export { server, authToken };
+export { server };

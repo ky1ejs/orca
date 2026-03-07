@@ -21,7 +21,11 @@ export interface OrcaAPI {
       id: string,
       input: { pid?: number; status?: string; stoppedAt?: string },
     ) => Promise<unknown | undefined>;
-    getAuthToken: () => Promise<string | null>;
+  };
+  auth: {
+    storeToken: (token: string) => Promise<void>;
+    readToken: () => Promise<string | null>;
+    clearToken: () => Promise<void>;
   };
   pty: {
     spawn: (sessionId: string, command: string, args: string[], cwd: string) => Promise<void>;
@@ -60,7 +64,11 @@ const api: OrcaAPI = {
     getSession: (id) => ipcRenderer.invoke('db:getSession', id),
     createSession: (input) => ipcRenderer.invoke('db:createSession', input),
     updateSession: (id, input) => ipcRenderer.invoke('db:updateSession', id, input),
-    getAuthToken: () => ipcRenderer.invoke('db:getAuthToken'),
+  },
+  auth: {
+    storeToken: (token) => ipcRenderer.invoke('auth:storeToken', token),
+    readToken: () => ipcRenderer.invoke('auth:readToken'),
+    clearToken: () => ipcRenderer.invoke('auth:clearToken'),
   },
   pty: {
     spawn: (sessionId, command, args, cwd) =>

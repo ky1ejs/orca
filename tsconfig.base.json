@@ -12,8 +12,6 @@
     "declarationMap": true,
     "sourceMap": true,
     "paths": {
-      "@orca/shared": ["./shared/src"],
-      "@orca/shared/*": ["./shared/src/*"],
       "@orca/backend": ["./backend/src"],
       "@orca/backend/*": ["./backend/src/*"],
       "@orca/web": ["./web/src"],

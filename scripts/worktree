@@ -129,8 +129,6 @@ cmd_create() {
     printf "  ${DIM}%s${RESET}\n" "$(printf '%.0s─' $(seq 1 50))"
 
     step "Installing dependencies"
-    vlog "shared/"
-    (cd "$wt_path/shared" && bun install) >/dev/null 2>&1
     vlog "backend/"
     (cd "$wt_path/backend" && bun install) >/dev/null 2>&1
     vlog "web/"

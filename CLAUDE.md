@@ -12,21 +12,19 @@ When making changes, always check for documentation that may need updating (e.g.
 
 Orca is a work management tool for orchestrating AI agents (starting with Claude Code). It uses a **split-state client/server architecture**:
 
-- **Server (backend/)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks)
+- **Server (backend/)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks), GraphQL SDL schema
 - **Client (web/)**: Electron + React (via electron-vite) — local agent/terminal state in SQLite (better-sqlite3), PTY management (node-pty), terminal rendering (xterm.js)
-- **Shared (shared/)**: GraphQL SDL schema, shared TypeScript types and enums
 
 The server holds data multiple users need (projects, tasks, status). The client holds local-only data (terminal sessions, PIDs, output buffers). Agent processes run locally via node-pty in the Electron main process.
 
 ## Monorepo Structure
 
-Three independent packages, each with its own `bun install`:
+Two independent packages, each with its own `bun install`:
 
-- `@orca/shared` — shared types, GraphQL schema
 - `@orca/backend` — Bun server
 - `@orca/web` — Electron + React client
 
-No workspaces — each package manages its own dependencies with `bun install`. Import shared code as `@orca/shared` (resolved via `file:../shared`).
+No workspaces — each package manages its own dependencies with `bun install`.
 
 ## Code Style
 
@@ -42,9 +40,27 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 
 ## GraphQL
 
-- **Schema-first**: SDL defined in `shared/src/schema.graphql`
+- **Schema-first**: SDL defined in `backend/src/schema/schema.graphql`
 - **graphql-codegen** generates TypeScript types for both backend and web
 - Resolvers in `backend/src/schema/`
+
+## Auth
+
+- **JWT-based auth** with per-user email/password accounts
+- Users created via `bun run seed` in `backend/` (no self-service registration)
+- `JWT_SECRET` env var required in `backend/.env` for all environments
+- Local dev: `bun run seed:dev` creates a default dev user (`dev@orca.local` / `dev-password`)
+- Electron stores JWT via `safeStorage`; browser dev uses `VITE_AUTH_TOKEN` env var
+- JWT expires after 30 days — user must re-login
+
+## Deployment
+
+- **Backend**: Deployed to Fly.io (`orca-api.fly.dev`) from `backend/`
+- **Database**: Neon Postgres in production, Docker Compose locally
+- **CI/CD**: Push to `main` with backend changes auto-deploys via `.github/workflows/deploy-backend.yml`
+- **Manual deploy**: `fly deploy` from `backend/`
+- **Prod build**: `VITE_BACKEND_URL=https://orca-api.fly.dev bun run build:mac` in `web/`
+- Migrations: Run `bunx prisma migrate deploy` manually against Neon before deploying schema changes
 
 ## UI Validation in Browser
 
@@ -52,7 +68,7 @@ You can visually validate the UI by opening the Vite dev server in Chrome using 
 
 ### Setup
 
-1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (token from `~/.orca/config.json`)
+1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (a valid JWT for browser-based testing)
 2. Start the backend and web: `bun run dev` (from the worktree root, or separately in `backend/` and `web/`)
 3. The Vite dev server runs on `http://localhost:5173`
 
@@ -84,7 +100,7 @@ These features require Electron's main process and cannot run in a plain browser
 
 ## Commands
 
-All commands are run within each package directory (`shared/`, `backend/`, `web/`):
+All commands are run within each package directory (`backend/`, `web/`):
 
 - `bun run dev` — start the service (backend or web)
 - `bun run lint` / `bun run lint:fix` — ESLint
@@ -92,4 +108,6 @@ All commands are run within each package directory (`shared/`, `backend/`, `web/
 - `bun run typecheck` — TypeScript check
 - `bun run test` — Vitest
 - `bun run validate` — all checks (lint + format:check + typecheck + test)
+- `bun run seed --email <email> --name <name> --password <pass>` — create/update a user (backend)
+- `bun run seed:dev` — create default dev user (backend)
 - `docker compose up -d` / `docker compose down` — Postgres

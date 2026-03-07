@@ -13,6 +13,10 @@ import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 
+interface AppShellProps {
+  onLogout: () => void;
+}
+
 function MainContent() {
   const { current } = useNavigation();
 
@@ -28,7 +32,7 @@ function MainContent() {
   }
 }
 
-export function AppShell() {
+export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate } = useNavigation();
   const { data: projectsData, fetching: projectsFetching } = useProjects();
   const taskId = current.view === 'task' ? current.id : undefined;
@@ -188,6 +192,7 @@ export function AppShell() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+        onLogout={onLogout}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">

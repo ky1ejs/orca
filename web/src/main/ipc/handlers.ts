@@ -10,7 +10,7 @@ import {
 } from '../db/sessions.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager } from '../pty/status.js';
-import { readAuthToken } from '../pty/auth.js';
+import { storeToken, readToken, clearToken } from '../pty/auth.js';
 
 let ptyManager: PtyManager | null = null;
 let statusManager: StatusManager | null = null;
@@ -22,10 +22,13 @@ export function getPtyManager(): PtyManager {
   return ptyManager;
 }
 
+function getBackendUrl(): string {
+  return process.env.BACKEND_URL || `http://localhost:${process.env.BACKEND_PORT ?? '4000'}`;
+}
+
 function getStatusManager(): StatusManager {
   if (!statusManager) {
-    const backendPort = parseInt(process.env.BACKEND_PORT ?? '4000', 10);
-    statusManager = new StatusManager(getPtyManager(), backendPort);
+    statusManager = new StatusManager(getPtyManager(), { backendUrl: getBackendUrl() });
   }
   return statusManager;
 }
@@ -53,8 +56,17 @@ export function registerIpcHandlers(): void {
     },
   );
 
-  ipcMain.handle(IPC_CHANNELS.DB_GET_AUTH_TOKEN, () => {
-    return readAuthToken();
+  // Auth handlers
+  ipcMain.handle(IPC_CHANNELS.AUTH_STORE_TOKEN, (_event, token: string) => {
+    storeToken(token);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.AUTH_READ_TOKEN, () => {
+    return readToken();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.AUTH_CLEAR_TOKEN, () => {
+    clearToken();
   });
 
   // PTY handlers

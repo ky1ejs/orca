@@ -21,13 +21,8 @@ jobs:
         id: diff
         uses: ky1ejs/check-diff-paths-action@v0.3.0
         with:
-          paths: '{"web": "^web/|^shared/", "backend": "^backend/|^shared/", "schema": "^shared/src/schema\\.graphql$"}'
+          paths: '{"web": "^web/|^backend/src/schema/schema\\.graphql$", "backend": "^backend/", "schema": "^backend/src/schema/schema\\.graphql$"}'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  validate-shared:
-    needs: checks
-    if: needs.checks.outputs.web-changed == 'true' || needs.checks.outputs.backend-changed == 'true'
-    uses: ./.github/workflows/validate-shared.yml
 
   validate-web:
     needs: checks
@@ -65,13 +60,13 @@ jobs:
         run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "graphql-schema"
 
   status:
-    needs: [checks, validate-shared, validate-web, validate-backend, labels]
+    needs: [checks, validate-web, validate-backend, labels]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-shared.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
+          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
             echo "One or more jobs failed"
             exit 1
           fi

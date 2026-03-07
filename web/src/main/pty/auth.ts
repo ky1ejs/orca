@@ -1,13 +1,28 @@
-import { readFileSync } from 'node:fs';
+import { safeStorage } from 'electron';
+import { app } from 'electron';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 
-export function readAuthToken(): string | null {
+const AUTH_FILE = () => join(app.getPath('userData'), 'auth');
+
+export function storeToken(token: string): void {
+  const encrypted = safeStorage.encryptString(token);
+  writeFileSync(AUTH_FILE(), encrypted);
+}
+
+export function readToken(): string | null {
   try {
-    const configPath = join(homedir(), '.orca', 'config.json');
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-    return (config.authToken as string) ?? null;
+    const encrypted = readFileSync(AUTH_FILE());
+    return safeStorage.decryptString(encrypted);
   } catch {
     return null;
+  }
+}
+
+export function clearToken(): void {
+  try {
+    unlinkSync(AUTH_FILE());
+  } catch {
+    // File may not exist
   }
 }

@@ -10,7 +10,7 @@ import {
   type SerializedAgentError,
 } from './errors.js';
 import { InputDetector } from './input-detection.js';
-import { readAuthToken } from './auth.js';
+import { readToken } from './auth.js';
 
 interface MonitorState {
   interval: ReturnType<typeof setInterval>;
@@ -18,14 +18,18 @@ interface MonitorState {
   lastStatus: string;
 }
 
+interface StatusManagerOptions {
+  backendUrl: string;
+}
+
 export class StatusManager {
   private manager: PtyManager;
   private monitors = new Map<string, MonitorState>();
-  private backendPort: number;
+  private backendUrl: string;
 
-  constructor(manager: PtyManager, backendPort: number) {
+  constructor(manager: PtyManager, options: StatusManagerOptions) {
     this.manager = manager;
-    this.backendPort = backendPort;
+    this.backendUrl = options.backendUrl;
   }
 
   async launch(
@@ -157,7 +161,7 @@ export class StatusManager {
   }
 
   private async updateTaskStatus(taskId: string, status: string): Promise<void> {
-    const token = readAuthToken();
+    const token = readToken();
     if (!token) return;
 
     const mutation = `
@@ -170,7 +174,7 @@ export class StatusManager {
     `;
 
     try {
-      await fetch(`http://localhost:${this.backendPort}/graphql`, {
+      await fetch(`${this.backendUrl}/graphql`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
