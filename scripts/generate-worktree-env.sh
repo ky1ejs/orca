@@ -23,7 +23,7 @@ MAIN_REPO="$(cd "$(dirname "$0")/.." && pwd)"
 # Calculate slot-specific values
 PORT=$((4000 + SLOT * 10))
 DB_NAME="orca_wt_${SLOT}"
-DATABASE_URL="postgresql://orca:orca@localhost:5432/${DB_NAME}"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/${DB_NAME}"
 
 # --- Backend .env ---
 BACKEND_ENV="$WORKTREE_PATH/backend/.env"
