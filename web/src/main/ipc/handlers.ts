@@ -50,7 +50,8 @@ export function registerIpcHandlers(): void {
       const configPath = join(homedir(), '.orca', 'config.json');
       const config = JSON.parse(readFileSync(configPath, 'utf-8'));
       return (config.authToken as string) ?? null;
-    } catch {
+    } catch (err) {
+      console.warn('Failed to read auth token:', err);
       return null;
     }
   });
