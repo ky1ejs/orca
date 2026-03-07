@@ -26,6 +26,7 @@ Thumbs.db
 
 # Build
 *.tsbuildinfo
+dist-electron/
 
 # Worktree registry
 .worktree-registry.json
