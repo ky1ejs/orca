@@ -10,8 +10,10 @@ import { taskResolvers } from './task.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Read the SDL from the shared package
-const typeDefs = readFileSync(resolve(__dirname, '../../../shared/src/schema.graphql'), 'utf-8');
+// Read the SDL — use SCHEMA_PATH env var (Docker) or default to the shared package location (local dev)
+const schemaPath =
+  process.env.SCHEMA_PATH || resolve(__dirname, '../../../shared/src/schema.graphql');
+const typeDefs = readFileSync(schemaPath, 'utf-8');
 
 // Merge resolvers
 const resolvers: Resolvers = {

@@ -57,10 +57,11 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 
 ## Deployment
 
-- **Backend**: Deployed to Fly.io (`orca-backend.fly.dev`)
+- **Backend**: Deployed to Fly.io (`orca-api.fly.dev`) from `backend/`
 - **Database**: Neon Postgres in production, Docker Compose locally
 - **CI/CD**: Push to `main` with backend/shared changes auto-deploys via `.github/workflows/deploy-backend.yml`
-- **Prod build**: `VITE_BACKEND_URL=https://orca-backend.fly.dev bun run build:mac` in `web/`
+- **Manual deploy**: `cp ../shared/src/schema.graphql schema.graphql && fly deploy` from `backend/`
+- **Prod build**: `VITE_BACKEND_URL=https://orca-api.fly.dev bun run build:mac` in `web/`
 - Migrations: Run `bunx prisma migrate deploy` manually against Neon before deploying schema changes
 
 ## UI Validation in Browser
