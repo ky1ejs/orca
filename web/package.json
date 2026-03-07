@@ -5,10 +5,11 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "node scripts/rebuild-sqlite.mjs && electron-vite dev",
-    "build": "node scripts/rebuild-sqlite.mjs && electron-vite build",
+    "setup": "node scripts/rebuild-sqlite.mjs",
+    "dev": "bun run setup && electron-vite dev",
+    "build": "bun run setup && electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "npm rebuild better-sqlite3 && vitest run",
+    "test": "bun run setup && ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run",
     "validate": "bun run typecheck && bun run test && bun run build"
   },
   "dependencies": {
