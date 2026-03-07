@@ -1,7 +1,4 @@
 import { ipcMain } from 'electron';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { IPC_CHANNELS } from './channels.js';
 import {
   getSessions,
@@ -12,14 +9,25 @@ import {
   type UpdateSessionInput,
 } from '../db/sessions.js';
 import { PtyManager } from '../pty/manager.js';
+import { StatusManager } from '../pty/status.js';
+import { readAuthToken } from '../pty/auth.js';
 
 let ptyManager: PtyManager | null = null;
+let statusManager: StatusManager | null = null;
 
 export function getPtyManager(): PtyManager {
   if (!ptyManager) {
     ptyManager = new PtyManager();
   }
   return ptyManager;
+}
+
+function getStatusManager(): StatusManager {
+  if (!statusManager) {
+    const backendPort = parseInt(process.env.BACKEND_PORT ?? '4000', 10);
+    statusManager = new StatusManager(getPtyManager(), backendPort);
+  }
+  return statusManager;
 }
 
 export function registerIpcHandlers(): void {
@@ -46,14 +54,7 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(IPC_CHANNELS.DB_GET_AUTH_TOKEN, () => {
-    try {
-      const configPath = join(homedir(), '.orca', 'config.json');
-      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-      return (config.authToken as string) ?? null;
-    } catch (err) {
-      console.warn('Failed to read auth token:', err);
-      return null;
-    }
+    return readAuthToken();
   });
 
   // PTY handlers
@@ -81,5 +82,36 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.PTY_REPLAY, (_event, sessionId: string) => {
     return manager.replay(sessionId);
+  });
+
+  // Agent handlers
+  const sm = getStatusManager();
+
+  ipcMain.handle(
+    IPC_CHANNELS.AGENT_LAUNCH,
+    (_event, taskId: string, workingDirectory: string, initialContext?: string) => {
+      return sm.launch(taskId, workingDirectory, initialContext);
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.AGENT_STOP, (_event, sessionId: string) => {
+    sm.stop(sessionId);
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.AGENT_RESTART,
+    (
+      _event,
+      taskId: string,
+      sessionId: string,
+      workingDirectory: string,
+      initialContext?: string,
+    ) => {
+      return sm.restart(taskId, sessionId, workingDirectory, initialContext);
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.AGENT_STATUS, (_event, sessionId: string) => {
+    return sm.getStatus(sessionId);
   });
 }
