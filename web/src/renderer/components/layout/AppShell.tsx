@@ -41,6 +41,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
 
   // Auto-select most recent active session when navigating to a task
   useEffect(() => {
@@ -54,6 +55,14 @@ export function AppShell({ onLogout }: AppShellProps) {
       setActiveSessionId(null);
     }
   }, [taskId, sessions.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for auto-update readiness
+  useEffect(() => {
+    if (!window.orca?.updates) return;
+    return window.orca.updates.onUpdateReady((version) => {
+      setUpdateVersion(version);
+    });
+  }, []);
 
   const handleCloseSession = useCallback(
     async (sessionId: string) => {
@@ -195,6 +204,17 @@ export function AppShell({ onLogout }: AppShellProps) {
         onLogout={onLogout}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
+        {updateVersion && (
+          <div className="bg-blue-600 text-white px-4 py-2 text-sm flex items-center justify-between shrink-0">
+            <span>Orca v{updateVersion} is ready to install.</span>
+            <button
+              onClick={() => window.orca.updates.install()}
+              className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-xs font-medium transition-colors"
+            >
+              Restart &amp; Update
+            </button>
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto">
           <MainContent />
         </main>

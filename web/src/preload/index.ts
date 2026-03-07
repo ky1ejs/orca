@@ -55,6 +55,10 @@ export interface OrcaAPI {
     onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
     onInterruptedSessions: (cb: (count: number) => void) => () => void;
   };
+  updates: {
+    onUpdateReady: (cb: (version: string) => void) => () => void;
+    install: () => Promise<void>;
+  };
 }
 
 const api: OrcaAPI = {
@@ -117,6 +121,16 @@ const api: OrcaAPI = {
         ipcRenderer.removeListener('startup:interrupted-sessions', listener);
       };
     },
+  },
+  updates: {
+    onUpdateReady: (cb) => {
+      const listener = (_event: unknown, version: string) => cb(version);
+      ipcRenderer.on('update:ready', listener);
+      return () => {
+        ipcRenderer.removeListener('update:ready', listener);
+      };
+    },
+    install: () => ipcRenderer.invoke('update:install'),
   },
 };
 
