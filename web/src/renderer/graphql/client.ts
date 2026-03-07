@@ -4,7 +4,7 @@ import { createClient as createSSEClient } from 'graphql-sse';
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   `http://localhost:${import.meta.env.VITE_BACKEND_PORT || '4000'}`;
-const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
+export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 
 let cachedToken: string | null = null;
 let onAuthError: (() => void) | null = null;
@@ -25,6 +25,13 @@ async function getToken(): Promise<string | null> {
 
 export function clearCachedToken() {
   cachedToken = null;
+}
+
+export async function storeAuthToken(token: string) {
+  clearCachedToken();
+  if (window.orca) {
+    await window.orca.auth.storeToken(token);
+  }
 }
 
 function authHeaders(token: string | null): Record<string, string> {

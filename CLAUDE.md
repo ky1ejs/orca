@@ -47,8 +47,9 @@ No workspaces — each package manages its own dependencies with `bun install`.
 ## Auth
 
 - **JWT-based auth** with per-user email/password accounts
-- Users created via `bun run seed` in `backend/` (no self-service registration)
+- Users can self-register via invite code, or be created via `bun run seed` in `backend/`
 - `JWT_SECRET` env var required in `backend/.env` for all environments
+- `INVITE_CODE` env var required in `backend/.env` to enable user registration
 - Local dev: `bun run seed:dev` creates a default dev user (`dev@orca.local` / `dev-password`)
 - Electron stores JWT via `safeStorage`; browser dev uses `VITE_AUTH_TOKEN` env var
 - JWT expires after 30 days — user must re-login

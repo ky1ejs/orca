@@ -3,9 +3,10 @@ import { GraphQLProvider } from './graphql/provider.js';
 import { NavigationProvider } from './navigation/context.js';
 import { AppShell } from './components/layout/AppShell.js';
 import { LoginScreen } from './components/auth/LoginScreen.js';
+import { RegisterScreen } from './components/auth/RegisterScreen.js';
 import { setOnAuthError, clearCachedToken } from './graphql/client.js';
 
-type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired';
+type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired' | 'registering';
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('loading');
@@ -58,8 +59,20 @@ function App() {
     );
   }
 
+  if (authState === 'registering') {
+    return (
+      <RegisterScreen onRegister={handleLogin} onBack={() => setAuthState('unauthenticated')} />
+    );
+  }
+
   if (authState === 'unauthenticated' || authState === 'expired') {
-    return <LoginScreen onLogin={handleLogin} sessionExpired={authState === 'expired'} />;
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onRegister={authState === 'unauthenticated' ? () => setAuthState('registering') : undefined}
+        sessionExpired={authState === 'expired'}
+      />
+    );
   }
 
   return (
