@@ -8,6 +8,7 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { TaskList } from '../tasks/TaskList.js';
+import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -30,12 +31,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     refetch({ requestPolicy: 'network-only' });
   });
 
-  if (fetching) {
-    return (
-      <div className="p-6 text-gray-400">
-        <p>Loading project...</p>
-      </div>
-    );
+  if (fetching && !data) {
+    return <ProjectDetailSkeleton />;
   }
 
   if (error) {

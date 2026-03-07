@@ -6,9 +6,15 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { TaskStatusBadge } from '../tasks/TaskStatusBadge.js';
+import { SidebarSkeleton } from './Skeleton.js';
 
-export function Sidebar() {
-  const { data, refetch } = useProjects();
+interface SidebarProps {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
+  const { data, fetching, refetch } = useProjects();
   const { navigate, current } = useNavigation();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -34,18 +40,67 @@ export function Sidebar() {
 
   const projects = data?.projects ?? [];
 
+  if (collapsed) {
+    return (
+      <aside
+        className="w-12 bg-gray-900 border-r border-gray-800 flex flex-col items-center"
+        data-testid="sidebar-collapsed"
+      >
+        <div className="py-4">
+          <button
+            onClick={onToggleCollapse}
+            className="text-gray-400 hover:text-white transition-colors p-1"
+            aria-label="Expand sidebar"
+            data-testid="sidebar-expand-btn"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
-      <div className="p-4 border-b border-gray-800">
+    <aside
+      className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col"
+      data-testid="sidebar"
+    >
+      <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <button
           onClick={() => navigate({ view: 'projects' })}
           className="text-lg font-semibold text-white hover:text-blue-400 transition-colors"
         >
           Orca
         </button>
+        <button
+          onClick={onToggleCollapse}
+          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+          aria-label="Collapse sidebar"
+          data-testid="sidebar-collapse-btn"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
       <nav className="flex-1 p-2 overflow-y-auto">
-        {projects.length === 0 ? (
+        {fetching && projects.length === 0 ? (
+          <SidebarSkeleton />
+        ) : projects.length === 0 ? (
           <div className="px-3 py-2 text-sm text-gray-500">No projects yet</div>
         ) : (
           <ul className="space-y-0.5">

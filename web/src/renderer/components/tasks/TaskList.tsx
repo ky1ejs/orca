@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { useCreateTask } from '../../hooks/useGraphQL.js';
+import { EmptyTaskList } from '../layout/EmptyState.js';
 import type { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 interface TaskSummary {
@@ -74,9 +75,9 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
         </div>
       )}
 
-      {tasks.length === 0 ? (
-        <p className="text-gray-500 text-sm">No tasks yet. Create one to get started.</p>
-      ) : (
+      {tasks.length === 0 && !showCreate ? (
+        <EmptyTaskList onCreateTask={() => setShowCreate(true)} />
+      ) : tasks.length === 0 ? null : (
         <div className="space-y-2">
           {tasks.map((task) => (
             <button

@@ -91,16 +91,16 @@ describe('App smoke test', () => {
     // Should show connecting state first
     expect(screen.getByText('Connecting...')).toBeInTheDocument();
 
-    // Should eventually render the Projects heading from real backend data
+    // Should eventually render the onboarding flow (fresh backend has no projects)
     await waitFor(
       () => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Projects');
+        expect(screen.getByTestId('onboarding-flow')).toBeInTheDocument();
       },
       { timeout: 10000 },
     );
 
-    // Should show empty state (fresh backend has no projects)
-    expect(screen.getByText('No projects yet. Create one to get started.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New Project' })).toBeInTheDocument();
+    // Should show the welcome step of onboarding
+    expect(screen.getByText('Welcome to Orca')).toBeInTheDocument();
+    expect(screen.getByTestId('onboarding-get-started')).toBeInTheDocument();
   }, 20000);
 });
