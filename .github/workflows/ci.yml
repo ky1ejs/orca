@@ -7,49 +7,72 @@ on:
     branches: [main]
 
 jobs:
-  validate:
+  checks:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-
+    outputs:
+      web-changed: ${{ steps.diff.outputs.web || github.event_name == 'push' }}
+      backend-changed: ${{ steps.diff.outputs.backend || github.event_name == 'push' }}
+      schema-changed: ${{ steps.diff.outputs.schema || github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Check diff paths
+        if: github.event_name == 'pull_request'
+        id: diff
+        uses: ky1ejs/check-diff-paths-action@v0.3.0
         with:
-          bun-version: latest
+          paths: '{"web": "^web/|^shared/", "backend": "^backend/|^shared/", "schema": "^shared/src/schema\\.graphql$"}'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: bun install
-      - run: cd shared && bun install
-      - run: cd backend && bun install
-      - run: cd web && bun install
+  validate-shared:
+    needs: checks
+    if: needs.checks.outputs.web-changed == 'true' || needs.checks.outputs.backend-changed == 'true'
+    uses: ./.github/workflows/validate-shared.yml
 
-      - run: bunx graphql-codegen
-        working-directory: web
+  validate-web:
+    needs: checks
+    if: needs.checks.outputs.web-changed == 'true'
+    uses: ./.github/workflows/validate-web.yml
 
-      - run: bunx graphql-codegen
-        working-directory: backend
+  validate-backend:
+    needs: checks
+    if: needs.checks.outputs.backend-changed == 'true'
+    uses: ./.github/workflows/validate-backend.yml
 
-      - run: bunx prisma generate
-        working-directory: backend
+  labels:
+    needs: checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add web label
+        if: needs.checks.outputs.web-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "web"
 
-      - run: bunx prisma migrate deploy
-        working-directory: backend
+      - name: Add backend label
+        if: needs.checks.outputs.backend-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "backend"
 
-      - run: bun run validate
+      - name: Add graphql-schema label
+        if: needs.checks.outputs.schema-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-label "graphql-schema"
+
+  status:
+    needs: [checks, validate-shared, validate-web, validate-backend, labels]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ needs.checks.result }}" == "failure" || "${{ needs.validate-shared.result }}" == "failure" || "${{ needs.validate-web.result }}" == "failure" || "${{ needs.validate-backend.result }}" == "failure" || "${{ needs.labels.result }}" == "failure" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All jobs passed (or were skipped)"

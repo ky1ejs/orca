@@ -8,14 +8,22 @@
     "./*": "./src/*"
   },
   "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "validate": "bun run typecheck && bun run test"
+    "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
   },
   "dependencies": {
     "graphql": "^16.10.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
   }

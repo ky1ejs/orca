@@ -1,8 +1,0 @@
-node_modules
-dist
-out
-.vite
-*.db
-bun.lock
-pnpm-lock.yaml
-**/generated/**

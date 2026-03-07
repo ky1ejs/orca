@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "codegen": "graphql-codegen --config codegen.ts",
-    "validate": "bun run typecheck && bun run test"
+    "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
   },
   "dependencies": {
     "@orca/shared": "file:../shared",
@@ -20,6 +24,10 @@
     "graphql-yoga": "^5.10.6"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
     "@graphql-codegen/cli": "^6.1.3",
     "@graphql-codegen/typescript": "^5.0.9",
     "@graphql-codegen/typescript-resolvers": "^5.1.7",

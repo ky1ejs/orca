@@ -30,9 +30,9 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 
 ## Code Style
 
-- **ESLint** — flat config (`eslint.config.js`), TypeScript + React rules
-- **Prettier** — single quotes, trailing commas, semicolons, 100 char width
-- Run `bun run validate` before pushing (lint + format:check + typecheck + test)
+- **ESLint** — flat config (`eslint.config.js`) per package, TypeScript + React rules (web only)
+- **Prettier** — single quotes, trailing commas, semicolons, 100 char width (`.prettierrc` per package)
+- Run `bun run validate` in each package before pushing (lint + format:check + typecheck + test)
 
 ## Testing
 
@@ -84,10 +84,12 @@ These features require Electron's main process and cannot run in a plain browser
 
 ## Commands
 
-- `bun run dev` — start backend + web concurrently
+All commands are run within each package directory (`shared/`, `backend/`, `web/`):
+
+- `bun run dev` — start the service (backend or web)
 - `bun run lint` / `bun run lint:fix` — ESLint
 - `bun run format` / `bun run format:check` — Prettier
-- `bun run typecheck` — TypeScript check across all packages
-- `bun run test` — Vitest across all packages
+- `bun run typecheck` — TypeScript check
+- `bun run test` — Vitest
 - `bun run validate` — all checks (lint + format:check + typecheck + test)
 - `docker compose up -d` / `docker compose down` — Postgres

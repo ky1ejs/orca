@@ -1,0 +1,64 @@
+name: Validate Backend
+
+on:
+  workflow_call:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+        working-directory: shared
+
+      - run: bun install
+        working-directory: backend
+
+      - run: bunx graphql-codegen
+        working-directory: backend
+
+      - run: bunx prisma generate
+        working-directory: backend
+
+      - run: bunx prisma migrate deploy
+        working-directory: backend
+
+      - name: Lint
+        run: bun run lint
+        working-directory: backend
+
+      - name: Format check
+        run: bun run format:check
+        working-directory: backend
+
+      - name: Typecheck
+        run: bun run typecheck
+        working-directory: backend
+
+      - name: Test
+        run: bun run test
+        working-directory: backend
