@@ -14,6 +14,10 @@ vi.mock('electron', () => ({
   },
 }));
 
+vi.mock('./claude.js', () => ({
+  findClaudePath: () => '/bin/echo',
+}));
+
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 vi.stubGlobal('fetch', mockFetch);
 
@@ -83,7 +87,6 @@ describe('StatusManager', () => {
     const result = await statusManager.launch('task-1', '/tmp');
     expect(result.success).toBe(true);
     if (result.success) {
-      // Should not throw
       statusManager.stop(result.sessionId);
 
       // Wait for exit to propagate
