@@ -11,6 +11,7 @@ import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
+import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -46,12 +47,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     refetch({ requestPolicy: 'network-only' });
   });
 
-  if (fetching) {
-    return (
-      <div className="p-6 text-gray-400">
-        <p>Loading task...</p>
-      </div>
-    );
+  if (fetching && !data) {
+    return <TaskDetailSkeleton />;
   }
 
   if (error) {

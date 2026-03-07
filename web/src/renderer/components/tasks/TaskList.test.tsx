@@ -49,7 +49,7 @@ describe('TaskList', () => {
       </Provider>,
     );
 
-    expect(screen.getByText('No tasks yet. Create one to get started.')).toBeInTheDocument();
+    expect(screen.getByText('No tasks yet')).toBeInTheDocument();
   });
 
   it('renders New Task button', () => {

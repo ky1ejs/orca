@@ -52,7 +52,7 @@ describe('ProjectList', () => {
 
     renderWithProviders(client);
 
-    expect(screen.getByText('No projects yet. Create one to get started.')).toBeInTheDocument();
+    expect(screen.getByText('No projects yet')).toBeInTheDocument();
   });
 
   it('renders heading', () => {

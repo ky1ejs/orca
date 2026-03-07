@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useProjects, useCreateProject, useProjectSubscription } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { ProjectListSkeleton } from '../layout/Skeleton.js';
+import { EmptyProjectList } from '../layout/EmptyState.js';
 
 export function ProjectList() {
   const { data, fetching, error, refetch } = useProjects();
@@ -23,12 +25,8 @@ export function ProjectList() {
     refetch({ requestPolicy: 'network-only' });
   };
 
-  if (fetching) {
-    return (
-      <div className="p-6 text-gray-400">
-        <p>Loading projects...</p>
-      </div>
-    );
+  if (fetching && !data) {
+    return <ProjectListSkeleton />;
   }
 
   if (error) {
@@ -82,9 +80,9 @@ export function ProjectList() {
         </div>
       )}
 
-      {projects.length === 0 ? (
-        <p className="text-gray-500 text-sm">No projects yet. Create one to get started.</p>
-      ) : (
+      {projects.length === 0 && !showCreate ? (
+        <EmptyProjectList onCreateProject={() => setShowCreate(true)} />
+      ) : projects.length === 0 ? null : (
         <div className="space-y-2">
           {projects.map((project) => (
             <button
@@ -96,6 +94,9 @@ export function ProjectList() {
               {project.description && (
                 <p className="text-gray-400 text-sm mt-1 line-clamp-2">{project.description}</p>
               )}
+              <p className="text-gray-600 text-xs mt-2">
+                {project.tasks.length} {project.tasks.length === 1 ? 'task' : 'tasks'}
+              </p>
             </button>
           ))}
         </div>
