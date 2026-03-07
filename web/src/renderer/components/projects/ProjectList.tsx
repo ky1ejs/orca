@@ -5,16 +5,14 @@ import { ProjectListSkeleton } from '../layout/Skeleton.js';
 import { EmptyProjectList } from '../layout/EmptyState.js';
 
 export function ProjectList() {
-  const { data, fetching, error, refetch } = useProjects();
+  const { data, fetching, error } = useProjects();
   const { createProject } = useCreateProject();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  useProjectSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
+  useProjectSubscription();
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -22,7 +20,6 @@ export function ProjectList() {
     setName('');
     setDescription('');
     setShowCreate(false);
-    refetch({ requestPolicy: 'network-only' });
   };
 
   if (fetching && !data) {

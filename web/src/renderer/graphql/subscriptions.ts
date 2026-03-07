@@ -4,6 +4,11 @@ export const ProjectChangedDocument = /* GraphQL */ `
       id
       name
       description
+      tasks {
+        id
+        title
+        status
+      }
       createdAt
       updatedAt
     }

@@ -3,7 +3,6 @@ import { useCallback } from 'react';
 import {
   ProjectsDocument,
   ProjectDocument,
-  TasksDocument,
   TaskDocument,
   CreateProjectDocument,
   UpdateProjectDocument,
@@ -33,15 +32,6 @@ export function useProject(id: string) {
     query: ProjectDocument,
     variables: { id },
     pause: !id,
-  });
-  return { ...result, refetch: reexecute };
-}
-
-export function useTasks(projectId: string) {
-  const [result, reexecute] = useQuery({
-    query: TasksDocument,
-    variables: { projectId },
-    pause: !projectId,
   });
   return { ...result, refetch: reexecute };
 }
@@ -105,18 +95,12 @@ export function useDeleteTask() {
   return { ...result, deleteTask };
 }
 
-// Subscription hooks that trigger refetches
+// Subscription hooks — Graphcache handles cache updates automatically
 
-export function useProjectSubscription(onData?: () => void) {
-  useSubscription({ query: ProjectChangedDocument }, (_prev, data) => {
-    onData?.();
-    return data;
-  });
+export function useProjectSubscription() {
+  useSubscription({ query: ProjectChangedDocument });
 }
 
-export function useTaskSubscription(onData?: () => void) {
-  useSubscription({ query: TaskChangedDocument }, (_prev, data) => {
-    onData?.();
-    return data;
-  });
+export function useTaskSubscription() {
+  useSubscription({ query: TaskChangedDocument });
 }

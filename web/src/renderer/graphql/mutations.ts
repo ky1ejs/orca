@@ -4,6 +4,11 @@ export const CreateProjectDocument = /* GraphQL */ `
       id
       name
       description
+      tasks {
+        id
+        title
+        status
+      }
       createdAt
       updatedAt
     }
@@ -36,6 +41,10 @@ export const CreateTaskDocument = /* GraphQL */ `
       description
       status
       projectId
+      project {
+        id
+        name
+      }
       workingDirectory
       createdAt
       updatedAt

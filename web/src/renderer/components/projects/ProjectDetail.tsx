@@ -15,7 +15,7 @@ interface ProjectDetailProps {
 }
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
-  const { data, fetching, error, refetch } = useProject(projectId);
+  const { data, fetching, error } = useProject(projectId);
   const { updateProject } = useUpdateProject();
   const { deleteProject } = useDeleteProject();
   const { navigate, goBack } = useNavigation();
@@ -23,13 +23,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  useProjectSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
-
-  useTaskSubscription(() => {
-    refetch({ requestPolicy: 'network-only' });
-  });
+  useProjectSubscription();
+  useTaskSubscription();
 
   if (fetching && !data) {
     return <ProjectDetailSkeleton />;
@@ -65,7 +60,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       description: description.trim() || undefined,
     });
     setEditing(false);
-    refetch({ requestPolicy: 'network-only' });
   };
 
   const handleDelete = async () => {
