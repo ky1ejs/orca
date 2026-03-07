@@ -14,12 +14,11 @@ export function runMigrations(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS terminal_output_buffer (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      chunk TEXT NOT NULL,
+      session_id TEXT NOT NULL REFERENCES terminal_session(id) ON DELETE CASCADE,
+      chunk BLOB NOT NULL,
       sequence INTEGER NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (session_id) REFERENCES terminal_session(id) ON DELETE CASCADE
+      PRIMARY KEY (session_id, sequence)
     );
 
     CREATE TABLE IF NOT EXISTS auth_token (

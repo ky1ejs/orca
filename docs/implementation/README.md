@@ -4,8 +4,8 @@
 
 | Wave | Description                          | Status      | Agents |
 | ---- | ------------------------------------ | ----------- | ------ |
-| 0    | Foundation (interactive)             | Not Started | -      |
-| 1    | Schema + Data Layer / Electron Shell | Not Started | 1A, 1B |
+| 0    | Foundation (interactive)             | Complete    | -      |
+| 1    | Schema + Data Layer / Electron Shell | Complete    | 1A, 1B |
 | 2    | Navigation UI / PTY Engine           | Not Started | 2A, 2B |
 | 3    | Terminal UI / Agent Launch           | Not Started | 3A, 3B |
 | 4    | Polish / Hardening                   | Not Started | 4A, 4B |

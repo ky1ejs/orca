@@ -1,7 +1,8 @@
 import { createYoga, createPubSub } from 'graphql-yoga';
+import { GraphQLError } from 'graphql';
 import { schema } from './schema/index.js';
 import { prisma } from './db/client.js';
-import { getOrCreateToken } from './auth/token.js';
+import { getOrCreateToken, validateToken } from './auth/token.js';
 import type { ServerContext } from './context.js';
 
 const pubsub = createPubSub();
@@ -11,10 +12,21 @@ console.log(`Auth token: ${authToken}`);
 
 const yoga = createYoga({
   schema,
-  context: (): ServerContext => ({
-    prisma,
-    pubsub,
-  }),
+  context: ({ request }): ServerContext => {
+    const header = request.headers.get('authorization');
+    if (!header) {
+      throw new GraphQLError('Missing Authorization header', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+    const token = header.replace('Bearer ', '');
+    if (!validateToken(token, authToken)) {
+      throw new GraphQLError('Invalid auth token', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+    return { prisma, pubsub, authToken };
+  },
   graphqlEndpoint: '/graphql',
 });
 
@@ -28,4 +40,4 @@ const server = Bun.serve({
 
 console.log(`Orca server running at http://127.0.0.1:${server.port}/graphql`);
 
-export { server };
+export { server, authToken };

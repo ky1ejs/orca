@@ -56,7 +56,7 @@ describe('task resolvers', () => {
 
       const result = await taskResolvers.Mutation.createTask(
         null,
-        { input: { title: 'New Task', projectId: 'p1' } },
+        { input: { title: 'New Task', projectId: 'p1', workingDirectory: '/tmp/test' } },
         ctx as never,
       );
       expect(result).toEqual(task);
@@ -66,6 +66,7 @@ describe('task resolvers', () => {
           description: undefined,
           status: 'TODO',
           projectId: 'p1',
+          workingDirectory: '/tmp/test',
         },
       });
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('taskChanged', task);
@@ -78,7 +79,14 @@ describe('task resolvers', () => {
 
       const result = await taskResolvers.Mutation.createTask(
         null,
-        { input: { title: 'New Task', status: 'IN_PROGRESS', projectId: 'p1' } },
+        {
+          input: {
+            title: 'New Task',
+            status: 'IN_PROGRESS',
+            projectId: 'p1',
+            workingDirectory: '/tmp/test',
+          },
+        },
         ctx as never,
       );
       expect(result).toEqual(task);
@@ -88,6 +96,7 @@ describe('task resolvers', () => {
           description: undefined,
           status: 'IN_PROGRESS',
           projectId: 'p1',
+          workingDirectory: '/tmp/test',
         },
       });
     });

@@ -86,7 +86,7 @@ Do NOT touch any files in `web/`.
 
 - [x] **GraphQL SDL** (`shared/src/schema.graphql`):
   - [x] `Project` type (id, name, description, createdAt, updatedAt)
-  - [x] `Task` type (id, title, description, status, projectId, createdAt, updatedAt)
+  - [x] `Task` type (id, title, description, status, projectId, workingDirectory, createdAt, updatedAt)
   - [x] `TaskStatus` enum (TODO, IN_PROGRESS, IN_REVIEW, DONE)
   - [x] Queries: `projects`, `project(id)`, `tasks(projectId)`, `task(id)`
   - [x] Mutations: `createProject`, `updateProject`, `deleteProject`, `createTask`, `updateTask`, `deleteTask`
@@ -99,7 +99,7 @@ Do NOT touch any files in `web/`.
   - [x] `Project` model matching GraphQL type
   - [x] `Task` model matching GraphQL type
   - [x] `TaskStatus` enum
-  - [ ] Initial migration generated and applied (deferred — requires running Postgres)
+  - [x] Initial migration generated and applied
 - [x] **graphql-yoga server** (`backend/src/index.ts`):
   - [x] HTTP server on port 4000
   - [x] Binds to `127.0.0.1` in development
@@ -112,23 +112,23 @@ Do NOT touch any files in `web/`.
 - [x] **Auth** (`backend/src/auth/token.ts`):
   - [x] Generate token on first run
   - [x] Persist token to `~/.orca/config.json`
-  - [ ] Middleware validates `Authorization: Bearer <token>` header (token module ready, middleware enforcement deferred)
+  - [x] Context validates `Authorization: Bearer <token>` header (throws GraphQLError)
   - [ ] WebSocket auth via connection params (not applicable — using SSE subscriptions)
 - [x] **Prisma client** (`backend/src/db/client.ts`)
 
 ### Tests
 
 - [x] Unit tests for each resolver (mocked Prisma client) — 13 tests
-- [ ] Integration test: start server, run query, verify response (deferred — requires Postgres)
+- [x] Integration test: start server, run query, verify response — 2 tests
 - [x] Auth tests: token validation (matching, non-matching, empty) — 3 tests
-- [ ] Auth tests: requests without token are rejected (deferred — middleware not enforced yet)
+- [x] Auth tests: requests without token are rejected
+- [x] Auth tests: requests with invalid token are rejected
+- [x] Auth tests: requests with valid token succeed
 
 ### Deviations from Spec
 
-- **Task.workingDirectory omitted**: Not included in GraphQL/Prisma schemas. This field is better suited for the client-side terminal session (already tracked in SQLite). Can be added later if needed on the server side.
 - **Prisma IDs use `cuid()` instead of `uuid()`**: `cuid()` is Prisma's recommended default — shorter, URL-safe, and monotonically sortable.
 - **SSE instead of WebSocket subscriptions**: graphql-yoga v5 uses Server-Sent Events for subscriptions by default, which is simpler and doesn't require a separate WebSocket server.
-- **Auth middleware not enforced**: Token generation and validation functions are implemented, but the middleware is not yet wired in. This allows open development access and will be enforced when the client connects.
 - **Server uses `Bun.serve()` instead of `node:http`**: Since the backend runs on Bun, using `Bun.serve()` with graphql-yoga's fetch API is more idiomatic and performant.
 - **Cascade delete on Task→Project**: Added `onDelete: Cascade` to the Task→Project relation so deleting a project cleans up its tasks.
 
@@ -246,7 +246,6 @@ Do NOT touch any files in `shared/` or `backend/`.
 
 - **Tailwind v4 with `@tailwindcss/vite`**: No `tailwind.config.js` or `postcss.config.js` needed. Tailwind v4 uses the Vite plugin directly with `@import 'tailwindcss'` in CSS.
 - **Session default status is `STARTING`**: Changed from `IDLE` to `STARTING` as the more common initial state when creating a session.
-- **terminal_output_buffer uses TEXT for chunk**: Using `TEXT` instead of `BLOB` and an auto-increment `id` PK instead of composite `(session_id, sequence)` PK. The schema can be refined when the PTY layer is built.
 - **No electron-rebuild**: electron-vite's `externalizeDepsPlugin()` handles native module externalization, making a separate rebuild step unnecessary.
 
 ### Validation

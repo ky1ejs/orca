@@ -26,6 +26,7 @@ export type CreateTaskInput = {
   projectId: Scalars['ID']['input'];
   status?: InputMaybe<TaskStatus>;
   title: Scalars['String']['input'];
+  workingDirectory: Scalars['String']['input'];
 };
 
 export type Mutation = {
@@ -119,6 +120,7 @@ export type Task = {
   status: TaskStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
+  workingDirectory: Scalars['String']['output'];
 };
 
 export enum TaskStatus {
@@ -137,6 +139,7 @@ export type UpdateTaskInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<TaskStatus>;
   title?: InputMaybe<Scalars['String']['input']>;
+  workingDirectory?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -281,6 +284,7 @@ export type TaskResolvers<ContextType = any, ParentType extends ResolversParentT
   status?: Resolver<ResolversTypes['TaskStatus'], ParentType, ContextType>;
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  workingDirectory?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 

@@ -8,4 +8,5 @@ export interface PubSubLike {
 export interface ServerContext {
   prisma: PrismaClient;
   pubsub: PubSubLike;
+  authToken: string;
 }

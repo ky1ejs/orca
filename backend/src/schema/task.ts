@@ -21,6 +21,7 @@ export const taskResolvers = {
           description?: string | null;
           status?: string | null;
           projectId: string;
+          workingDirectory: string;
         };
       },
       context: ServerContext,
@@ -31,6 +32,7 @@ export const taskResolvers = {
           description: args.input.description,
           status: (args.input.status as 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE') ?? 'TODO',
           projectId: args.input.projectId,
+          workingDirectory: args.input.workingDirectory,
         },
       });
       context.pubsub.publish('taskChanged', task);
@@ -40,7 +42,12 @@ export const taskResolvers = {
       _parent: unknown,
       args: {
         id: string;
-        input: { title?: string | null; description?: string | null; status?: string | null };
+        input: {
+          title?: string | null;
+          description?: string | null;
+          status?: string | null;
+          workingDirectory?: string | null;
+        };
       },
       context: ServerContext,
     ) => {
@@ -48,6 +55,7 @@ export const taskResolvers = {
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
+      if (args.input.workingDirectory != null) data.workingDirectory = args.input.workingDirectory;
       const task = await context.prisma.task.update({
         where: { id: args.id },
         data,

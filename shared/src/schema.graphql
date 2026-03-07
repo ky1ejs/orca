@@ -21,6 +21,7 @@ type Task {
   status: TaskStatus!
   projectId: ID!
   project: Project!
+  workingDirectory: String!
   createdAt: String!
   updatedAt: String!
 }
@@ -40,12 +41,14 @@ input CreateTaskInput {
   description: String
   status: TaskStatus
   projectId: ID!
+  workingDirectory: String!
 }
 
 input UpdateTaskInput {
   title: String
   description: String
   status: TaskStatus
+  workingDirectory: String
 }
 
 type Query {

@@ -8,7 +8,7 @@ import { taskResolvers } from './task.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Read the SDL from the shared package
-const typeDefs = readFileSync(resolve(__dirname, '../../../../shared/src/schema.graphql'), 'utf-8');
+const typeDefs = readFileSync(resolve(__dirname, '../../../shared/src/schema.graphql'), 'utf-8');
 
 // Merge resolvers
 const resolvers = {
