@@ -1,0 +1,32 @@
+import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '../auth/password.js';
+
+const prisma = new PrismaClient();
+
+async function seedDev() {
+  const email = 'dev@orca.local';
+  const name = 'Dev User';
+  const password = 'dev-password';
+
+  const passwordHash = await hashPassword(password);
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { name, passwordHash },
+    create: { email, name, passwordHash },
+  });
+
+  console.log('');
+  console.log('Dev user ready:');
+  console.log(`  Email:    ${user.email}`);
+  console.log(`  Password: ${password}`);
+  console.log(`  ID:       ${user.id}`);
+  console.log('');
+}
+
+seedDev()
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

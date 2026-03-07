@@ -47,9 +47,16 @@ else
   echo "DATABASE_URL=${DATABASE_URL}" >> "$BACKEND_ENV"
 fi
 
+# Ensure JWT_SECRET is set
+if ! grep -q '^JWT_SECRET=' "$BACKEND_ENV" 2>/dev/null; then
+  JWT_SECRET="dev-jwt-secret-$(openssl rand -hex 16)"
+  echo "JWT_SECRET=${JWT_SECRET}" >> "$BACKEND_ENV"
+fi
+
 echo "Generated $BACKEND_ENV"
 echo "  PORT=$PORT"
 echo "  DATABASE_URL=$DATABASE_URL"
+echo "  JWT_SECRET=(set)"
 
 # --- Web .env ---
 WEB_ENV="$WORKTREE_PATH/web/.env"

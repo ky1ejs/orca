@@ -1,28 +1,51 @@
-import { Client, fetchExchange, subscriptionExchange } from 'urql';
+import { Client, fetchExchange, subscriptionExchange, mapExchange } from 'urql';
 import { createClient as createSSEClient } from 'graphql-sse';
 
-const BACKEND_PORT = import.meta.env.VITE_BACKEND_PORT || '4000';
-const GRAPHQL_URL = `http://localhost:${BACKEND_PORT}/graphql`;
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL ||
+  `http://localhost:${import.meta.env.VITE_BACKEND_PORT || '4000'}`;
+const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 
 let cachedToken: string | null = null;
+let onAuthError: (() => void) | null = null;
+
+export function setOnAuthError(cb: () => void) {
+  onAuthError = cb;
+}
 
 async function getToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
-  cachedToken = window.orca
-    ? await window.orca.db.getAuthToken()
-    : (import.meta.env.VITE_AUTH_TOKEN ?? null);
+  if (window.orca) {
+    cachedToken = await window.orca.auth.readToken();
+  } else {
+    cachedToken = import.meta.env.VITE_AUTH_TOKEN ?? null;
+  }
   return cachedToken;
+}
+
+export function clearCachedToken() {
+  cachedToken = null;
 }
 
 function authHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const authErrorExchange = mapExchange({
+  onResult(result) {
+    const errors = result.error?.graphQLErrors;
+    if (errors?.some((e) => e.extensions?.code === 'UNAUTHENTICATED')) {
+      cachedToken = null;
+      onAuthError?.();
+    }
+  },
+});
+
 export async function createGraphQLClient(): Promise<Client> {
   const token = await getToken();
 
   if (!token) {
-    console.warn('No auth token found. Start the backend first to generate ~/.orca/config.json');
+    console.warn('No auth token found — user needs to log in');
   }
 
   const sseClient = createSSEClient({
@@ -36,6 +59,7 @@ export async function createGraphQLClient(): Promise<Client> {
       headers: authHeaders(cachedToken),
     }),
     exchanges: [
+      authErrorExchange,
       fetchExchange,
       subscriptionExchange({
         forwardSubscription(operation) {

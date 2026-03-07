@@ -46,13 +46,30 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 - **graphql-codegen** generates TypeScript types for both backend and web
 - Resolvers in `backend/src/schema/`
 
+## Auth
+
+- **JWT-based auth** with per-user email/password accounts
+- Users created via `bun run seed` in `backend/` (no self-service registration)
+- `JWT_SECRET` env var required in `backend/.env` for all environments
+- Local dev: `bun run seed:dev` creates a default dev user (`dev@orca.local` / `dev-password`)
+- Electron stores JWT via `safeStorage`; browser dev uses `VITE_AUTH_TOKEN` env var
+- JWT expires after 30 days — user must re-login
+
+## Deployment
+
+- **Backend**: Deployed to Fly.io (`orca-backend.fly.dev`)
+- **Database**: Neon Postgres in production, Docker Compose locally
+- **CI/CD**: Push to `main` with backend/shared changes auto-deploys via `.github/workflows/deploy-backend.yml`
+- **Prod build**: `VITE_BACKEND_URL=https://orca-backend.fly.dev bun run build:mac` in `web/`
+- Migrations: Run `bunx prisma migrate deploy` manually against Neon before deploying schema changes
+
 ## UI Validation in Browser
 
 You can visually validate the UI by opening the Vite dev server in Chrome using your `claude-in-chrome` browser tools.
 
 ### Setup
 
-1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (token from `~/.orca/config.json`)
+1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (a valid JWT for browser-based testing)
 2. Start the backend and web: `bun run dev` (from the worktree root, or separately in `backend/` and `web/`)
 3. The Vite dev server runs on `http://localhost:5173`
 
@@ -92,4 +109,6 @@ All commands are run within each package directory (`shared/`, `backend/`, `web/
 - `bun run typecheck` — TypeScript check
 - `bun run test` — Vitest
 - `bun run validate` — all checks (lint + format:check + typecheck + test)
+- `bun run seed --email <email> --name <name> --password <pass>` — create/update a user (backend)
+- `bun run seed:dev` — create default dev user (backend)
 - `docker compose up -d` / `docker compose down` — Postgres

@@ -1,0 +1,38 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-changed: ${{ steps.diff.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for backend/shared changes
+        id: diff
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/|shared/)'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: checks
+    if: needs.checks.outputs.backend-changed == 'true'
+    runs-on: ubuntu-latest
+    concurrency: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - run: flyctl deploy --config backend/fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

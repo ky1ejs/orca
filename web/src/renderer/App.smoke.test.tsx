@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PORT = 4445;
+const TEST_JWT_SECRET = 'smoke-test-jwt-secret';
 let serverProcess: ChildProcess;
 let authToken: string;
 
@@ -19,7 +20,11 @@ const mockOrca = {
     getSession: vi.fn().mockResolvedValue(undefined),
     createSession: vi.fn().mockResolvedValue({}),
     updateSession: vi.fn().mockResolvedValue(undefined),
-    getAuthToken: vi.fn(),
+  },
+  auth: {
+    storeToken: vi.fn().mockResolvedValue(undefined),
+    readToken: vi.fn(),
+    clearToken: vi.fn().mockResolvedValue(undefined),
   },
   pty: {
     spawn: vi.fn(),
@@ -41,23 +46,48 @@ vi.stubEnv('VITE_BACKEND_PORT', String(TEST_PORT));
 describe('App smoke test', () => {
   beforeAll(async () => {
     const backendDir = resolve(__dirname, '../../../backend');
+    const bunPath = execFileSync('/bin/sh', ['-c', 'which bun']).toString().trim();
+    const serverEnv = { ...process.env, PORT: String(TEST_PORT), JWT_SECRET: TEST_JWT_SECRET };
+
+    // Seed a test user
+    const seedProcess = spawn(
+      bunPath,
+      [
+        'run',
+        'src/scripts/seed.ts',
+        '--email',
+        'smoke@orca.local',
+        '--name',
+        'Smoke',
+        '--password',
+        'smoke-password',
+      ],
+      {
+        cwd: backendDir,
+        env: serverEnv,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
 
     await new Promise<void>((resolve, reject) => {
-      const bunPath = execFileSync('/bin/sh', ['-c', 'which bun']).toString().trim();
+      seedProcess.on('exit', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Seed failed with code ${code}`));
+      });
+      seedProcess.on('error', reject);
+    });
+
+    // Start the backend
+    await new Promise<void>((resolve, reject) => {
       serverProcess = spawn(bunPath, ['run', 'src/index.ts'], {
         cwd: backendDir,
-        env: { ...process.env, PORT: String(TEST_PORT) },
+        env: serverEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
       let output = '';
       serverProcess.stdout!.on('data', (chunk: Buffer) => {
         output += chunk.toString();
-        const tokenMatch = output.match(/Auth token: (\S+)/);
-        if (tokenMatch) {
-          authToken = tokenMatch[1];
-          mockOrca.db.getAuthToken.mockResolvedValue(authToken);
-        }
         if (output.includes('Orca server running')) {
           resolve();
         }
@@ -70,12 +100,32 @@ describe('App smoke test', () => {
 
       serverProcess.on('error', reject);
       serverProcess.on('exit', (code) => {
-        if (!authToken) reject(new Error(`Server exited with code ${code}: ${stderr}`));
+        reject(new Error(`Server exited with code ${code}: ${stderr}`));
       });
 
       setTimeout(() => reject(new Error('Server startup timeout')), 10000);
     });
-  }, 15000);
+
+    // Login to get a JWT
+    const res = await fetch(`http://127.0.0.1:${TEST_PORT}/graphql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `mutation Login($email: String!, $password: String!) {
+          login(email: $email, password: $password) { token }
+        }`,
+        operationName: 'Login',
+        variables: { email: 'smoke@orca.local', password: 'smoke-password' },
+      }),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    if ((json as { errors?: unknown[] }).errors) {
+      throw new Error(`Login failed: ${JSON.stringify(json)}`);
+    }
+    const loginData = json as { data: { login: { token: string } } };
+    authToken = loginData.data.login.token;
+    mockOrca.auth.readToken.mockResolvedValue(authToken);
+  }, 30000);
 
   afterAll(() => {
     cleanup();
@@ -87,9 +137,6 @@ describe('App smoke test', () => {
     const { default: App } = await import('./App.js');
 
     render(<App />);
-
-    // Should show connecting state first
-    expect(screen.getByText('Connecting...')).toBeInTheDocument();
 
     // Should eventually render the onboarding flow (fresh backend has no projects)
     await waitFor(

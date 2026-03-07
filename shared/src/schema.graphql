@@ -1,3 +1,14 @@
+type User {
+  id: ID!
+  email: String!
+  name: String!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -52,6 +63,7 @@ input UpdateTaskInput {
 }
 
 type Query {
+  me: User!
   projects: [Project!]!
   project(id: ID!): Project
   tasks(projectId: ID!): [Task!]!
@@ -59,6 +71,7 @@ type Query {
 }
 
 type Mutation {
+  login(email: String!, password: String!): AuthPayload!
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   deleteProject(id: ID!): Boolean!

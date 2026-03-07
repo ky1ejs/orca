@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ServerContext } from '../context.js';
 import type { Resolvers } from '../__generated__/graphql.js';
+import { authResolvers } from './auth.js';
 import { projectResolvers } from './project.js';
 import { taskResolvers } from './task.js';
 
@@ -15,10 +16,12 @@ const typeDefs = readFileSync(resolve(__dirname, '../../../shared/src/schema.gra
 // Merge resolvers
 const resolvers: Resolvers = {
   Query: {
+    ...authResolvers.Query,
     ...projectResolvers.Query,
     ...taskResolvers.Query,
   },
   Mutation: {
+    ...authResolvers.Mutation,
     ...projectResolvers.Mutation,
     ...taskResolvers.Mutation,
   },

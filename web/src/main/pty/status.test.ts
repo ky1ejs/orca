@@ -22,7 +22,9 @@ const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 vi.stubGlobal('fetch', mockFetch);
 
 vi.mock('./auth.js', () => ({
-  readAuthToken: () => 'test-token',
+  readToken: () => 'test-token',
+  storeToken: () => {},
+  clearToken: () => {},
 }));
 
 const { PtyManager } = await import('./manager.js');
@@ -37,7 +39,7 @@ describe('StatusManager', () => {
     testDb.pragma('foreign_keys = ON');
     runMigrations(testDb);
     ptyManager = new PtyManager();
-    statusManager = new StatusManager(ptyManager, 4000);
+    statusManager = new StatusManager(ptyManager, { backendUrl: 'http://localhost:4000' });
     mockFetch.mockClear();
   });
 
