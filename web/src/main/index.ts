@@ -1,5 +1,8 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { initDb, closeDb } from './db/client.js';
+import { sweepStaleSessions } from './db/sessions.js';
+import { registerIpcHandlers } from './ipc/handlers.js';
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -17,9 +20,20 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(() => {
+  // Initialize database
+  initDb();
+  sweepStaleSessions();
+
+  // Register IPC handlers
+  registerIpcHandlers();
+
   createWindow();
 
   app.on('activate', () => {
@@ -33,4 +47,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  closeDb();
 });
