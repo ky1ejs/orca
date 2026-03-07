@@ -10,17 +10,12 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "codegen": "graphql-codegen --config codegen.ts",
     "validate": "bun run typecheck && bun run test"
   },
   "dependencies": {
     "graphql": "^16.10.0"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^5.0.3",
-    "@graphql-codegen/typescript": "^4.1.2",
-    "@graphql-codegen/typescript-resolvers": "^4.4.1",
-    "@prisma/client": "^6.4.1",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
   }
