@@ -1,10 +1,7 @@
+import { AppShell } from './components/layout/AppShell.js';
+
 function App() {
-  return (
-    <div>
-      <h1>Orca</h1>
-      <p>Work management for AI agents</p>
-    </div>
-  );
+  return <AppShell />;
 }
 
 export default App;

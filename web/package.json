@@ -3,23 +3,30 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "setup": "node scripts/rebuild-sqlite.mjs",
+    "dev": "bun run setup && electron-vite dev",
+    "build": "bun run setup && electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "bun run setup && ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run",
+    "validate": "bun run typecheck && bun run test && bun run build"
   },
   "dependencies": {
-    "@orca/shared": "workspace:*",
+    "@orca/shared": "file:../shared",
+    "better-sqlite3": "^11.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^35.1.2",
-    "electron-vite": "^3.0.0",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.1.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
   }

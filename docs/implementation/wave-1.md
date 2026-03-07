@@ -1,6 +1,6 @@
 # Wave 1: Schema + Data Layer || Electron Shell
 
-**Status**: Not Started
+**Status**: Complete
 **Depends on**: Wave 0 complete and merged to `main`
 **Agents**: 2 in parallel (1A and 1B)
 **Merge order**: 1A first, then 1B
@@ -13,7 +13,7 @@ Backend work (`shared/`, `backend/`) has zero file overlap with Electron work (`
 
 ## Agent 1A: GraphQL Schema + Prisma + Backend API
 
-**Status**: Not Started
+**Status**: Complete
 **Branch**: `wave-1/backend-data-layer`
 
 ### Agent Startup
@@ -84,45 +84,53 @@ Do NOT touch any files in `web/`.
 
 ### Deliverables
 
-- [ ] **GraphQL SDL** (`shared/src/schema.graphql`):
-  - [ ] `Project` type (id, name, description, createdAt, updatedAt)
-  - [ ] `Task` type (id, title, description, status, projectId, workingDirectory, createdAt, updatedAt)
-  - [ ] `TaskStatus` enum (TODO, IN_PROGRESS, IN_REVIEW, DONE)
-  - [ ] Queries: `projects`, `project(id)`, `tasks(projectId)`, `task(id)`
-  - [ ] Mutations: `createProject`, `updateProject`, `deleteProject`, `createTask`, `updateTask`, `deleteTask`
-  - [ ] Subscriptions: `projectChanged`, `taskChanged`
-- [ ] **graphql-codegen** (`shared/codegen.ts`):
-  - [ ] Config generating TypeScript types from SDL
-  - [ ] Output to `shared/src/generated/graphql.ts`
-  - [ ] `codegen` script in `shared/package.json`
-- [ ] **Prisma schema** (`backend/prisma/schema.prisma`):
-  - [ ] `Project` model matching GraphQL type
-  - [ ] `Task` model matching GraphQL type
-  - [ ] `TaskStatus` enum
-  - [ ] Initial migration generated and applied
-- [ ] **graphql-yoga server** (`backend/src/index.ts`):
-  - [ ] HTTP server on port 4000
-  - [ ] Binds to `127.0.0.1` in development
-  - [ ] GraphQL endpoint at `/graphql`
-  - [ ] WebSocket server for subscriptions
-- [ ] **Resolvers** (`backend/src/schema/`):
-  - [ ] `project.ts` — all Project queries and mutations
-  - [ ] `task.ts` — all Task queries, mutations, and subscriptions
-  - [ ] `index.ts` — schema assembly
-- [ ] **Auth** (`backend/src/auth/token.ts`):
-  - [ ] Generate token on first run
-  - [ ] Persist token to `~/.orca/config.json`
-  - [ ] Middleware validates `Authorization: Bearer <token>` header
-  - [ ] WebSocket auth via connection params
-- [ ] **Prisma client** (`backend/src/db/client.ts`)
+- [x] **GraphQL SDL** (`shared/src/schema.graphql`):
+  - [x] `Project` type (id, name, description, createdAt, updatedAt)
+  - [x] `Task` type (id, title, description, status, projectId, workingDirectory, createdAt, updatedAt)
+  - [x] `TaskStatus` enum (TODO, IN_PROGRESS, IN_REVIEW, DONE)
+  - [x] Queries: `projects`, `project(id)`, `tasks(projectId)`, `task(id)`
+  - [x] Mutations: `createProject`, `updateProject`, `deleteProject`, `createTask`, `updateTask`, `deleteTask`
+  - [x] Subscriptions: `projectChanged`, `taskChanged`
+- [x] **graphql-codegen** (`shared/codegen.ts`):
+  - [x] Config generating TypeScript types from SDL
+  - [x] Output to `shared/src/generated/graphql.ts`
+  - [x] `codegen` script in `shared/package.json`
+- [x] **Prisma schema** (`backend/prisma/schema.prisma`):
+  - [x] `Project` model matching GraphQL type
+  - [x] `Task` model matching GraphQL type
+  - [x] `TaskStatus` enum
+  - [x] Initial migration generated and applied
+- [x] **graphql-yoga server** (`backend/src/index.ts`):
+  - [x] HTTP server on port 4000
+  - [x] Binds to `127.0.0.1` in development
+  - [x] GraphQL endpoint at `/graphql`
+  - [x] Subscriptions via SSE (graphql-yoga built-in, no separate WebSocket server needed)
+- [x] **Resolvers** (`backend/src/schema/`):
+  - [x] `project.ts` — all Project queries and mutations
+  - [x] `task.ts` — all Task queries, mutations, and subscriptions
+  - [x] `index.ts` — schema assembly
+- [x] **Auth** (`backend/src/auth/token.ts`):
+  - [x] Generate token on first run
+  - [x] Persist token to `~/.orca/config.json`
+  - [x] Context validates `Authorization: Bearer <token>` header (throws GraphQLError)
+  - [ ] WebSocket auth via connection params (not applicable — using SSE subscriptions)
+- [x] **Prisma client** (`backend/src/db/client.ts`)
 
 ### Tests
 
-- [ ] Unit tests for each resolver (mocked Prisma client)
-- [ ] Integration test: start server, run query, verify response
-- [ ] Auth tests: requests without token are rejected
-- [ ] Auth tests: requests with invalid token are rejected
-- [ ] Auth tests: requests with valid token succeed
+- [x] Unit tests for each resolver (mocked Prisma client) — 13 tests
+- [x] Integration test: start server, run query, verify response — 2 tests
+- [x] Auth tests: token validation (matching, non-matching, empty) — 3 tests
+- [x] Auth tests: requests without token are rejected
+- [x] Auth tests: requests with invalid token are rejected
+- [x] Auth tests: requests with valid token succeed
+
+### Deviations from Spec
+
+- **Prisma IDs use `cuid()` instead of `uuid()`**: `cuid()` is Prisma's recommended default — shorter, URL-safe, and monotonically sortable.
+- **SSE instead of WebSocket subscriptions**: graphql-yoga v5 uses Server-Sent Events for subscriptions by default, which is simpler and doesn't require a separate WebSocket server.
+- **Server uses `Bun.serve()` instead of `node:http`**: Since the backend runs on Bun, using `Bun.serve()` with graphql-yoga's fetch API is more idiomatic and performant.
+- **Cascade delete on Task→Project**: Added `onDelete: Cascade` to the Task→Project relation so deleting a project cleans up its tasks.
 
 ### Validation
 
@@ -136,7 +144,7 @@ cd backend && bun run dev            # Server starts on :4000
 
 ## Agent 1B: Electron Shell + Local SQLite + IPC Foundation
 
-**Status**: Not Started
+**Status**: Complete
 **Branch**: `wave-1/electron-shell`
 
 ### Agent Startup
@@ -203,41 +211,49 @@ Do NOT touch any files in `shared/` or `backend/`.
 
 ### Deliverables
 
-- [ ] **electron-vite configuration** (`web/electron.vite.config.ts`):
-  - [ ] Main process config (Node.js target, native module support)
-  - [ ] Renderer process config (React, Tailwind CSS)
-  - [ ] Preload script config
-- [ ] **Electron main process** (`web/src/main/index.ts`):
-  - [ ] BrowserWindow creation (nodeIntegration disabled, contextIsolation enabled)
-  - [ ] Dev tools enabled in development
-  - [ ] App lifecycle handlers (ready, window-all-closed, activate)
-- [ ] **better-sqlite3 setup** (`web/src/main/db/`):
-  - [ ] `client.ts` — SQLite database initialization (app data directory)
-  - [ ] `migrations.ts` — Schema: terminal_session, terminal_output_buffer, auth_token tables
-  - [ ] `sessions.ts` — CRUD operations for terminal sessions
-  - [ ] Startup sweep: detect stale sessions (PIDs that no longer exist), mark terminated
-- [ ] **IPC bridge** (`web/src/main/ipc/handlers.ts` + `web/src/preload/index.ts`):
-  - [ ] Preload script exposes typed API via `contextBridge.exposeInMainWorld`
-  - [ ] Typed IPC channel constants (shared between main and preload)
-  - [ ] Handlers: `db:getSessions`, `db:getSession`, `db:createSession`, `db:updateSession`
-- [ ] **React renderer shell** (`web/src/renderer/`):
-  - [ ] `App.tsx` — Basic layout shell
-  - [ ] `components/layout/AppShell.tsx` — Main layout wrapper (sidebar + content)
-  - [ ] `components/layout/Sidebar.tsx` — Placeholder sidebar (static, no data)
-  - [ ] Tailwind CSS configured and working
-- [ ] **Native module rebuild**: electron-rebuild configured for better-sqlite3
+- [x] **electron-vite configuration** (`web/electron.vite.config.ts`):
+  - [x] Main process config (Node.js target, native module support)
+  - [x] Renderer process config (React, Tailwind CSS)
+  - [x] Preload script config
+- [x] **Electron main process** (`web/src/main/index.ts`):
+  - [x] BrowserWindow creation (nodeIntegration disabled, contextIsolation enabled)
+  - [x] Dev tools enabled in development
+  - [x] App lifecycle handlers (ready, window-all-closed, activate)
+- [x] **better-sqlite3 setup** (`web/src/main/db/`):
+  - [x] `client.ts` — SQLite database initialization (app data directory)
+  - [x] `migrations.ts` — Schema: terminal_session, terminal_output_buffer, auth_token tables
+  - [x] `sessions.ts` — CRUD operations for terminal sessions
+  - [x] Startup sweep: detect stale sessions (PIDs that no longer exist), mark terminated
+- [x] **IPC bridge** (`web/src/main/ipc/handlers.ts` + `web/src/preload/index.ts`):
+  - [x] Preload script exposes typed API via `contextBridge.exposeInMainWorld`
+  - [x] Typed IPC channel constants (shared between main and preload)
+  - [x] Handlers: `db:getSessions`, `db:getSession`, `db:createSession`, `db:updateSession`
+- [x] **React renderer shell** (`web/src/renderer/`):
+  - [x] `App.tsx` — Basic layout shell
+  - [x] `components/layout/AppShell.tsx` — Main layout wrapper (sidebar + content)
+  - [x] `components/layout/Sidebar.tsx` — Placeholder sidebar (static, no data)
+  - [x] Tailwind CSS configured and working
+- [x] **Native module rebuild**: `web/scripts/rebuild-sqlite.mjs` calls `prebuild-install` directly to rebuild better-sqlite3 for Electron's ABI
 
 ### Tests
 
-- [ ] SQLite client: table creation succeeds
-- [ ] SQLite sessions: CRUD operations work
-- [ ] Stale session sweep: dead PIDs detected and marked
-- [ ] IPC type definitions compile
+- [x] SQLite client: table creation succeeds — 2 tests
+- [x] SQLite sessions: CRUD operations work — 4 tests
+- [x] Stale session sweep: dead PIDs detected and marked — 2 tests
+- [x] IPC type definitions compile (verified via typecheck)
+
+### Deviations from Spec
+
+- **Tailwind v4 with `@tailwindcss/vite`**: No `tailwind.config.js` or `postcss.config.js` needed. Tailwind v4 uses the Vite plugin directly with `@import 'tailwindcss'` in CSS.
+- **Session default status is `STARTING`**: Changed from `IDLE` to `STARTING` as the more common initial state when creating a session.
+- **No workspaces**: Each package (`shared/`, `backend/`, `web/`) manages its own dependencies with `bun install`. Shared code linked via `file:../shared`.
+- **Native module ABI handling**: better-sqlite3 is rebuilt for Electron via `web/scripts/rebuild-sqlite.mjs` (calls `prebuild-install` directly — `@electron/rebuild` doesn't work with bun or pnpm symlinks). Tests run under Electron's Node.js via `ELECTRON_RUN_AS_NODE=1` so the Electron-rebuilt binary works in both dev and test.
+- **electron-vite v5**: Upgraded from v3 to v5 for Vite 7 compatibility.
 
 ### Validation
 
 ```bash
-bun run validate                     # Must pass
+bun run validate                     # Must pass (runs from repo root)
 cd web && bun run dev                # Electron app opens with React shell
 # Verify: window opens, dev tools work, SQLite DB created in app data dir
 ```

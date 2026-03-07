@@ -12,13 +12,13 @@ The server holds data multiple users need (projects, tasks, status). The client 
 
 ## Monorepo Structure
 
-Bun workspaces with three packages:
+Three independent packages, each with its own `bun install`:
 
 - `@orca/shared` — shared types, GraphQL schema
 - `@orca/backend` — Bun server
 - `@orca/web` — Electron + React client
 
-Import shared code as `@orca/shared` (resolved via workspace linking).
+No workspaces — each package manages its own dependencies with `bun install`. Import shared code as `@orca/shared` (resolved via `file:../shared`).
 
 ## Code Style
 

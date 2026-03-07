@@ -34,16 +34,16 @@ Orca connects project management to agent orchestration. Create projects and tas
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Bun |
-| Server DB | Postgres |
-| Client DB | SQLite (better-sqlite3) |
-| ORM | Prisma |
-| API | GraphQL (graphql-yoga) |
-| Client | Electron + React (electron-vite) |
-| Terminal | xterm.js + node-pty |
-| Styling | Tailwind CSS |
+| Layer     | Technology                       |
+| --------- | -------------------------------- |
+| Runtime   | Bun                              |
+| Server DB | Postgres                         |
+| Client DB | SQLite (better-sqlite3)          |
+| ORM       | Prisma                           |
+| API       | GraphQL (graphql-yoga)           |
+| Client    | Electron + React (electron-vite) |
+| Terminal  | xterm.js + node-pty              |
+| Styling   | Tailwind CSS                     |
 
 ## Development
 
@@ -63,14 +63,14 @@ bun run validate
 
 ### Scripts
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start backend + web concurrently |
-| `bun run lint` | ESLint |
-| `bun run format` | Prettier (write) |
-| `bun run typecheck` | TypeScript check all packages |
-| `bun run test` | Vitest all packages |
-| `bun run validate` | lint + format:check + typecheck + test |
+| Command             | Description                            |
+| ------------------- | -------------------------------------- |
+| `bun run dev`       | Start backend + web concurrently       |
+| `bun run lint`      | ESLint                                 |
+| `bun run format`    | Prettier (write)                       |
+| `bun run typecheck` | TypeScript check all packages          |
+| `bun run test`      | Vitest all packages                    |
+| `bun run validate`  | lint + format:check + typecheck + test |
 
 ## Project Structure
 

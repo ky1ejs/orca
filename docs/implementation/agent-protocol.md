@@ -20,13 +20,15 @@ Every agent MUST follow this protocol. Read this before starting any work.
 
 ## Self-Validation (MANDATORY)
 
-Before creating a PR, you MUST run and pass:
+Before creating a PR, you MUST run and pass from the repo root:
 
 ```bash
 bun run validate
 ```
 
-This runs: lint + format check + typecheck + test. ALL must pass.
+This runs: lint + format check, then each package's validate (typecheck + test, plus build for web). ALL must pass.
+
+**Important**: Each package manages its own dependencies. If you add a dependency, run `bun install` in that package's directory.
 
 If any check fails, fix the issue before proceeding. Do not create a PR with failing checks.
 
@@ -48,13 +50,19 @@ If any check fails, fix the issue before proceeding. Do not create a PR with fai
 
 GitHub Actions runs the same checks on every PR:
 
-1. `bun install`
-2. `bun run lint`
-3. `bun run format:check`
-4. `bun run typecheck`
-5. `bun run test`
+1. `bun install` (root + each package)
+2. `bun run validate` (lint, format, then each package's typecheck + test + build)
 
 Your PR will not be merged if CI fails.
+
+## Package Management
+
+There are **no workspaces**. Each package (`shared/`, `backend/`, `web/`) is independent:
+
+- Run `bun install` in each package directory when adding dependencies
+- Shared code is imported as `@orca/shared` (resolved via `"file:../shared"` in each package.json)
+- Web tests run under Electron's Node.js (`ELECTRON_RUN_AS_NODE=1`) so native modules work
+- Native modules (better-sqlite3, node-pty) must be rebuilt for Electron via `web/scripts/rebuild-sqlite.mjs` — do NOT use `@electron/rebuild`
 
 ## PR Description
 
@@ -74,8 +82,9 @@ When adding npm packages, follow `/DEPS.md`:
 
 ## Key Conventions
 
-- Monorepo packages: `@orca/shared`, `@orca/backend`, `@orca/web`
+- Three independent packages: `@orca/shared`, `@orca/backend`, `@orca/web` (no workspaces)
 - GraphQL schema source of truth: `shared/src/schema.graphql`
 - Import shared types via `@orca/shared`
 - Server binds to `127.0.0.1` in development
+- Subscriptions use SSE (Server-Sent Events), NOT WebSocket
 - Client-side state (terminal sessions, PIDs) lives in SQLite, not on the server

@@ -1,0 +1,73 @@
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String
+  tasks: [Task!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Task {
+  id: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  projectId: ID!
+  project: Project!
+  workingDirectory: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input CreateProjectInput {
+  name: String!
+  description: String
+}
+
+input UpdateProjectInput {
+  name: String
+  description: String
+}
+
+input CreateTaskInput {
+  title: String!
+  description: String
+  status: TaskStatus
+  projectId: ID!
+  workingDirectory: String!
+}
+
+input UpdateTaskInput {
+  title: String
+  description: String
+  status: TaskStatus
+  workingDirectory: String
+}
+
+type Query {
+  projects: [Project!]!
+  project(id: ID!): Project
+  tasks(projectId: ID!): [Task!]!
+  task(id: ID!): Task
+}
+
+type Mutation {
+  createProject(input: CreateProjectInput!): Project!
+  updateProject(id: ID!, input: UpdateProjectInput!): Project!
+  deleteProject(id: ID!): Boolean!
+  createTask(input: CreateTaskInput!): Task!
+  updateTask(id: ID!, input: UpdateTaskInput!): Task!
+  deleteTask(id: ID!): Boolean!
+}
+
+type Subscription {
+  projectChanged: Project!
+  taskChanged: Task!
+}
