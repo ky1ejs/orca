@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+#
+# Worktree management CLI for Orca.
+# Provides slot-based resource isolation for parallel development.
+#
+# Usage:
+#   worktree create <name> [--base <branch>] [--branch <name>] [--no-bootstrap] [-v]
+#   worktree cleanup <name> [--force]
+#   worktree status
+#   worktree prune [--dry-run]
+
+set -euo pipefail
+
+MAIN_REPO="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPTS="$MAIN_REPO/scripts"
+WORKTREE_BASE="$MAIN_REPO/../worktrees/orca"
+REGISTRY="$MAIN_REPO/.worktree-registry.json"
+
+VERBOSE=false
+log() { echo "==> $*"; }
+vlog() { $VERBOSE && echo "    $*" || true; }
+
+# ─── create ───────────────────────────────────────────────────────────────────
+
+cmd_create() {
+  local name="" base="main" branch="" bootstrap=true
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --base)    base="$2"; shift 2 ;;
+      --branch)  branch="$2"; shift 2 ;;
+      --no-bootstrap) bootstrap=false; shift ;;
+      -v|--verbose) VERBOSE=true; shift ;;
+      -*)        echo "Unknown option: $1" >&2; exit 1 ;;
+      *)         name="$1"; shift ;;
+    esac
+  done
+
+  if [[ -z "$name" ]]; then
+    echo "Usage: worktree create <name> [--base <branch>] [--branch <name>] [--no-bootstrap] [-v]" >&2
+    exit 1
+  fi
+
+  branch="${branch:-$name}"
+  local wt_path="$WORKTREE_BASE/$name"
+
+  if [[ -d "$wt_path" ]]; then
+    echo "Error: Worktree directory already exists: $wt_path" >&2
+    exit 1
+  fi
+
+  # 1. Create git worktree
+  log "Creating git worktree '$name' from '$base'..."
+  mkdir -p "$WORKTREE_BASE"
+  git -C "$MAIN_REPO" worktree add -b "$branch" "$wt_path" "$base"
+
+  # 2. Allocate resource slot
+  log "Allocating resource slot..."
+  local slot
+  slot=$("$SCRIPTS/allocate-slot.sh" "$name")
+  local port=$((4000 + slot * 10))
+  local db_name="orca_wt_${slot}"
+  log "Slot $slot allocated (port: $port, database: $db_name)"
+
+  # 3. Ensure Docker Postgres is running
+  log "Ensuring Postgres is running..."
+  if ! docker compose -f "$MAIN_REPO/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
+    vlog "Starting Postgres..."
+    docker compose -f "$MAIN_REPO/docker-compose.yml" up -d
+  fi
+
+  # 4. Create database
+  log "Creating database $db_name..."
+  docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
+    psql -U orca -c "CREATE DATABASE $db_name;" 2>/dev/null || \
+    vlog "Database $db_name already exists"
+
+  # 5. Generate .env files
+  log "Generating environment files..."
+  "$SCRIPTS/generate-worktree-env.sh" "$slot" "$wt_path"
+
+  # 6. Bootstrap (unless --no-bootstrap)
+  if $bootstrap; then
+    log "Bootstrapping worktree..."
+
+    vlog "Installing dependencies in shared/..."
+    (cd "$wt_path/shared" && bun install)
+
+    vlog "Installing dependencies in backend/..."
+    (cd "$wt_path/backend" && bun install)
+
+    vlog "Installing dependencies in web/..."
+    (cd "$wt_path/web" && bun install)
+
+    # 7. Run Prisma migrations
+    log "Running Prisma migrations..."
+    (cd "$wt_path/backend" && bunx prisma migrate deploy)
+  else
+    log "Skipping bootstrap (--no-bootstrap)"
+  fi
+
+  echo ""
+  log "Worktree '$name' is ready!"
+  echo "  Path:     $wt_path"
+  echo "  Slot:     $slot"
+  echo "  Port:     $port"
+  echo "  Database: $db_name"
+  echo ""
+  echo "  cd $wt_path && bun run dev"
+}
+
+# ─── cleanup ──────────────────────────────────────────────────────────────────
+
+cmd_cleanup() {
+  local name="" force=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --force) force=true; shift ;;
+      -*)      echo "Unknown option: $1" >&2; exit 1 ;;
+      *)       name="$1"; shift ;;
+    esac
+  done
+
+  if [[ -z "$name" ]]; then
+    echo "Usage: worktree cleanup <name> [--force]" >&2
+    exit 1
+  fi
+
+  local wt_path="$WORKTREE_BASE/$name"
+
+  # Get slot info before cleanup
+  local slot=""
+  if [[ -f "$REGISTRY" ]]; then
+    slot=$(jq -r --arg name "$name" '.slots[] | select(.worktree == $name) | .slot' "$REGISTRY")
+  fi
+
+  # Safety checks (unless --force)
+  if ! $force; then
+    local warnings=()
+
+    # Check for uncommitted changes in the worktree
+    if [[ -d "$wt_path" ]]; then
+      local dirty
+      dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null || true)
+      if [[ -n "$dirty" ]]; then
+        warnings+=("Worktree has uncommitted changes")
+      fi
+    fi
+
+    # Check if branch is merged into main
+    if ! git -C "$MAIN_REPO" branch --merged main 2>/dev/null | grep -qw "$name"; then
+      warnings+=("Branch '$name' is not merged into main")
+    fi
+
+    # Check for an open GitHub PR
+    if command -v gh &>/dev/null; then
+      local pr_state
+      pr_state=$(gh pr view "$name" --repo "$(git -C "$MAIN_REPO" remote get-url origin)" --json state --jq '.state' 2>/dev/null || true)
+      if [[ "$pr_state" == "OPEN" ]]; then
+        warnings+=("GitHub PR for branch '$name' is still open")
+      fi
+    fi
+
+    if [[ ${#warnings[@]} -gt 0 ]]; then
+      echo "WARNING: The following issues were found:"
+      for w in "${warnings[@]}"; do
+        echo "  - $w"
+      done
+      echo ""
+    fi
+
+    echo "This will remove worktree '$name':"
+    [[ -n "$slot" ]] && echo "  - Drop database orca_wt_${slot}"
+    echo "  - Remove git worktree at $wt_path"
+    echo "  - Delete local branch '$name'"
+    echo ""
+    read -p "Continue? [y/N] " -r
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      exit 0
+    fi
+  fi
+
+  # 1. Drop database
+  if [[ -n "$slot" ]]; then
+    local db_name="orca_wt_${slot}"
+    log "Dropping database $db_name..."
+    docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
+      psql -U orca -c "DROP DATABASE IF EXISTS $db_name;" 2>/dev/null || true
+  fi
+
+  # 2. Free slot
+  if [[ -n "$slot" ]]; then
+    log "Releasing slot $slot..."
+    "$SCRIPTS/allocate-slot.sh" --release "$name"
+  fi
+
+  # 3. Remove git worktree
+  if [[ -d "$wt_path" ]]; then
+    log "Removing git worktree..."
+    git -C "$MAIN_REPO" worktree remove "$wt_path" --force 2>/dev/null || true
+  fi
+
+  # 4. Delete local branch
+  log "Deleting local branch '$name'..."
+  git -C "$MAIN_REPO" branch -D "$name" 2>/dev/null || true
+
+  log "Worktree '$name' cleaned up."
+}
+
+# ─── status ───────────────────────────────────────────────────────────────────
+
+cmd_status() {
+  if [[ ! -f "$REGISTRY" ]]; then
+    echo "No worktrees registered."
+    exit 0
+  fi
+
+  local count
+  count=$(jq '.slots | length' "$REGISTRY")
+
+  if [[ "$count" == "0" ]]; then
+    echo "No worktrees registered."
+    exit 0
+  fi
+
+  printf "%-20s %-5s %-6s %-15s %-8s %s\n" "WORKTREE" "SLOT" "PORT" "DATABASE" "STATUS" "CREATED"
+  printf "%-20s %-5s %-6s %-15s %-8s %s\n" "--------" "----" "----" "--------" "------" "-------"
+
+  jq -r '.slots[] | "\(.worktree) \(.slot) \(.path) \(.created)"' "$REGISTRY" | \
+  while read -r wt slot path created; do
+    local port=$((4000 + slot * 10))
+    local db="orca_wt_${slot}"
+    local full_path="$MAIN_REPO/$path"
+    local status="active"
+    if [[ ! -d "$full_path" ]]; then
+      status="missing"
+    fi
+    printf "%-20s %-5s %-6s %-15s %-8s %s\n" "$wt" "$slot" "$port" "$db" "$status" "$created"
+  done
+}
+
+# ─── prune ────────────────────────────────────────────────────────────────────
+
+cmd_prune() {
+  local dry_run=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) dry_run=true; shift ;;
+      *)         echo "Unknown option: $1" >&2; exit 1 ;;
+    esac
+  done
+
+  if [[ ! -f "$REGISTRY" ]]; then
+    echo "No worktrees registered."
+    exit 0
+  fi
+
+  local found=false
+
+  local prunable=()
+
+  while read -r wt slot path; do
+    local full_path="$MAIN_REPO/$path"
+    local should_prune=false
+    local reason=""
+    local skip_reason=""
+
+    # Check if directory is missing
+    if [[ ! -d "$full_path" ]]; then
+      should_prune=true
+      reason="directory missing"
+    else
+      # Check for uncommitted changes
+      local dirty
+      dirty=$(git -C "$full_path" status --porcelain 2>/dev/null || true)
+      if [[ -n "$dirty" ]]; then
+        skip_reason="has uncommitted changes"
+      fi
+
+      # Check if branch is merged into main
+      if git -C "$MAIN_REPO" branch --merged main 2>/dev/null | grep -qw "$wt"; then
+        should_prune=true
+        reason="branch merged into main"
+      fi
+
+      # Check GitHub PR status
+      if command -v gh &>/dev/null; then
+        local pr_state
+        pr_state=$(gh pr view "$wt" --repo "$(git -C "$MAIN_REPO" remote get-url origin)" --json state --jq '.state' 2>/dev/null || true)
+        if [[ "$pr_state" == "MERGED" ]] && ! $should_prune; then
+          should_prune=true
+          reason="GitHub PR merged"
+        elif [[ "$pr_state" == "OPEN" ]]; then
+          skip_reason="GitHub PR is still open"
+        fi
+      fi
+    fi
+
+    if [[ -n "$skip_reason" ]] && $should_prune; then
+      echo "Skipping '$wt' (slot $slot): $skip_reason"
+      continue
+    fi
+
+    if $should_prune; then
+      found=true
+      if $dry_run; then
+        echo "[dry-run] Would prune '$wt' (slot $slot): $reason"
+      else
+        echo "Pruning '$wt' (slot $slot): $reason"
+        cmd_cleanup "$wt" --force
+      fi
+    fi
+  done < <(jq -r '.slots[] | "\(.worktree) \(.slot) \(.path)"' "$REGISTRY")
+
+  if ! $found; then
+    echo "Nothing to prune."
+  fi
+}
+
+# ─── main ─────────────────────────────────────────────────────────────────────
+
+case "${1:-}" in
+  create)  shift; cmd_create "$@" ;;
+  cleanup) shift; cmd_cleanup "$@" ;;
+  status)  shift; cmd_status "$@" ;;
+  prune)   shift; cmd_prune "$@" ;;
+  *)
+    echo "Usage: worktree <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  create <name>   Create a new worktree with isolated resources"
+    echo "  cleanup <name>  Remove a worktree and its resources"
+    echo "  status          Show all worktrees and their resource assignments"
+    echo "  prune           Remove stale/merged worktrees"
+    exit 1
+    ;;
+esac

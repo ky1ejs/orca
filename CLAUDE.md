@@ -1,5 +1,8 @@
 # Orca
 
+## Workflow
+You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
+
 ## Architecture
 
 Orca is a work management tool for orchestrating AI agents (starting with Claude Code). It uses a **split-state client/server architecture**:
