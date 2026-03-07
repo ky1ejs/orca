@@ -12,21 +12,19 @@ When making changes, always check for documentation that may need updating (e.g.
 
 Orca is a work management tool for orchestrating AI agents (starting with Claude Code). It uses a **split-state client/server architecture**:
 
-- **Server (backend/)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks)
+- **Server (backend/)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks), GraphQL SDL schema
 - **Client (web/)**: Electron + React (via electron-vite) — local agent/terminal state in SQLite (better-sqlite3), PTY management (node-pty), terminal rendering (xterm.js)
-- **Shared (shared/)**: GraphQL SDL schema, shared TypeScript types and enums
 
 The server holds data multiple users need (projects, tasks, status). The client holds local-only data (terminal sessions, PIDs, output buffers). Agent processes run locally via node-pty in the Electron main process.
 
 ## Monorepo Structure
 
-Three independent packages, each with its own `bun install`:
+Two independent packages, each with its own `bun install`:
 
-- `@orca/shared` — shared types, GraphQL schema
 - `@orca/backend` — Bun server
 - `@orca/web` — Electron + React client
 
-No workspaces — each package manages its own dependencies with `bun install`. Import shared code as `@orca/shared` (resolved via `file:../shared`).
+No workspaces — each package manages its own dependencies with `bun install`.
 
 ## Code Style
 
@@ -42,7 +40,7 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 
 ## GraphQL
 
-- **Schema-first**: SDL defined in `shared/src/schema.graphql`
+- **Schema-first**: SDL defined in `backend/src/schema/schema.graphql`
 - **graphql-codegen** generates TypeScript types for both backend and web
 - Resolvers in `backend/src/schema/`
 
@@ -59,8 +57,8 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 
 - **Backend**: Deployed to Fly.io (`orca-api.fly.dev`) from `backend/`
 - **Database**: Neon Postgres in production, Docker Compose locally
-- **CI/CD**: Push to `main` with backend/shared changes auto-deploys via `.github/workflows/deploy-backend.yml`
-- **Manual deploy**: `cp ../shared/src/schema.graphql schema.graphql && fly deploy` from `backend/`
+- **CI/CD**: Push to `main` with backend changes auto-deploys via `.github/workflows/deploy-backend.yml`
+- **Manual deploy**: `fly deploy` from `backend/`
 - **Prod build**: `VITE_BACKEND_URL=https://orca-api.fly.dev bun run build:mac` in `web/`
 - Migrations: Run `bunx prisma migrate deploy` manually against Neon before deploying schema changes
 
@@ -102,7 +100,7 @@ These features require Electron's main process and cannot run in a plain browser
 
 ## Commands
 
-All commands are run within each package directory (`shared/`, `backend/`, `web/`):
+All commands are run within each package directory (`backend/`, `web/`):
 
 - `bun run dev` — start the service (backend or web)
 - `bun run lint` / `bun run lint:fix` — ESLint

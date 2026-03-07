@@ -14,10 +14,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Check for backend/shared changes
+      - name: Check for backend changes
         id: diff
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/|shared/)'; then
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^backend/'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend=false" >> "$GITHUB_OUTPUT"
@@ -32,9 +32,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Copy schema into backend build context
-        run: cp shared/src/schema.graphql backend/schema.graphql
 
       - name: Deploy
         run: flyctl deploy
