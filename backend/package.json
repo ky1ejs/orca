@@ -17,11 +17,10 @@
     "codegen": "graphql-codegen --config codegen.ts",
     "seed": "bun run src/scripts/seed.ts",
     "seed:dev": "bun run src/scripts/seed-dev.ts",
-    "deploy": "cp ../shared/src/schema.graphql schema.graphql && fly deploy",
+    "deploy": "fly deploy",
     "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test"
   },
   "dependencies": {
-    "@orca/shared": "file:../shared",
     "@prisma/client": "^6.4.1",
     "graphql": "^16.10.0",
     "graphql-yoga": "^5.10.6",

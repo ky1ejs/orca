@@ -26,7 +26,6 @@ cd orca
 bun install
 
 # Install each package's dependencies
-cd shared && bun install && cd ..
 cd backend && bun install && cd ..
 cd web && bun install && cd ..
 ```
@@ -175,9 +174,8 @@ This produces a DMG and zip in `web/dist-electron/`. The build uses electron-bui
 
 ```
 orca/
-├── backend/     # Bun server -- GraphQL API, Prisma, Postgres
+├── backend/     # Bun server -- GraphQL API, Prisma, Postgres, GraphQL schema
 ├── web/         # Electron + React client -- terminals, local state
-├── shared/      # Shared types and GraphQL schema
 └── docs/        # Implementation plans
 ```
 

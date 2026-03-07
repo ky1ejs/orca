@@ -28,9 +28,6 @@ Thumbs.db
 *.tsbuildinfo
 dist-electron/
 
-# Schema copy for Docker build (source of truth is shared/src/schema.graphql)
-backend/schema.graphql
-
 # Worktree registry
 .worktree-registry.json
 

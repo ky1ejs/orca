@@ -33,9 +33,6 @@ jobs:
           bun-version: latest
 
       - run: bun install
-        working-directory: shared
-
-      - run: bun install
         working-directory: backend
 
       - run: bun install
