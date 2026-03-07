@@ -33,8 +33,10 @@ jobs:
           bun-version: latest
 
       - run: bun install
-      - run: cd shared && bun install
-      - run: cd backend && bun install
+        working-directory: shared
+
+      - run: bun install
+        working-directory: backend
 
       - run: bunx graphql-codegen
         working-directory: backend
@@ -46,10 +48,12 @@ jobs:
         working-directory: backend
 
       - name: Lint
-        run: bunx eslint backend/
+        run: bun run lint
+        working-directory: backend
 
       - name: Format check
-        run: bunx prettier --check "backend/"
+        run: bun run format:check
+        working-directory: backend
 
       - name: Typecheck
         run: bun run typecheck

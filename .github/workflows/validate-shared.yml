@@ -15,13 +15,15 @@ jobs:
           bun-version: latest
 
       - run: bun install
-      - run: cd shared && bun install
+        working-directory: shared
 
       - name: Lint
-        run: bunx eslint shared/
+        run: bun run lint
+        working-directory: shared
 
       - name: Format check
-        run: bunx prettier --check "shared/"
+        run: bun run format:check
+        working-directory: shared
 
       - name: Typecheck
         run: bun run typecheck
