@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron';
+// electron-updater is CJS — named imports don't work in ESM
 import electronUpdater from 'electron-updater';
-
 const { autoUpdater } = electronUpdater;
 
 export function initAutoUpdater(): void {
