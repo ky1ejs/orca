@@ -7,6 +7,25 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: orca
+          POSTGRES_PASSWORD: orca
+          POSTGRES_DB: orca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orca"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://orca:orca@localhost:5432/orca
+
     steps:
       - uses: actions/checkout@v4
 
@@ -15,6 +34,12 @@ jobs:
           bun-version: latest
 
       - run: bun install
+
+      - run: bunx prisma generate
+        working-directory: backend
+
+      - run: bunx prisma migrate deploy
+        working-directory: backend
 
       - run: bun run lint
 
