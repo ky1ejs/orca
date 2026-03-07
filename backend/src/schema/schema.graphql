@@ -37,6 +37,13 @@ type Task {
   updatedAt: String!
 }
 
+input RegisterInput {
+  email: String!
+  name: String!
+  password: String!
+  inviteCode: String!
+}
+
 input CreateProjectInput {
   name: String!
   description: String
@@ -72,6 +79,7 @@ type Query {
 
 type Mutation {
   login(email: String!, password: String!): AuthPayload!
+  register(input: RegisterInput!): AuthPayload!
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   deleteProject(id: ID!): Boolean!

@@ -1,18 +1,17 @@
 import { useState, type FormEvent } from 'react';
 import { GRAPHQL_URL, storeAuthToken } from '../../graphql/client.js';
 
-interface LoginScreenProps {
-  onLogin: () => void;
-  onRegister?: () => void;
-  sessionExpired?: boolean;
+interface RegisterScreenProps {
+  onRegister: () => void;
+  onBack: () => void;
 }
 
-export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreenProps) {
+export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(
-    sessionExpired ? 'Your session expired \u2014 please sign in again.' : null,
-  );
+  const [inviteCode, setInviteCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -25,14 +24,14 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: `mutation Login($email: String!, $password: String!) {
-            login(email: $email, password: $password) {
+          query: `mutation Register($input: RegisterInput!) {
+            register(input: $input) {
               token
               user { id name email }
             }
           }`,
-          operationName: 'Login',
-          variables: { email, password },
+          operationName: 'Register',
+          variables: { input: { email, name, password, inviteCode } },
         }),
       });
 
@@ -44,23 +43,26 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
       const json = await res.json();
 
       if (json.errors?.length) {
-        const code = json.errors[0]?.extensions?.code;
-        if (code === 'UNAUTHENTICATED') {
-          setError('Incorrect email or password.');
+        const gqlError = json.errors[0];
+        const code = gqlError?.extensions?.code;
+        if (code === 'FORBIDDEN') {
+          setError('Invalid invite code.');
+        } else if (code === 'BAD_USER_INPUT') {
+          setError(gqlError.message);
         } else {
           setError('Something went wrong. Please try again.');
         }
         return;
       }
 
-      const token = json.data?.login?.token;
+      const token = json.data?.register?.token;
       if (!token) {
         setError('Something went wrong. Please try again.');
         return;
       }
 
       await storeAuthToken(token);
-      onLogin();
+      onRegister();
     } catch {
       setError('Cannot connect to server. Please check your connection.');
     } finally {
@@ -79,6 +81,21 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
             </div>
           )}
           <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              required
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Your name"
+            />
+          </div>
+          <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
               Email
             </label>
@@ -86,7 +103,6 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
               id="email"
               type="email"
               required
-              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -101,10 +117,25 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
               id="password"
               type="password"
               required
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Password"
+              placeholder="Min. 8 characters"
+            />
+          </div>
+          <div>
+            <label htmlFor="inviteCode" className="block text-sm font-medium text-gray-400 mb-1">
+              Invite Code
+            </label>
+            <input
+              id="inviteCode"
+              type="password"
+              required
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter your invite code"
             />
           </div>
           <button
@@ -112,21 +143,15 @@ export function LoginScreen({ onLogin, onRegister, sessionExpired }: LoginScreen
             disabled={loading}
             className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-        {onRegister && (
-          <p className="mt-4 text-center text-sm text-gray-500">
-            Don&apos;t have an account?{' '}
-            <button
-              type="button"
-              onClick={onRegister}
-              className="text-blue-400 hover:text-blue-300"
-            >
-              Create account
-            </button>
-          </p>
-        )}
+        <p className="mt-4 text-center text-sm text-gray-500">
+          Already have an account?{' '}
+          <button type="button" onClick={onBack} className="text-blue-400 hover:text-blue-300">
+            Sign in
+          </button>
+        </p>
       </div>
     </div>
   );

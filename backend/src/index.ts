@@ -7,11 +7,12 @@ import type { ServerContext } from './context.js';
 
 const pubsub = createPubSub();
 
-// Plugin that enforces auth on all operations except the login mutation
+const PUBLIC_MUTATIONS = ['login', 'register'];
+
+// Plugin that enforces auth on all operations except public mutations
 function useAuth(): Plugin<ServerContext> {
   return {
     onExecute({ args }) {
-      // Check if this is the login mutation
       const operation = args.document.definitions.find(
         (def: DefinitionNode) => def.kind === 'OperationDefinition',
       );
@@ -20,10 +21,10 @@ function useAuth(): Plugin<ServerContext> {
         operation.kind === 'OperationDefinition' &&
         operation.operation === 'mutation'
       ) {
-        const hasLogin = operation.selectionSet.selections.some(
-          (sel: SelectionNode) => sel.kind === 'Field' && sel.name.value === 'login',
+        const allPublic = operation.selectionSet.selections.every(
+          (sel: SelectionNode) => sel.kind === 'Field' && PUBLIC_MUTATIONS.includes(sel.name.value),
         );
-        if (hasLogin) return;
+        if (allPublic) return;
       }
 
       // Require auth for everything else
