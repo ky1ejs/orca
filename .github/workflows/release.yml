@@ -35,10 +35,14 @@ jobs:
             NEW_VERSION="$CURRENT"
           else
             TAGGED_VERSION="${LATEST_TAG#v}"
-            if [ "$CURRENT" != "$TAGGED_VERSION" ]; then
+            IS_HIGHER=$(node -e "
+              const [a, b] = ['$CURRENT', '$TAGGED_VERSION'].map(v => v.split('.').map(Number));
+              console.log(a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]) || (a[0] === b[0] && a[1] === b[1] && a[2] > b[2]) ? 'true' : 'false');
+            ")
+            if [ "$IS_HIGHER" = "true" ]; then
               NEW_VERSION="$CURRENT"
             else
-              IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$TAGGED_VERSION"
               PATCH=$((PATCH + 1))
               NEW_VERSION="$MAJOR.$MINOR.$PATCH"
             fi
@@ -161,25 +165,12 @@ jobs:
             echo "has_artifacts=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bump version, tag, and push
+      - name: Tag and push
         if: steps.check.outputs.has_artifacts == 'true'
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
           TAG="${{ needs.version.outputs.tag }}"
-
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('web/package.json', 'utf8'));
-            pkg.version = '$VERSION';
-            fs.writeFileSync('web/package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add web/package.json
-          git diff --cached --quiet || git commit -m "chore: bump version to $VERSION"
           git tag "$TAG"
-          git push origin main --tags
+          git push origin "$TAG"
 
       - name: Create GitHub Release
         if: steps.check.outputs.has_artifacts == 'true'
