@@ -26,14 +26,19 @@ function writeConfig(config: OrcaConfig): void {
   writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
-export function getOrCreateToken(): string {
+export interface TokenResult {
+  token: string;
+  isNew: boolean;
+}
+
+export function getOrCreateToken(): TokenResult {
   const config = readConfig();
   if (config?.authToken) {
-    return config.authToken;
+    return { token: config.authToken, isNew: false };
   }
   const token = randomBytes(32).toString('hex');
   writeConfig({ authToken: token });
-  return token;
+  return { token, isNew: true };
 }
 
 export function validateToken(token: string, expectedToken: string): boolean {

@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun run setup && ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run",
     "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build",
+    "build:mac": "bun run build && electron-builder --mac --config electron-builder.yml",
     "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {
@@ -52,6 +53,7 @@
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^35.1.2",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^5.0.0",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4.1.0",

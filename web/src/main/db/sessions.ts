@@ -86,13 +86,20 @@ export function updateSession(id: string, input: UpdateSessionInput): TerminalSe
   return getSession(id);
 }
 
-export function sweepStaleSessions(): void {
+export interface SweepResult {
+  sweptIds: string[];
+  total: number;
+}
+
+export function sweepStaleSessions(): SweepResult {
   const db = getDb();
   const staleSessions = db
     .prepare(
       "SELECT id, pid FROM terminal_session WHERE status IN ('RUNNING', 'STARTING') AND pid IS NOT NULL",
     )
     .all() as Array<{ id: string; pid: number }>;
+
+  const sweptIds: string[] = [];
 
   for (const session of staleSessions) {
     try {
@@ -101,6 +108,34 @@ export function sweepStaleSessions(): void {
       db.prepare(
         "UPDATE terminal_session SET status = 'ERROR', stopped_at = datetime('now') WHERE id = ?",
       ).run(session.id);
+      sweptIds.push(session.id);
     }
   }
+
+  return { sweptIds, total: sweptIds.length };
+}
+
+/**
+ * Check if a specific PID is alive.
+ * Returns true if the process exists, false otherwise.
+ */
+export function isPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get all active sessions (RUNNING or STARTING with a PID).
+ */
+export function getActiveSessions(): Array<{ id: string; pid: number }> {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT id, pid FROM terminal_session WHERE status IN ('RUNNING', 'STARTING', 'WAITING_FOR_INPUT') AND pid IS NOT NULL",
+    )
+    .all() as Array<{ id: string; pid: number }>;
 }

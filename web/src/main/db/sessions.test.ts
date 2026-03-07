@@ -56,7 +56,7 @@ describe('sessions', () => {
   });
 
   describe('sweepStaleSessions', () => {
-    it('marks sessions with dead PIDs as ERROR', () => {
+    it('marks sessions with dead PIDs as ERROR and returns sweep result', () => {
       // Create a session with a PID that doesn't exist
       const session = createSession({ status: 'RUNNING', pid: 999999 });
 
@@ -65,7 +65,10 @@ describe('sessions', () => {
         throw new Error('ESRCH');
       });
 
-      sweepStaleSessions();
+      const result = sweepStaleSessions();
+
+      expect(result.total).toBe(1);
+      expect(result.sweptIds).toContain(session.id);
 
       const updated = getSession(session.id);
       expect(updated?.status).toBe('ERROR');
@@ -78,10 +81,39 @@ describe('sessions', () => {
       const session = createSession({ status: 'RUNNING', pid: process.pid });
 
       // process.kill(process.pid, 0) should succeed (our own PID)
-      sweepStaleSessions();
+      const result = sweepStaleSessions();
+
+      expect(result.total).toBe(0);
+      expect(result.sweptIds).toEqual([]);
 
       const updated = getSession(session.id);
       expect(updated?.status).toBe('RUNNING');
+    });
+
+    it('sweeps multiple stale sessions at startup', () => {
+      // Simulate multiple sessions left over from a previous run
+      const s1 = createSession({ status: 'RUNNING', pid: 999991 });
+      const s2 = createSession({ status: 'STARTING', pid: 999992 });
+      const s3 = createSession({ status: 'RUNNING', pid: process.pid }); // alive
+
+      const killSpy = vi.spyOn(process, 'kill').mockImplementation((_pid, _signal) => {
+        const pid = _pid as number;
+        if (pid === process.pid) return true;
+        throw new Error('ESRCH');
+      });
+
+      const result = sweepStaleSessions();
+
+      expect(result.total).toBe(2);
+      expect(result.sweptIds).toContain(s1.id);
+      expect(result.sweptIds).toContain(s2.id);
+      expect(result.sweptIds).not.toContain(s3.id);
+
+      expect(getSession(s1.id)?.status).toBe('ERROR');
+      expect(getSession(s2.id)?.status).toBe('ERROR');
+      expect(getSession(s3.id)?.status).toBe('RUNNING');
+
+      killSpy.mockRestore();
     });
   });
 });

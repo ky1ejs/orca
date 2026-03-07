@@ -1,0 +1,41 @@
+appId: com.orca.app
+productName: Orca
+directories:
+  buildResources: resources
+  output: dist-electron
+files:
+  - out/**/*
+  - resources/**/*
+  - '!node_modules/**/{test,tests,__tests__}/**'
+  - '!node_modules/**/*.map'
+extraMetadata:
+  main: out/main/index.js
+asar: true
+mac:
+  category: public.app-category.developer-tools
+  icon: resources/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+npmRebuild: true
+nodeGypRebuild: false
+# Native dependencies that need rebuilding for Electron
+nativeRebuilder: sequential
