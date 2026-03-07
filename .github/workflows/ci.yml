@@ -43,6 +43,9 @@ jobs:
       - run: bunx graphql-codegen
         working-directory: web
 
+      - run: bunx graphql-codegen
+        working-directory: backend
+
       - run: bunx prisma generate
         working-directory: backend
 

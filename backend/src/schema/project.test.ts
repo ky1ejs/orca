@@ -29,7 +29,7 @@ describe('project resolvers', () => {
       const projects = [{ id: '1', name: 'Test' }];
       ctx.prisma.project.findMany.mockResolvedValue(projects);
 
-      const result = await projectResolvers.Query.projects(null, {}, ctx as never);
+      const result = await projectResolvers.Query.projects({} as never, {}, ctx as never);
       expect(result).toEqual(projects);
       expect(ctx.prisma.project.findMany).toHaveBeenCalledWith({
         orderBy: { createdAt: 'desc' },
@@ -41,7 +41,7 @@ describe('project resolvers', () => {
       const project = { id: '1', name: 'Test' };
       ctx.prisma.project.findUnique.mockResolvedValue(project);
 
-      const result = await projectResolvers.Query.project(null, { id: '1' }, ctx as never);
+      const result = await projectResolvers.Query.project({} as never, { id: '1' }, ctx as never);
       expect(result).toEqual(project);
       expect(ctx.prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: '1' } });
     });
@@ -54,7 +54,7 @@ describe('project resolvers', () => {
       ctx.prisma.project.create.mockResolvedValue(project);
 
       const result = await projectResolvers.Mutation.createProject(
-        null,
+        {} as never,
         { input: { name: 'New Project' } },
         ctx as never,
       );
@@ -71,7 +71,7 @@ describe('project resolvers', () => {
       ctx.prisma.project.update.mockResolvedValue(project);
 
       const result = await projectResolvers.Mutation.updateProject(
-        null,
+        {} as never,
         { id: '1', input: { name: 'Updated' } },
         ctx as never,
       );
@@ -83,7 +83,11 @@ describe('project resolvers', () => {
       const ctx = createMockContext();
       ctx.prisma.project.delete.mockResolvedValue({});
 
-      const result = await projectResolvers.Mutation.deleteProject(null, { id: '1' }, ctx as never);
+      const result = await projectResolvers.Mutation.deleteProject(
+        {} as never,
+        { id: '1' },
+        ctx as never,
+      );
       expect(result).toBe(true);
       expect(ctx.prisma.project.delete).toHaveBeenCalledWith({ where: { id: '1' } });
     });
@@ -95,7 +99,7 @@ describe('project resolvers', () => {
       const tasks = [{ id: '1', title: 'Task 1' }];
       ctx.prisma.task.findMany.mockResolvedValue(tasks);
 
-      const result = await projectResolvers.Project.tasks({ id: 'p1' }, {}, ctx as never);
+      const result = await projectResolvers.Project.tasks({ id: 'p1' } as never, {}, ctx as never);
       expect(result).toEqual(tasks);
       expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({ where: { projectId: 'p1' } });
     });

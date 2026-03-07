@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { TaskStatus } from '../__generated__/graphql.js';
 import { taskResolvers } from './task.js';
 
 function createMockContext() {
@@ -13,6 +14,7 @@ function createMockContext() {
       },
       project: {
         findUnique: vi.fn(),
+        findUniqueOrThrow: vi.fn(),
       },
     },
     pubsub: {
@@ -29,7 +31,11 @@ describe('task resolvers', () => {
       const tasks = [{ id: '1', title: 'Task 1' }];
       ctx.prisma.task.findMany.mockResolvedValue(tasks);
 
-      const result = await taskResolvers.Query.tasks(null, { projectId: 'p1' }, ctx as never);
+      const result = await taskResolvers.Query.tasks(
+        {} as never,
+        { projectId: 'p1' },
+        ctx as never,
+      );
       expect(result).toEqual(tasks);
       expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({
         where: { projectId: 'p1' },
@@ -42,7 +48,7 @@ describe('task resolvers', () => {
       const task = { id: '1', title: 'Task 1' };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
 
-      const result = await taskResolvers.Query.task(null, { id: '1' }, ctx as never);
+      const result = await taskResolvers.Query.task({} as never, { id: '1' }, ctx as never);
       expect(result).toEqual(task);
       expect(ctx.prisma.task.findUnique).toHaveBeenCalledWith({ where: { id: '1' } });
     });
@@ -55,7 +61,7 @@ describe('task resolvers', () => {
       ctx.prisma.task.create.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.createTask(
-        null,
+        {} as never,
         { input: { title: 'New Task', projectId: 'p1', workingDirectory: '/tmp/test' } },
         ctx as never,
       );
@@ -78,11 +84,11 @@ describe('task resolvers', () => {
       ctx.prisma.task.create.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.createTask(
-        null,
+        {} as never,
         {
           input: {
             title: 'New Task',
-            status: 'IN_PROGRESS',
+            status: TaskStatus.InProgress,
             projectId: 'p1',
             workingDirectory: '/tmp/test',
           },
@@ -107,8 +113,8 @@ describe('task resolvers', () => {
       ctx.prisma.task.update.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.updateTask(
-        null,
-        { id: '1', input: { title: 'Updated', status: 'DONE' } },
+        {} as never,
+        { id: '1', input: { title: 'Updated', status: TaskStatus.Done } },
         ctx as never,
       );
       expect(result).toEqual(task);
@@ -119,7 +125,11 @@ describe('task resolvers', () => {
       const ctx = createMockContext();
       ctx.prisma.task.delete.mockResolvedValue({});
 
-      const result = await taskResolvers.Mutation.deleteTask(null, { id: '1' }, ctx as never);
+      const result = await taskResolvers.Mutation.deleteTask(
+        {} as never,
+        { id: '1' },
+        ctx as never,
+      );
       expect(result).toBe(true);
       expect(ctx.prisma.task.delete).toHaveBeenCalledWith({ where: { id: '1' } });
     });
@@ -129,11 +139,15 @@ describe('task resolvers', () => {
     it('project resolves the parent project', async () => {
       const ctx = createMockContext();
       const project = { id: 'p1', name: 'Project 1' };
-      ctx.prisma.project.findUnique.mockResolvedValue(project);
+      ctx.prisma.project.findUniqueOrThrow.mockResolvedValue(project);
 
-      const result = await taskResolvers.Task.project({ projectId: 'p1' }, {}, ctx as never);
+      const result = await taskResolvers.Task.project(
+        { projectId: 'p1' } as never,
+        {},
+        ctx as never,
+      );
       expect(result).toEqual(project);
-      expect(ctx.prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: 'p1' } });
+      expect(ctx.prisma.project.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'p1' } });
     });
   });
 });

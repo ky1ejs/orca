@@ -1,7 +1,5 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "../worktrees/orca"
-    ]
+    "additionalDirectories": ["../worktrees/orca"]
   }
 }
