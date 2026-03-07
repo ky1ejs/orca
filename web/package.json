@@ -10,22 +10,36 @@
     "build": "bun run setup && electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "bun run setup && ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run",
-    "validate": "bun run typecheck && bun run test && bun run build"
+    "validate": "bun run typecheck && bun run test && bun run build",
+    "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {
     "@orca/shared": "file:../shared",
     "better-sqlite3": "^11.8.1",
+    "graphql": "^16.10.0",
+    "graphql-sse": "^2.5.3",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-markdown": "^9.0.3",
+    "remark-gfm": "^4.0.0",
+    "urql": "^4.2.1"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.3",
+    "@graphql-codegen/typed-document-node": "^5.0.12",
+    "@graphql-codegen/typescript": "^4.1.2",
+    "@graphql-codegen/typescript-operations": "^4.4.0",
+    "@graphql-typed-document-node/core": "^3.2.0",
     "@tailwindcss/vite": "^4.1.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^35.1.2",
     "electron-vite": "^5.0.0",
+    "jsdom": "^25.0.1",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
