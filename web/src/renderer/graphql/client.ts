@@ -8,7 +8,9 @@ let cachedToken: string | null = null;
 
 async function getToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
-  cachedToken = await window.orca.db.getAuthToken();
+  cachedToken = window.orca
+    ? await window.orca.db.getAuthToken()
+    : (import.meta.env.VITE_AUTH_TOKEN ?? null);
   return cachedToken;
 }
 

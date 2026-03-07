@@ -42,6 +42,36 @@ No workspaces — each package manages its own dependencies with `bun install`. 
 - **graphql-codegen** generates TypeScript types for both backend and web
 - Resolvers in `backend/src/schema/`
 
+## UI Validation in Browser
+
+You can visually validate the UI by opening the Vite dev server in Chrome using your `claude-in-chrome` browser tools.
+
+### Setup
+
+1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (token from `~/.orca/config.json`)
+2. Start the backend and web: `bun run dev` (from the worktree root, or separately in `backend/` and `web/`)
+3. The Vite dev server runs on `http://localhost:5173`
+
+### Viewing the UI
+
+1. Use `mcp__claude-in-chrome__tabs_create_mcp` to create a new Chrome tab
+2. Navigate to `http://localhost:5173` with `mcp__claude-in-chrome__navigate`
+3. Take screenshots with `mcp__claude-in-chrome__computer` (action: `screenshot`)
+4. Interact with elements using `computer` (clicks), `read_page` (accessibility tree), and `find` (search for elements)
+
+### What works in browser
+
+- Layout, styling, and component rendering
+- Navigation and interaction flows
+- All GraphQL-driven data (projects, tasks, status)
+
+### What doesn't work in browser
+
+- Terminal rendering (xterm.js + node-pty)
+- Local session state (SQLite via better-sqlite3)
+
+These features require Electron's main process and cannot run in a plain browser.
+
 ## PR Workflow
 
 - Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`, `fix/pty-cleanup`)
