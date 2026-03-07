@@ -5,13 +5,8 @@ WORKDIR /app
 COPY package.json bun.lockb* ./
 RUN sed -i '/"@orca\/shared"/d' package.json && bun install
 
-# Copy source
+# Copy source (includes schema.graphql copied into backend/ before build)
 COPY . .
-
-# Copy schema from shared (placed here by CI or manually)
-# In local dev, schema.graphql is read from ../shared/src/schema.graphql
-# In Docker, it's at /app/schema.graphql via SCHEMA_PATH env var
-COPY schema.graphql /app/schema.graphql
 
 # Generate Prisma client
 RUN bunx prisma generate
