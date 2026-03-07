@@ -6,12 +6,20 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push"
   },
   "dependencies": {
-    "@orca/shared": "workspace:*"
+    "@orca/shared": "workspace:*",
+    "@prisma/client": "^6.4.1",
+    "graphql": "^16.10.0",
+    "graphql-yoga": "^5.10.6"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "prisma": "^6.4.1",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
   }

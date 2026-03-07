@@ -4,3 +4,4 @@ out
 .vite
 *.db
 bun.lock
+**/generated/**
