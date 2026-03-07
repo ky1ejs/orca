@@ -2,10 +2,9 @@
 import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import os from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PORT = 4445;
@@ -44,7 +43,7 @@ describe('App smoke test', () => {
     const backendDir = resolve(__dirname, '../../../backend');
 
     await new Promise<void>((resolve, reject) => {
-      const bunPath = os.homedir() + '/.bun/bin/bun';
+      const bunPath = execFileSync('/bin/sh', ['-c', 'which bun']).toString().trim();
       serverProcess = spawn(bunPath, ['run', 'src/index.ts'], {
         cwd: backendDir,
         env: { ...process.env, PORT: String(TEST_PORT) },
