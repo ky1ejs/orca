@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'web/**'
-      - 'shared/**'
 
 concurrency:
   group: release
@@ -91,23 +90,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install shared dependencies
-        run: bun install
-        working-directory: shared
-
-      - name: Install backend dependencies
-        run: bun install
-        working-directory: backend
-
       - name: Install web dependencies
         run: bun install
         working-directory: web
 
-      - name: Generate GraphQL types (backend)
-        run: bun run codegen
-        working-directory: backend
-
-      - name: Generate GraphQL types (web)
+      - name: Generate GraphQL types
         run: bun run codegen
         working-directory: web
 
