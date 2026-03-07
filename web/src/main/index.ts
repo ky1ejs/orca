@@ -4,10 +4,13 @@ import { initDb, closeDb } from './db/client.js';
 import { sweepStaleSessions } from './db/sessions.js';
 import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
 
+const iconPath = path.join(__dirname, '../../resources/icon.icns');
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -27,6 +30,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Set dock icon on macOS
+  app.dock?.setIcon(iconPath);
+
   // Initialize database
   initDb();
   sweepStaleSessions();
