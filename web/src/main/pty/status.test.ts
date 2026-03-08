@@ -28,6 +28,11 @@ vi.mock('./shell.js', () => ({
   getLoginShellArgs: () => [],
 }));
 
+const mockFindClaudePath = vi.fn((): string | null => '/usr/local/bin/claude');
+vi.mock('./claude.js', () => ({
+  findClaudePath: mockFindClaudePath,
+}));
+
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 vi.stubGlobal('fetch', mockFetch);
 
@@ -124,5 +129,42 @@ describe('StatusManager', () => {
   it('dispose clears all monitors', async () => {
     await statusManager.launch('task-1', '/tmp');
     expect(() => statusManager.dispose()).not.toThrow();
+  });
+
+  it('launch with planMode spawns claude instead of shell', async () => {
+    const spawnSpy = vi.spyOn(ptyManager, 'spawn');
+
+    const result = await statusManager.launch('task-1', '/tmp', { planMode: true });
+    expect(result.success).toBe(true);
+
+    expect(spawnSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      '/usr/local/bin/claude',
+      ['--permission-mode', 'plan'],
+      '/tmp',
+    );
+
+    spawnSpy.mockRestore();
+  });
+
+  it('launch with planMode fails when claude not found', async () => {
+    mockFindClaudePath.mockReturnValueOnce(null);
+
+    const result = await statusManager.launch('task-1', '/tmp', { planMode: true });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.name).toBe('ClaudeNotFoundError');
+    }
+  });
+
+  it('launch without planMode spawns default shell', async () => {
+    const spawnSpy = vi.spyOn(ptyManager, 'spawn');
+
+    const result = await statusManager.launch('task-1', '/tmp');
+    expect(result.success).toBe(true);
+
+    expect(spawnSpy).toHaveBeenCalledWith(expect.any(String), '/bin/echo', [], '/tmp');
+
+    spawnSpy.mockRestore();
   });
 });

@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface AgentLaunchOptions {
+  planMode?: boolean;
+}
+
 export interface AgentLaunchResult {
   success: boolean;
   sessionId?: string;
@@ -46,12 +50,17 @@ export interface OrcaAPI {
     delete: (projectId: string) => Promise<void>;
   };
   agent: {
-    launch: (taskId: string, workingDirectory: string) => Promise<AgentLaunchResult>;
+    launch: (
+      taskId: string,
+      workingDirectory: string,
+      options?: AgentLaunchOptions,
+    ) => Promise<AgentLaunchResult>;
     stop: (sessionId: string) => Promise<void>;
     restart: (
       taskId: string,
       sessionId: string,
       workingDirectory: string,
+      options?: AgentLaunchOptions,
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
@@ -110,11 +119,11 @@ const api: OrcaAPI = {
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
   },
   agent: {
-    launch: (taskId, workingDirectory) =>
-      ipcRenderer.invoke('agent:launch', taskId, workingDirectory),
+    launch: (taskId, workingDirectory, options) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options),
     stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
-    restart: (taskId, sessionId, workingDirectory) =>
-      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory),
+    restart: (taskId, sessionId, workingDirectory, options) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
   lifecycle: {
