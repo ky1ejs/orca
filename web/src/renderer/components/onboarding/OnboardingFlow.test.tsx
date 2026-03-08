@@ -139,7 +139,7 @@ describe('OnboardingFlow', () => {
     fireEvent.click(screen.getByTestId('onboarding-create-task-btn'));
 
     // Should advance to launch step
-    expect(await screen.findByTestId('onboarding-launch-agent')).toBeInTheDocument();
+    expect(await screen.findByTestId('onboarding-open-terminal')).toBeInTheDocument();
     expect(screen.getByText('You are all set!')).toBeInTheDocument();
   });
 
@@ -174,7 +174,7 @@ describe('OnboardingFlow', () => {
       target: { value: '/tmp' },
     });
     fireEvent.click(screen.getByTestId('onboarding-create-task-btn'));
-    await screen.findByTestId('onboarding-launch-agent');
+    await screen.findByTestId('onboarding-open-terminal');
 
     fireEvent.click(screen.getByTestId('onboarding-finish'));
     expect(onComplete).toHaveBeenCalledTimes(1);

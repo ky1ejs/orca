@@ -99,12 +99,9 @@ export function registerIpcHandlers(): void {
   // Agent handlers
   const sm = getStatusManager();
 
-  ipcMain.handle(
-    IPC_CHANNELS.AGENT_LAUNCH,
-    (_event, taskId: string, workingDirectory: string, initialContext?: string) => {
-      return sm.launch(taskId, workingDirectory, initialContext);
-    },
-  );
+  ipcMain.handle(IPC_CHANNELS.AGENT_LAUNCH, (_event, taskId: string, workingDirectory: string) => {
+    return sm.launch(taskId, workingDirectory);
+  });
 
   ipcMain.handle(IPC_CHANNELS.AGENT_STOP, (_event, sessionId: string) => {
     sm.stop(sessionId);
@@ -112,14 +109,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.AGENT_RESTART,
-    (
-      _event,
-      taskId: string,
-      sessionId: string,
-      workingDirectory: string,
-      initialContext?: string,
-    ) => {
-      return sm.restart(taskId, sessionId, workingDirectory, initialContext);
+    (_event, taskId: string, sessionId: string, workingDirectory: string) => {
+      return sm.restart(taskId, sessionId, workingDirectory);
     },
   );
 

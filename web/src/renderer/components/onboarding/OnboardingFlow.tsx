@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useCreateProject, useCreateTask } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 
-type OnboardingStep = 'welcome' | 'create-project' | 'create-task' | 'launch-agent';
+type OnboardingStep = 'welcome' | 'create-project' | 'create-task' | 'open-terminal';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -46,7 +46,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     });
     if (result.data?.createTask) {
       setCreatedTaskId(result.data.createTask.id);
-      setStep('launch-agent');
+      setStep('open-terminal');
     }
     setCreating(false);
   }, [taskTitle, workingDirectory, createdProjectId, createTask]);
@@ -62,13 +62,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const stepIndicator = (
     <div className="flex items-center gap-2 mb-8" data-testid="onboarding-steps">
-      {(['welcome', 'create-project', 'create-task', 'launch-agent'] as const).map((s, i) => (
+      {(['welcome', 'create-project', 'create-task', 'open-terminal'] as const).map((s, i) => (
         <div key={s} className="flex items-center gap-2">
           <div
             className={`h-2 w-2 rounded-full transition-colors ${
               s === step
                 ? 'bg-blue-500'
-                : ['welcome', 'create-project', 'create-task', 'launch-agent'].indexOf(step) > i
+                : ['welcome', 'create-project', 'create-task', 'open-terminal'].indexOf(step) > i
                   ? 'bg-blue-400/50'
                   : 'bg-gray-700'
             }`}
@@ -209,18 +209,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         )}
 
-        {step === 'launch-agent' && (
-          <div data-testid="onboarding-launch-agent">
+        {step === 'open-terminal' && (
+          <div data-testid="onboarding-open-terminal">
             <h2 className="text-2xl font-bold text-white mb-2">You are all set!</h2>
             <p className="text-gray-400 text-sm mb-3">
-              Your project and task are ready. Head to the task view to launch an AI agent.
+              Your project and task are ready. Head to the task view to open a terminal.
             </p>
             <p className="text-gray-500 text-xs mb-8">
               Tip: Use{' '}
               <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300">
                 {'\u2318'}Enter
               </kbd>{' '}
-              to quickly launch or restart an agent. Press{' '}
+              to quickly open or restart a terminal. Press{' '}
               <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300">
                 {'\u2318'}/
               </kbd>{' '}

@@ -117,8 +117,8 @@ export function AppShell({ onLogout }: AppShellProps) {
       {
         key: 'Enter',
         metaKey: true,
-        label: 'Launch Agent',
-        description: 'Launch or restart agent on current task',
+        label: 'Open Terminal',
+        description: 'Open or restart terminal for current task',
         action: () => {
           if (current.view === 'task' && current.id) {
             const agentButton = document.querySelector<HTMLButtonElement>(

@@ -100,12 +100,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const handleLaunchAgent = async () => {
     setLaunching(true);
     setAgentError(null);
-    const context = [task.title, task.description].filter(Boolean).join('\n\n');
-    const result = await window.orca.agent.launch(
-      taskId,
-      task.workingDirectory,
-      context || undefined,
-    );
+    const result = await window.orca.agent.launch(taskId, task.workingDirectory);
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -117,13 +112,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     if (!errorSession) return;
     setLaunching(true);
     setAgentError(null);
-    const context = [task.title, task.description].filter(Boolean).join('\n\n');
-    const result = await window.orca.agent.restart(
-      taskId,
-      errorSession.id,
-      task.workingDirectory,
-      context || undefined,
-    );
+    const result = await window.orca.agent.restart(taskId, errorSession.id, task.workingDirectory);
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -139,7 +128,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
           data-testid="agent-button"
         >
-          Launching...
+          Opening...
         </button>
       );
     }
@@ -163,7 +152,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           className="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
           data-testid="agent-button"
         >
-          Restart Agent
+          Restart Terminal
         </button>
       );
     }
@@ -174,7 +163,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
         data-testid="agent-button"
       >
-        Launch Agent
+        Open Terminal
       </button>
     );
   };
@@ -291,7 +280,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-gray-500 text-sm">Agent:</span>
+              <span className="text-gray-500 text-sm">Terminal:</span>
               {renderAgentButton()}
               {activeSession && <AgentStatus status={activeSession.status} />}
             </div>

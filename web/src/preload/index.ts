@@ -37,17 +37,12 @@ export interface OrcaAPI {
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
   agent: {
-    launch: (
-      taskId: string,
-      workingDirectory: string,
-      initialContext?: string,
-    ) => Promise<AgentLaunchResult>;
+    launch: (taskId: string, workingDirectory: string) => Promise<AgentLaunchResult>;
     stop: (sessionId: string) => Promise<void>;
     restart: (
       taskId: string,
       sessionId: string,
       workingDirectory: string,
-      initialContext?: string,
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
@@ -99,11 +94,11 @@ const api: OrcaAPI = {
     },
   },
   agent: {
-    launch: (taskId, workingDirectory, initialContext?) =>
-      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, initialContext),
+    launch: (taskId, workingDirectory) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory),
     stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
-    restart: (taskId, sessionId, workingDirectory, initialContext?) =>
-      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, initialContext),
+    restart: (taskId, sessionId, workingDirectory) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
   lifecycle: {
