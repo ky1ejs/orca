@@ -88,6 +88,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     );
   }
 
+  const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
+  const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
+
   const startEditing = () => {
     setTitle(task.title);
     setDescription(task.description ?? '');
@@ -96,7 +99,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setEditing(true);
   };
 
+  const handleStopAgent = async () => {
+    if (!activeSession) return;
+    await window.orca.agent.stop(activeSession.id);
+    refreshSessions();
+  };
+
   const handleSave = async () => {
+    if (status === TaskStatus.Done && activeSession) {
+      await window.orca.agent.stop(activeSession.id);
+      refreshSessions();
+    }
     await updateTask(taskId, {
       title: title.trim() || undefined,
       description: description.trim() || undefined,
@@ -112,11 +125,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
+    if (newStatus === TaskStatus.Done && activeSession) {
+      await window.orca.agent.stop(activeSession.id);
+      refreshSessions();
+    }
     await updateTask(taskId, { status: newStatus });
   };
-
-  const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
-  const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
 
   const handleLaunchAgent = async () => {
     if (!projectDirectory) {
@@ -172,13 +186,22 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
     if (activeSession) {
       return (
-        <button
-          disabled
-          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
-          data-testid="agent-button"
-        >
-          Running...
-        </button>
+        <div className="flex gap-2">
+          <button
+            disabled
+            className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
+            data-testid="agent-button"
+          >
+            Running...
+          </button>
+          <button
+            onClick={handleStopAgent}
+            className="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
+            data-testid="close-terminal-button"
+          >
+            Close Terminal
+          </button>
+        </div>
       );
     }
 

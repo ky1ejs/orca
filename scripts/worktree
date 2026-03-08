@@ -384,8 +384,8 @@ cmd_prune() {
       fi
 
       # Check GitHub PR status
+      local pr_state=""
       if command -v gh &>/dev/null; then
-        local pr_state
         pr_state=$(gh pr view "$wt" --repo "$(git -C "$MAIN_REPO" remote get-url origin)" --json state --jq '.state' 2>/dev/null || true)
         if [[ "$pr_state" == "MERGED" ]] && ! $should_prune; then
           should_prune=true
@@ -393,6 +393,12 @@ cmd_prune() {
         elif [[ "$pr_state" == "OPEN" ]]; then
           should_skip=true
         fi
+      fi
+
+      # A branch that appears "merged" but has no PR is likely freshly created
+      if $should_prune && [[ "$reason" == "branch merged into main" ]] && [[ -z "$pr_state" ]]; then
+        should_prune=false
+        reason=""
       fi
     fi
 

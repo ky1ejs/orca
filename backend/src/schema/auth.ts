@@ -69,7 +69,19 @@ export const authResolvers = {
       });
       const workspaces = memberships.filter((m) => !m.workspace.deletedAt).map((m) => m.workspace);
 
-      return { token, user, workspaces, pendingInvitations: [] };
+      const pendingInvitations = await context.prisma.workspaceInvitation.findMany({
+        where: {
+          email: user.email,
+          expiresAt: { gt: new Date() },
+          workspace: { deletedAt: null },
+        },
+        include: {
+          workspace: true,
+          invitedBy: true,
+        },
+      });
+
+      return { token, user, workspaces, pendingInvitations };
     },
     register: async (_parent, args, context) => {
       const { email, name, password, inviteCode } = args.input;

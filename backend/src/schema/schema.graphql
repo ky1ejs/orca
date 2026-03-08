@@ -99,6 +99,7 @@ input CreateWorkspaceInput {
 
 input UpdateWorkspaceInput {
   name: String
+  slug: String
 }
 
 input CreateProjectInput {
