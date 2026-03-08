@@ -72,8 +72,9 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
 
 /** Pick the most prominent status to display for a group of sessions. */
 function pickMostActiveStatus(sessions: TerminalSessionInfo[]): string {
-  // Priority: WAITING_FOR_INPUT > RUNNING > STARTING
+  // Priority: AWAITING_PERMISSION > WAITING_FOR_INPUT > RUNNING > STARTING
   const statuses = new Set(sessions.map((s) => s.status));
+  if (statuses.has('AWAITING_PERMISSION')) return 'AWAITING_PERMISSION';
   if (statuses.has('WAITING_FOR_INPUT')) return 'WAITING_FOR_INPUT';
   if (statuses.has('RUNNING')) return 'RUNNING';
   if (statuses.has('STARTING')) return 'STARTING';
