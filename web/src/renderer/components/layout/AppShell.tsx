@@ -4,6 +4,7 @@ import { useNavigation } from '../../navigation/context.js';
 import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
+import { MemberList } from '../members/MemberList.js';
 import { useWorkspaceBySlug } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
@@ -28,6 +29,8 @@ function MainContent() {
       return current.id ? <ProjectDetail projectId={current.id} /> : <ProjectList />;
     case 'task':
       return current.id ? <TaskDetail taskId={current.id} /> : <ProjectList />;
+    case 'members':
+      return <MemberList />;
     default:
       return <ProjectList />;
   }

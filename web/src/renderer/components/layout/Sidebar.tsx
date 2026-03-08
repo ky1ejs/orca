@@ -161,6 +161,18 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <div className="border-t border-gray-800">
         <div className="p-2">
           <button
+            onClick={() => navigate({ view: 'members' })}
+            className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors ${
+              current.view === 'members'
+                ? 'bg-gray-800 text-white'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            }`}
+          >
+            Members
+          </button>
+        </div>
+        <div className="p-2 pt-0">
+          <button
             onClick={onLogout}
             className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
           >

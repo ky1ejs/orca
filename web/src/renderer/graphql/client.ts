@@ -103,6 +103,26 @@ export async function createGraphQLClient(): Promise<Client> {
               cache.invalidate('Query', 'workspaces');
               cache.invalidate('Query', 'workspace');
             },
+            addMember(_result, _args, cache) {
+              cache.invalidate('Query', 'workspace');
+            },
+            removeMember(_result, _args, cache) {
+              cache.invalidate('Query', 'workspace');
+              cache.invalidate('Query', 'workspaces');
+            },
+            updateMemberRole(_result, _args, cache) {
+              cache.invalidate('Query', 'workspace');
+            },
+            cancelInvitation(_result, _args, cache) {
+              cache.invalidate('Query', 'workspace');
+            },
+            acceptInvitation(_result, _args, cache) {
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'pendingInvitations');
+            },
+            declineInvitation(_result, _args, cache) {
+              cache.invalidate('Query', 'pendingInvitations');
+            },
           },
           Subscription: {
             projectChanged(_result, _args, cache) {

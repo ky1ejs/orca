@@ -4,7 +4,7 @@ import type {
   QueryResolvers,
   MutationResolvers,
 } from '../__generated__/graphql.js';
-import { requireWorkspaceAccess, requireWorkspaceAccessBySlug } from '../auth/workspace.js';
+import { requireWorkspaceAccessBySlug, requireWorkspaceOwner } from '../auth/workspace.js';
 
 const MAX_WORKSPACES_PER_USER = 10;
 
@@ -60,37 +60,55 @@ function validateSlug(slug: string): void {
 
 export const workspaceResolvers = {
   Query: {
-    workspaces: (_parent, _args, context) => {
-      return context.prisma.workspace.findMany({
-        where: { ownerId: context.userId, deletedAt: null },
+    workspaces: async (_parent, _args, context) => {
+      const memberships = await context.prisma.workspaceMembership.findMany({
+        where: { userId: context.userId },
+        include: { workspace: true },
         orderBy: { createdAt: 'asc' },
       });
+
+      return memberships.filter((m) => !m.workspace.deletedAt).map((m) => m.workspace);
     },
     workspace: async (_parent, args, context) => {
-      return requireWorkspaceAccessBySlug(context.prisma, args.slug, context.userId);
+      const { workspace } = await requireWorkspaceAccessBySlug(
+        context.prisma,
+        args.slug,
+        context.userId,
+      );
+      return workspace;
     },
   } satisfies Pick<QueryResolvers, 'workspaces' | 'workspace'>,
   Mutation: {
     createWorkspace: async (_parent, args, context) => {
       validateSlug(args.input.slug);
 
-      const count = await context.prisma.workspace.count({
-        where: { ownerId: context.userId, deletedAt: null },
+      const membershipCount = await context.prisma.workspaceMembership.count({
+        where: {
+          userId: context.userId,
+          workspace: { deletedAt: null },
+        },
       });
-      if (count >= MAX_WORKSPACES_PER_USER) {
+      if (membershipCount >= MAX_WORKSPACES_PER_USER) {
         throw new GraphQLError(`You can have at most ${MAX_WORKSPACES_PER_USER} workspaces`, {
           extensions: { code: 'BAD_USER_INPUT' },
         });
       }
 
       try {
-        return await context.prisma.workspace.create({
+        const workspace = await context.prisma.workspace.create({
           data: {
             name: args.input.name,
             slug: args.input.slug,
-            ownerId: context.userId,
+            createdById: context.userId,
+            memberships: {
+              create: {
+                userId: context.userId,
+                role: 'OWNER',
+              },
+            },
           },
         });
+        return workspace;
       } catch (e: unknown) {
         if (e instanceof Error && e.message.includes('Unique constraint failed')) {
           throw new GraphQLError('This workspace URL is already taken', {
@@ -101,7 +119,7 @@ export const workspaceResolvers = {
       }
     },
     updateWorkspace: async (_parent, args, context) => {
-      await requireWorkspaceAccess(context.prisma, args.id, context.userId);
+      await requireWorkspaceOwner(context.prisma, args.id, context.userId);
 
       const data: Record<string, unknown> = {};
       if (args.input.name != null) data.name = args.input.name;
@@ -112,12 +130,15 @@ export const workspaceResolvers = {
       });
     },
     deleteWorkspace: async (_parent, args, context) => {
-      const workspace = await requireWorkspaceAccess(context.prisma, args.id, context.userId);
+      const { workspace } = await requireWorkspaceOwner(context.prisma, args.id, context.userId);
 
-      const activeCount = await context.prisma.workspace.count({
-        where: { ownerId: context.userId, deletedAt: null },
+      const activeMembershipCount = await context.prisma.workspaceMembership.count({
+        where: {
+          userId: context.userId,
+          workspace: { deletedAt: null },
+        },
       });
-      if (activeCount <= 1) {
+      if (activeMembershipCount <= 1) {
         throw new GraphQLError(
           'Cannot delete your only workspace. Create another workspace first.',
           { extensions: { code: 'BAD_USER_INPUT' } },
@@ -148,6 +169,40 @@ export const workspaceResolvers = {
     projects: (parent, _args, context) => {
       return context.prisma.project.findMany({
         where: { workspaceId: parent.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
+    role: async (parent, _args, context) => {
+      const membership = await context.prisma.workspaceMembership.findUnique({
+        where: { workspaceId_userId: { workspaceId: parent.id, userId: context.userId } },
+      });
+      return membership?.role ?? 'MEMBER';
+    },
+    members: (parent, _args, context) => {
+      return context.prisma.workspaceMembership.findMany({
+        where: { workspaceId: parent.id },
+        include: { user: true },
+        orderBy: { createdAt: 'asc' },
+      });
+    },
+    invitations: async (parent, _args, context) => {
+      // Only OWNERs can see invitations
+      const membership = await context.prisma.workspaceMembership.findUnique({
+        where: { workspaceId_userId: { workspaceId: parent.id, userId: context.userId } },
+      });
+      if (!membership || membership.role !== 'OWNER') {
+        return [];
+      }
+
+      return context.prisma.workspaceInvitation.findMany({
+        where: {
+          workspaceId: parent.id,
+          expiresAt: { gt: new Date() },
+        },
+        include: {
+          workspace: true,
+          invitedBy: true,
+        },
         orderBy: { createdAt: 'desc' },
       });
     },

@@ -105,3 +105,73 @@ export const DeleteTaskDocument = /* GraphQL */ `
     deleteTask(id: $id)
   }
 `;
+
+export const AddMemberDocument = /* GraphQL */ `
+  mutation AddMember($input: AddMemberInput!) {
+    addMember(input: $input) {
+      ... on MemberAdded {
+        member {
+          id
+          user {
+            id
+            name
+            email
+          }
+          role
+        }
+        message
+      }
+      ... on InvitationCreated {
+        invitation {
+          id
+          email
+          role
+          expiresAt
+        }
+        message
+      }
+    }
+  }
+`;
+
+export const RemoveMemberDocument = /* GraphQL */ `
+  mutation RemoveMember($workspaceId: ID!, $userId: ID!) {
+    removeMember(workspaceId: $workspaceId, userId: $userId)
+  }
+`;
+
+export const UpdateMemberRoleDocument = /* GraphQL */ `
+  mutation UpdateMemberRole($input: UpdateMemberRoleInput!) {
+    updateMemberRole(input: $input) {
+      id
+      user {
+        id
+        name
+        email
+      }
+      role
+    }
+  }
+`;
+
+export const CancelInvitationDocument = /* GraphQL */ `
+  mutation CancelInvitation($id: ID!) {
+    cancelInvitation(id: $id)
+  }
+`;
+
+export const AcceptInvitationDocument = /* GraphQL */ `
+  mutation AcceptInvitation($id: ID!) {
+    acceptInvitation(id: $id) {
+      id
+      name
+      slug
+    }
+  }
+`;
+
+export const DeclineInvitationDocument = /* GraphQL */ `
+  mutation DeclineInvitation($id: ID!) {
+    declineInvitation(id: $id)
+  }
+`;

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useQuery } from 'urql';
+import type { WorkspaceRole } from '../graphql/__generated__/generated.js';
 
 const STORAGE_KEY = 'orca:activeWorkspaceSlug';
 
@@ -15,12 +16,14 @@ interface Workspace {
   id: string;
   name: string;
   slug: string;
+  role: WorkspaceRole;
   createdAt: string;
   updatedAt: string;
 }
 
 interface WorkspaceContextValue {
   currentWorkspace: Workspace | null;
+  currentRole: WorkspaceRole | null;
   workspaces: Workspace[];
   switchWorkspace: (slug: string) => void;
   loading: boolean;
@@ -34,6 +37,7 @@ const WorkspacesQueryDocument = /* GraphQL */ `
       id
       name
       slug
+      role
       createdAt
       updatedAt
     }
@@ -53,6 +57,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const workspaces: Workspace[] = useMemo(() => result.data?.workspaces ?? [], [result.data]);
 
   const currentWorkspace = workspaces.find((w) => w.slug === activeSlug) ?? workspaces[0] ?? null;
+  const currentRole = currentWorkspace?.role ?? null;
 
   // Sync activeSlug when workspaces load and stored slug is stale
   useEffect(() => {
@@ -80,6 +85,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     <WorkspaceContext.Provider
       value={{
         currentWorkspace,
+        currentRole,
         workspaces,
         switchWorkspace,
         loading: result.fetching,

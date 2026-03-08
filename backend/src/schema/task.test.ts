@@ -6,7 +6,7 @@ const WORKSPACE = {
   id: 'ws1',
   name: 'Personal',
   slug: 'personal',
-  ownerId: 'user1',
+  createdById: 'user1',
   deletedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -17,6 +17,15 @@ const PROJECT = {
   name: 'Test Project',
   workspaceId: 'ws1',
   workspace: WORKSPACE,
+};
+
+const MEMBERSHIP = {
+  id: 'mem1',
+  workspaceId: 'ws1',
+  userId: 'user1',
+  role: 'OWNER' as const,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 function createMockContext() {
@@ -36,6 +45,9 @@ function createMockContext() {
       workspace: {
         findUnique: vi.fn().mockResolvedValue(WORKSPACE),
       },
+      workspaceMembership: {
+        findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
+      },
     },
     pubsub: {
       publish: vi.fn(),
@@ -53,7 +65,7 @@ describe('task resolvers', () => {
         id: '1',
         title: 'Task 1',
         projectId: 'p1',
-        project: PROJECT,
+        workspaceId: 'ws1',
       };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
 
@@ -61,22 +73,19 @@ describe('task resolvers', () => {
       expect(result).toEqual(task);
       expect(ctx.prisma.task.findUnique).toHaveBeenCalledWith({
         where: { id: '1' },
-        include: { project: { include: { workspace: true } } },
       });
     });
 
-    it('task throws NOT_FOUND for wrong owner', async () => {
+    it('task throws NOT_FOUND for non-member', async () => {
       const ctx = createMockContext();
       const task = {
         id: '1',
         title: 'Task 1',
         projectId: 'p1',
-        project: {
-          ...PROJECT,
-          workspace: { ...WORKSPACE, ownerId: 'other-user' },
-        },
+        workspaceId: 'ws1',
       };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.workspaceMembership.findUnique.mockResolvedValue(null);
 
       await expect(
         taskResolvers.Query.task({} as never, { id: '1' }, ctx as never),
@@ -85,9 +94,15 @@ describe('task resolvers', () => {
   });
 
   describe('Mutation', () => {
-    it('createTask creates with default status and publishes', async () => {
+    it('createTask creates with default status, workspaceId, and publishes', async () => {
       const ctx = createMockContext();
-      const task = { id: '1', title: 'New Task', status: 'TODO', projectId: 'p1' };
+      const task = {
+        id: '1',
+        title: 'New Task',
+        status: 'TODO',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+      };
       ctx.prisma.task.create.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.createTask(
@@ -103,6 +118,7 @@ describe('task resolvers', () => {
           status: 'TODO',
           priority: 'NONE',
           projectId: 'p1',
+          workspaceId: 'ws1',
           workingDirectory: '/tmp/test',
         },
       });
@@ -111,7 +127,13 @@ describe('task resolvers', () => {
 
     it('createTask creates with specified status', async () => {
       const ctx = createMockContext();
-      const task = { id: '1', title: 'New Task', status: 'IN_PROGRESS', projectId: 'p1' };
+      const task = {
+        id: '1',
+        title: 'New Task',
+        status: 'IN_PROGRESS',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+      };
       ctx.prisma.task.create.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.createTask(
@@ -119,7 +141,7 @@ describe('task resolvers', () => {
         {
           input: {
             title: 'New Task',
-            status: TaskStatus.InProgress,
+            status: TaskStatus.IN_PROGRESS,
             projectId: 'p1',
             workingDirectory: '/tmp/test',
           },
@@ -134,6 +156,7 @@ describe('task resolvers', () => {
           status: 'IN_PROGRESS',
           priority: 'NONE',
           projectId: 'p1',
+          workspaceId: 'ws1',
           workingDirectory: '/tmp/test',
         },
       });
@@ -146,14 +169,14 @@ describe('task resolvers', () => {
         title: 'Updated',
         status: 'DONE',
         projectId: 'p1',
-        project: PROJECT,
+        workspaceId: 'ws1',
       };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
       ctx.prisma.task.update.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.updateTask(
         {} as never,
-        { id: '1', input: { title: 'Updated', status: TaskStatus.Done } },
+        { id: '1', input: { title: 'Updated', status: TaskStatus.DONE } },
         ctx as never,
       );
       expect(result).toEqual(task);
@@ -166,7 +189,7 @@ describe('task resolvers', () => {
         id: '1',
         title: 'Test',
         projectId: 'p1',
-        project: PROJECT,
+        workspaceId: 'ws1',
       };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
       ctx.prisma.task.delete.mockResolvedValue({});
