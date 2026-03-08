@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import { initDb, closeDb } from './db/client.js';
 import { sweepStaleSessions } from './db/sessions.js';
@@ -16,9 +16,11 @@ if (process.env.NODE_ENV === 'development') {
 
 let pidSweepManager: PidSweepManager | null = null;
 let startupSweepCount = 0;
+let mainWindow: BrowserWindow | null = null;
+let quitConfirmed = false;
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     icon: iconPath,
@@ -42,7 +44,7 @@ function createWindow() {
   // Notify renderer about interrupted sessions from startup sweep
   mainWindow.webContents.on('did-finish-load', () => {
     if (startupSweepCount > 0) {
-      mainWindow.webContents.send('startup:interrupted-sessions', startupSweepCount);
+      mainWindow?.webContents.send('startup:interrupted-sessions', startupSweepCount);
     }
   });
 }
@@ -93,12 +95,40 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  // Stop periodic PID sweeps
-  pidSweepManager?.stop();
+app.on('before-quit', (event) => {
+  if (quitConfirmed) {
+    pidSweepManager?.stop();
+    getPtyManager().killAll();
+    closeDb();
+    return;
+  }
 
-  // Graceful cleanup: SIGTERM all managed PTY processes
-  getPtyManager().killAll();
+  const activeCount = getPtyManager().activeCount;
 
-  closeDb();
+  if (activeCount === 0) {
+    pidSweepManager?.stop();
+    closeDb();
+    return;
+  }
+
+  event.preventDefault();
+
+  const sessionWord = activeCount === 1 ? 'session' : 'sessions';
+  const options: Electron.MessageBoxSyncOptions = {
+    type: 'warning',
+    buttons: ['Cancel', 'Quit'],
+    defaultId: 0,
+    cancelId: 0,
+    title: 'Quit Orca?',
+    message: `You have ${activeCount} active terminal ${sessionWord}.`,
+    detail: `Quitting will terminate all running ${sessionWord}. Are you sure?`,
+  };
+  const result = mainWindow
+    ? dialog.showMessageBoxSync(mainWindow, options)
+    : dialog.showMessageBoxSync(options);
+
+  if (result === 1) {
+    quitConfirmed = true;
+    app.quit();
+  }
 });
