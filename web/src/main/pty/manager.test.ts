@@ -1,12 +1,21 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { runMigrations } from '../db/migrations.js';
+import { resolve } from 'node:path';
+import { createDb, type OrcaDb } from '../db/client.js';
 
-let testDb: Database.Database;
+const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
-vi.mock('../db/client.js', () => ({
-  getDb: () => testDb,
-}));
+let testDb: OrcaDb;
+let sqlite: Database.Database;
+
+vi.mock('../db/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../db/client.js')>();
+  return {
+    ...original,
+    getDb: () => testDb,
+    getRawDb: () => sqlite,
+  };
+});
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -26,25 +35,25 @@ describe('PtyManager', () => {
   let manager: InstanceType<typeof PtyManager>;
 
   beforeEach(() => {
-    testDb = new Database(':memory:');
-    testDb.pragma('foreign_keys = ON');
-    runMigrations(testDb);
+    sqlite = new Database(':memory:');
+    sqlite.pragma('foreign_keys = ON');
+    testDb = createDb(sqlite, migrationsFolder);
     manager = new PtyManager();
   });
 
   afterEach(() => {
     manager.killAll();
-    testDb.close();
+    sqlite.close();
   });
 
   it('spawns a process and captures output via replay', async () => {
-    createTestSession(testDb, 'test-session');
+    createTestSession(sqlite, 'test-session');
     manager.spawn('test-session', '/bin/echo', ['hello'], '/tmp');
 
     // Wait for the process to complete and output to be captured
     await new Promise<void>((resolve) => {
       const interval = setInterval(() => {
-        const session = testDb
+        const session = sqlite
           .prepare('SELECT status FROM terminal_session WHERE id = ?')
           .get('test-session') as { status: string } | undefined;
         if (session && session.status !== 'RUNNING' && session.status !== 'STARTING') {
@@ -63,7 +72,7 @@ describe('PtyManager', () => {
     expect(output).toContain('hello');
 
     // Session should be marked as EXITED
-    const session = testDb
+    const session = sqlite
       .prepare('SELECT status, pid FROM terminal_session WHERE id = ?')
       .get('test-session') as { status: string; pid: number };
     expect(session.status).toBe('EXITED');
@@ -71,7 +80,7 @@ describe('PtyManager', () => {
   });
 
   it('kills a running process', async () => {
-    createTestSession(testDb, 'kill-session');
+    createTestSession(sqlite, 'kill-session');
     // Spawn a long-running process
     manager.spawn('kill-session', '/bin/cat', [], '/tmp');
 
@@ -79,7 +88,7 @@ describe('PtyManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Verify it is running
-    const sessionBefore = testDb
+    const sessionBefore = sqlite
       .prepare('SELECT status FROM terminal_session WHERE id = ?')
       .get('kill-session') as { status: string };
     expect(sessionBefore.status).toBe('RUNNING');
@@ -89,7 +98,7 @@ describe('PtyManager', () => {
     // Wait for exit to propagate
     await new Promise<void>((resolve) => {
       const interval = setInterval(() => {
-        const session = testDb
+        const session = sqlite
           .prepare('SELECT status FROM terminal_session WHERE id = ?')
           .get('kill-session') as { status: string } | undefined;
         if (session && session.status !== 'RUNNING' && session.status !== 'STARTING') {
@@ -103,7 +112,7 @@ describe('PtyManager', () => {
       }, 5000);
     });
 
-    const sessionAfter = testDb
+    const sessionAfter = sqlite
       .prepare('SELECT status FROM terminal_session WHERE id = ?')
       .get('kill-session') as { status: string };
     // Kill sends SIGHUP which is non-zero exit
@@ -111,7 +120,7 @@ describe('PtyManager', () => {
   });
 
   it('resizes without throwing', () => {
-    createTestSession(testDb, 'resize-session');
+    createTestSession(sqlite, 'resize-session');
     manager.spawn('resize-session', '/bin/cat', [], '/tmp');
 
     expect(() => manager.resize('resize-session', 120, 40)).not.toThrow();
@@ -120,7 +129,7 @@ describe('PtyManager', () => {
   });
 
   it('writes data to a process', async () => {
-    createTestSession(testDb, 'write-session');
+    createTestSession(sqlite, 'write-session');
     manager.spawn('write-session', '/bin/cat', [], '/tmp');
 
     // Wait for process to start
@@ -138,8 +147,8 @@ describe('PtyManager', () => {
   });
 
   it('killAll terminates all processes', () => {
-    createTestSession(testDb, 'ka-1');
-    createTestSession(testDb, 'ka-2');
+    createTestSession(sqlite, 'ka-1');
+    createTestSession(sqlite, 'ka-2');
 
     manager.spawn('ka-1', '/bin/cat', [], '/tmp');
     manager.spawn('ka-2', '/bin/cat', [], '/tmp');
@@ -160,8 +169,8 @@ describe('PtyManager', () => {
   });
 
   it('killAll sends SIGTERM to all managed processes', async () => {
-    createTestSession(testDb, 'term-1');
-    createTestSession(testDb, 'term-2');
+    createTestSession(sqlite, 'term-1');
+    createTestSession(sqlite, 'term-2');
 
     // Spawn long-running processes
     manager.spawn('term-1', '/bin/cat', [], '/tmp');
@@ -182,7 +191,7 @@ describe('PtyManager', () => {
   });
 
   it('getManagedPids returns current process map', () => {
-    createTestSession(testDb, 'pid-test');
+    createTestSession(sqlite, 'pid-test');
     manager.spawn('pid-test', '/bin/cat', [], '/tmp');
 
     const pids = manager.getManagedPids();

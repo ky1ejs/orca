@@ -1,12 +1,20 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { runMigrations } from '../db/migrations.js';
+import { resolve } from 'node:path';
+import { createDb, type OrcaDb } from '../db/client.js';
 
-let testDb: Database.Database;
+const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
-vi.mock('../db/client.js', () => ({
-  getDb: () => testDb,
-}));
+let testDb: OrcaDb;
+let sqlite: Database.Database;
+
+vi.mock('../db/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../db/client.js')>();
+  return {
+    ...original,
+    getDb: () => testDb,
+  };
+});
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -35,9 +43,9 @@ describe('StatusManager', () => {
   let statusManager: InstanceType<typeof StatusManager>;
 
   beforeEach(() => {
-    testDb = new Database(':memory:');
-    testDb.pragma('foreign_keys = ON');
-    runMigrations(testDb);
+    sqlite = new Database(':memory:');
+    sqlite.pragma('foreign_keys = ON');
+    testDb = createDb(sqlite, migrationsFolder);
     ptyManager = new PtyManager();
     statusManager = new StatusManager(ptyManager, { backendUrl: 'http://localhost:4000' });
     mockFetch.mockClear();
@@ -46,7 +54,7 @@ describe('StatusManager', () => {
   afterEach(() => {
     statusManager.dispose();
     ptyManager.killAll();
-    testDb.close();
+    sqlite.close();
   });
 
   it('launch creates session and spawns process', async () => {
@@ -57,7 +65,7 @@ describe('StatusManager', () => {
       expect(result.sessionId).toBeTruthy();
 
       // Session should exist in DB
-      const session = testDb
+      const session = sqlite
         .prepare('SELECT * FROM terminal_session WHERE id = ?')
         .get(result.sessionId) as { status: string; task_id: string };
       expect(session).toBeTruthy();

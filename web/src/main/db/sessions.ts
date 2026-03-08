@@ -1,16 +1,10 @@
+import { eq, desc, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { getDb } from './client.js';
+import { terminalSession } from './schema.js';
 
-export interface TerminalSession {
-  id: string;
-  task_id: string | null;
-  pid: number | null;
-  status: string;
-  working_directory: string | null;
-  started_at: string | null;
-  stopped_at: string | null;
-  created_at: string;
-}
+export type TerminalSession = InferSelectModel<typeof terminalSession>;
 
 export interface CreateSessionInput {
   taskId?: string;
@@ -27,16 +21,12 @@ export interface UpdateSessionInput {
 
 export function getSessions(): TerminalSession[] {
   const db = getDb();
-  return db
-    .prepare('SELECT * FROM terminal_session ORDER BY created_at DESC')
-    .all() as TerminalSession[];
+  return db.select().from(terminalSession).orderBy(desc(terminalSession.created_at)).all();
 }
 
 export function getSession(id: string): TerminalSession | undefined {
   const db = getDb();
-  return db.prepare('SELECT * FROM terminal_session WHERE id = ?').get(id) as
-    | TerminalSession
-    | undefined;
+  return db.select().from(terminalSession).where(eq(terminalSession.id, id)).get();
 }
 
 export function createSession(input: CreateSessionInput): TerminalSession {
@@ -44,44 +34,32 @@ export function createSession(input: CreateSessionInput): TerminalSession {
   const id = randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(
-    `INSERT INTO terminal_session (id, task_id, pid, status, working_directory, started_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    input.taskId ?? null,
-    input.pid ?? null,
-    input.status ?? 'STARTING',
-    input.workingDirectory ?? null,
-    now,
-    now,
-  );
+  db.insert(terminalSession)
+    .values({
+      id,
+      task_id: input.taskId ?? null,
+      pid: input.pid ?? null,
+      status: input.status ?? 'STARTING',
+      working_directory: input.workingDirectory ?? null,
+      started_at: now,
+      created_at: now,
+    })
+    .run();
 
   return getSession(id)!;
 }
 
 export function updateSession(id: string, input: UpdateSessionInput): TerminalSession | undefined {
   const db = getDb();
-  const sets: string[] = [];
-  const values: unknown[] = [];
+  const updates: Partial<Record<string, unknown>> = {};
 
-  if (input.pid !== undefined) {
-    sets.push('pid = ?');
-    values.push(input.pid);
-  }
-  if (input.status !== undefined) {
-    sets.push('status = ?');
-    values.push(input.status);
-  }
-  if (input.stoppedAt !== undefined) {
-    sets.push('stopped_at = ?');
-    values.push(input.stoppedAt);
-  }
+  if (input.pid !== undefined) updates.pid = input.pid;
+  if (input.status !== undefined) updates.status = input.status;
+  if (input.stoppedAt !== undefined) updates.stopped_at = input.stoppedAt;
 
-  if (sets.length === 0) return getSession(id);
+  if (Object.keys(updates).length === 0) return getSession(id);
 
-  values.push(id);
-  db.prepare(`UPDATE terminal_session SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+  db.update(terminalSession).set(updates).where(eq(terminalSession.id, id)).run();
 
   return getSession(id);
 }
@@ -94,8 +72,10 @@ export interface SweepResult {
 export function sweepStaleSessions(): SweepResult {
   const db = getDb();
   const staleSessions = db
-    .prepare(
-      "SELECT id, pid FROM terminal_session WHERE status IN ('RUNNING', 'STARTING') AND pid IS NOT NULL",
+    .select({ id: terminalSession.id, pid: terminalSession.pid })
+    .from(terminalSession)
+    .where(
+      sql`${terminalSession.status} IN ('RUNNING', 'STARTING') AND ${terminalSession.pid} IS NOT NULL`,
     )
     .all() as Array<{ id: string; pid: number }>;
 
@@ -105,9 +85,10 @@ export function sweepStaleSessions(): SweepResult {
     try {
       process.kill(session.pid, 0);
     } catch {
-      db.prepare(
-        "UPDATE terminal_session SET status = 'ERROR', stopped_at = datetime('now') WHERE id = ?",
-      ).run(session.id);
+      db.update(terminalSession)
+        .set({ status: 'ERROR', stopped_at: sql`datetime('now')` })
+        .where(eq(terminalSession.id, session.id))
+        .run();
       sweptIds.push(session.id);
     }
   }
@@ -134,8 +115,10 @@ export function isPidAlive(pid: number): boolean {
 export function getActiveSessions(): Array<{ id: string; pid: number }> {
   const db = getDb();
   return db
-    .prepare(
-      "SELECT id, pid FROM terminal_session WHERE status IN ('RUNNING', 'STARTING', 'WAITING_FOR_INPUT') AND pid IS NOT NULL",
+    .select({ id: terminalSession.id, pid: terminalSession.pid })
+    .from(terminalSession)
+    .where(
+      sql`${terminalSession.status} IN ('RUNNING', 'STARTING', 'WAITING_FOR_INPUT') AND ${terminalSession.pid} IS NOT NULL`,
     )
     .all() as Array<{ id: string; pid: number }>;
 }
