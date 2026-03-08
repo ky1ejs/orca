@@ -4,6 +4,6 @@
     "outDir": "dist",
     "composite": true
   },
-  "include": ["src/main", "src/preload", "src/shared"],
+  "include": ["src/main", "src/preload", "src/shared", "src/daemon"],
   "references": [{ "path": "./tsconfig.renderer.json" }]
 }

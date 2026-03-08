@@ -88,5 +88,6 @@ export function checkForUpdates(): void {
 
 export function installUpdate(): void {
   isAutoUpdateRestart = true;
+  // Sessions survive in the daemon — just quit and install
   autoUpdater.quitAndInstall(false, true);
 }
