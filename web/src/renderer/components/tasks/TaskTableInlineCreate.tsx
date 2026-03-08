@@ -52,9 +52,11 @@ export function TaskTableInlineCreate({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !submitting) {
       e.preventDefault();
+      e.stopPropagation();
       handleSubmit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   };
