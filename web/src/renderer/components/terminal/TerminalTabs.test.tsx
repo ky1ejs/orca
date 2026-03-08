@@ -114,8 +114,8 @@ describe('TerminalTabs', () => {
 
     const runningDot = screen.getByTestId('status-dot-sess-1');
     const errorDot = screen.getByTestId('status-dot-sess-2');
-    expect(runningDot.className).toContain('bg-green-400');
-    expect(errorDot.className).toContain('bg-red-400');
+    expect(runningDot.className).toContain('bg-success');
+    expect(errorDot.className).toContain('bg-error');
   });
 
   it('shows pulse animation for STARTING status', () => {
@@ -131,7 +131,7 @@ describe('TerminalTabs', () => {
 
     const dot = screen.getByTestId('status-dot-sess-1');
     expect(dot.className).toContain('animate-pulse');
-    expect(dot.className).toContain('bg-blue-400');
+    expect(dot.className).toContain('bg-info');
   });
 
   it('shows pulse animation for WAITING_FOR_INPUT status', () => {
@@ -147,6 +147,6 @@ describe('TerminalTabs', () => {
 
     const dot = screen.getByTestId('status-dot-sess-1');
     expect(dot.className).toContain('animate-pulse');
-    expect(dot.className).toContain('bg-yellow-400');
+    expect(dot.className).toContain('bg-warning');
   });
 });

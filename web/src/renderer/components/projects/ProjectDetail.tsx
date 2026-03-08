@@ -35,7 +35,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   if (error) {
     return (
-      <div className="p-6 text-red-400">
+      <div className="p-6 text-error">
         <p>Error loading project: {error.message}</p>
       </div>
     );
@@ -76,7 +76,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     <div className="p-6">
       <button
         onClick={goBack}
-        className="text-gray-400 hover:text-white text-sm mb-4 inline-flex items-center transition-colors"
+        className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
         &larr; Back to Projects
       </button>
@@ -88,13 +88,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500 resize-none"
               rows={3}
             />
             <input
@@ -102,18 +102,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               value={defaultDirectory}
               onChange={(e) => setDefaultDirectory(e.target.value)}
               placeholder="Default directory (e.g., /Users/you/projects/my-app)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 font-mono"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500 font-mono"
             />
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors"
               >
                 Save
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -123,17 +123,17 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       ) : (
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">{project.name}</h1>
+            <h1 className="text-heading-lg font-bold text-white">{project.name}</h1>
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-red-300 text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
               >
                 Delete
               </button>
@@ -141,7 +141,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           </div>
           {project.description && <p className="text-gray-400 mt-2">{project.description}</p>}
           {project.defaultDirectory && (
-            <p className="text-gray-500 text-sm font-mono mt-2">{project.defaultDirectory}</p>
+            <p className="text-gray-500 text-body-sm font-mono mt-2">{project.defaultDirectory}</p>
           )}
         </div>
       )}

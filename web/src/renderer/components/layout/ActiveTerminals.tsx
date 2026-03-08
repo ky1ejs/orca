@@ -9,11 +9,11 @@ import { useNavigation } from '../../navigation/context.js';
 const attentionLabel: Partial<Record<SessionStatusType, { text: string; className: string }>> = {
   [SessionStatus.AwaitingPermission]: {
     text: 'Needs Permission',
-    className: 'bg-orange-900/60 text-orange-300',
+    className: 'bg-warning-muted text-warning',
   },
   [SessionStatus.WaitingForInput]: {
     text: 'Waiting',
-    className: 'bg-yellow-900/60 text-yellow-300',
+    className: 'bg-warning-muted text-warning',
   },
 };
 
@@ -33,7 +33,7 @@ export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
 
   return (
     <div className="border-b border-gray-800 p-2" data-testid="active-terminals">
-      <h3 className="px-2 pb-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-2">
+      <h3 className="px-2 pb-1.5 text-label-sm font-medium text-gray-500 uppercase tracking-wide flex items-center gap-2">
         Active Terminals
         {needsAttentionCount > 0 && (
           <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
@@ -51,7 +51,7 @@ export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
             <li key={entry.taskId}>
               <button
                 onClick={() => navigate({ view: 'task', id: entry.taskId })}
-                className={`w-full text-left px-2 py-1 text-xs rounded flex items-center gap-2 transition-colors ${
+                className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center gap-2 transition-colors ${
                   isActive
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -77,7 +77,7 @@ export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
                   )}
                 </span>
                 {entry.sessionCount > 1 && (
-                  <span className="flex-shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-300">
+                  <span className="flex-shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-label-xs text-gray-300">
                     {entry.sessionCount}
                   </span>
                 )}

@@ -7,15 +7,15 @@ const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
   },
   [TaskStatus.InProgress]: {
     label: 'In Progress',
-    className: 'bg-blue-900 text-blue-300',
+    className: 'bg-info-muted text-info',
   },
   [TaskStatus.InReview]: {
     label: 'In Review',
-    className: 'bg-yellow-900 text-yellow-300',
+    className: 'bg-warning-muted text-warning',
   },
   [TaskStatus.Done]: {
     label: 'Done',
-    className: 'bg-green-900 text-green-300',
+    className: 'bg-success-muted text-success',
   },
 };
 
@@ -27,7 +27,7 @@ export function TaskStatusBadge({ status }: TaskStatusBadgeProps) {
   const config = statusConfig[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${config.className}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-label-sm font-medium ${config.className}`}
       data-testid="task-status-badge"
     >
       {config.label}

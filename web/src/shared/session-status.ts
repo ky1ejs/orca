@@ -25,10 +25,10 @@ export function isActiveSessionStatus(status: string): boolean {
 
 /** CSS classes for status indicator dots. */
 export const statusDotClass: Record<SessionStatus, string> = {
-  [SessionStatus.Running]: 'bg-green-400',
+  [SessionStatus.Running]: 'bg-success',
   [SessionStatus.Exited]: 'bg-gray-500',
-  [SessionStatus.Error]: 'bg-red-400',
-  [SessionStatus.Starting]: 'bg-blue-400 animate-pulse',
-  [SessionStatus.WaitingForInput]: 'bg-yellow-400 animate-pulse',
-  [SessionStatus.AwaitingPermission]: 'bg-orange-400 animate-pulse',
+  [SessionStatus.Error]: 'bg-error',
+  [SessionStatus.Starting]: 'bg-info animate-pulse',
+  [SessionStatus.WaitingForInput]: 'bg-warning animate-pulse',
+  [SessionStatus.AwaitingPermission]: 'bg-warning animate-pulse',
 };

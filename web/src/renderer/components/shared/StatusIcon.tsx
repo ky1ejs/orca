@@ -21,7 +21,7 @@ export function StatusIcon({ status, className = 'w-4 h-4' }: StatusIconProps) {
     case TaskStatus.InProgress:
       return (
         <svg
-          className={`${className} text-yellow-500`}
+          className={`${className} text-info`}
           viewBox="0 0 16 16"
           fill="none"
           aria-label="Status: In Progress"
@@ -33,7 +33,7 @@ export function StatusIcon({ status, className = 'w-4 h-4' }: StatusIconProps) {
     case TaskStatus.InReview:
       return (
         <svg
-          className={`${className} text-yellow-500`}
+          className={`${className} text-warning`}
           viewBox="0 0 16 16"
           fill="none"
           aria-label="Status: In Review"
@@ -45,7 +45,7 @@ export function StatusIcon({ status, className = 'w-4 h-4' }: StatusIconProps) {
     case TaskStatus.Done:
       return (
         <svg
-          className={`${className} text-green-500`}
+          className={`${className} text-success`}
           viewBox="0 0 16 16"
           fill="none"
           aria-label="Status: Done"

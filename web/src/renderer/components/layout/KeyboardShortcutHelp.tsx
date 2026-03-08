@@ -35,7 +35,7 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
     >
       <div className="w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
-          <h2 className="text-lg font-semibold text-white">Keyboard Shortcuts</h2>
+          <h2 className="text-heading-sm font-semibold text-white">Keyboard Shortcuts</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -50,15 +50,15 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
               key={`${shortcut.key}-${shortcut.metaKey}-${shortcut.shiftKey}`}
               className="flex items-center justify-between"
             >
-              <span className="text-gray-300 text-sm">{shortcut.description}</span>
-              <kbd className="ml-4 shrink-0 rounded bg-gray-800 px-2 py-1 font-mono text-xs text-gray-300 border border-gray-700">
+              <span className="text-gray-300 text-body-sm">{shortcut.description}</span>
+              <kbd className="ml-4 shrink-0 rounded bg-gray-800 px-2 py-1 font-mono text-label-sm text-gray-300 border border-gray-700">
                 {formatShortcut(shortcut)}
               </kbd>
             </div>
           ))}
         </div>
         <div className="border-t border-gray-800 px-5 py-3">
-          <p className="text-xs text-gray-500">
+          <p className="text-label-sm text-gray-500">
             Shortcuts are disabled when a terminal is focused.
           </p>
         </div>

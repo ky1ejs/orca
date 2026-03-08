@@ -90,7 +90,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   if (error) {
     return (
-      <div className="p-6 text-red-400">
+      <div className="p-6 text-error">
         <p>Error loading task: {error.message}</p>
       </div>
     );
@@ -194,7 +194,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       return (
         <button
           disabled
-          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
+          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-label-md rounded-md cursor-not-allowed"
           data-testid="agent-button"
         >
           Opening...
@@ -207,14 +207,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div className="flex gap-2">
           <button
             disabled
-            className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded-md cursor-not-allowed"
+            className="px-3 py-1.5 bg-gray-700 text-gray-400 text-label-md rounded-md cursor-not-allowed"
             data-testid="agent-button"
           >
             Running...
           </button>
           <button
             onClick={handleStopAgent}
-            className="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
+            className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
             data-testid="close-terminal-button"
           >
             Close Terminal
@@ -227,7 +227,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       return (
         <button
           onClick={handleRestartAgent}
-          className="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
+          className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
           data-testid="agent-button"
         >
           Restart Terminal
@@ -240,14 +240,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div className="flex">
           <button
             onClick={() => handleLaunchAgent()}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-l-md transition-colors"
+            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-l-md transition-colors"
             data-testid="agent-button"
           >
             Open Terminal
           </button>
           <button
             onClick={() => setLaunchMenuOpen((prev) => !prev)}
-            className="px-1.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-r-md border-l border-blue-500 transition-colors"
+            className="px-1.5 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-r-md border-l border-accent-active transition-colors"
             data-testid="agent-menu-toggle"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
@@ -262,7 +262,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 setLaunchMenuOpen(false);
                 handleLaunchAgent();
               }}
-              className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 rounded-t-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-white hover:bg-gray-700 rounded-t-md transition-colors"
               data-testid="launch-terminal"
             >
               Open Terminal
@@ -272,7 +272,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 setLaunchMenuOpen(false);
                 handleLaunchAgent({ planMode: true });
               }}
-              className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 rounded-b-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-white hover:bg-gray-700 rounded-b-md transition-colors"
               data-testid="launch-plan-mode"
             >
               Open in Plan Mode
@@ -287,7 +287,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     <div className="p-6">
       <button
         onClick={goBack}
-        className="text-gray-400 hover:text-white text-sm mb-4 inline-flex items-center transition-colors"
+        className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
         &larr; Back
       </button>
@@ -295,7 +295,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       <div className="mb-2">
         <button
           onClick={() => navigate({ view: 'project', id: task.projectId })}
-          className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+          className="text-gray-300 hover:text-gray-200 text-label-md transition-colors"
         >
           {task.project.name} &rarr;
         </button>
@@ -308,20 +308,20 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (supports Markdown)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500 resize-none"
               rows={6}
             />
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -332,7 +332,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
             >
               {PRIORITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -343,13 +343,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors"
               >
                 Save
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -360,19 +360,19 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
-              <span className="text-gray-500 text-lg font-mono mr-3">{task.displayId}</span>
-              <h1 className="text-2xl font-bold text-white">{task.title}</h1>
+              <span className="text-gray-500 text-heading-sm font-mono mr-3">{task.displayId}</span>
+              <h1 className="text-heading-lg font-bold text-white">{task.title}</h1>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-red-300 text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
               >
                 Delete
               </button>
@@ -381,11 +381,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-sm">Status:</span>
+              <span className="text-gray-500 text-label-md">Status:</span>
               <select
                 value={task.status}
                 onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -397,11 +397,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-sm">Priority:</span>
+              <span className="text-gray-500 text-label-md">Priority:</span>
               <select
                 value={task.priority}
                 onChange={(e) => updateTask(taskId, { priority: e.target.value as TaskPriority })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
               >
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -412,11 +412,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-sm">Project:</span>
+              <span className="text-gray-500 text-label-md">Project:</span>
               <select
                 value={task.projectId}
                 onChange={(e) => updateTask(taskId, { projectId: e.target.value })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
               >
                 {workspaceProjects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -427,11 +427,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-sm">Assignee:</span>
+              <span className="text-gray-500 text-label-md">Assignee:</span>
               <select
                 value={task.assignee?.id ?? ''}
                 onChange={(e) => updateTask(taskId, { assigneeId: e.target.value || null })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
                 data-testid="assignee-select"
               >
                 <option value="">Unassigned</option>
@@ -444,7 +444,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
-              <span className="text-gray-500 text-sm">Labels:</span>
+              <span className="text-gray-500 text-label-md">Labels:</span>
               <div className="flex items-center gap-1 flex-wrap">
                 {task.labels.map((label) => (
                   <LabelBadge
@@ -469,9 +469,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div>
-              <span className="text-gray-500 text-sm">Project Directory:</span>
+              <span className="text-gray-500 text-label-md">Project Directory:</span>
               {dirLoading ? (
-                <p className="text-gray-500 text-sm mt-1">Loading...</p>
+                <p className="text-gray-500 text-body-sm mt-1">Loading...</p>
               ) : isEditingDir ? (
                 <div className="flex items-center gap-2 mt-1">
                   <input
@@ -486,7 +486,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                         setIsEditingDir(false);
                       }
                     }}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm font-mono focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm font-mono focus:outline-none focus:border-gray-500"
                     autoFocus
                   />
                   <button
@@ -494,20 +494,20 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                       updateDirectory(editingDirectory.trim());
                       setIsEditingDir(false);
                     }}
-                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                    className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setIsEditingDir(false)}
-                    className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+                    className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-label-sm rounded transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
               ) : projectDirectory ? (
                 <p
-                  className="text-gray-300 text-sm font-mono mt-1 cursor-pointer hover:text-blue-400 transition-colors"
+                  className="text-gray-300 text-body-sm font-mono mt-1 cursor-pointer hover:text-gray-200 transition-colors"
                   onClick={() => {
                     setEditingDirectory(projectDirectory);
                     setIsEditingDir(true);
@@ -521,7 +521,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                     setEditingDirectory('');
                     setIsEditingDir(true);
                   }}
-                  className="text-blue-400 hover:text-blue-300 text-sm mt-1 transition-colors"
+                  className="text-gray-300 hover:text-gray-200 text-label-md mt-1 transition-colors"
                 >
                   Set project directory...
                 </button>
@@ -529,24 +529,24 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-gray-500 text-sm">Terminal:</span>
+              <span className="text-gray-500 text-label-md">Terminal:</span>
               {renderAgentButton()}
               {activeSession && <AgentStatus status={activeSession.status} />}
             </div>
 
             {agentError && (
               <div
-                className="p-3 bg-red-900/30 border border-red-800 rounded-md"
+                className="p-3 bg-error-muted border border-error-strong rounded-md"
                 data-testid="agent-error"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-red-300 text-sm">{agentError.message}</p>
-                    <p className="text-red-400/70 text-xs mt-1">{agentError.suggestion}</p>
+                    <p className="text-error text-body-sm">{agentError.message}</p>
+                    <p className="text-error/70 text-label-sm mt-1">{agentError.suggestion}</p>
                   </div>
                   <button
                     onClick={() => setAgentError(null)}
-                    className="text-red-400 hover:text-red-300 text-sm ml-2"
+                    className="text-error hover:text-error text-label-md ml-2"
                     data-testid="dismiss-error"
                   >
                     &times;
@@ -557,7 +557,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
             {task.description && (
               <div>
-                <span className="text-gray-500 text-sm block mb-2">Description:</span>
+                <span className="text-gray-500 text-label-md block mb-2">Description:</span>
                 <MarkdownRenderer content={task.description} />
               </div>
             )}

@@ -14,8 +14,8 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       data-testid="empty-state"
     >
       {icon && <div className="mb-4 text-gray-600">{icon}</div>}
-      <h3 className="text-lg font-medium text-gray-300 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 max-w-md mb-6">{description}</p>
+      <h3 className="text-heading-sm font-medium text-gray-300 mb-2">{title}</h3>
+      <p className="text-body-sm text-gray-500 max-w-md mb-6">{description}</p>
       {action && <div>{action}</div>}
     </div>
   );
@@ -44,7 +44,7 @@ export function EmptyProjectList({ onCreateProject }: { onCreateProject: () => v
       action={
         <button
           onClick={onCreateProject}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors font-medium"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors font-medium"
           data-testid="create-first-project"
         >
           Create Your First Project
@@ -77,7 +77,7 @@ export function EmptyTaskList({ onCreateTask }: { onCreateTask: () => void }) {
       action={
         <button
           onClick={onCreateTask}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors font-medium"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors font-medium"
           data-testid="create-first-task"
         >
           Create Your First Task
