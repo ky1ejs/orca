@@ -1,5 +1,5 @@
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
-import { SessionStatus } from '../../../shared/session-status.js';
+import { type SessionStatus, statusDotClass } from '../../../shared/session-status.js';
 
 interface TerminalTabsProps {
   sessions: TerminalSessionInfo[];
@@ -7,14 +7,6 @@ interface TerminalTabsProps {
   onSelectSession: (sessionId: string) => void;
   onCloseSession: (sessionId: string) => void;
 }
-
-const statusDotClass: Record<SessionStatus, string> = {
-  [SessionStatus.Running]: 'bg-green-400',
-  [SessionStatus.Exited]: 'bg-gray-500',
-  [SessionStatus.Error]: 'bg-red-400',
-  [SessionStatus.Starting]: 'bg-blue-400 animate-pulse',
-  [SessionStatus.WaitingForInput]: 'bg-yellow-400 animate-pulse',
-};
 
 export function TerminalTabs({
   sessions,

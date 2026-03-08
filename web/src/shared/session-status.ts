@@ -20,3 +20,12 @@ export const ACTIVE_SESSION_STATUSES: readonly SessionStatus[] = [
 export function isActiveSessionStatus(status: string): boolean {
   return (ACTIVE_SESSION_STATUSES as readonly string[]).includes(status);
 }
+
+/** CSS classes for status indicator dots. */
+export const statusDotClass: Record<SessionStatus, string> = {
+  [SessionStatus.Running]: 'bg-green-400',
+  [SessionStatus.Exited]: 'bg-gray-500',
+  [SessionStatus.Error]: 'bg-red-400',
+  [SessionStatus.Starting]: 'bg-blue-400 animate-pulse',
+  [SessionStatus.WaitingForInput]: 'bg-yellow-400 animate-pulse',
+};

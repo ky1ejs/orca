@@ -10,6 +10,8 @@ import { StatusIcon } from '../shared/StatusIcon.js';
 import { SidebarSkeleton } from './Skeleton.js';
 import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
+import { ActiveTerminals } from './ActiveTerminals.js';
+import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,6 +41,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   };
 
   const projects = data?.workspace?.projects ?? [];
+  const activeTerminals = useActiveTerminals(projects);
 
   if (collapsed) {
     return (
@@ -65,6 +68,28 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           </button>
           <NotificationBell collapsed />
         </div>
+        {activeTerminals.length > 0 && (
+          <div className="py-2" data-testid="active-terminals-collapsed">
+            <div className="relative flex justify-center">
+              <svg
+                className="h-5 w-5 text-green-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
+                />
+              </svg>
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
+                {activeTerminals.length}
+              </span>
+            </div>
+          </div>
+        )}
       </aside>
     );
   }
@@ -106,6 +131,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         </div>
       </div>
       <WorkspaceSwitcher />
+      <ActiveTerminals entries={activeTerminals} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
