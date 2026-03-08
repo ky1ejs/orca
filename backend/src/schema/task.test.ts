@@ -196,6 +196,68 @@ describe('task resolvers', () => {
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('taskChanged', task);
     });
 
+    it('updateTask changes projectId within the same workspace', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Task 1',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+      };
+      const targetProject = {
+        id: 'p2',
+        name: 'Other Project',
+        workspaceId: 'ws1',
+        workspace: WORKSPACE,
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.project.findUnique.mockResolvedValue(targetProject);
+      ctx.prisma.task.update.mockResolvedValue({ ...task, projectId: 'p2' });
+
+      const result = await taskResolvers.Mutation.updateTask(
+        {} as never,
+        { id: '1', input: { projectId: 'p2' } },
+        ctx as never,
+      );
+      expect(result.projectId).toBe('p2');
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { projectId: 'p2' },
+      });
+    });
+
+    it('updateTask rejects cross-workspace project move', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Task 1',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+      };
+      const otherWorkspace = { ...WORKSPACE, id: 'ws2', slug: 'other' };
+      const targetProject = {
+        id: 'p3',
+        name: 'Cross-WS Project',
+        workspaceId: 'ws2',
+        workspace: otherWorkspace,
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.project.findUnique.mockResolvedValue(targetProject);
+      // membership check for target project's workspace
+      ctx.prisma.workspaceMembership.findUnique
+        .mockResolvedValueOnce(MEMBERSHIP) // task access
+        .mockResolvedValueOnce(MEMBERSHIP) // task workspace not deleted
+        .mockResolvedValueOnce(MEMBERSHIP); // project access
+
+      await expect(
+        taskResolvers.Mutation.updateTask(
+          {} as never,
+          { id: '1', input: { projectId: 'p3' } },
+          ctx as never,
+        ),
+      ).rejects.toThrow('Cannot move task to a project in a different workspace');
+    });
+
     it('deleteTask deletes and returns true', async () => {
       const ctx = createMockContext();
       const task = {

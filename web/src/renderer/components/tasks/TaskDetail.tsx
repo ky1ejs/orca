@@ -5,6 +5,7 @@ import {
   useUpdateTask,
   useDeleteTask,
   useTaskSubscription,
+  useWorkspaceBySlug,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -59,6 +60,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     loading: dirLoading,
     updateDirectory,
   } = useProjectDirectory(data?.task?.projectId);
+
+  const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const workspaceProjects = workspaceData?.workspace?.projects ?? [];
 
   useTaskSubscription(currentWorkspace?.id ?? '');
 
@@ -215,7 +219,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           onClick={() => navigate({ view: 'project', id: task.projectId })}
           className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
         >
-          {task.project.name}
+          {task.project.name} &rarr;
         </button>
       </div>
 
@@ -324,6 +328,21 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-500 text-sm">Project:</span>
+              <select
+                value={task.projectId}
+                onChange={(e) => updateTask(taskId, { projectId: e.target.value })}
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+              >
+                {workspaceProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
                   </option>
                 ))}
               </select>
