@@ -11,7 +11,7 @@ import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
-import { TaskStatus } from '../../graphql/__generated__/generated.js';
+import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 
 interface TaskDetailProps {
@@ -23,6 +23,14 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: TaskStatus.InProgress, label: 'In Progress' },
   { value: TaskStatus.InReview, label: 'In Review' },
   { value: TaskStatus.Done, label: 'Done' },
+];
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: TaskPriority.None, label: 'None' },
+  { value: TaskPriority.Low, label: 'Low' },
+  { value: TaskPriority.Medium, label: 'Medium' },
+  { value: TaskPriority.High, label: 'High' },
+  { value: TaskPriority.Urgent, label: 'Urgent' },
 ];
 
 const ACTIVE_STATUSES = ['STARTING', 'RUNNING', 'WAITING_FOR_INPUT'];
@@ -37,6 +45,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.Todo);
+  const [priority, setPriority] = useState<TaskPriority>(TaskPriority.None);
   const [workingDirectory, setWorkingDirectory] = useState('');
   const [launching, setLaunching] = useState(false);
   const [agentError, setAgentError] = useState<{
@@ -73,6 +82,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setTitle(task.title);
     setDescription(task.description ?? '');
     setStatus(task.status);
+    setPriority(task.priority);
     setWorkingDirectory(task.workingDirectory);
     setEditing(true);
   };
@@ -82,6 +92,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       title: title.trim() || undefined,
       description: description.trim() || undefined,
       status,
+      priority,
       workingDirectory: workingDirectory.trim() || undefined,
     });
     setEditing(false);
@@ -216,6 +227,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 </option>
               ))}
             </select>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+            >
+              {PRIORITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
             <input
               type="text"
               value={workingDirectory}
@@ -274,6 +296,21 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 ))}
               </select>
               <TaskStatusBadge status={task.status} />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-500 text-sm">Priority:</span>
+              <select
+                value={task.priority}
+                onChange={(e) => updateTask(taskId, { priority: e.target.value as TaskPriority })}
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+              >
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

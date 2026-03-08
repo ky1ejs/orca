@@ -26,6 +26,14 @@ enum TaskStatus {
   DONE
 }
 
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 type Project {
   id: ID!
   name: String!
@@ -42,6 +50,7 @@ type Task {
   title: String!
   description: String
   status: TaskStatus!
+  priority: TaskPriority!
   projectId: ID!
   project: Project!
   workingDirectory: String!
@@ -80,6 +89,7 @@ input CreateTaskInput {
   title: String!
   description: String
   status: TaskStatus
+  priority: TaskPriority
   projectId: ID!
   workingDirectory: String!
 }
@@ -88,6 +98,7 @@ input UpdateTaskInput {
   title: String
   description: String
   status: TaskStatus
+  priority: TaskPriority
   workingDirectory: String
 }
 

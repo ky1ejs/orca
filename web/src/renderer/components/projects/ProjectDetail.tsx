@@ -8,7 +8,7 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
-import { TaskList } from '../tasks/TaskList.js';
+import { TaskTable } from '../tasks/TaskTable.js';
 import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
 
 interface ProjectDetailProps {
@@ -133,7 +133,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
       )}
 
-      <TaskList
+      <TaskTable
         projectId={projectId}
         tasks={project.tasks}
         onTaskClick={(taskId) => navigate({ view: 'task', id: taskId })}
