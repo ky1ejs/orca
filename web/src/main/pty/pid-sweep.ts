@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron';
 import { getActiveSessions, isPidAlive, updateSession } from '../db/sessions.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const SWEEP_INTERVAL_MS = 60_000; // 60 seconds
 
@@ -40,7 +41,7 @@ export class PidSweepManager {
     for (const session of activeSessions) {
       if (!isPidAlive(session.pid)) {
         updateSession(session.id, {
-          status: 'ERROR',
+          status: SessionStatus.Error,
           stoppedAt: new Date().toISOString(),
         });
         deadSessionIds.push(session.id);

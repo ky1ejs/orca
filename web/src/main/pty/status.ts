@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import type { PtyManager } from './manager.js';
 import { getDefaultShell } from './shell.js';
 import { createSession, getSession, updateSession } from '../db/sessions.js';
+import { SessionStatus } from '../../shared/session-status.js';
 import {
   InvalidWorkingDirectoryError,
   PtySpawnError,
@@ -44,7 +45,7 @@ export class StatusManager {
 
       const session = createSession({
         taskId,
-        status: 'STARTING',
+        status: SessionStatus.Starting,
         workingDirectory,
       });
 
@@ -98,16 +99,16 @@ export class StatusManager {
 
     inputDetector.setOnChange((waiting) => {
       if (waiting) {
-        updateSession(sessionId, { status: 'WAITING_FOR_INPUT' });
+        updateSession(sessionId, { status: SessionStatus.WaitingForInput });
       } else {
         const session = getSession(sessionId);
-        if (session && session.status === 'WAITING_FOR_INPUT') {
-          updateSession(sessionId, { status: 'RUNNING' });
+        if (session && session.status === SessionStatus.WaitingForInput) {
+          updateSession(sessionId, { status: SessionStatus.Running });
         }
       }
     });
 
-    let lastStatus = 'STARTING';
+    let lastStatus: string = SessionStatus.Starting;
 
     const interval = setInterval(async () => {
       const session = getSession(sessionId);
@@ -117,7 +118,7 @@ export class StatusManager {
       }
 
       if (session.status !== lastStatus) {
-        if (session.status === 'EXITED' && lastStatus !== 'EXITED') {
+        if (session.status === SessionStatus.Exited && lastStatus !== SessionStatus.Exited) {
           await this.updateTaskStatus(taskId, 'IN_REVIEW');
           this.stopMonitoring(sessionId);
         }

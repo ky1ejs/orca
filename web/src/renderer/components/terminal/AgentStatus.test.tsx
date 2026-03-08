@@ -3,26 +3,27 @@ import { describe, expect, it, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { AgentStatus } from './AgentStatus.js';
+import { SessionStatus } from '../../../shared/session-status.js';
 
 afterEach(cleanup);
 
 describe('AgentStatus', () => {
   it('renders "Starting" with blue styling', () => {
-    render(<AgentStatus status="STARTING" />);
+    render(<AgentStatus status={SessionStatus.Starting} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Starting');
     expect(badge.className).toContain('bg-blue-900');
   });
 
   it('renders "Running" with green styling', () => {
-    render(<AgentStatus status="RUNNING" />);
+    render(<AgentStatus status={SessionStatus.Running} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Running');
     expect(badge.className).toContain('bg-green-900');
   });
 
   it('renders "Waiting for Input" with yellow styling and pulse', () => {
-    render(<AgentStatus status="WAITING_FOR_INPUT" />);
+    render(<AgentStatus status={SessionStatus.WaitingForInput} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Waiting for Input');
     expect(badge.className).toContain('bg-yellow-900');
@@ -32,14 +33,14 @@ describe('AgentStatus', () => {
   });
 
   it('renders "Exited" with gray styling', () => {
-    render(<AgentStatus status="EXITED" />);
+    render(<AgentStatus status={SessionStatus.Exited} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Exited');
     expect(badge.className).toContain('bg-gray-700');
   });
 
   it('renders "Error" with red styling', () => {
-    render(<AgentStatus status="ERROR" />);
+    render(<AgentStatus status={SessionStatus.Error} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Error');
     expect(badge.className).toContain('bg-red-900');

@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { createDb, type OrcaDb } from '../db/client.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
@@ -42,7 +43,7 @@ describe('PidSweepManager', () => {
 
   it('detects dead PID and updates session to ERROR', () => {
     // Create a session with a PID that does not exist
-    const session = createSession({ status: 'RUNNING' });
+    const session = createSession({ status: SessionStatus.Running });
     updateSession(session.id, { pid: 999999 });
 
     // Mock process.kill to throw for the dead PID
@@ -55,7 +56,7 @@ describe('PidSweepManager', () => {
     expect(deadIds).toContain(session.id);
 
     const updated = getSession(session.id);
-    expect(updated?.status).toBe('ERROR');
+    expect(updated?.status).toBe(SessionStatus.Error);
     expect(updated?.stopped_at).toBeDefined();
 
     killSpy.mockRestore();
@@ -63,7 +64,7 @@ describe('PidSweepManager', () => {
 
   it('leaves alive PIDs untouched', () => {
     // Create a session with our own PID (which is alive)
-    const session = createSession({ status: 'RUNNING' });
+    const session = createSession({ status: SessionStatus.Running });
     updateSession(session.id, { pid: process.pid });
 
     const deadIds = sweepManager.sweep();
@@ -71,11 +72,11 @@ describe('PidSweepManager', () => {
     expect(deadIds).not.toContain(session.id);
 
     const updated = getSession(session.id);
-    expect(updated?.status).toBe('RUNNING');
+    expect(updated?.status).toBe(SessionStatus.Running);
   });
 
   it('sweeps WAITING_FOR_INPUT sessions with dead PIDs', () => {
-    const session = createSession({ status: 'WAITING_FOR_INPUT' });
+    const session = createSession({ status: SessionStatus.WaitingForInput });
     updateSession(session.id, { pid: 999999 });
 
     const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {
@@ -87,13 +88,13 @@ describe('PidSweepManager', () => {
     expect(deadIds).toContain(session.id);
 
     const updated = getSession(session.id);
-    expect(updated?.status).toBe('ERROR');
+    expect(updated?.status).toBe(SessionStatus.Error);
 
     killSpy.mockRestore();
   });
 
   it('returns empty array when no sessions are dead', () => {
-    const session = createSession({ status: 'RUNNING' });
+    const session = createSession({ status: SessionStatus.Running });
     updateSession(session.id, { pid: process.pid });
 
     const deadIds = sweepManager.sweep();
@@ -102,7 +103,7 @@ describe('PidSweepManager', () => {
 
   it('handles sessions without PIDs (skips them)', () => {
     // Session without a PID should not be swept
-    createSession({ status: 'RUNNING' });
+    createSession({ status: SessionStatus.Running });
 
     const deadIds = sweepManager.sweep();
     expect(deadIds).toEqual([]);

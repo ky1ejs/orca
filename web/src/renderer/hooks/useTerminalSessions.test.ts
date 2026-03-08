@@ -2,13 +2,14 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { useTerminalSessions, type TerminalSessionInfo } from './useTerminalSessions.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const mockSessions: TerminalSessionInfo[] = [
   {
     id: 'session-1',
     task_id: 'task-a',
     pid: 1234,
-    status: 'RUNNING',
+    status: SessionStatus.Running,
     working_directory: '/tmp',
     started_at: '2024-01-01T00:00:00Z',
     stopped_at: null,
@@ -18,7 +19,7 @@ const mockSessions: TerminalSessionInfo[] = [
     id: 'session-2',
     task_id: 'task-b',
     pid: 5678,
-    status: 'EXITED',
+    status: SessionStatus.Exited,
     working_directory: '/tmp',
     started_at: '2024-01-01T00:00:00Z',
     stopped_at: '2024-01-01T01:00:00Z',

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { isActiveSessionStatus } from '../../../shared/session-status.js';
 import { Sidebar } from './Sidebar.js';
 import { useNavigation } from '../../navigation/context.js';
 import { ProjectList } from '../projects/ProjectList.js';
@@ -53,10 +54,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   // Auto-select most recent active session when navigating to a task
   useEffect(() => {
     if (sessions.length > 0) {
-      const active = sessions.find(
-        (s) =>
-          s.status === 'RUNNING' || s.status === 'STARTING' || s.status === 'WAITING_FOR_INPUT',
-      );
+      const active = sessions.find((s) => isActiveSessionStatus(s.status));
       setActiveSessionId(active?.id ?? sessions[0].id);
     } else {
       setActiveSessionId(null);

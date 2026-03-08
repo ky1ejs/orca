@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { createDb, type OrcaDb } from '../db/client.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
@@ -110,7 +111,7 @@ describe('StatusManager', () => {
     if (result.success) {
       const status = statusManager.getStatus(result.sessionId);
       expect(status).toBeTruthy();
-      expect(['STARTING', 'RUNNING']).toContain(status);
+      expect([SessionStatus.Starting, SessionStatus.Running]).toContain(status);
     }
   });
 
