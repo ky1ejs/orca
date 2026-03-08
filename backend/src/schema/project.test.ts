@@ -5,8 +5,17 @@ const WORKSPACE = {
   id: 'ws1',
   name: 'Personal',
   slug: 'personal',
-  ownerId: 'user1',
+  createdById: 'user1',
   deletedAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const MEMBERSHIP = {
+  id: 'mem1',
+  workspaceId: 'ws1',
+  userId: 'user1',
+  role: 'OWNER' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -27,6 +36,9 @@ function createMockContext() {
       workspace: {
         findUnique: vi.fn().mockResolvedValue(WORKSPACE),
         findUniqueOrThrow: vi.fn().mockResolvedValue(WORKSPACE),
+      },
+      workspaceMembership: {
+        findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
       },
     },
     pubsub: {
@@ -52,15 +64,16 @@ describe('project resolvers', () => {
       });
     });
 
-    it('project throws NOT_FOUND for wrong owner', async () => {
+    it('project throws NOT_FOUND for non-member', async () => {
       const ctx = createMockContext();
       const project = {
         id: '1',
         name: 'Test',
         workspaceId: 'ws1',
-        workspace: { ...WORKSPACE, ownerId: 'other-user' },
+        workspace: WORKSPACE,
       };
       ctx.prisma.project.findUnique.mockResolvedValue(project);
+      ctx.prisma.workspaceMembership.findUnique.mockResolvedValue(null);
 
       await expect(
         projectResolvers.Query.project({} as never, { id: '1' }, ctx as never),

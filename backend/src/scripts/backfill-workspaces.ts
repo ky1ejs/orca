@@ -36,7 +36,7 @@ async function backfill() {
 
     const workspace = await prisma.workspace.upsert({
       where: { slug },
-      create: { name: 'Personal', slug, ownerId: user.id },
+      create: { name: 'Personal', slug, createdById: user.id },
       update: {},
     });
 

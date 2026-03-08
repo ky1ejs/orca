@@ -36,7 +36,24 @@ async function seed() {
 
   const workspace = await prisma.workspace.upsert({
     where: { slug },
-    create: { name: 'Personal', slug, ownerId: user.id },
+    create: {
+      name: 'Personal',
+      slug,
+      createdById: user.id,
+      memberships: {
+        create: {
+          userId: user.id,
+          role: 'OWNER',
+        },
+      },
+    },
+    update: {},
+  });
+
+  // Ensure membership exists (for existing workspaces)
+  await prisma.workspaceMembership.upsert({
+    where: { workspaceId_userId: { workspaceId: workspace.id, userId: user.id } },
+    create: { workspaceId: workspace.id, userId: user.id, role: 'OWNER' },
     update: {},
   });
 

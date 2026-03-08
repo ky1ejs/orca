@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useSubscription } from 'urql';
 import { useCallback } from 'react';
 import {
+  MeDocument,
   WorkspacesDocument,
   WorkspaceDocument,
   ProjectDocument,
   TaskDocument,
+  WorkspaceMembersDocument,
+  PendingInvitationsDocument,
   CreateWorkspaceDocument,
   UpdateWorkspaceDocument,
   DeleteWorkspaceDocument,
@@ -14,6 +17,12 @@ import {
   CreateTaskDocument,
   UpdateTaskDocument,
   DeleteTaskDocument,
+  AddMemberDocument,
+  RemoveMemberDocument,
+  UpdateMemberRoleDocument,
+  CancelInvitationDocument,
+  AcceptInvitationDocument,
+  DeclineInvitationDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
@@ -24,9 +33,17 @@ import type {
   UpdateProjectInput,
   CreateTaskInput,
   UpdateTaskInput,
+  AddMemberInput,
+  UpdateMemberRoleInput,
+  WorkspaceRole,
 } from '../graphql/__generated__/generated.js';
 
 // Query hooks
+
+export function useMe() {
+  const [result, reexecute] = useQuery({ query: MeDocument });
+  return { ...result, refetch: reexecute };
+}
 
 export function useWorkspaces() {
   const [result, reexecute] = useQuery({ query: WorkspacesDocument });
@@ -57,6 +74,20 @@ export function useTask(id: string) {
     variables: { id },
     pause: !id,
   });
+  return { ...result, refetch: reexecute };
+}
+
+export function useWorkspaceMembers(slug: string) {
+  const [result, reexecute] = useQuery({
+    query: WorkspaceMembersDocument,
+    variables: { slug },
+    pause: !slug,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function usePendingInvitations() {
+  const [result, reexecute] = useQuery({ query: PendingInvitationsDocument });
   return { ...result, refetch: reexecute };
 }
 
@@ -134,6 +165,51 @@ export function useDeleteTask() {
   return { ...result, deleteTask };
 }
 
+export function useAddMember() {
+  const [result, executeMutation] = useMutation(AddMemberDocument);
+  const addMember = useCallback(
+    (input: AddMemberInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, addMember };
+}
+
+export function useRemoveMember() {
+  const [result, executeMutation] = useMutation(RemoveMemberDocument);
+  const removeMember = useCallback(
+    (workspaceId: string, userId: string) => executeMutation({ workspaceId, userId }),
+    [executeMutation],
+  );
+  return { ...result, removeMember };
+}
+
+export function useUpdateMemberRole() {
+  const [result, executeMutation] = useMutation(UpdateMemberRoleDocument);
+  const updateMemberRole = useCallback(
+    (input: UpdateMemberRoleInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, updateMemberRole };
+}
+
+export function useCancelInvitation() {
+  const [result, executeMutation] = useMutation(CancelInvitationDocument);
+  const cancelInvitation = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, cancelInvitation };
+}
+
+export function useAcceptInvitation() {
+  const [result, executeMutation] = useMutation(AcceptInvitationDocument);
+  const acceptInvitation = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, acceptInvitation };
+}
+
+export function useDeclineInvitation() {
+  const [result, executeMutation] = useMutation(DeclineInvitationDocument);
+  const declineInvitation = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, declineInvitation };
+}
+
 // Subscription hooks — Graphcache handles cache updates automatically
 
 export function useProjectSubscription(workspaceId: string) {
@@ -151,3 +227,6 @@ export function useTaskSubscription(workspaceId: string) {
     pause: !workspaceId,
   });
 }
+
+// Re-export types for convenience
+export type { WorkspaceRole };

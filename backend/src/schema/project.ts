@@ -5,12 +5,13 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
+import type { ServerContext } from '../context.js';
 import { requireProjectAccess, requireWorkspaceAccess } from '../auth/workspace.js';
 
 export const projectResolvers = {
   Query: {
     project: async (_parent, args, context) => {
-      const project = await requireProjectAccess(context.prisma, args.id, context.userId);
+      const { project } = await requireProjectAccess(context.prisma, args.id, context.userId);
       return project;
     },
   } satisfies Pick<QueryResolvers, 'project'>,
@@ -51,8 +52,20 @@ export const projectResolvers = {
         await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
         return context.pubsub.subscribe('projectChanged');
       },
-      resolve: (payload: Project, args: { workspaceId: string }) => {
+      resolve: async (payload: Project, args: { workspaceId: string }, context: ServerContext) => {
         if (payload.workspaceId !== args.workspaceId) return undefined as never;
+
+        // Re-validate membership per event
+        const membership = await context.prisma.workspaceMembership.findUnique({
+          where: {
+            workspaceId_userId: {
+              workspaceId: args.workspaceId,
+              userId: context.userId,
+            },
+          },
+        });
+        if (!membership) return undefined as never;
+
         return payload;
       },
     },

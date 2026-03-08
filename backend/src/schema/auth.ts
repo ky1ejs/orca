@@ -60,11 +60,16 @@ export const authResolvers = {
         });
       }
       const token = await signJwt({ sub: user.id, email: user.email });
-      const workspaces = await context.prisma.workspace.findMany({
-        where: { ownerId: user.id, deletedAt: null },
+
+      // Fetch workspaces via membership
+      const memberships = await context.prisma.workspaceMembership.findMany({
+        where: { userId: user.id },
+        include: { workspace: true },
         orderBy: { createdAt: 'asc' },
       });
-      return { token, user, workspaces };
+      const workspaces = memberships.filter((m) => !m.workspace.deletedAt).map((m) => m.workspace);
+
+      return { token, user, workspaces, pendingInvitations: [] };
     },
     register: async (_parent, args, context) => {
       const { email, name, password, inviteCode } = args.input;
@@ -98,18 +103,40 @@ export const authResolvers = {
           email,
           name,
           passwordHash,
-          workspaces: {
+        },
+      });
+
+      // Create default workspace with OWNER membership
+      const workspace = await context.prisma.workspace.create({
+        data: {
+          name: 'Personal',
+          slug,
+          createdById: user.id,
+          memberships: {
             create: {
-              name: 'Personal',
-              slug,
+              userId: user.id,
+              role: 'OWNER',
             },
           },
         },
-        include: { workspaces: true },
       });
 
       const token = await signJwt({ sub: user.id, email: user.email });
-      return { token, user, workspaces: user.workspaces };
+
+      // Fetch pending invitations for this email
+      const pendingInvitations = await context.prisma.workspaceInvitation.findMany({
+        where: {
+          email: user.email,
+          expiresAt: { gt: new Date() },
+          workspace: { deletedAt: null },
+        },
+        include: {
+          workspace: true,
+          invitedBy: true,
+        },
+      });
+
+      return { token, user, workspaces: [workspace], pendingInvitations };
     },
   } satisfies Pick<MutationResolvers, 'login' | 'register'>,
 };

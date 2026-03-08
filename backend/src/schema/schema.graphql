@@ -8,12 +8,38 @@ type AuthPayload {
   token: String!
   user: User!
   workspaces: [Workspace!]!
+  pendingInvitations: [WorkspaceInvitation!]!
+}
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+type WorkspaceMember {
+  id: ID!
+  user: User!
+  role: WorkspaceRole!
+  createdAt: String!
+}
+
+type WorkspaceInvitation {
+  id: ID!
+  email: String!
+  role: WorkspaceRole!
+  workspace: Workspace!
+  invitedBy: User!
+  expiresAt: String!
+  createdAt: String!
 }
 
 type Workspace {
   id: ID!
   name: String!
   slug: String!
+  role: WorkspaceRole!
+  members: [WorkspaceMember!]!
+  invitations: [WorkspaceInvitation!]!
   projects: [Project!]!
   createdAt: String!
   updatedAt: String!
@@ -102,12 +128,37 @@ input UpdateTaskInput {
   workingDirectory: String
 }
 
+input AddMemberInput {
+  workspaceId: ID!
+  email: String!
+  role: WorkspaceRole
+}
+
+input UpdateMemberRoleInput {
+  workspaceId: ID!
+  userId: ID!
+  role: WorkspaceRole!
+}
+
+type MemberAdded {
+  member: WorkspaceMember!
+  message: String!
+}
+
+type InvitationCreated {
+  invitation: WorkspaceInvitation!
+  message: String!
+}
+
+union AddMemberResult = MemberAdded | InvitationCreated
+
 type Query {
   me: User!
   workspace(slug: String!): Workspace
   workspaces: [Workspace!]!
   project(id: ID!): Project
   task(id: ID!): Task
+  pendingInvitations: [WorkspaceInvitation!]!
 }
 
 type Mutation {
@@ -122,6 +173,12 @@ type Mutation {
   createTask(input: CreateTaskInput!): Task!
   updateTask(id: ID!, input: UpdateTaskInput!): Task!
   deleteTask(id: ID!): Boolean!
+  addMember(input: AddMemberInput!): AddMemberResult!
+  removeMember(workspaceId: ID!, userId: ID!): Boolean!
+  updateMemberRole(input: UpdateMemberRoleInput!): WorkspaceMember!
+  cancelInvitation(id: ID!): Boolean!
+  acceptInvitation(id: ID!): Workspace!
+  declineInvitation(id: ID!): Boolean!
 }
 
 type Subscription {

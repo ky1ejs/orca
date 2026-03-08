@@ -1,9 +1,20 @@
+export const MeQueryDocument = /* GraphQL */ `
+  query Me {
+    me {
+      id
+      email
+      name
+    }
+  }
+`;
+
 export const WorkspacesQueryDocument = /* GraphQL */ `
   query Workspaces {
     workspaces {
       id
       name
       slug
+      role
       createdAt
       updatedAt
     }
@@ -16,6 +27,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
       id
       name
       slug
+      role
       projects {
         id
         name
@@ -31,6 +43,58 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
       }
       createdAt
       updatedAt
+    }
+  }
+`;
+
+export const WorkspaceMembersQueryDocument = /* GraphQL */ `
+  query WorkspaceMembers($slug: String!) {
+    workspace(slug: $slug) {
+      id
+      name
+      role
+      members {
+        id
+        user {
+          id
+          name
+          email
+        }
+        role
+        createdAt
+      }
+      invitations {
+        id
+        email
+        role
+        invitedBy {
+          id
+          name
+        }
+        expiresAt
+        createdAt
+      }
+    }
+  }
+`;
+
+export const PendingInvitationsQueryDocument = /* GraphQL */ `
+  query PendingInvitations {
+    pendingInvitations {
+      id
+      email
+      role
+      workspace {
+        id
+        name
+        slug
+      }
+      invitedBy {
+        id
+        name
+      }
+      expiresAt
+      createdAt
     }
   }
 `;

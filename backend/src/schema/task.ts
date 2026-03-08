@@ -5,6 +5,7 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
+import type { ServerContext } from '../context.js';
 import {
   requireProjectAccess,
   requireTaskAccess,
@@ -14,13 +15,17 @@ import {
 export const taskResolvers = {
   Query: {
     task: async (_parent, args, context) => {
-      const task = await requireTaskAccess(context.prisma, args.id, context.userId);
+      const { task } = await requireTaskAccess(context.prisma, args.id, context.userId);
       return task;
     },
   } satisfies Pick<QueryResolvers, 'task'>,
   Mutation: {
     createTask: async (_parent, args, context) => {
-      await requireProjectAccess(context.prisma, args.input.projectId, context.userId);
+      const { project } = await requireProjectAccess(
+        context.prisma,
+        args.input.projectId,
+        context.userId,
+      );
       const task = await context.prisma.task.create({
         data: {
           title: args.input.title,
@@ -28,6 +33,7 @@ export const taskResolvers = {
           status: args.input.status ?? 'TODO',
           priority: args.input.priority ?? 'NONE',
           projectId: args.input.projectId,
+          workspaceId: project.workspaceId,
           workingDirectory: args.input.workingDirectory,
         },
       });
@@ -61,12 +67,20 @@ export const taskResolvers = {
         await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
         return context.pubsub.subscribe('taskChanged');
       },
-      resolve: (
-        payload: Task & { project?: { workspaceId: string } },
-        args: { workspaceId: string },
-      ) => {
-        // Filter: only forward events for this workspace
-        if (payload.project?.workspaceId !== args.workspaceId) return undefined as never;
+      resolve: async (payload: Task, args: { workspaceId: string }, context: ServerContext) => {
+        if (payload.workspaceId !== args.workspaceId) return undefined as never;
+
+        // Re-validate membership per event
+        const membership = await context.prisma.workspaceMembership.findUnique({
+          where: {
+            workspaceId_userId: {
+              workspaceId: args.workspaceId,
+              userId: context.userId,
+            },
+          },
+        });
+        if (!membership) return undefined as never;
+
         return payload;
       },
     },

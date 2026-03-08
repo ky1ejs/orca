@@ -11,6 +11,12 @@ const config: CodegenConfig = {
           Workspace: '@prisma/client#Workspace as WorkspaceModel',
           Project: '@prisma/client#Project as ProjectModel',
           Task: '@prisma/client#Task as TaskModel',
+          WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
+          WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
+        },
+        enumValues: {
+          WorkspaceRole: '@prisma/client#WorkspaceRole',
+          TaskStatus: '@prisma/client#TaskStatus',
         },
         useIndexSignature: true,
       },
