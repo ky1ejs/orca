@@ -130,6 +130,16 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
             cancelInvitation(_result, _args, cache) {
               invalidateAllWorkspaceQueries(cache);
             },
+            createLabel(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
+            updateLabel(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
+            deleteLabel(_result, args, cache) {
+              cache.invalidate({ __typename: 'Label', id: args.id as string });
+              invalidateAllWorkspaceQueries(cache);
+            },
             acceptInvitation(_result, _args, cache) {
               cache.invalidate('Query', 'workspaces');
               cache.invalidate('Query', 'pendingInvitations');

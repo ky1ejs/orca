@@ -237,6 +237,12 @@ export const workspaceResolvers = {
         orderBy: { createdAt: 'asc' },
       });
     },
+    labels: (parent, _args, context) => {
+      return context.prisma.label.findMany({
+        where: { workspaceId: parent.id },
+        orderBy: { name: 'asc' },
+      });
+    },
     invitations: async (parent, _args, context) => {
       // Only OWNERs can see invitations
       const membership = await context.prisma.workspaceMembership.findUnique({

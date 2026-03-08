@@ -36,6 +36,35 @@ export const taskResolvers = {
         });
         const sequenceNumber = workspace.taskCounter;
         const displayId = `${workspace.slug.toUpperCase()}-${sequenceNumber}`;
+        // Validate assignee is a workspace member
+        if (args.input.assigneeId) {
+          const assigneeMembership = await tx.workspaceMembership.findUnique({
+            where: {
+              workspaceId_userId: {
+                workspaceId: project.workspaceId,
+                userId: args.input.assigneeId,
+              },
+            },
+          });
+          if (!assigneeMembership) {
+            throw new GraphQLError('Assignee must be a workspace member', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+        }
+
+        // Validate labels belong to workspace
+        if (args.input.labelIds?.length) {
+          const labels = await tx.label.findMany({
+            where: { id: { in: args.input.labelIds }, workspaceId: project.workspaceId },
+          });
+          if (labels.length !== args.input.labelIds.length) {
+            throw new GraphQLError('One or more labels do not belong to this workspace', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+        }
+
         return tx.task.create({
           data: {
             title: args.input.title,
@@ -46,6 +75,10 @@ export const taskResolvers = {
             workspaceId: project.workspaceId,
             sequenceNumber,
             displayId,
+            assigneeId: args.input.assigneeId ?? undefined,
+            labels: args.input.labelIds?.length
+              ? { connect: args.input.labelIds.map((id) => ({ id })) }
+              : undefined,
           },
         });
       });
@@ -76,6 +109,46 @@ export const taskResolvers = {
         }
         data.projectId = args.input.projectId;
       }
+
+      // Handle assignee
+      if (args.input.assigneeId !== undefined) {
+        if (args.input.assigneeId) {
+          const assigneeMembership = await context.prisma.workspaceMembership.findUnique({
+            where: {
+              workspaceId_userId: {
+                workspaceId: existingTask.workspaceId,
+                userId: args.input.assigneeId,
+              },
+            },
+          });
+          if (!assigneeMembership) {
+            throw new GraphQLError('Assignee must be a workspace member', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+          data.assigneeId = args.input.assigneeId;
+        } else {
+          data.assigneeId = null;
+        }
+      }
+
+      // Handle labels
+      if (args.input.labelIds !== undefined) {
+        if (args.input.labelIds?.length) {
+          const labels = await context.prisma.label.findMany({
+            where: { id: { in: args.input.labelIds }, workspaceId: existingTask.workspaceId },
+          });
+          if (labels.length !== args.input.labelIds.length) {
+            throw new GraphQLError('One or more labels do not belong to this workspace', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+          data.labels = { set: args.input.labelIds.map((id: string) => ({ id })) };
+        } else {
+          data.labels = { set: [] };
+        }
+      }
+
       const task = await context.prisma.task.update({
         where: { id: args.id },
         data,
@@ -116,6 +189,13 @@ export const taskResolvers = {
   Task: {
     project: (parent, _args, context) => {
       return context.prisma.project.findUniqueOrThrow({ where: { id: parent.projectId } });
+    },
+    assignee: (parent, _args, context) => {
+      if (!parent.assigneeId) return null;
+      return context.prisma.user.findUnique({ where: { id: parent.assigneeId } });
+    },
+    labels: async (parent, _args, context) => {
+      return (await context.prisma.task.findUnique({ where: { id: parent.id } }).labels()) ?? [];
     },
   } satisfies TaskResolvers,
 };

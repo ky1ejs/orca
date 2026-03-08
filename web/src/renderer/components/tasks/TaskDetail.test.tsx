@@ -23,6 +23,8 @@ let mockTask: {
   projectId: string;
   displayId: string;
   project: { name: string };
+  assignee: { id: string; name: string; email: string } | null;
+  labels: { id: string; name: string; color: string }[];
 } | null = null;
 
 vi.mock('../../hooks/useGraphQL.js', () => ({
@@ -43,6 +45,21 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
         ],
       },
     },
+    fetching: false,
+  }),
+  useWorkspaceMembers: () => ({
+    data: {
+      workspace: {
+        members: [
+          { user: { id: 'u1', name: 'Alice', email: 'alice@test.com' }, role: 'OWNER' },
+          { user: { id: 'u2', name: 'Bob', email: 'bob@test.com' }, role: 'MEMBER' },
+        ],
+      },
+    },
+    fetching: false,
+  }),
+  useLabels: () => ({
+    data: { labels: [{ id: 'l1', name: 'Bug', color: '#FF0000', workspaceId: 'ws-1' }] },
     fetching: false,
   }),
 }));
@@ -103,6 +120,8 @@ beforeEach(() => {
     projectId: 'proj-1',
     displayId: 'TST-1',
     project: { name: 'Test Project' },
+    assignee: null,
+    labels: [],
   };
   mockSessions = [];
   vi.clearAllMocks();

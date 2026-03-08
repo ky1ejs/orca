@@ -6,6 +6,7 @@ import {
   useDeleteTask,
   useTaskSubscription,
   useWorkspaceBySlug,
+  useWorkspaceMembers,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -16,6 +17,8 @@ import { AgentStatus } from '../terminal/AgentStatus.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
+import { LabelBadge } from '../labels/LabelBadge.js';
+import { LabelPicker } from '../labels/LabelPicker.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -65,6 +68,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const workspaceProjects = workspaceData?.workspace?.projects ?? [];
+  const { data: membersData } = useWorkspaceMembers(currentWorkspace?.slug ?? '');
+  const workspaceMembers = membersData?.workspace?.members ?? [];
 
   useTaskSubscription(currentWorkspace?.id ?? '');
 
@@ -419,6 +424,48 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-gray-500 text-sm">Assignee:</span>
+              <select
+                value={task.assignee?.id ?? ''}
+                onChange={(e) => updateTask(taskId, { assigneeId: e.target.value || null })}
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                data-testid="assignee-select"
+              >
+                <option value="">Unassigned</option>
+                {workspaceMembers.map((m) => (
+                  <option key={m.user.id} value={m.user.id}>
+                    {m.user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="text-gray-500 text-sm">Labels:</span>
+              <div className="flex items-center gap-1 flex-wrap">
+                {task.labels.map((label) => (
+                  <LabelBadge
+                    key={label.id}
+                    name={label.name}
+                    color={label.color}
+                    onRemove={() =>
+                      updateTask(taskId, {
+                        labelIds: task.labels.filter((l) => l.id !== label.id).map((l) => l.id),
+                      })
+                    }
+                  />
+                ))}
+                {currentWorkspace && (
+                  <LabelPicker
+                    workspaceId={currentWorkspace.id}
+                    selectedLabelIds={task.labels.map((l) => l.id)}
+                    onChange={(labelIds) => updateTask(taskId, { labelIds })}
+                  />
+                )}
+              </div>
             </div>
 
             <div>

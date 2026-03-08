@@ -8,6 +8,7 @@ import {
   TaskDocument,
   WorkspaceMembersDocument,
   PendingInvitationsDocument,
+  LabelsDocument,
   CreateWorkspaceDocument,
   UpdateWorkspaceDocument,
   DeleteWorkspaceDocument,
@@ -23,6 +24,9 @@ import {
   CancelInvitationDocument,
   AcceptInvitationDocument,
   DeclineInvitationDocument,
+  CreateLabelDocument,
+  UpdateLabelDocument,
+  DeleteLabelDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
@@ -33,6 +37,8 @@ import type {
   UpdateProjectInput,
   CreateTaskInput,
   UpdateTaskInput,
+  CreateLabelInput,
+  UpdateLabelInput,
   AddMemberInput,
   UpdateMemberRoleInput,
   WorkspaceRole,
@@ -94,6 +100,15 @@ export function usePendingInvitations() {
     }, 60_000);
     return () => clearInterval(interval);
   }, [reexecute]);
+  return { ...result, refetch: reexecute };
+}
+
+export function useLabels(workspaceId: string) {
+  const [result, reexecute] = useQuery({
+    query: LabelsDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
   return { ...result, refetch: reexecute };
 }
 
@@ -214,6 +229,30 @@ export function useDeclineInvitation() {
   const [result, executeMutation] = useMutation(DeclineInvitationDocument);
   const declineInvitation = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, declineInvitation };
+}
+
+export function useCreateLabel() {
+  const [result, executeMutation] = useMutation(CreateLabelDocument);
+  const createLabel = useCallback(
+    (input: CreateLabelInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, createLabel };
+}
+
+export function useUpdateLabel() {
+  const [result, executeMutation] = useMutation(UpdateLabelDocument);
+  const updateLabel = useCallback(
+    (id: string, input: UpdateLabelInput) => executeMutation({ id, input }),
+    [executeMutation],
+  );
+  return { ...result, updateLabel };
+}
+
+export function useDeleteLabel() {
+  const [result, executeMutation] = useMutation(DeleteLabelDocument);
+  const deleteLabel = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, deleteLabel };
 }
 
 // Subscription hooks — Graphcache handles cache updates automatically

@@ -4,8 +4,9 @@ import { useUpdateWorkspace, useDeleteWorkspace } from '../../hooks/useGraphQL.j
 import { useNavigation } from '../../navigation/context.js';
 import { MemberList } from '../members/MemberList.js';
 import { TerminalSettings } from './TerminalSettings.js';
+import { LabelManager } from '../labels/LabelManager.js';
 
-type Tab = 'general' | 'members' | 'terminal';
+type Tab = 'general' | 'members' | 'labels' | 'terminal';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -76,6 +77,7 @@ export function WorkspaceSettings() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'general', label: 'General' },
     { key: 'members', label: 'Members' },
+    { key: 'labels', label: 'Labels' },
     { key: 'terminal', label: 'Terminal' },
   ];
 
@@ -170,6 +172,8 @@ export function WorkspaceSettings() {
       )}
 
       {activeTab === 'members' && <MemberList />}
+
+      {activeTab === 'labels' && <LabelManager />}
 
       {activeTab === 'terminal' && <TerminalSettings />}
     </div>

@@ -11,6 +11,7 @@ const config: CodegenConfig = {
           Workspace: '@prisma/client#Workspace as WorkspaceModel',
           Project: '@prisma/client#Project as ProjectModel',
           Task: '@prisma/client#Task as TaskModel',
+          Label: '@prisma/client#Label as LabelModel',
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
         },
