@@ -5,6 +5,9 @@
 ### Worktrees
 You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
+### Run simplifier
+When you've finished a coding pass, use the `/simplify` skill to refactor and simplify your code. This will help keep the codebase clean and maintainable.
+
 ### Commands
 - Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
 - Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down.
