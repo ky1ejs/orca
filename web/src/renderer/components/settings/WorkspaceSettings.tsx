@@ -3,8 +3,9 @@ import { useWorkspace } from '../../workspace/context.js';
 import { useUpdateWorkspace, useDeleteWorkspace } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { MemberList } from '../members/MemberList.js';
+import { TerminalSettings } from './TerminalSettings.js';
 
-type Tab = 'general' | 'members';
+type Tab = 'general' | 'members' | 'terminal';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -75,6 +76,7 @@ export function WorkspaceSettings() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'general', label: 'General' },
     { key: 'members', label: 'Members' },
+    { key: 'terminal', label: 'Terminal' },
   ];
 
   return (
@@ -168,6 +170,8 @@ export function WorkspaceSettings() {
       )}
 
       {activeTab === 'members' && <MemberList />}
+
+      {activeTab === 'terminal' && <TerminalSettings />}
     </div>
   );
 }

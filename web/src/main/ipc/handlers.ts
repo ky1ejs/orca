@@ -14,6 +14,7 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from '../db/project-directories.js';
+import { getPreference, setPreference, getAllPreferences } from '../db/user-preferences.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager, type AgentLaunchOptions } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
@@ -77,6 +78,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.PROJECT_DIR_DELETE, (_event, projectId: string) => {
     deleteProjectDirectory(projectId);
+  });
+
+  // Preferences handlers
+  ipcMain.handle(IPC_CHANNELS.PREF_GET, (_event, key: string) => {
+    return getPreference(key);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PREF_SET, (_event, key: string, value: string) => {
+    return setPreference(key, value);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PREF_GET_ALL, () => {
+    return getAllPreferences();
   });
 
   // Auth handlers

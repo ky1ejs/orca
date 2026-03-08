@@ -41,6 +41,11 @@ export interface OrcaAPI {
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
+  preferences: {
+    get: (key: string) => Promise<string | undefined>;
+    set: (key: string, value: string) => Promise<{ key: string; value: string }>;
+    getAll: () => Promise<Array<{ key: string; value: string }>>;
+  };
   projectDir: {
     get: (projectId: string) => Promise<{ project_id: string; directory: string } | undefined>;
     set: (
@@ -112,6 +117,11 @@ const api: OrcaAPI = {
         ipcRenderer.removeListener(channel, listener);
       };
     },
+  },
+  preferences: {
+    get: (key) => ipcRenderer.invoke('pref:get', key),
+    set: (key, value) => ipcRenderer.invoke('pref:set', key, value),
+    getAll: () => ipcRenderer.invoke('pref:getAll'),
   },
   projectDir: {
     get: (projectId) => ipcRenderer.invoke('projectDir:get', projectId),

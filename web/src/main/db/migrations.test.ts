@@ -24,6 +24,7 @@ describe('drizzle migrations', () => {
     expect(tableNames).toContain('terminal_session');
     expect(tableNames).toContain('terminal_output_buffer');
     expect(tableNames).toContain('auth_token');
+    expect(tableNames).toContain('user_preference');
     expect(tableNames).toContain('__drizzle_migrations');
   });
 
@@ -126,5 +127,12 @@ describe('drizzle migrations', () => {
     }>;
     const authColNames = authCols.map((c) => c.name);
     expect(authColNames).toEqual(['id', 'token', 'server_url', 'created_at']);
+
+    // Check user_preference columns
+    const prefCols = sqlite.prepare('PRAGMA table_info(user_preference)').all() as Array<{
+      name: string;
+    }>;
+    const prefColNames = prefCols.map((c) => c.name);
+    expect(prefColNames).toEqual(['key', 'value', 'created_at', 'updated_at']);
   });
 });
