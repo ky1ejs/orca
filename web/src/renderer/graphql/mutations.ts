@@ -97,6 +97,10 @@ export const UpdateTaskDocument = /* GraphQL */ `
       status
       priority
       projectId
+      project {
+        id
+        name
+      }
       createdAt
       updatedAt
     }

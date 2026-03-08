@@ -128,6 +128,7 @@ input UpdateTaskInput {
   description: String
   status: TaskStatus
   priority: TaskPriority
+  projectId: ID
 }
 
 input AddMemberInput {

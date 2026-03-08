@@ -1,3 +1,4 @@
+import { GraphQLError } from 'graphql';
 import type { Task } from '@prisma/client';
 import type {
   TaskResolvers,
@@ -52,12 +53,29 @@ export const taskResolvers = {
       return task;
     },
     updateTask: async (_parent, args, context) => {
-      await requireTaskAccess(context.prisma, args.id, context.userId);
+      const { task: existingTask } = await requireTaskAccess(
+        context.prisma,
+        args.id,
+        context.userId,
+      );
       const data: Record<string, unknown> = {};
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
       if (args.input.priority != null) data.priority = args.input.priority;
+      if (args.input.projectId != null) {
+        const { project: targetProject } = await requireProjectAccess(
+          context.prisma,
+          args.input.projectId,
+          context.userId,
+        );
+        if (targetProject.workspaceId !== existingTask.workspaceId) {
+          throw new GraphQLError('Cannot move task to a project in a different workspace', {
+            extensions: { code: 'BAD_REQUEST' },
+          });
+        }
+        data.projectId = args.input.projectId;
+      }
       const task = await context.prisma.task.update({
         where: { id: args.id },
         data,

@@ -34,6 +34,17 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
   useUpdateTask: () => ({ updateTask: mockUpdateTask }),
   useDeleteTask: () => ({ deleteTask: mockDeleteTask }),
   useTaskSubscription: vi.fn(),
+  useWorkspaceBySlug: () => ({
+    data: {
+      workspace: {
+        projects: [
+          { id: 'proj-1', name: 'Test Project' },
+          { id: 'proj-2', name: 'Other Project' },
+        ],
+      },
+    },
+    fetching: false,
+  }),
 }));
 
 vi.mock('../../navigation/context.js', () => ({
@@ -41,7 +52,7 @@ vi.mock('../../navigation/context.js', () => ({
 }));
 
 vi.mock('../../workspace/context.js', () => ({
-  useWorkspace: () => ({ currentWorkspace: { id: 'ws-1' } }),
+  useWorkspace: () => ({ currentWorkspace: { id: 'ws-1', slug: 'test-ws' } }),
 }));
 
 vi.mock('../../hooks/useProjectDirectory.js', () => ({
