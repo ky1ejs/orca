@@ -71,6 +71,7 @@ export const CreateTaskDocument = /* GraphQL */ `
       title
       description
       status
+      priority
       projectId
       project {
         id
@@ -90,6 +91,7 @@ export const UpdateTaskDocument = /* GraphQL */ `
       title
       description
       status
+      priority
       projectId
       workingDirectory
       createdAt

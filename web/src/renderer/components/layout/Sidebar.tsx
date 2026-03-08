@@ -6,7 +6,7 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
-import { TaskStatusBadge } from '../tasks/TaskStatusBadge.js';
+import { StatusIcon } from '../shared/StatusIcon.js';
 import { SidebarSkeleton } from './Skeleton.js';
 import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 
@@ -144,8 +144,8 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                               }`}
                             >
+                              <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
                               <span className="truncate">{task.title}</span>
-                              <TaskStatusBadge status={task.status} />
                             </button>
                           </li>
                         );

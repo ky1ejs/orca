@@ -24,6 +24,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
           id
           title
           status
+          priority
         }
         createdAt
         updatedAt
@@ -45,6 +46,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
         id
         title
         status
+        priority
         createdAt
         updatedAt
       }
@@ -61,6 +63,7 @@ export const TaskQueryDocument = /* GraphQL */ `
       title
       description
       status
+      priority
       projectId
       project {
         id

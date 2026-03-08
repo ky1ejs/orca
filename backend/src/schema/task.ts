@@ -26,6 +26,7 @@ export const taskResolvers = {
           title: args.input.title,
           description: args.input.description,
           status: args.input.status ?? 'TODO',
+          priority: args.input.priority ?? 'NONE',
           projectId: args.input.projectId,
           workingDirectory: args.input.workingDirectory,
         },
@@ -39,6 +40,7 @@ export const taskResolvers = {
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
+      if (args.input.priority != null) data.priority = args.input.priority;
       if (args.input.workingDirectory != null) data.workingDirectory = args.input.workingDirectory;
       const task = await context.prisma.task.update({
         where: { id: args.id },

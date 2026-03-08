@@ -14,6 +14,14 @@ enum TaskStatus {
   DONE
 }
 
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -55,7 +63,8 @@ model Task {
   id               String     @id @default(cuid())
   title            String
   description      String?
-  status           TaskStatus @default(TODO)
+  status           TaskStatus   @default(TODO)
+  priority         TaskPriority @default(NONE)
   projectId        String
   project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workingDirectory String
