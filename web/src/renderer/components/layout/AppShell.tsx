@@ -51,15 +51,23 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
 
-  // Auto-select most recent active session when navigating to a task
+  // Reset active session when navigating to a different task
   useEffect(() => {
+    setActiveSessionId(null);
+  }, [taskId]);
+
+  // Auto-select session when none is selected or current selection is invalid
+  useEffect(() => {
+    if (activeSessionId && sessions.some((s) => s.id === activeSessionId)) {
+      return; // Current selection is valid, don't override manual tab choice
+    }
     if (sessions.length > 0) {
       const active = sessions.find((s) => isActiveSessionStatus(s.status));
       setActiveSessionId(active?.id ?? sessions[0].id);
     } else {
       setActiveSessionId(null);
     }
-  }, [taskId, sessions.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessions, activeSessionId]);
 
   // Listen for auto-update readiness
   useEffect(() => {
