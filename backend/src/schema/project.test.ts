@@ -94,7 +94,12 @@ describe('project resolvers', () => {
       );
       expect(result).toEqual(project);
       expect(ctx.prisma.project.create).toHaveBeenCalledWith({
-        data: { name: 'New Project', description: undefined, workspaceId: 'ws1' },
+        data: {
+          name: 'New Project',
+          description: undefined,
+          defaultDirectory: null,
+          workspaceId: 'ws1',
+        },
       });
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('projectChanged', project);
     });

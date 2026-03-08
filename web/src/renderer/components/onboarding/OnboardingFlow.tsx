@@ -13,8 +13,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [defaultDirectory, setDefaultDirectory] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
-  const [workingDirectory, setWorkingDirectory] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -30,6 +30,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const result = await createProject({
       name: projectName.trim(),
       description: projectDescription.trim() || undefined,
+      defaultDirectory: defaultDirectory.trim() || undefined,
       workspaceId: currentWorkspace.id,
     });
     if (result.data?.createProject) {
@@ -37,22 +38,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setStep('create-task');
     }
     setCreating(false);
-  }, [projectName, projectDescription, createProject, currentWorkspace]);
+  }, [projectName, projectDescription, defaultDirectory, createProject, currentWorkspace]);
 
   const handleCreateTask = useCallback(async () => {
-    if (!taskTitle.trim() || !workingDirectory.trim() || !createdProjectId) return;
+    if (!taskTitle.trim() || !createdProjectId) return;
     setCreating(true);
     const result = await createTask({
       title: taskTitle.trim(),
       projectId: createdProjectId,
-      workingDirectory: workingDirectory.trim(),
     });
     if (result.data?.createTask) {
       setCreatedTaskId(result.data.createTask.id);
       setStep('open-terminal');
     }
     setCreating(false);
-  }, [taskTitle, workingDirectory, createdProjectId, createTask]);
+  }, [taskTitle, createdProjectId, createTask]);
 
   const handleFinish = useCallback(() => {
     if (createdTaskId) {
@@ -139,6 +139,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   data-testid="onboarding-project-description"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Default Directory
+                </label>
+                <input
+                  type="text"
+                  value={defaultDirectory}
+                  onChange={(e) => setDefaultDirectory(e.target.value)}
+                  placeholder="e.g., /Users/you/projects/my-app"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                  data-testid="onboarding-default-dir"
+                />
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('welcome')}
@@ -163,8 +176,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div data-testid="onboarding-create-task">
             <h2 className="text-2xl font-bold text-white mb-2">Create a Task</h2>
             <p className="text-gray-400 text-sm mb-6">
-              A task is a unit of work for an AI agent. Set a working directory so the agent knows
-              where to operate.
+              A task is a unit of work for an AI agent. Give it a descriptive title.
             </p>
             <div className="space-y-4">
               <div>
@@ -179,19 +191,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   data-testid="onboarding-task-title"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Working Directory
-                </label>
-                <input
-                  type="text"
-                  value={workingDirectory}
-                  onChange={(e) => setWorkingDirectory(e.target.value)}
-                  placeholder="e.g., /Users/you/projects/my-app"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 font-mono"
-                  data-testid="onboarding-working-dir"
-                />
-              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('create-project')}
@@ -201,7 +200,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </button>
                 <button
                   onClick={handleCreateTask}
-                  disabled={!taskTitle.trim() || !workingDirectory.trim() || creating}
+                  disabled={!taskTitle.trim() || creating}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded-md transition-colors font-medium"
                   data-testid="onboarding-create-task-btn"
                 >

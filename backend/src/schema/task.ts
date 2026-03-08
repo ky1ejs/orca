@@ -34,7 +34,6 @@ export const taskResolvers = {
           priority: args.input.priority ?? 'NONE',
           projectId: args.input.projectId,
           workspaceId: project.workspaceId,
-          workingDirectory: args.input.workingDirectory,
         },
       });
       context.pubsub.publish('taskChanged', task);
@@ -47,7 +46,6 @@ export const taskResolvers = {
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
       if (args.input.priority != null) data.priority = args.input.priority;
-      if (args.input.workingDirectory != null) data.workingDirectory = args.input.workingDirectory;
       const task = await context.prisma.task.update({
         where: { id: args.id },
         data,

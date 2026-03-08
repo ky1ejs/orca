@@ -20,17 +20,14 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
   const { createTask } = useCreateTask();
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
-  const [workingDirectory, setWorkingDirectory] = useState('');
 
   const handleCreate = async () => {
-    if (!title.trim() || !workingDirectory.trim()) return;
+    if (!title.trim()) return;
     await createTask({
       title: title.trim(),
       projectId,
-      workingDirectory: workingDirectory.trim(),
     });
     setTitle('');
-    setWorkingDirectory('');
     setShowCreate(false);
   };
 
@@ -57,16 +54,9 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
               autoFocus
             />
-            <input
-              type="text"
-              placeholder="Working directory (e.g., /path/to/project)"
-              value={workingDirectory}
-              onChange={(e) => setWorkingDirectory(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
-            />
             <button
               onClick={handleCreate}
-              disabled={!title.trim() || !workingDirectory.trim()}
+              disabled={!title.trim()}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded-md transition-colors"
             >
               Create Task

@@ -24,6 +24,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [defaultDirectory, setDefaultDirectory] = useState('');
 
   useProjectSubscription(currentWorkspace?.id ?? '');
   useTaskSubscription(currentWorkspace?.id ?? '');
@@ -53,6 +54,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const startEditing = () => {
     setName(project.name);
     setDescription(project.description ?? '');
+    setDefaultDirectory(project.defaultDirectory ?? '');
     setEditing(true);
   };
 
@@ -60,6 +62,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     await updateProject(projectId, {
       name: name.trim() || undefined,
       description: description.trim() || undefined,
+      defaultDirectory: defaultDirectory.trim() || null,
     });
     setEditing(false);
   };
@@ -93,6 +96,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
               rows={3}
+            />
+            <input
+              type="text"
+              value={defaultDirectory}
+              onChange={(e) => setDefaultDirectory(e.target.value)}
+              placeholder="Default directory (e.g., /Users/you/projects/my-app)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 font-mono"
             />
             <div className="flex gap-2">
               <button
@@ -130,6 +140,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             </div>
           </div>
           {project.description && <p className="text-gray-400 mt-2">{project.description}</p>}
+          {project.defaultDirectory && (
+            <p className="text-gray-500 text-sm font-mono mt-2">{project.defaultDirectory}</p>
+          )}
         </div>
       )}
 

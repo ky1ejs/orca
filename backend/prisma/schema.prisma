@@ -89,14 +89,15 @@ model WorkspaceInvitation {
 }
 
 model Project {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
-  tasks       Task[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  name             String
+  description      String?
+  defaultDirectory String?
+  workspaceId      String
+  workspace        Workspace  @relation(fields: [workspaceId], references: [id])
+  tasks            Task[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   @@index([workspaceId])
 }
@@ -111,7 +112,6 @@ model Task {
   project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workspaceId      String
   workspace        Workspace  @relation(fields: [workspaceId], references: [id])
-  workingDirectory String
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

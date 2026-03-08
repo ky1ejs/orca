@@ -22,6 +22,7 @@ export const projectResolvers = {
         data: {
           name: args.input.name,
           description: args.input.description,
+          defaultDirectory: args.input.defaultDirectory ?? null,
           workspaceId: args.input.workspaceId,
         },
       });
@@ -33,6 +34,8 @@ export const projectResolvers = {
       const data: Record<string, unknown> = {};
       if (args.input.name != null) data.name = args.input.name;
       if (args.input.description !== undefined) data.description = args.input.description;
+      if (args.input.defaultDirectory !== undefined)
+        data.defaultDirectory = args.input.defaultDirectory;
       const project = await context.prisma.project.update({
         where: { id: args.id },
         data,

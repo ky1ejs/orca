@@ -4,6 +4,7 @@ export const ProjectChangedDocument = /* GraphQL */ `
       id
       name
       description
+      defaultDirectory
       workspaceId
       tasks {
         id
@@ -24,7 +25,6 @@ export const TaskChangedDocument = /* GraphQL */ `
       description
       status
       projectId
-      workingDirectory
       createdAt
       updatedAt
     }

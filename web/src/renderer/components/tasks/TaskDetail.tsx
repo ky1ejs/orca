@@ -45,7 +45,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.Todo);
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.None);
-  const [workingDirectory, setWorkingDirectory] = useState('');
   const [launching, setLaunching] = useState(false);
   const [agentError, setAgentError] = useState<{
     message: string;
@@ -82,7 +81,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setDescription(task.description ?? '');
     setStatus(task.status);
     setPriority(task.priority);
-    setWorkingDirectory(task.workingDirectory);
     setEditing(true);
   };
 
@@ -92,7 +90,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       description: description.trim() || undefined,
       status,
       priority,
-      workingDirectory: workingDirectory.trim() || undefined,
     });
     setEditing(false);
   };
@@ -109,10 +106,19 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
   const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
 
+  const projectDirectory = task.project.defaultDirectory;
+
   const handleLaunchAgent = async () => {
+    if (!projectDirectory) {
+      setAgentError({
+        message: 'No default directory set on this project.',
+        suggestion: 'Edit the project to set a default directory before launching an agent.',
+      });
+      return;
+    }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.launch(taskId, task.workingDirectory);
+    const result = await window.orca.agent.launch(taskId, projectDirectory);
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -122,9 +128,16 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleRestartAgent = async () => {
     if (!errorSession) return;
+    if (!projectDirectory) {
+      setAgentError({
+        message: 'No default directory set on this project.',
+        suggestion: 'Edit the project to set a default directory before restarting an agent.',
+      });
+      return;
+    }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.restart(taskId, errorSession.id, task.workingDirectory);
+    const result = await window.orca.agent.restart(taskId, errorSession.id, projectDirectory);
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -237,13 +250,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 </option>
               ))}
             </select>
-            <input
-              type="text"
-              value={workingDirectory}
-              onChange={(e) => setWorkingDirectory(e.target.value)}
-              placeholder="Working directory"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
-            />
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -313,8 +319,22 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div>
-              <span className="text-gray-500 text-sm">Working Directory:</span>
-              <p className="text-gray-300 text-sm font-mono mt-1">{task.workingDirectory}</p>
+              <span className="text-gray-500 text-sm">Directory:</span>
+              {projectDirectory ? (
+                <p className="text-gray-300 text-sm font-mono mt-1">
+                  {projectDirectory} <span className="text-gray-500 font-sans">(from project)</span>
+                </p>
+              ) : (
+                <p className="text-gray-500 text-sm mt-1">
+                  Not set —{' '}
+                  <button
+                    onClick={() => navigate({ view: 'project', id: task.projectId })}
+                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    set on project
+                  </button>
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
