@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Provider, type Client } from 'urql';
 import { createGraphQLClient } from './client.js';
 
@@ -9,14 +9,31 @@ interface GraphQLProviderProps {
 export function GraphQLProvider({ children }: GraphQLProviderProps) {
   const [client, setClient] = useState<Client | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const disposeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     createGraphQLClient()
-      .then(setClient)
+      .then((handle) => {
+        if (cancelled) {
+          handle.dispose();
+          return;
+        }
+        disposeRef.current = handle.dispose;
+        setClient(handle.client);
+      })
       .catch((err) => {
+        if (cancelled) return;
         console.error('Failed to create GraphQL client:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize GraphQL client');
       });
+
+    return () => {
+      cancelled = true;
+      disposeRef.current?.();
+      disposeRef.current = null;
+    };
   }, []);
 
   if (error) {
