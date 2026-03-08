@@ -22,8 +22,8 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('./claude.js', () => ({
-  findClaudePath: () => '/bin/echo',
+vi.mock('./shell.js', () => ({
+  getDefaultShell: () => '/bin/echo',
 }));
 
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });

@@ -1,9 +1,8 @@
 import { existsSync } from 'node:fs';
 import type { PtyManager } from './manager.js';
-import { findClaudePath } from './claude.js';
+import { getDefaultShell } from './shell.js';
 import { createSession, getSession, updateSession } from '../db/sessions.js';
 import {
-  ClaudeNotFoundError,
   InvalidWorkingDirectoryError,
   PtySpawnError,
   serializeError,
@@ -35,18 +34,12 @@ export class StatusManager {
   async launch(
     taskId: string,
     workingDirectory: string,
-    initialContext?: string,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     try {
       if (!existsSync(workingDirectory)) {
         throw new InvalidWorkingDirectoryError(workingDirectory);
-      }
-
-      const claudePath = findClaudePath();
-      if (!claudePath) {
-        throw new ClaudeNotFoundError();
       }
 
       const session = createSession({
@@ -56,11 +49,8 @@ export class StatusManager {
       });
 
       try {
-        const args: string[] = [];
-        if (initialContext) {
-          args.push(initialContext);
-        }
-        this.manager.spawn(session.id, claudePath, args, workingDirectory);
+        const shell = getDefaultShell();
+        this.manager.spawn(session.id, shell, [], workingDirectory);
       } catch (err) {
         throw new PtySpawnError(err);
       }
@@ -85,12 +75,11 @@ export class StatusManager {
     taskId: string,
     sessionId: string,
     workingDirectory: string,
-    initialContext?: string,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
-    return this.launch(taskId, workingDirectory, initialContext);
+    return this.launch(taskId, workingDirectory);
   }
 
   getStatus(sessionId: string): string | null {

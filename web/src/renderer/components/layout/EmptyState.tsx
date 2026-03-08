@@ -106,7 +106,7 @@ export function EmptyTerminalArea() {
         </svg>
       }
       title="No active terminals"
-      description="Launch an agent on a task to see its terminal output here. You can also open standalone terminals."
+      description="Open a terminal on a task to see its output here."
     />
   );
 }
