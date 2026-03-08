@@ -2,19 +2,31 @@
  * DaemonConnector: discovers, spawns, and maintains connection to the PTY daemon.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync, mkdirSync, copyFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { DaemonClient } from './client.js';
+import { migrateDb } from './migrate-db.js';
 import {
-  ORCA_DIR,
   DAEMON_SOCKET_PATH,
   DAEMON_PID_FILE,
   DAEMON_DB_PATH,
+  DAEMON_METHODS,
+  DAEMON_PROTOCOL_VERSION,
 } from '../../shared/daemon-protocol.js';
+import type { DaemonStatusResult } from '../../shared/daemon-protocol.js';
 
 const MAX_CONNECT_ATTEMPTS = 20;
 const CONNECT_RETRY_MS = 150;
+const VERSION_SHUTDOWN_WAIT_MS = 5000;
+const VERSION_SHUTDOWN_POLL_MS = 200;
+
+export interface EnsureRunningResult {
+  reconnected: boolean;
+  activeSessions: number;
+  /** True when a breaking protocol change requires restart but sessions are still running. */
+  pendingProtocolUpdate: boolean;
+}
 
 export class DaemonConnector {
   private client: DaemonClient;
@@ -37,17 +49,40 @@ export class DaemonConnector {
   /**
    * Ensure the daemon is running and connected.
    * Spawns a new daemon if needed. Migrates old DB if present.
+   * Returns whether we reconnected to an existing daemon and how many active sessions it has.
    */
-  async ensureRunning(): Promise<void> {
+  async ensureRunning(): Promise<EnsureRunningResult> {
     // One-time DB migration from old Electron userData location
-    this.migrateDbIfNeeded();
+    const oldDbPath = join(app.getPath('userData'), 'orca.db');
+    migrateDb(DAEMON_DB_PATH, oldDbPath);
 
     // Check if daemon is already running
     if (this.isDaemonAlive()) {
       try {
         await this.client.connect(DAEMON_SOCKET_PATH);
+
+        // Check protocol compatibility.
+        // - Protocol mismatch + no active sessions: restart immediately
+        // - Protocol mismatch + active sessions: connect but flag for user to close sessions
+        // - Same protocol, different app version, no sessions: restart to pick up new code
+        // - Same protocol, different app version, active sessions: keep old daemon alive
+        const versionCheck = await this.checkVersion();
+        const needsRestart =
+          versionCheck.protocolMismatch ||
+          (!versionCheck.appMatch && versionCheck.activeSessions === 0);
+
+        if (needsRestart && versionCheck.activeSessions === 0) {
+          await this.shutdownAndRespawn();
+          this.setupReconnection();
+          return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
+        }
+
         this.setupReconnection();
-        return;
+        return {
+          reconnected: true,
+          activeSessions: versionCheck.activeSessions,
+          pendingProtocolUpdate: versionCheck.protocolMismatch,
+        };
       } catch {
         // PID alive but socket not connectable — stale state
         this.cleanupStaleFiles();
@@ -62,6 +97,7 @@ export class DaemonConnector {
     // Wait for daemon to be ready
     await this.waitForConnection();
     this.setupReconnection();
+    return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
   }
 
   private isDaemonAlive(): boolean {
@@ -88,6 +124,53 @@ export class DaemonConnector {
     } catch {
       // Ignore
     }
+  }
+
+  /**
+   * Check if the connected daemon's protocol and app versions match.
+   */
+  private async checkVersion(): Promise<{
+    protocolMismatch: boolean;
+    appMatch: boolean;
+    activeSessions: number;
+  }> {
+    try {
+      const result = (await this.client.request(
+        DAEMON_METHODS.DAEMON_STATUS,
+      )) as DaemonStatusResult;
+      return {
+        protocolMismatch: (result.protocolVersion ?? 0) !== DAEMON_PROTOCOL_VERSION,
+        appMatch: result.version === app.getVersion(),
+        activeSessions: result.activeSessions,
+      };
+    } catch {
+      // Can't get status — treat as protocol mismatch to be safe
+      return { protocolMismatch: true, appMatch: false, activeSessions: 0 };
+    }
+  }
+
+  /**
+   * Shutdown the currently connected daemon (version mismatch) and spawn a new one.
+   */
+  private async shutdownAndRespawn(): Promise<void> {
+    try {
+      await this.client.request(DAEMON_METHODS.DAEMON_SHUTDOWN);
+    } catch {
+      // May fail if already shutting down
+    }
+
+    this.client.disconnect();
+
+    // Wait for daemon to die
+    const deadline = Date.now() + VERSION_SHUTDOWN_WAIT_MS;
+    while (Date.now() < deadline) {
+      if (!this.isDaemonAlive()) break;
+      await sleep(VERSION_SHUTDOWN_POLL_MS);
+    }
+
+    this.cleanupStaleFiles();
+    this.spawnDaemon();
+    await this.waitForConnection();
   }
 
   private spawnDaemon(): void {
@@ -186,26 +269,12 @@ export class DaemonConnector {
   }
 
   /**
-   * One-time migration: copy old DB from Electron userData to ~/.orca/
+   * Force-restart the daemon (used after user confirms closing active sessions
+   * on a breaking protocol update).
    */
-  private migrateDbIfNeeded(): void {
-    if (existsSync(DAEMON_DB_PATH)) return; // New location already exists
-
-    const oldDbPath = join(app.getPath('userData'), 'orca.db');
-    if (!existsSync(oldDbPath)) return; // No old DB to migrate
-
-    try {
-      mkdirSync(ORCA_DIR, { recursive: true });
-      copyFileSync(oldDbPath, DAEMON_DB_PATH);
-
-      // Also copy WAL/SHM files if they exist
-      const walPath = oldDbPath + '-wal';
-      const shmPath = oldDbPath + '-shm';
-      if (existsSync(walPath)) copyFileSync(walPath, DAEMON_DB_PATH + '-wal');
-      if (existsSync(shmPath)) copyFileSync(shmPath, DAEMON_DB_PATH + '-shm');
-    } catch {
-      // Migration failed — daemon will create a fresh DB
-    }
+  async forceRestart(): Promise<void> {
+    await this.shutdownAndRespawn();
+    this.setupReconnection();
   }
 }
 

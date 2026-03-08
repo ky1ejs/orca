@@ -9,6 +9,8 @@
  *   --backend-url <url>      Backend GraphQL URL
  *   --version <version>      App version string
  */
+process.title = 'orca-daemon';
+
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { initDaemonDb, closeDaemonDb } from './db.js';

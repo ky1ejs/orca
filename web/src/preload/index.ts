@@ -78,6 +78,8 @@ export interface OrcaAPI {
     onSessionStatusChanged: (cb: (sessionId: string, status: string) => void) => () => void;
     onDaemonReconnected: (cb: () => void) => () => void;
     onDaemonDisconnected: (cb: () => void) => () => void;
+    onProtocolUpdateRequired: (cb: (activeSessions: number) => void) => () => void;
+    forceRestartDaemon: () => Promise<void>;
   };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
@@ -182,6 +184,14 @@ const api: OrcaAPI = {
         ipcRenderer.removeListener('daemon:disconnected', listener);
       };
     },
+    onProtocolUpdateRequired: (cb) => {
+      const listener = (_event: unknown, activeSessions: number) => cb(activeSessions);
+      ipcRenderer.on('daemon:protocol-update-required', listener);
+      return () => {
+        ipcRenderer.removeListener('daemon:protocol-update-required', listener);
+      };
+    },
+    forceRestartDaemon: () => ipcRenderer.invoke('daemon:force-restart'),
   },
   updates: {
     onUpdateReady: (cb) => {
