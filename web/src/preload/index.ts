@@ -41,10 +41,13 @@ export interface OrcaAPI {
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
-  preferences: {
-    get: (key: string) => Promise<string | undefined>;
-    set: (key: string, value: string) => Promise<{ key: string; value: string }>;
-    getAll: () => Promise<Array<{ key: string; value: string }>>;
+  settings: {
+    get: (key: string) => Promise<unknown>;
+    set: (key: string, value: unknown) => Promise<void>;
+    getAll: () => Promise<Record<string, unknown>>;
+  };
+  fonts: {
+    list: () => Promise<string[]>;
   };
   projectDir: {
     get: (projectId: string) => Promise<{ project_id: string; directory: string } | undefined>;
@@ -118,10 +121,13 @@ const api: OrcaAPI = {
       };
     },
   },
-  preferences: {
-    get: (key) => ipcRenderer.invoke('pref:get', key),
-    set: (key, value) => ipcRenderer.invoke('pref:set', key, value),
-    getAll: () => ipcRenderer.invoke('pref:getAll'),
+  settings: {
+    get: (key) => ipcRenderer.invoke('settings:get', key),
+    set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
+    getAll: () => ipcRenderer.invoke('settings:getAll'),
+  },
+  fonts: {
+    list: () => ipcRenderer.invoke('fonts:list'),
   },
   projectDir: {
     get: (projectId) => ipcRenderer.invoke('projectDir:get', projectId),

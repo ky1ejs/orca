@@ -40,17 +40,6 @@ export const projectDirectory = sqliteTable('project_directory', {
     .default(sql`(datetime('now'))`),
 });
 
-export const userPreference = sqliteTable('user_preference', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
-  created_at: text('created_at')
-    .notNull()
-    .default(sql`(datetime('now'))`),
-  updated_at: text('updated_at')
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
-
 export const authToken = sqliteTable('auth_token', {
   id: text('id').primaryKey(),
   token: text('token').notNull(),

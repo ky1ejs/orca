@@ -14,7 +14,8 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from '../db/project-directories.js';
-import { getPreference, setPreference, getAllPreferences } from '../db/user-preferences.js';
+import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
+import { listSystemFonts } from '../config/list-fonts.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager, type AgentLaunchOptions } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
@@ -80,17 +81,22 @@ export function registerIpcHandlers(): void {
     deleteProjectDirectory(projectId);
   });
 
-  // Preferences handlers
-  ipcMain.handle(IPC_CHANNELS.PREF_GET, (_event, key: string) => {
-    return getPreference(key);
+  // Settings handlers
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, key: string) => {
+    return getSetting(key);
   });
 
-  ipcMain.handle(IPC_CHANNELS.PREF_SET, (_event, key: string, value: string) => {
-    return setPreference(key, value);
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, key: string, value: unknown) => {
+    setSetting(key, value);
   });
 
-  ipcMain.handle(IPC_CHANNELS.PREF_GET_ALL, () => {
-    return getAllPreferences();
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_ALL, () => {
+    return getAllSettings();
+  });
+
+  // Fonts handler
+  ipcMain.handle(IPC_CHANNELS.FONTS_LIST, () => {
+    return listSystemFonts();
   });
 
   // Auth handlers

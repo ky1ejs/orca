@@ -14,12 +14,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [terminalFontFamily, setTerminalFontFamilyState] = useState(DEFAULT_FONT);
 
   useEffect(() => {
-    if (!window.orca?.preferences) return;
-    window.orca.preferences.getAll().then((prefs) => {
-      for (const pref of prefs) {
-        if (pref.key === TERMINAL_FONT_FAMILY_KEY) {
-          setTerminalFontFamilyState(pref.value);
-        }
+    if (!window.orca?.settings) return;
+    window.orca.settings.getAll().then((settings) => {
+      const font = settings[TERMINAL_FONT_FAMILY_KEY];
+      if (typeof font === 'string') {
+        setTerminalFontFamilyState(font);
       }
     });
   }, []);
@@ -27,8 +26,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const setTerminalFontFamily = useCallback(async (font: string) => {
     const value = font.trim() || DEFAULT_FONT;
     setTerminalFontFamilyState(value);
-    if (window.orca?.preferences) {
-      await window.orca.preferences.set(TERMINAL_FONT_FAMILY_KEY, value);
+    if (window.orca?.settings) {
+      await window.orca.settings.set(TERMINAL_FONT_FAMILY_KEY, value);
     }
   }, []);
 
