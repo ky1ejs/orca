@@ -53,9 +53,12 @@ interface HandlerDeps {
 }
 
 export function createHandler(deps: HandlerDeps) {
-  const { ptyManager, statusManager, server, setToken, getVersion, getUptime, shutdown } = deps;
+  // Note: `server` is accessed lazily via `deps.server` (not destructured) because
+  // it's created after the handler — the getter resolves it at call time.
+  const { ptyManager, statusManager, setToken, getVersion, getUptime, shutdown } = deps;
 
   return async (client: ClientConnection, method: string, params: unknown): Promise<unknown> => {
+    const server = deps.server;
     switch (method) {
       // ── Auth ────────────────────────────────────────
       case DAEMON_METHODS.AUTH_SET_TOKEN: {

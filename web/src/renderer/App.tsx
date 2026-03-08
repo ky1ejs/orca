@@ -7,6 +7,8 @@ import { AppShell } from './components/layout/AppShell.js';
 import { LoginScreen } from './components/auth/LoginScreen.js';
 import { RegisterScreen } from './components/auth/RegisterScreen.js';
 import { setOnAuthError, clearCachedToken } from './graphql/client.js';
+import { ToastProvider } from './components/toast/ToastProvider.js';
+import { useDaemonLifecycle } from './hooks/useDaemonLifecycle.js';
 
 type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired' | 'registering';
 
@@ -82,12 +84,19 @@ function App() {
       <PreferencesProvider>
         <WorkspaceProvider>
           <NavigationProvider>
-            <AppShell onLogout={handleLogout} />
+            <ToastProvider>
+              <AuthenticatedApp onLogout={handleLogout} />
+            </ToastProvider>
           </NavigationProvider>
         </WorkspaceProvider>
       </PreferencesProvider>
     </GraphQLProvider>
   );
+}
+
+function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
+  useDaemonLifecycle();
+  return <AppShell onLogout={onLogout} />;
 }
 
 export default App;

@@ -2,19 +2,28 @@
  * DaemonConnector: discovers, spawns, and maintains connection to the PTY daemon.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync, mkdirSync, copyFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { DaemonClient } from './client.js';
+import { migrateDb } from './migrate-db.js';
 import {
-  ORCA_DIR,
   DAEMON_SOCKET_PATH,
   DAEMON_PID_FILE,
   DAEMON_DB_PATH,
+  DAEMON_METHODS,
 } from '../../shared/daemon-protocol.js';
+import type { DaemonStatusResult } from '../../shared/daemon-protocol.js';
 
 const MAX_CONNECT_ATTEMPTS = 20;
 const CONNECT_RETRY_MS = 150;
+const VERSION_SHUTDOWN_WAIT_MS = 5000;
+const VERSION_SHUTDOWN_POLL_MS = 200;
+
+export interface EnsureRunningResult {
+  reconnected: boolean;
+  activeSessions: number;
+}
 
 export class DaemonConnector {
   private client: DaemonClient;
@@ -37,17 +46,28 @@ export class DaemonConnector {
   /**
    * Ensure the daemon is running and connected.
    * Spawns a new daemon if needed. Migrates old DB if present.
+   * Returns whether we reconnected to an existing daemon and how many active sessions it has.
    */
-  async ensureRunning(): Promise<void> {
+  async ensureRunning(): Promise<EnsureRunningResult> {
     // One-time DB migration from old Electron userData location
-    this.migrateDbIfNeeded();
+    const oldDbPath = join(app.getPath('userData'), 'orca.db');
+    migrateDb(DAEMON_DB_PATH, oldDbPath);
 
     // Check if daemon is already running
     if (this.isDaemonAlive()) {
       try {
         await this.client.connect(DAEMON_SOCKET_PATH);
+
+        // Check version — if mismatched, shutdown old daemon and spawn new
+        const versionCheck = await this.checkVersion();
+        if (!versionCheck.match) {
+          await this.shutdownAndRespawn();
+          this.setupReconnection();
+          return { reconnected: false, activeSessions: 0 };
+        }
+
         this.setupReconnection();
-        return;
+        return { reconnected: true, activeSessions: versionCheck.activeSessions };
       } catch {
         // PID alive but socket not connectable — stale state
         this.cleanupStaleFiles();
@@ -62,6 +82,7 @@ export class DaemonConnector {
     // Wait for daemon to be ready
     await this.waitForConnection();
     this.setupReconnection();
+    return { reconnected: false, activeSessions: 0 };
   }
 
   private isDaemonAlive(): boolean {
@@ -88,6 +109,46 @@ export class DaemonConnector {
     } catch {
       // Ignore
     }
+  }
+
+  /**
+   * Check if the connected daemon's version matches this app's version.
+   */
+  private async checkVersion(): Promise<{ match: boolean; activeSessions: number }> {
+    try {
+      const result = (await this.client.request(
+        DAEMON_METHODS.DAEMON_STATUS,
+      )) as DaemonStatusResult;
+      const match = result.version === app.getVersion();
+      return { match, activeSessions: result.activeSessions };
+    } catch {
+      // Can't get status — treat as mismatch to be safe
+      return { match: false, activeSessions: 0 };
+    }
+  }
+
+  /**
+   * Shutdown the currently connected daemon (version mismatch) and spawn a new one.
+   */
+  private async shutdownAndRespawn(): Promise<void> {
+    try {
+      await this.client.request(DAEMON_METHODS.DAEMON_SHUTDOWN);
+    } catch {
+      // May fail if already shutting down
+    }
+
+    this.client.disconnect();
+
+    // Wait for daemon to die
+    const deadline = Date.now() + VERSION_SHUTDOWN_WAIT_MS;
+    while (Date.now() < deadline) {
+      if (!this.isDaemonAlive()) break;
+      await sleep(VERSION_SHUTDOWN_POLL_MS);
+    }
+
+    this.cleanupStaleFiles();
+    this.spawnDaemon();
+    await this.waitForConnection();
   }
 
   private spawnDaemon(): void {
@@ -183,29 +244,6 @@ export class DaemonConnector {
 
   stopReconnection(): void {
     this.reconnecting = false;
-  }
-
-  /**
-   * One-time migration: copy old DB from Electron userData to ~/.orca/
-   */
-  private migrateDbIfNeeded(): void {
-    if (existsSync(DAEMON_DB_PATH)) return; // New location already exists
-
-    const oldDbPath = join(app.getPath('userData'), 'orca.db');
-    if (!existsSync(oldDbPath)) return; // No old DB to migrate
-
-    try {
-      mkdirSync(ORCA_DIR, { recursive: true });
-      copyFileSync(oldDbPath, DAEMON_DB_PATH);
-
-      // Also copy WAL/SHM files if they exist
-      const walPath = oldDbPath + '-wal';
-      const shmPath = oldDbPath + '-shm';
-      if (existsSync(walPath)) copyFileSync(walPath, DAEMON_DB_PATH + '-wal');
-      if (existsSync(shmPath)) copyFileSync(shmPath, DAEMON_DB_PATH + '-shm');
-    } catch {
-      // Migration failed — daemon will create a fresh DB
-    }
   }
 }
 

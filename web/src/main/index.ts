@@ -4,11 +4,13 @@ import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
 import { DaemonClient } from './daemon/client.js';
 import { DaemonConnector } from './daemon/connector.js';
+import type { EnsureRunningResult } from './daemon/connector.js';
 import { readToken } from './pty/auth.js';
 import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
 import { HookServer } from './hooks/server.js';
 import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
   PtyDataEvent,
   PtyExitEvent,
@@ -101,6 +103,24 @@ async function pushTokenToDaemon(client: DaemonClient): Promise<void> {
   }
 }
 
+/**
+ * Re-subscribe to all active sessions so PTY data flows after reconnect.
+ */
+async function resubscribeToActiveSessions(client: DaemonClient): Promise<void> {
+  try {
+    const sessions = (await client.request(DAEMON_METHODS.DB_GET_SESSIONS)) as Array<{
+      id: string;
+      status: string;
+    }>;
+    const active = sessions.filter((s) => isActiveSessionStatus(s.status));
+    await Promise.all(
+      active.map((s) => client.request(DAEMON_METHODS.PTY_SUBSCRIBE, { sessionId: s.id })),
+    );
+  } catch {
+    // Best effort — sessions may not exist
+  }
+}
+
 app.whenReady().then(async () => {
   // Set dock icon on macOS
   try {
@@ -113,8 +133,10 @@ app.whenReady().then(async () => {
   daemonClient = new DaemonClient();
   daemonConnector = new DaemonConnector(daemonClient);
 
+  let startupResult: EnsureRunningResult = { reconnected: false, activeSessions: 0 };
+
   try {
-    await daemonConnector.ensureRunning();
+    startupResult = await daemonConnector.ensureRunning();
     console.log('Connected to PTY daemon');
   } catch (err) {
     console.error('Failed to connect to daemon:', err);
@@ -140,11 +162,17 @@ app.whenReady().then(async () => {
   // Push auth token to daemon
   await pushTokenToDaemon(daemonClient);
 
+  // Re-subscribe to active sessions if reconnecting to existing daemon
+  if (startupResult.reconnected) {
+    await resubscribeToActiveSessions(daemonClient);
+  }
+
   // Handle reconnection
   daemonConnector.setOnReconnect(async () => {
     console.log('Reconnected to PTY daemon');
     setupDaemonEventForwarding(daemonClient!);
     await pushTokenToDaemon(daemonClient!);
+    await resubscribeToActiveSessions(daemonClient!);
     sendToAllWindows('daemon:reconnected');
   });
 
@@ -166,6 +194,13 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+
+  // Notify renderer about interrupted sessions after window is ready
+  if (startupResult.reconnected && startupResult.activeSessions > 0) {
+    mainWindow!.webContents.once('did-finish-load', () => {
+      mainWindow!.webContents.send('startup:interrupted-sessions', startupResult.activeSessions);
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
