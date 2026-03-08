@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useWorkspace } from '../../workspace/context.js';
 import { useNavigation } from '../../navigation/context.js';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal.js';
 
 export function WorkspaceSwitcher() {
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace();
   const { navigate } = useNavigation();
   const [isOpen, setIsOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,8 +68,7 @@ export function WorkspaceSwitcher() {
             <button
               onClick={() => {
                 setIsOpen(false);
-                navigate({ view: 'projects' });
-                // TODO: Open create workspace modal
+                setShowCreateModal(true);
               }}
               className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors"
             >
@@ -76,6 +77,8 @@ export function WorkspaceSwitcher() {
           </div>
         </div>
       )}
+
+      {showCreateModal && <CreateWorkspaceModal onClose={() => setShowCreateModal(false)} />}
     </div>
   );
 }

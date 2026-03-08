@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
-export type ViewType = 'projects' | 'project' | 'task' | 'members' | 'invitations';
+export type ViewType = 'projects' | 'project' | 'task' | 'members' | 'invitations' | 'settings';
 
 export interface NavigationState {
   view: ViewType;

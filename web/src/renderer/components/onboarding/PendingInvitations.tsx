@@ -44,7 +44,7 @@ export function PendingInvitations({ invitations, onComplete }: PendingInvitatio
   const remaining = invitations.filter((inv) => !processed.has(inv.id));
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-100">
+    <div className="flex h-full items-center justify-center bg-gray-950 text-gray-100">
       <div className="max-w-md w-full mx-auto p-8">
         <h2 className="text-xl font-semibold text-white mb-2">You've been invited!</h2>
         <p className="text-sm text-gray-400 mb-6">
