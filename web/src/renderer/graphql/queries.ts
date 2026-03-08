@@ -32,6 +32,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
         id
         name
         description
+        defaultDirectory
         tasks {
           id
           title
@@ -105,6 +106,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
       id
       name
       description
+      defaultDirectory
       workspaceId
       tasks {
         id
@@ -132,8 +134,8 @@ export const TaskQueryDocument = /* GraphQL */ `
       project {
         id
         name
+        defaultDirectory
       }
-      workingDirectory
       createdAt
       updatedAt
     }

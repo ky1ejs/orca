@@ -64,6 +64,7 @@ type Project {
   id: ID!
   name: String!
   description: String
+  defaultDirectory: String
   workspaceId: ID!
   workspace: Workspace!
   tasks: [Task!]!
@@ -79,7 +80,6 @@ type Task {
   priority: TaskPriority!
   projectId: ID!
   project: Project!
-  workingDirectory: String!
   createdAt: String!
   updatedAt: String!
 }
@@ -103,12 +103,14 @@ input UpdateWorkspaceInput {
 input CreateProjectInput {
   name: String!
   description: String
+  defaultDirectory: String
   workspaceId: ID!
 }
 
 input UpdateProjectInput {
   name: String
   description: String
+  defaultDirectory: String
 }
 
 input CreateTaskInput {
@@ -117,7 +119,6 @@ input CreateTaskInput {
   status: TaskStatus
   priority: TaskPriority
   projectId: ID!
-  workingDirectory: String!
 }
 
 input UpdateTaskInput {
@@ -125,7 +126,6 @@ input UpdateTaskInput {
   description: String
   status: TaskStatus
   priority: TaskPriority
-  workingDirectory: String
 }
 
 input AddMemberInput {

@@ -144,9 +144,6 @@ describe('OnboardingFlow', () => {
     fireEvent.change(screen.getByTestId('onboarding-task-title'), {
       target: { value: 'My Task' },
     });
-    fireEvent.change(screen.getByTestId('onboarding-working-dir'), {
-      target: { value: '/tmp/test' },
-    });
     fireEvent.click(screen.getByTestId('onboarding-create-task-btn'));
 
     // Should advance to launch step
@@ -180,9 +177,6 @@ describe('OnboardingFlow', () => {
     await screen.findByTestId('onboarding-create-task');
     fireEvent.change(screen.getByTestId('onboarding-task-title'), {
       target: { value: 'Task' },
-    });
-    fireEvent.change(screen.getByTestId('onboarding-working-dir'), {
-      target: { value: '/tmp' },
     });
     fireEvent.click(screen.getByTestId('onboarding-create-task-btn'));
     await screen.findByTestId('onboarding-open-terminal');

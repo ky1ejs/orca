@@ -34,6 +34,7 @@ export const CreateProjectDocument = /* GraphQL */ `
       id
       name
       description
+      defaultDirectory
       workspaceId
       tasks {
         id
@@ -52,6 +53,7 @@ export const UpdateProjectDocument = /* GraphQL */ `
       id
       name
       description
+      defaultDirectory
       createdAt
       updatedAt
     }
@@ -77,7 +79,6 @@ export const CreateTaskDocument = /* GraphQL */ `
         id
         name
       }
-      workingDirectory
       createdAt
       updatedAt
     }
@@ -93,7 +94,6 @@ export const UpdateTaskDocument = /* GraphQL */ `
       status
       priority
       projectId
-      workingDirectory
       createdAt
       updatedAt
     }

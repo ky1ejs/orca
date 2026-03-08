@@ -114,17 +114,6 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
     }
   };
 
-  // Get the most recent working directory from existing tasks for inline create
-  const mostRecentWorkingDir =
-    tasks.length > 0
-      ? [...tasks].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        )[0]?.id
-        ? // We don't have workingDirectory in TaskSummary, so pass empty
-          ''
-        : ''
-      : '';
-
   if (tasks.length === 0 && !inlineCreateStatus) {
     return <EmptyTaskList onCreateTask={() => setInlineCreateStatus(TaskStatus.Todo)} />;
   }
@@ -162,7 +151,6 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
                 <TaskTableInlineCreate
                   projectId={projectId}
                   status={status}
-                  defaultWorkingDirectory={mostRecentWorkingDir}
                   onClose={() => setInlineCreateStatus(null)}
                 />
               ) : null
