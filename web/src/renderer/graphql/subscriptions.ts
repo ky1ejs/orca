@@ -27,6 +27,15 @@ export const TaskChangedDocument = /* GraphQL */ `
       description
       status
       projectId
+      assignee {
+        id
+        name
+      }
+      labels {
+        id
+        name
+        color
+      }
       createdAt
       updatedAt
     }

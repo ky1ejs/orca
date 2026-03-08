@@ -49,6 +49,12 @@ function createMockContext() {
     workspaceMembership: {
       findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
+    label: {
+      findMany: vi.fn(),
+    },
     $transaction: vi.fn((cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
   };
   return {
@@ -276,6 +282,112 @@ describe('task resolvers', () => {
       );
       expect(result).toBe(true);
     });
+
+    it('createTask with assigneeId validates workspace membership', async () => {
+      const ctx = createMockContext();
+      ctx.prisma.workspaceMembership.findUnique
+        .mockResolvedValueOnce(MEMBERSHIP) // requireProjectAccess - workspace membership
+        .mockResolvedValueOnce(null); // assignee membership check (not a member)
+
+      await expect(
+        taskResolvers.Mutation.createTask(
+          {} as never,
+          { input: { title: 'Task', projectId: 'p1', assigneeId: 'nonmember' } },
+          ctx as never,
+        ),
+      ).rejects.toThrow('Assignee must be a workspace member');
+    });
+
+    it('createTask with labelIds validates labels belong to workspace', async () => {
+      const ctx = createMockContext();
+      ctx.prisma.label.findMany.mockResolvedValue([]); // no matching labels
+
+      await expect(
+        taskResolvers.Mutation.createTask(
+          {} as never,
+          { input: { title: 'Task', projectId: 'p1', labelIds: ['bad-label'] } },
+          ctx as never,
+        ),
+      ).rejects.toThrow('One or more labels do not belong to this workspace');
+    });
+
+    it('updateTask sets assigneeId', async () => {
+      const ctx = createMockContext();
+      const task = { id: '1', title: 'Task', projectId: 'p1', workspaceId: 'ws1' };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.task.update.mockResolvedValue({ ...task, assigneeId: 'user1' });
+
+      await taskResolvers.Mutation.updateTask(
+        {} as never,
+        { id: '1', input: { assigneeId: 'user1' } },
+        ctx as never,
+      );
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { assigneeId: 'user1' },
+      });
+    });
+
+    it('updateTask clears assigneeId with null', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Task',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+        assigneeId: 'user1',
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.task.update.mockResolvedValue({ ...task, assigneeId: null });
+
+      await taskResolvers.Mutation.updateTask(
+        {} as never,
+        { id: '1', input: { assigneeId: null } },
+        ctx as never,
+      );
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { assigneeId: null },
+      });
+    });
+
+    it('updateTask rejects non-member assignee', async () => {
+      const ctx = createMockContext();
+      const task = { id: '1', title: 'Task', projectId: 'p1', workspaceId: 'ws1' };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.workspaceMembership.findUnique
+        .mockResolvedValueOnce(MEMBERSHIP) // requireTaskAccess membership check
+        .mockResolvedValueOnce(null); // assignee membership check
+
+      await expect(
+        taskResolvers.Mutation.updateTask(
+          {} as never,
+          { id: '1', input: { assigneeId: 'nonmember' } },
+          ctx as never,
+        ),
+      ).rejects.toThrow('Assignee must be a workspace member');
+    });
+
+    it('updateTask sets labelIds', async () => {
+      const ctx = createMockContext();
+      const task = { id: '1', title: 'Task', projectId: 'p1', workspaceId: 'ws1' };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.label.findMany.mockResolvedValue([
+        { id: 'l1', workspaceId: 'ws1' },
+        { id: 'l2', workspaceId: 'ws1' },
+      ]);
+      ctx.prisma.task.update.mockResolvedValue(task);
+
+      await taskResolvers.Mutation.updateTask(
+        {} as never,
+        { id: '1', input: { labelIds: ['l1', 'l2'] } },
+        ctx as never,
+      );
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { labels: { set: [{ id: 'l1' }, { id: 'l2' }] } },
+      });
+    });
   });
 
   describe('Task', () => {
@@ -291,6 +403,40 @@ describe('task resolvers', () => {
       );
       expect(result).toEqual(project);
       expect(ctx.prisma.project.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'p1' } });
+    });
+
+    it('assignee resolves null when no assigneeId', async () => {
+      const ctx = createMockContext();
+
+      const result = await taskResolvers.Task.assignee!(
+        { assigneeId: null } as never,
+        {},
+        ctx as never,
+      );
+      expect(result).toBeNull();
+    });
+
+    it('assignee resolves the user when assigneeId is set', async () => {
+      const ctx = createMockContext();
+      const user = { id: 'user1', name: 'Test User', email: 'test@test.com' };
+      ctx.prisma.user.findUnique.mockResolvedValue(user);
+
+      const result = await taskResolvers.Task.assignee!(
+        { assigneeId: 'user1' } as never,
+        {},
+        ctx as never,
+      );
+      expect(result).toEqual(user);
+    });
+
+    it('labels resolves via fluent API', async () => {
+      const ctx = createMockContext();
+      const labels = [{ id: 'l1', name: 'Bug', color: '#FF0000' }];
+      const mockLabels = vi.fn().mockResolvedValue(labels);
+      ctx.prisma.task.findUnique.mockReturnValue({ labels: mockLabels });
+
+      const result = await taskResolvers.Task.labels!({ id: 'task1' } as never, {}, ctx as never);
+      expect(result).toEqual(labels);
     });
   });
 });
