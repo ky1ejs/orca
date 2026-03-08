@@ -76,6 +76,10 @@ export class PtyManager {
     clearOutput(sessionId);
   }
 
+  get activeCount(): number {
+    return this.processes.size;
+  }
+
   killAll(): void {
     this.disposed = true;
     for (const [, proc] of this.processes) {
