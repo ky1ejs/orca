@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useSubscription } from 'urql';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   MeDocument,
   WorkspacesDocument,
@@ -88,6 +88,12 @@ export function useWorkspaceMembers(slug: string) {
 
 export function usePendingInvitations() {
   const [result, reexecute] = useQuery({ query: PendingInvitationsDocument });
+  useEffect(() => {
+    const interval = setInterval(() => {
+      reexecute({ requestPolicy: 'network-only' });
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [reexecute]);
   return { ...result, refetch: reexecute };
 }
 

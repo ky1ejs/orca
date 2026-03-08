@@ -63,39 +63,26 @@ export const membershipResolvers = {
         where: { email },
       });
 
-      const workspace = await context.prisma.workspace.findUniqueOrThrow({
-        where: { id: workspaceId },
-      });
-
       if (targetUser) {
+        // Self-invite check
+        if (targetUser.id === context.userId) {
+          throw new GraphQLError('You are already a member of this workspace', {
+            extensions: { code: 'BAD_USER_INPUT' },
+          });
+        }
+
         // Check if already a member
         const existingMembership = await context.prisma.workspaceMembership.findUnique({
           where: { workspaceId_userId: { workspaceId, userId: targetUser.id } },
         });
         if (existingMembership) {
-          const msg =
-            targetUser.id === context.userId
-              ? 'You are already a member of this workspace'
-              : 'This user is already a member of this workspace';
-          throw new GraphQLError(msg, {
+          throw new GraphQLError('This user is already a member of this workspace', {
             extensions: { code: 'BAD_USER_INPUT' },
           });
         }
-
-        // Direct add
-        const membership = await context.prisma.workspaceMembership.create({
-          data: { workspaceId, userId: targetUser.id, role },
-          include: { user: true },
-        });
-
-        return {
-          __typename: 'MemberAdded' as const,
-          member: membership,
-          message: `Added ${targetUser.name} to ${workspace.name}`,
-        };
       }
 
-      // User doesn't exist — create invitation
+      // Shared invitation path for both existing and non-existing users
       // Check pending invitation limit
       const pendingCount = await context.prisma.workspaceInvitation.count({
         where: { workspaceId, expiresAt: { gt: new Date() } },
@@ -134,10 +121,14 @@ export const membershipResolvers = {
         },
       });
 
+      const message = targetUser
+        ? `Invitation sent to ${email}. They will be notified in Orca.`
+        : `Invitation saved. ${email} will be added when they create an Orca account. Let them know to sign up.`;
+
       return {
         __typename: 'InvitationCreated' as const,
         invitation,
-        message: `Invitation saved. ${email} will be added when they create an Orca account. Let them know to sign up.`,
+        message,
       };
     },
 
