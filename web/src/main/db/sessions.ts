@@ -1,8 +1,9 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and, inArray, isNotNull } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { getDb } from './client.js';
 import { terminalSession } from './schema.js';
+import { SessionStatus, ACTIVE_SESSION_STATUSES } from '../../shared/session-status.js';
 
 export type TerminalSession = InferSelectModel<typeof terminalSession>;
 
@@ -39,7 +40,7 @@ export function createSession(input: CreateSessionInput): TerminalSession {
       id,
       task_id: input.taskId ?? null,
       pid: input.pid ?? null,
-      status: input.status ?? 'STARTING',
+      status: input.status ?? SessionStatus.Starting,
       working_directory: input.workingDirectory ?? null,
       started_at: now,
       created_at: now,
@@ -80,7 +81,10 @@ export function sweepStaleSessions(): SweepResult {
     .select({ id: terminalSession.id, pid: terminalSession.pid })
     .from(terminalSession)
     .where(
-      sql`${terminalSession.status} IN ('RUNNING', 'STARTING') AND ${terminalSession.pid} IS NOT NULL`,
+      and(
+        inArray(terminalSession.status, [SessionStatus.Running, SessionStatus.Starting]),
+        isNotNull(terminalSession.pid),
+      ),
     )
     .all() as Array<{ id: string; pid: number }>;
 
@@ -91,7 +95,7 @@ export function sweepStaleSessions(): SweepResult {
       process.kill(session.pid, 0);
     } catch {
       db.update(terminalSession)
-        .set({ status: 'ERROR', stopped_at: sql`datetime('now')` })
+        .set({ status: SessionStatus.Error, stopped_at: sql`datetime('now')` })
         .where(eq(terminalSession.id, session.id))
         .run();
       sweptIds.push(session.id);
@@ -123,7 +127,10 @@ export function getActiveSessions(): Array<{ id: string; pid: number }> {
     .select({ id: terminalSession.id, pid: terminalSession.pid })
     .from(terminalSession)
     .where(
-      sql`${terminalSession.status} IN ('RUNNING', 'STARTING', 'WAITING_FOR_INPUT') AND ${terminalSession.pid} IS NOT NULL`,
+      and(
+        inArray(terminalSession.status, [...ACTIVE_SESSION_STATUSES]),
+        isNotNull(terminalSession.pid),
+      ),
     )
     .all() as Array<{ id: string; pid: number }>;
 }

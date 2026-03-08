@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { createDb, type OrcaDb } from '../db/client.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
@@ -56,7 +57,11 @@ describe('PtyManager', () => {
         const session = sqlite
           .prepare('SELECT status FROM terminal_session WHERE id = ?')
           .get('test-session') as { status: string } | undefined;
-        if (session && session.status !== 'RUNNING' && session.status !== 'STARTING') {
+        if (
+          session &&
+          session.status !== SessionStatus.Running &&
+          session.status !== SessionStatus.Starting
+        ) {
           clearInterval(interval);
           resolve();
         }
@@ -75,7 +80,7 @@ describe('PtyManager', () => {
     const session = sqlite
       .prepare('SELECT status, pid FROM terminal_session WHERE id = ?')
       .get('test-session') as { status: string; pid: number };
-    expect(session.status).toBe('EXITED');
+    expect(session.status).toBe(SessionStatus.Exited);
     expect(session.pid).toBeGreaterThan(0);
   });
 
@@ -91,7 +96,7 @@ describe('PtyManager', () => {
     const sessionBefore = sqlite
       .prepare('SELECT status FROM terminal_session WHERE id = ?')
       .get('kill-session') as { status: string };
-    expect(sessionBefore.status).toBe('RUNNING');
+    expect(sessionBefore.status).toBe(SessionStatus.Running);
 
     manager.kill('kill-session');
 
@@ -101,7 +106,11 @@ describe('PtyManager', () => {
         const session = sqlite
           .prepare('SELECT status FROM terminal_session WHERE id = ?')
           .get('kill-session') as { status: string } | undefined;
-        if (session && session.status !== 'RUNNING' && session.status !== 'STARTING') {
+        if (
+          session &&
+          session.status !== SessionStatus.Running &&
+          session.status !== SessionStatus.Starting
+        ) {
           clearInterval(interval);
           resolve();
         }
@@ -116,7 +125,7 @@ describe('PtyManager', () => {
       .prepare('SELECT status FROM terminal_session WHERE id = ?')
       .get('kill-session') as { status: string };
     // Kill sends SIGHUP which is non-zero exit
-    expect(['ERROR', 'EXITED']).toContain(sessionAfter.status);
+    expect([SessionStatus.Error, SessionStatus.Exited]).toContain(sessionAfter.status);
   });
 
   it('resizes without throwing', () => {

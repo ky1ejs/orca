@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { TerminalTabs } from './TerminalTabs.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
+import { SessionStatus } from '../../../shared/session-status.js';
 
 afterEach(cleanup);
 
@@ -12,7 +13,7 @@ const makeSessions = (overrides?: Partial<TerminalSessionInfo>[]): TerminalSessi
     id: 'sess-1',
     task_id: 'task-a',
     pid: 100,
-    status: 'RUNNING',
+    status: SessionStatus.Running,
     working_directory: '/tmp',
     started_at: '2024-01-01T00:00:00Z',
     stopped_at: null,
@@ -23,7 +24,7 @@ const makeSessions = (overrides?: Partial<TerminalSessionInfo>[]): TerminalSessi
     id: 'sess-2',
     task_id: 'task-b',
     pid: 200,
-    status: 'EXITED',
+    status: SessionStatus.Exited,
     working_directory: '/tmp',
     started_at: '2024-01-01T00:00:00Z',
     stopped_at: '2024-01-01T01:00:00Z',
@@ -98,7 +99,10 @@ describe('TerminalTabs', () => {
   });
 
   it('shows correct status dot colors', () => {
-    const sessions = makeSessions([{ status: 'RUNNING' }, { status: 'ERROR' }]);
+    const sessions = makeSessions([
+      { status: SessionStatus.Running },
+      { status: SessionStatus.Error },
+    ]);
     render(
       <TerminalTabs
         sessions={sessions}
@@ -115,7 +119,7 @@ describe('TerminalTabs', () => {
   });
 
   it('shows pulse animation for STARTING status', () => {
-    const sessions = makeSessions([{ status: 'STARTING' }]);
+    const sessions = makeSessions([{ status: SessionStatus.Starting }]);
     render(
       <TerminalTabs
         sessions={sessions}
@@ -131,7 +135,7 @@ describe('TerminalTabs', () => {
   });
 
   it('shows pulse animation for WAITING_FOR_INPUT status', () => {
-    const sessions = makeSessions([{ status: 'WAITING_FOR_INPUT' }]);
+    const sessions = makeSessions([{ status: SessionStatus.WaitingForInput }]);
     render(
       <TerminalTabs
         sessions={sessions}

@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { resolve } from 'node:path';
 import { createDb, type OrcaDb } from './client.js';
+import { SessionStatus } from '../../shared/session-status.js';
 
 const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
@@ -32,9 +33,9 @@ describe('sessions', () => {
   });
 
   it('creates and retrieves a session', () => {
-    const session = createSession({ status: 'RUNNING', workingDirectory: '/tmp' });
+    const session = createSession({ status: SessionStatus.Running, workingDirectory: '/tmp' });
     expect(session.id).toBeDefined();
-    expect(session.status).toBe('RUNNING');
+    expect(session.status).toBe(SessionStatus.Running);
     expect(session.working_directory).toBe('/tmp');
 
     const retrieved = getSession(session.id);
@@ -42,18 +43,18 @@ describe('sessions', () => {
   });
 
   it('lists all sessions', () => {
-    createSession({ status: 'RUNNING' });
-    createSession({ status: 'STARTING' });
+    createSession({ status: SessionStatus.Running });
+    createSession({ status: SessionStatus.Starting });
 
     const sessions = getSessions();
     expect(sessions).toHaveLength(2);
   });
 
   it('updates a session', () => {
-    const session = createSession({ status: 'STARTING' });
-    const updated = updateSession(session.id, { status: 'RUNNING', pid: 1234 });
+    const session = createSession({ status: SessionStatus.Starting });
+    const updated = updateSession(session.id, { status: SessionStatus.Running, pid: 1234 });
 
-    expect(updated?.status).toBe('RUNNING');
+    expect(updated?.status).toBe(SessionStatus.Running);
     expect(updated?.pid).toBe(1234);
   });
 
@@ -65,7 +66,7 @@ describe('sessions', () => {
   describe('sweepStaleSessions', () => {
     it('marks sessions with dead PIDs as ERROR and returns sweep result', () => {
       // Create a session with a PID that doesn't exist
-      const session = createSession({ status: 'RUNNING', pid: 999999 });
+      const session = createSession({ status: SessionStatus.Running, pid: 999999 });
 
       // Mock process.kill to throw (pid doesn't exist)
       const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {
@@ -78,14 +79,14 @@ describe('sessions', () => {
       expect(result.sweptIds).toContain(session.id);
 
       const updated = getSession(session.id);
-      expect(updated?.status).toBe('ERROR');
+      expect(updated?.status).toBe(SessionStatus.Error);
       expect(updated?.stopped_at).toBeDefined();
 
       killSpy.mockRestore();
     });
 
     it('leaves sessions with alive PIDs as is', () => {
-      const session = createSession({ status: 'RUNNING', pid: process.pid });
+      const session = createSession({ status: SessionStatus.Running, pid: process.pid });
 
       // process.kill(process.pid, 0) should succeed (our own PID)
       const result = sweepStaleSessions();
@@ -94,14 +95,14 @@ describe('sessions', () => {
       expect(result.sweptIds).toEqual([]);
 
       const updated = getSession(session.id);
-      expect(updated?.status).toBe('RUNNING');
+      expect(updated?.status).toBe(SessionStatus.Running);
     });
 
     it('sweeps multiple stale sessions at startup', () => {
       // Simulate multiple sessions left over from a previous run
-      const s1 = createSession({ status: 'RUNNING', pid: 999991 });
-      const s2 = createSession({ status: 'STARTING', pid: 999992 });
-      const s3 = createSession({ status: 'RUNNING', pid: process.pid }); // alive
+      const s1 = createSession({ status: SessionStatus.Running, pid: 999991 });
+      const s2 = createSession({ status: SessionStatus.Starting, pid: 999992 });
+      const s3 = createSession({ status: SessionStatus.Running, pid: process.pid }); // alive
 
       const killSpy = vi.spyOn(process, 'kill').mockImplementation((_pid, _signal) => {
         const pid = _pid as number;
@@ -116,9 +117,9 @@ describe('sessions', () => {
       expect(result.sweptIds).toContain(s2.id);
       expect(result.sweptIds).not.toContain(s3.id);
 
-      expect(getSession(s1.id)?.status).toBe('ERROR');
-      expect(getSession(s2.id)?.status).toBe('ERROR');
-      expect(getSession(s3.id)?.status).toBe('RUNNING');
+      expect(getSession(s1.id)?.status).toBe(SessionStatus.Error);
+      expect(getSession(s2.id)?.status).toBe(SessionStatus.Error);
+      expect(getSession(s3.id)?.status).toBe(SessionStatus.Running);
 
       killSpy.mockRestore();
     });

@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import { BrowserWindow } from 'electron';
 import { updateSession } from '../db/sessions.js';
+import { SessionStatus } from '../../shared/session-status.js';
 import { appendOutput, replayOutput, clearOutput } from './output-buffer.js';
 
 interface PtyProcess {
@@ -22,7 +23,7 @@ export class PtyManager {
 
     this.processes.set(sessionId, { pty: shell, sessionId });
 
-    updateSession(sessionId, { pid: shell.pid, status: 'RUNNING' });
+    updateSession(sessionId, { pid: shell.pid, status: SessionStatus.Running });
 
     shell.onData((data: string) => {
       if (this.disposed) return;
@@ -39,7 +40,7 @@ export class PtyManager {
       if (this.disposed) return;
       try {
         updateSession(sessionId, {
-          status: exitCode === 0 ? 'EXITED' : 'ERROR',
+          status: exitCode === 0 ? SessionStatus.Exited : SessionStatus.Error,
           stoppedAt: new Date().toISOString(),
         });
       } catch {

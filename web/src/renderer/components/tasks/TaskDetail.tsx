@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
 import {
   useTask,
   useUpdateTask,
@@ -32,8 +33,6 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: TaskPriority.High, label: 'High' },
   { value: TaskPriority.Urgent, label: 'Urgent' },
 ];
-
-const ACTIVE_STATUSES = ['STARTING', 'RUNNING', 'WAITING_FOR_INPUT'];
 
 export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
@@ -107,8 +106,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     await updateTask(taskId, { status: newStatus });
   };
 
-  const activeSession = sessions.find((s) => ACTIVE_STATUSES.includes(s.status));
-  const errorSession = sessions.find((s) => s.status === 'ERROR');
+  const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
+  const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
 
   const handleLaunchAgent = async () => {
     setLaunching(true);
