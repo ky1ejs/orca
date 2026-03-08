@@ -11,8 +11,13 @@ interface HookEntry {
   allowedEnvVars?: string[];
 }
 
+interface MatcherGroup {
+  matcher: string;
+  hooks: HookEntry[];
+}
+
 interface SettingsFile {
-  hooks?: Record<string, HookEntry[]>;
+  hooks?: Record<string, MatcherGroup[]>;
   [key: string]: unknown;
 }
 
@@ -27,12 +32,40 @@ function buildHookEntry(port: number): HookEntry {
   };
 }
 
+function buildMatcherGroup(port: number): MatcherGroup {
+  return {
+    matcher: '',
+    hooks: [buildHookEntry(port)],
+  };
+}
+
 function settingsPath(workingDirectory: string): string {
   return path.join(workingDirectory, '.claude', 'settings.local.json');
 }
 
-function isOrcaHook(entry: HookEntry): boolean {
+function isOrcaHookEntry(entry: HookEntry): boolean {
   return entry.url?.includes(ORCA_HOOKS_MARKER) ?? false;
+}
+
+function isOrcaMatcherGroup(group: MatcherGroup): boolean {
+  return group.hooks.some(isOrcaHookEntry);
+}
+
+function isMatcherGroup(entry: unknown): entry is MatcherGroup {
+  return (
+    typeof entry === 'object' &&
+    entry !== null &&
+    'matcher' in entry &&
+    'hooks' in entry &&
+    Array.isArray((entry as MatcherGroup).hooks)
+  );
+}
+
+function migrateToMatcherGroups(entries: unknown[]): MatcherGroup[] {
+  return entries.map((entry) => {
+    if (isMatcherGroup(entry)) return entry;
+    return { matcher: '', hooks: [entry as HookEntry] };
+  });
 }
 
 export function ensureHooks(workingDirectory: string, port: number): void {
@@ -56,21 +89,23 @@ export function ensureHooks(workingDirectory: string, port: number): void {
     settings.hooks = {};
   }
 
-  const entry = buildHookEntry(port);
+  const matcherGroup = buildMatcherGroup(port);
 
   for (const eventType of HOOK_EVENT_TYPES) {
-    const existing: HookEntry[] | undefined = settings.hooks[eventType];
+    const existing = settings.hooks[eventType];
     if (!Array.isArray(existing)) {
-      settings.hooks[eventType] = [entry];
+      settings.hooks[eventType] = [matcherGroup];
       continue;
     }
 
-    const orcaIndex = existing.findIndex(isOrcaHook);
+    const migrated = migrateToMatcherGroups(existing);
+    const orcaIndex = migrated.findIndex(isOrcaMatcherGroup);
     if (orcaIndex >= 0) {
-      existing[orcaIndex] = entry;
+      migrated[orcaIndex] = matcherGroup;
     } else {
-      existing.push(entry);
+      migrated.push(matcherGroup);
     }
+    settings.hooks[eventType] = migrated;
   }
 
   writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
@@ -91,7 +126,8 @@ export function removeHooks(workingDirectory: string): void {
       const existing = settings.hooks[eventType];
       if (!Array.isArray(existing)) continue;
 
-      const filtered = existing.filter((entry) => !isOrcaHook(entry));
+      const migrated = migrateToMatcherGroups(existing);
+      const filtered = migrated.filter((group) => !isOrcaMatcherGroup(group));
       if (filtered.length === 0) {
         delete settings.hooks[eventType];
       } else {
