@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { UserPlus, X } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import {
   useMe,
   useWorkspaceMembers,
@@ -196,7 +198,7 @@ export function MemberList() {
         <div className="mb-4 px-3 py-2 bg-error-muted border border-error-strong rounded text-body-sm text-error">
           {error}
           <button onClick={() => setError(null)} className="ml-2 text-error hover:text-error">
-            dismiss
+            <X className={iconSize.sm} />
           </button>
         </div>
       )}
@@ -221,8 +223,9 @@ export function MemberList() {
           </select>
           <button
             type="submit"
-            className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded transition-colors"
+            className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded transition-colors inline-flex items-center"
           >
+            <UserPlus className={`${iconSize.sm} mr-1`} />
             Add
           </button>
         </form>

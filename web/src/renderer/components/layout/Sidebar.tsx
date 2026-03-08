@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import {
+  PanelLeft,
+  ChevronRight,
+  ChevronDown,
+  SquareTerminal,
+  Settings,
+  LogOut,
+} from 'lucide-react';
+import {
   useWorkspaceBySlug,
   useProjectSubscription,
   useTaskSubscription,
@@ -13,6 +21,7 @@ import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
 import { SessionStatus } from '../../../shared/session-status.js';
+import { iconSize } from '../../tokens/icon-size.js';
 
 function collapsedBadgeColor(statuses: string[]): string {
   const set = new Set(statuses);
@@ -64,34 +73,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
+            <PanelLeft className={iconSize.md} />
           </button>
           <NotificationBell />
         </div>
         {activeTerminals.length > 0 && (
           <div className="py-2" data-testid="active-terminals-collapsed">
             <div className="relative flex justify-center">
-              <svg
-                className="h-5 w-5 text-success"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
-                />
-              </svg>
+              <SquareTerminal className={`${iconSize.md} text-success`} />
               <span
                 className={`absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-label-xs font-bold text-white ${collapsedBadgeColor(activeTerminals.map((t) => t.status))}`}
               >
@@ -124,19 +113,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Collapse sidebar"
             data-testid="sidebar-collapse-btn"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
-            </svg>
+            <PanelLeft className={iconSize.sm} />
           </button>
         </div>
       </div>
@@ -161,7 +138,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                       className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      <span className="text-label-sm">{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                      {isExpanded ? (
+                        <ChevronDown className={iconSize.xs} />
+                      ) : (
+                        <ChevronRight className={iconSize.xs} />
+                      )}
                     </button>
                     <button
                       onClick={() => navigate({ view: 'project', id: project.id })}
@@ -189,7 +170,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                               }`}
                             >
-                              <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
+                              <StatusIcon
+                                status={task.status}
+                                className={`${iconSize.xs} flex-shrink-0`}
+                              />
                               <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
                               <span className="truncate">{task.title}</span>
                             </button>
@@ -214,6 +198,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             }`}
           >
+            <Settings className={`${iconSize.sm} inline-block mr-2`} />
             Settings
           </button>
         </div>
@@ -222,6 +207,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             onClick={onLogout}
             className="w-full text-left px-3 py-1.5 text-label-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
           >
+            <LogOut className={`${iconSize.sm} inline-block mr-2`} />
             Sign out
           </button>
         </div>

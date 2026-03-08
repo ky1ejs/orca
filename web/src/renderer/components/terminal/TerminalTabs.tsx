@@ -1,3 +1,5 @@
+import { X } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { type SessionStatus, statusDotClass } from '../../../shared/session-status.js';
 
@@ -48,7 +50,7 @@ export function TerminalTabs({
               className="ml-1 text-gray-500 hover:text-gray-200 transition-colors"
               data-testid={`close-tab-${session.id}`}
             >
-              &times;
+              <X className={iconSize.xs} />
             </span>
           </button>
         );

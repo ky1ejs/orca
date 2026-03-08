@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { ChevronRight, Plus } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { PriorityIcon } from '../shared/PriorityIcon.js';
@@ -203,16 +205,12 @@ function TaskTableGroup({
         className="group flex items-center h-9 px-3 bg-gray-900/50 cursor-pointer select-none"
         onClick={onToggleCollapse}
       >
-        <svg
-          className={`w-3 h-3 text-gray-500 mr-2 transition-transform duration-150 ${
+        <ChevronRight
+          className={`${iconSize.xs} text-gray-500 mr-2 transition-transform duration-150 ${
             isCollapsed ? '' : 'rotate-90'
           }`}
-          viewBox="0 0 12 12"
-          fill="currentColor"
-        >
-          <path d="M4 2l5 4-5 4V2z" />
-        </svg>
-        <StatusIcon status={status} className="w-4 h-4 mr-2" />
+        />
+        <StatusIcon status={status} className={`${iconSize.sm} mr-2`} />
         <span className="text-gray-300 text-body-sm font-medium">{STATUS_LABELS[status]}</span>
         <span className="text-gray-500 text-label-sm ml-2">{tasks.length}</span>
         <div className="flex-1" />
@@ -224,7 +222,7 @@ function TaskTableGroup({
           className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-300 text-body-sm transition-opacity"
           aria-label={`Add task to ${STATUS_LABELS[status]}`}
         >
-          +
+          <Plus className={iconSize.sm} />
         </button>
       </div>
 
@@ -268,10 +266,10 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       onClick={onClick}
     >
       <div role="gridcell" className="w-4 flex-shrink-0">
-        <PriorityIcon priority={task.priority} className="w-4 h-4" />
+        <PriorityIcon priority={task.priority} className={iconSize.sm} />
       </div>
       <div role="gridcell" className="w-4 flex-shrink-0">
-        <StatusIcon status={task.status} className="w-4 h-4" />
+        <StatusIcon status={task.status} className={iconSize.sm} />
       </div>
       <div role="gridcell" className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-gray-500 text-body-sm font-mono mr-1 flex-shrink-0">

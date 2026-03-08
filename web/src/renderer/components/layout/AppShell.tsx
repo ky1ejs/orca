@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Download } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { isActiveSessionStatus } from '../../../shared/session-status.js';
 import { Sidebar } from './Sidebar.js';
 import { useNavigation } from '../../navigation/context.js';
@@ -235,6 +237,7 @@ export function AppShell({ onLogout }: AppShellProps) {
               onClick={() => window.orca.updates.install()}
               className="bg-accent hover:bg-accent-hover text-on-accent px-3 py-1 rounded text-label-sm font-medium transition-colors"
             >
+              <Download className={`${iconSize.sm} mr-1 inline-block`} />
               Restart &amp; Update
             </button>
           </div>

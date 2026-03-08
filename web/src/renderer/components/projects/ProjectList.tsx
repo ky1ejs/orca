@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Plus, X } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import {
   useWorkspaceBySlug,
   useCreateProject,
@@ -52,9 +54,19 @@ export function ProjectList() {
         <h1 className="text-heading-lg font-bold text-white">Projects</h1>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors"
+          className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors inline-flex items-center"
         >
-          {showCreate ? 'Cancel' : 'New Project'}
+          {showCreate ? (
+            <>
+              <X className={`${iconSize.sm} mr-1`} />
+              Cancel
+            </>
+          ) : (
+            <>
+              <Plus className={`${iconSize.sm} mr-1`} />
+              New Project
+            </>
+          )}
         </button>
       </div>
 

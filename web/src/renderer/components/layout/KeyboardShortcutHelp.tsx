@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { formatShortcut, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 
 interface KeyboardShortcutHelpProps {
@@ -41,7 +43,7 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
             className="text-gray-400 hover:text-white transition-colors"
             data-testid="close-shortcut-help"
           >
-            &times;
+            <X className={iconSize.sm} />
           </button>
         </div>
         <div className="px-5 py-4 space-y-3 max-h-96 overflow-y-auto">
