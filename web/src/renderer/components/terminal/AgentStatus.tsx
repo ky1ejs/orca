@@ -17,6 +17,11 @@ const statusConfig: Record<SessionStatus, { label: string; dotClass: string; bad
       dotClass: 'bg-warning animate-pulse',
       badgeClass: 'bg-warning-muted text-warning',
     },
+    [SessionStatus.AwaitingPermission]: {
+      label: 'Needs Permission',
+      dotClass: 'bg-orange-400 animate-pulse',
+      badgeClass: 'bg-orange-900 text-orange-300',
+    },
     [SessionStatus.Exited]: {
       label: 'Exited',
       dotClass: 'bg-gray-500',

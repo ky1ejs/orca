@@ -35,9 +35,19 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
         defaultDirectory
         tasks {
           id
+          displayId
           title
           status
           priority
+          assignee {
+            id
+            name
+          }
+          labels {
+            id
+            name
+            color
+          }
         }
         createdAt
         updatedAt
@@ -110,9 +120,19 @@ export const ProjectQueryDocument = /* GraphQL */ `
       workspaceId
       tasks {
         id
+        displayId
         title
         status
         priority
+        assignee {
+          id
+          name
+        }
+        labels {
+          id
+          name
+          color
+        }
         createdAt
         updatedAt
       }
@@ -126,6 +146,7 @@ export const TaskQueryDocument = /* GraphQL */ `
   query Task($id: ID!) {
     task(id: $id) {
       id
+      displayId
       title
       description
       status
@@ -136,6 +157,29 @@ export const TaskQueryDocument = /* GraphQL */ `
         name
         defaultDirectory
       }
+      assignee {
+        id
+        name
+        email
+      }
+      labels {
+        id
+        name
+        color
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const LabelsQueryDocument = /* GraphQL */ `
+  query Labels($workspaceId: ID!) {
+    labels(workspaceId: $workspaceId) {
+      id
+      name
+      color
+      workspaceId
       createdAt
       updatedAt
     }

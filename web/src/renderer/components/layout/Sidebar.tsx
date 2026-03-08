@@ -12,6 +12,14 @@ import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
+import { SessionStatus } from '../../../shared/session-status.js';
+
+function collapsedBadgeColor(statuses: string[]): string {
+  const set = new Set(statuses);
+  if (set.has(SessionStatus.AwaitingPermission)) return 'bg-warning animate-pulse';
+  if (set.has(SessionStatus.WaitingForInput)) return 'bg-warning animate-pulse';
+  return 'bg-info';
+}
 
 interface SidebarProps {
   collapsed: boolean;
@@ -84,7 +92,9 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                   d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
                 />
               </svg>
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-label-xs font-bold text-on-accent">
+              <span
+                className={`absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-label-xs font-bold text-white ${collapsedBadgeColor(activeTerminals.map((t) => t.status))}`}
+              >
                 {activeTerminals.length}
               </span>
             </div>
@@ -180,6 +190,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                               }`}
                             >
                               <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
+                              <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
                               <span className="truncate">{task.title}</span>
                             </button>
                           </li>

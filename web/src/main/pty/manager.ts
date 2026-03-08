@@ -13,12 +13,19 @@ export class PtyManager {
   private processes = new Map<string, PtyProcess>();
   private disposed = false;
 
-  spawn(sessionId: string, command: string, args: string[], cwd: string): void {
+  spawn(
+    sessionId: string,
+    command: string,
+    args: string[],
+    cwd: string,
+    env?: Record<string, string>,
+  ): void {
     const shell = pty.spawn(command, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd,
+      ...(env && { env: { ...process.env, ...env } }),
     });
 
     this.processes.set(sessionId, { pty: shell, sessionId });

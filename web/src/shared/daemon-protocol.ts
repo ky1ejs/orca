@@ -1,0 +1,211 @@
+/**
+ * Protocol types for communication between Electron main process and the PTY daemon
+ * over a Unix domain socket using NDJSON (newline-delimited JSON).
+ */
+
+/** Client -> Daemon request */
+export interface DaemonRequest {
+  id: string;
+  method: string;
+  params?: unknown;
+}
+
+/** Daemon -> Client response */
+export interface DaemonResponse {
+  id: string;
+  result?: unknown;
+  error?: { code: string; message: string };
+}
+
+/** Daemon -> Client push event */
+export interface DaemonEvent {
+  event: string;
+  params: unknown;
+}
+
+export type DaemonMessage = DaemonResponse | DaemonEvent;
+
+export function isDaemonEvent(msg: DaemonMessage): msg is DaemonEvent {
+  return 'event' in msg;
+}
+
+export function isDaemonResponse(msg: DaemonMessage): msg is DaemonResponse {
+  return 'id' in msg && !('event' in msg);
+}
+
+// ─── Method parameter types ────────────────────────────────────────────
+
+export interface AuthSetTokenParams {
+  token: string;
+}
+
+export interface PtySpawnParams {
+  sessionId: string;
+  command: string;
+  args: string[];
+  cwd: string;
+}
+
+export interface PtyWriteParams {
+  sessionId: string;
+  data: string;
+}
+
+export interface PtyResizeParams {
+  sessionId: string;
+  cols: number;
+  rows: number;
+}
+
+export interface PtyKillParams {
+  sessionId: string;
+}
+
+export interface PtyReplayParams {
+  sessionId: string;
+}
+
+export interface PtyClearParams {
+  sessionId: string;
+}
+
+export interface PtySubscribeParams {
+  sessionId: string;
+}
+
+export interface PtyUnsubscribeParams {
+  sessionId: string;
+}
+
+export interface AgentLaunchOptions {
+  planMode?: boolean;
+}
+
+export interface AgentLaunchParams {
+  taskId: string;
+  workingDirectory: string;
+  options?: AgentLaunchOptions;
+}
+
+export interface AgentStopParams {
+  sessionId: string;
+}
+
+export interface AgentRestartParams {
+  taskId: string;
+  sessionId: string;
+  workingDirectory: string;
+  options?: AgentLaunchOptions;
+}
+
+export interface AgentStatusParams {
+  sessionId: string;
+}
+
+export interface DbGetSessionParams {
+  id: string;
+}
+
+export interface DbCreateSessionParams {
+  taskId?: string;
+  pid?: number;
+  status?: string;
+  workingDirectory?: string;
+}
+
+export interface DbUpdateSessionParams {
+  id: string;
+  input: { pid?: number; status?: string; stoppedAt?: string };
+}
+
+export interface DbDeleteSessionParams {
+  id: string;
+}
+
+export interface ProjectDirGetParams {
+  projectId: string;
+}
+
+export interface ProjectDirSetParams {
+  projectId: string;
+  directory: string;
+}
+
+export interface ProjectDirDeleteParams {
+  projectId: string;
+}
+
+export interface DaemonStatusResult {
+  version: string;
+  uptime: number;
+  activeSessions: number;
+  connectedClients: number;
+}
+
+// ─── Event parameter types ─────────────────────────────────────────────
+
+export interface PtyDataEvent {
+  sessionId: string;
+  data: string;
+}
+
+export interface PtyExitEvent {
+  sessionId: string;
+  exitCode: number;
+}
+
+export interface PidSweepSessionsDiedEvent {
+  sessionIds: string[];
+}
+
+export interface SessionStatusChangedEvent {
+  sessionId: string;
+  status: string;
+}
+
+// ─── Constants ─────────────────────────────────────────────────────────
+
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+
+export const ORCA_DIR = join(homedir(), '.orca');
+export const DAEMON_SOCKET_PATH = join(ORCA_DIR, 'daemon.sock');
+export const DAEMON_PID_FILE = join(ORCA_DIR, 'daemon.pid');
+export const DAEMON_DB_PATH = join(ORCA_DIR, 'orca.db');
+export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
+
+/** Methods the daemon supports */
+export const DAEMON_METHODS = {
+  AUTH_SET_TOKEN: 'auth.setToken',
+  PTY_SPAWN: 'pty.spawn',
+  PTY_WRITE: 'pty.write',
+  PTY_RESIZE: 'pty.resize',
+  PTY_KILL: 'pty.kill',
+  PTY_REPLAY: 'pty.replay',
+  PTY_CLEAR: 'pty.clear',
+  PTY_SUBSCRIBE: 'pty.subscribe',
+  PTY_UNSUBSCRIBE: 'pty.unsubscribe',
+  AGENT_LAUNCH: 'agent.launch',
+  AGENT_STOP: 'agent.stop',
+  AGENT_RESTART: 'agent.restart',
+  AGENT_STATUS: 'agent.status',
+  DB_GET_SESSIONS: 'db.getSessions',
+  DB_GET_SESSION: 'db.getSession',
+  DB_CREATE_SESSION: 'db.createSession',
+  DB_UPDATE_SESSION: 'db.updateSession',
+  DB_DELETE_SESSION: 'db.deleteSession',
+  PROJECT_DIR_GET: 'projectDir.get',
+  PROJECT_DIR_SET: 'projectDir.set',
+  PROJECT_DIR_DELETE: 'projectDir.delete',
+  DAEMON_PING: 'daemon.ping',
+  DAEMON_STATUS: 'daemon.status',
+  DAEMON_SHUTDOWN: 'daemon.shutdown',
+} as const;
+
+/** Events the daemon pushes to subscribed clients */
+export const DAEMON_EVENTS = {
+  PTY_DATA: 'pty.data',
+  PTY_EXIT: 'pty.exit',
+  PID_SWEEP_SESSIONS_DIED: 'pid-sweep.sessions-died',
+  SESSION_STATUS_CHANGED: 'session.statusChanged',
+} as const;

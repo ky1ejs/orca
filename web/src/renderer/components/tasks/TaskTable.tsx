@@ -8,9 +8,12 @@ import { EmptyTaskList } from '../layout/EmptyState.js';
 
 interface TaskSummary {
   id: string;
+  displayId: string;
   title: string;
   status: TaskStatus;
   priority: TaskPriority;
+  assignee?: { id: string; name: string } | null;
+  labels: { id: string; name: string; color: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -270,9 +273,27 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       <div role="gridcell" className="w-4 flex-shrink-0">
         <StatusIcon status={task.status} className="w-4 h-4" />
       </div>
-      <div role="gridcell" className="flex-1 min-w-0">
-        <span className="text-gray-100 text-body-sm truncate block">{task.title}</span>
+      <div role="gridcell" className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="text-gray-500 text-body-sm font-mono mr-1 flex-shrink-0">
+          {task.displayId}
+        </span>
+        <span className="text-gray-100 text-body-sm truncate">{task.title}</span>
+        {task.labels?.map((label) => (
+          <span
+            key={label.id}
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: label.color }}
+            title={label.name}
+          />
+        ))}
       </div>
+      {task.assignee && (
+        <div role="gridcell" className="flex-shrink-0 mr-2">
+          <span className="text-gray-400 text-label-sm" title={task.assignee.name}>
+            {task.assignee.name}
+          </span>
+        </div>
+      )}
       <div role="gridcell" className="flex-shrink-0">
         <span className="text-gray-500 text-label-sm">{formatRelativeDate(task.updatedAt)}</span>
       </div>

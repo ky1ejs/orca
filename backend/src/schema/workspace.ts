@@ -108,6 +108,22 @@ export const workspaceResolvers = {
             },
           },
         });
+
+        // Slug-reuse safety: check for orphaned displayIds from previously deleted
+        // workspaces that used the same slug, and initialize counter accordingly
+        const prefix = `${args.input.slug.toUpperCase()}-`;
+        const maxOrphan = await context.prisma.task.findFirst({
+          where: { displayId: { startsWith: prefix } },
+          orderBy: { sequenceNumber: 'desc' },
+          select: { sequenceNumber: true },
+        });
+        if (maxOrphan) {
+          await context.prisma.workspace.update({
+            where: { id: workspace.id },
+            data: { taskCounter: maxOrphan.sequenceNumber },
+          });
+        }
+
         return workspace;
       } catch (e: unknown) {
         if (e instanceof Error && e.message.includes('Unique constraint failed')) {
@@ -123,6 +139,42 @@ export const workspaceResolvers = {
 
       const data: Record<string, unknown> = {};
       if (args.input.name != null) data.name = args.input.name;
+
+      if (args.input.slug != null) {
+        const newSlug = args.input.slug;
+        validateSlug(newSlug);
+
+        try {
+          return await context.prisma.$transaction(async (tx) => {
+            // Update task displayIds to reflect the new slug
+            const tasks = await tx.task.findMany({
+              where: { project: { workspaceId: args.id } },
+              select: { id: true, sequenceNumber: true },
+            });
+
+            const newPrefix = newSlug.toUpperCase();
+            for (const task of tasks) {
+              await tx.task.update({
+                where: { id: task.id },
+                data: { displayId: `${newPrefix}-${task.sequenceNumber}` },
+              });
+            }
+
+            data.slug = newSlug;
+            return tx.workspace.update({
+              where: { id: args.id },
+              data,
+            });
+          });
+        } catch (e: unknown) {
+          if (e instanceof Error && e.message.includes('Unique constraint failed')) {
+            throw new GraphQLError('This workspace URL is already taken', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+          throw e;
+        }
+      }
 
       return context.prisma.workspace.update({
         where: { id: args.id },
@@ -183,6 +235,12 @@ export const workspaceResolvers = {
         where: { workspaceId: parent.id },
         include: { user: true },
         orderBy: { createdAt: 'asc' },
+      });
+    },
+    labels: (parent, _args, context) => {
+      return context.prisma.label.findMany({
+        where: { workspaceId: parent.id },
+        orderBy: { name: 'asc' },
       });
     },
     invitations: async (parent, _args, context) => {

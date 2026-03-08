@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface AgentLaunchOptions {
+  planMode?: boolean;
+}
+
 export interface AgentLaunchResult {
   success: boolean;
   sessionId?: string;
@@ -37,6 +41,14 @@ export interface OrcaAPI {
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
+  settings: {
+    get: (key: string) => Promise<unknown>;
+    set: (key: string, value: unknown) => Promise<void>;
+    getAll: () => Promise<Record<string, unknown>>;
+  };
+  fonts: {
+    list: () => Promise<string[]>;
+  };
   projectDir: {
     get: (projectId: string) => Promise<{ project_id: string; directory: string } | undefined>;
     set: (
@@ -46,21 +58,30 @@ export interface OrcaAPI {
     delete: (projectId: string) => Promise<void>;
   };
   agent: {
-    launch: (taskId: string, workingDirectory: string) => Promise<AgentLaunchResult>;
+    launch: (
+      taskId: string,
+      workingDirectory: string,
+      options?: AgentLaunchOptions,
+    ) => Promise<AgentLaunchResult>;
     stop: (sessionId: string) => Promise<void>;
     restart: (
       taskId: string,
       sessionId: string,
       workingDirectory: string,
+      options?: AgentLaunchOptions,
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
   lifecycle: {
     onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
     onInterruptedSessions: (cb: (count: number) => void) => () => void;
+    onSessionStatusChanged: (cb: (sessionId: string, status: string) => void) => () => void;
+    onDaemonReconnected: (cb: () => void) => () => void;
+    onDaemonDisconnected: (cb: () => void) => () => void;
   };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
+    onUpdateError: (cb: (message: string) => void) => () => void;
     install: () => Promise<void>;
   };
 }
@@ -103,17 +124,25 @@ const api: OrcaAPI = {
       };
     },
   },
+  settings: {
+    get: (key) => ipcRenderer.invoke('settings:get', key),
+    set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
+    getAll: () => ipcRenderer.invoke('settings:getAll'),
+  },
+  fonts: {
+    list: () => ipcRenderer.invoke('fonts:list'),
+  },
   projectDir: {
     get: (projectId) => ipcRenderer.invoke('projectDir:get', projectId),
     set: (projectId, directory) => ipcRenderer.invoke('projectDir:set', projectId, directory),
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
   },
   agent: {
-    launch: (taskId, workingDirectory) =>
-      ipcRenderer.invoke('agent:launch', taskId, workingDirectory),
+    launch: (taskId, workingDirectory, options) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options),
     stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
-    restart: (taskId, sessionId, workingDirectory) =>
-      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory),
+    restart: (taskId, sessionId, workingDirectory, options) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
   lifecycle: {
@@ -131,6 +160,28 @@ const api: OrcaAPI = {
         ipcRenderer.removeListener('startup:interrupted-sessions', listener);
       };
     },
+    onSessionStatusChanged: (cb) => {
+      const listener = (_event: unknown, data: { sessionId: string; status: string }) =>
+        cb(data.sessionId, data.status);
+      ipcRenderer.on('session:status-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('session:status-changed', listener);
+      };
+    },
+    onDaemonReconnected: (cb) => {
+      const listener = () => cb();
+      ipcRenderer.on('daemon:reconnected', listener);
+      return () => {
+        ipcRenderer.removeListener('daemon:reconnected', listener);
+      };
+    },
+    onDaemonDisconnected: (cb) => {
+      const listener = () => cb();
+      ipcRenderer.on('daemon:disconnected', listener);
+      return () => {
+        ipcRenderer.removeListener('daemon:disconnected', listener);
+      };
+    },
   },
   updates: {
     onUpdateReady: (cb) => {
@@ -138,6 +189,13 @@ const api: OrcaAPI = {
       ipcRenderer.on('update:ready', listener);
       return () => {
         ipcRenderer.removeListener('update:ready', listener);
+      };
+    },
+    onUpdateError: (cb) => {
+      const listener = (_event: unknown, message: string) => cb(message);
+      ipcRenderer.on('update:error', listener);
+      return () => {
+        ipcRenderer.removeListener('update:error', listener);
       };
     },
     install: () => ipcRenderer.invoke('update:install'),

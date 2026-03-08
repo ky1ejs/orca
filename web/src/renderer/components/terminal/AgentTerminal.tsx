@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { usePreferences } from '../../preferences/context.js';
 import '@xterm/xterm/css/xterm.css';
 
 interface AgentTerminalProps {
@@ -12,6 +13,8 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const { terminalFontFamily } = usePreferences();
+  const fontRef = useRef(terminalFontFamily);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -24,7 +27,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
         cursor: '#e5e7eb',
         selectionBackground: '#374151',
       },
-      fontFamily: 'monospace',
+      fontFamily: fontRef.current,
       fontSize: 13,
       cursorBlink: true,
       convertEol: true,
@@ -86,6 +89,23 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       fitAddonRef.current = null;
     };
   }, [sessionId]);
+
+  // Apply font changes live
+  useEffect(() => {
+    fontRef.current = terminalFontFamily;
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (terminal) {
+      terminal.options.fontFamily = terminalFontFamily;
+      if (fitAddon) {
+        try {
+          fitAddon.fit();
+        } catch {
+          // Container may have been removed
+        }
+      }
+    }
+  }, [terminalFontFamily]);
 
   return (
     <div
