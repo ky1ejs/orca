@@ -8,6 +8,7 @@ export const ProjectChangedDocument = /* GraphQL */ `
       workspaceId
       tasks {
         id
+        displayId
         title
         status
       }
@@ -21,6 +22,7 @@ export const TaskChangedDocument = /* GraphQL */ `
   subscription TaskChanged($workspaceId: ID!) {
     taskChanged(workspaceId: $workspaceId) {
       id
+      displayId
       title
       description
       status

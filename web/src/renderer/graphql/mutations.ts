@@ -38,6 +38,7 @@ export const CreateProjectDocument = /* GraphQL */ `
       workspaceId
       tasks {
         id
+        displayId
         title
         status
       }
@@ -70,6 +71,7 @@ export const CreateTaskDocument = /* GraphQL */ `
   mutation CreateTask($input: CreateTaskInput!) {
     createTask(input: $input) {
       id
+      displayId
       title
       description
       status
@@ -89,6 +91,7 @@ export const UpdateTaskDocument = /* GraphQL */ `
   mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
     updateTask(id: $id, input: $input) {
       id
+      displayId
       title
       description
       status

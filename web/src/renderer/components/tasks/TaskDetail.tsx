@@ -269,7 +269,10 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       ) : (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-white">{task.title}</h1>
+            <div className="flex items-center">
+              <span className="text-gray-500 text-lg font-mono mr-3">{task.displayId}</span>
+              <h1 className="text-2xl font-bold text-white">{task.title}</h1>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
