@@ -78,6 +78,14 @@ export function AppShell({ onLogout }: AppShellProps) {
     });
   }, []);
 
+  // Listen for auto-update errors
+  useEffect(() => {
+    if (!window.orca?.updates?.onUpdateError) return;
+    return window.orca.updates.onUpdateError((message) => {
+      console.error('[updater] Error:', message);
+    });
+  }, []);
+
   const handleCloseSession = useCallback(
     async (sessionId: string) => {
       await window.orca.pty.kill(sessionId);

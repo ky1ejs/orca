@@ -20,4 +20,5 @@ export const IPC_CHANNELS = {
   AGENT_RESTART: 'agent:restart',
   AGENT_STATUS: 'agent:status',
   UPDATE_INSTALL: 'update:install',
+  UPDATE_ERROR: 'update:error',
 } as const;

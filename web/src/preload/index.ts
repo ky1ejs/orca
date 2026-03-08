@@ -61,6 +61,7 @@ export interface OrcaAPI {
   };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
+    onUpdateError: (cb: (message: string) => void) => () => void;
     install: () => Promise<void>;
   };
 }
@@ -138,6 +139,13 @@ const api: OrcaAPI = {
       ipcRenderer.on('update:ready', listener);
       return () => {
         ipcRenderer.removeListener('update:ready', listener);
+      };
+    },
+    onUpdateError: (cb) => {
+      const listener = (_event: unknown, message: string) => cb(message);
+      ipcRenderer.on('update:error', listener);
+      return () => {
+        ipcRenderer.removeListener('update:error', listener);
       };
     },
     install: () => ipcRenderer.invoke('update:install'),
