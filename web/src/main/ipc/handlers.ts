@@ -14,6 +14,8 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from '../db/project-directories.js';
+import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
+import { listSystemFonts } from '../config/list-fonts.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager, type AgentLaunchOptions } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
@@ -77,6 +79,24 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.PROJECT_DIR_DELETE, (_event, projectId: string) => {
     deleteProjectDirectory(projectId);
+  });
+
+  // Settings handlers
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, key: string) => {
+    return getSetting(key);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, key: string, value: unknown) => {
+    setSetting(key, value);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_ALL, () => {
+    return getAllSettings();
+  });
+
+  // Fonts handler
+  ipcMain.handle(IPC_CHANNELS.FONTS_LIST, () => {
+    return listSystemFonts();
   });
 
   // Auth handlers

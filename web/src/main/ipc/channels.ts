@@ -19,6 +19,10 @@ export const IPC_CHANNELS = {
   AGENT_STOP: 'agent:stop',
   AGENT_RESTART: 'agent:restart',
   AGENT_STATUS: 'agent:status',
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SET: 'settings:set',
+  SETTINGS_GET_ALL: 'settings:getAll',
+  FONTS_LIST: 'fonts:list',
   UPDATE_INSTALL: 'update:install',
   UPDATE_ERROR: 'update:error',
 } as const;
