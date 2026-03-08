@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import type { PtyManager } from './manager.js';
-import { getDefaultShell } from './shell.js';
+import { getDefaultShell, getLoginShellArgs } from './shell.js';
 import { createSession, getSession, updateSession } from '../db/sessions.js';
 import { SessionStatus } from '../../shared/session-status.js';
 import {
@@ -51,7 +51,7 @@ export class StatusManager {
 
       try {
         const shell = getDefaultShell();
-        this.manager.spawn(session.id, shell, [], workingDirectory);
+        this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory);
       } catch (err) {
         throw new PtySpawnError(err);
       }
