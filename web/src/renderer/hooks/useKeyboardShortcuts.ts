@@ -25,6 +25,19 @@ function isTerminalFocused(): boolean {
 }
 
 /**
+ * Returns true if the active element is an editable field (input, textarea, contenteditable),
+ * meaning bare-key shortcuts should not fire.
+ */
+function isEditableElementFocused(): boolean {
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+  if ((active as HTMLElement).isContentEditable) return true;
+  return false;
+}
+
+/**
  * Global keyboard shortcut handler.
  * Registers shortcuts on the document and fires actions on match.
  * Skips shortcuts when an xterm.js terminal element is focused,
@@ -43,6 +56,10 @@ export function useKeyboardShortcuts({ shortcuts, enabled = true }: KeyboardShor
         const metaMatch = shortcut.metaKey ? e.metaKey || e.ctrlKey : !e.metaKey && !e.ctrlKey;
         const shiftMatch = shortcut.shiftKey ? e.shiftKey : !e.shiftKey;
         const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
+        const hasModifier = shortcut.metaKey || false;
+
+        // Skip bare-key shortcuts when an editable element is focused
+        if (!hasModifier && isEditableElementFocused()) continue;
 
         if (metaMatch && shiftMatch && keyMatch) {
           e.preventDefault();
