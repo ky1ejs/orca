@@ -9,6 +9,11 @@ import { initAutoUpdater, installUpdate } from './updater.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
+if (process.env.NODE_ENV === 'development') {
+  const defaultUserData = app.getPath('userData');
+  app.setPath('userData', `${defaultUserData} Dev`);
+}
+
 let pidSweepManager: PidSweepManager | null = null;
 let startupSweepCount = 0;
 
