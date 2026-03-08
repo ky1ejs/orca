@@ -54,7 +54,7 @@ describe('StatusManager', () => {
     sqlite.pragma('foreign_keys = ON');
     testDb = createDb(sqlite, migrationsFolder);
     ptyManager = new PtyManager();
-    statusManager = new StatusManager(ptyManager, { backendUrl: 'http://localhost:4000' });
+    statusManager = new StatusManager(ptyManager, null, { backendUrl: 'http://localhost:4000' });
     mockFetch.mockClear();
   });
 
@@ -142,6 +142,7 @@ describe('StatusManager', () => {
       '/usr/local/bin/claude',
       ['--permission-mode', 'plan'],
       '/tmp',
+      { ORCA_SESSION_ID: expect.any(String) },
     );
 
     spawnSpy.mockRestore();
@@ -163,7 +164,9 @@ describe('StatusManager', () => {
     const result = await statusManager.launch('task-1', '/tmp');
     expect(result.success).toBe(true);
 
-    expect(spawnSpy).toHaveBeenCalledWith(expect.any(String), '/bin/echo', [], '/tmp');
+    expect(spawnSpy).toHaveBeenCalledWith(expect.any(String), '/bin/echo', [], '/tmp', {
+      ORCA_SESSION_ID: expect.any(String),
+    });
 
     spawnSpy.mockRestore();
   });

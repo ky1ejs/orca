@@ -6,6 +6,7 @@ export enum SessionStatus {
   Starting = 'STARTING',
   Running = 'RUNNING',
   WaitingForInput = 'WAITING_FOR_INPUT',
+  AwaitingPermission = 'AWAITING_PERMISSION',
   Exited = 'EXITED',
   Error = 'ERROR',
 }
@@ -15,6 +16,7 @@ export const ACTIVE_SESSION_STATUSES: readonly SessionStatus[] = [
   SessionStatus.Starting,
   SessionStatus.Running,
   SessionStatus.WaitingForInput,
+  SessionStatus.AwaitingPermission,
 ];
 
 export function isActiveSessionStatus(status: string): boolean {
@@ -28,4 +30,5 @@ export const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.Error]: 'bg-red-400',
   [SessionStatus.Starting]: 'bg-blue-400 animate-pulse',
   [SessionStatus.WaitingForInput]: 'bg-yellow-400 animate-pulse',
+  [SessionStatus.AwaitingPermission]: 'bg-orange-400 animate-pulse',
 };

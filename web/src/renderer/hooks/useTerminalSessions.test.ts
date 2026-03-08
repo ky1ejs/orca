@@ -34,6 +34,9 @@ beforeEach(() => {
       db: {
         getSessions: vi.fn().mockResolvedValue(mockSessions),
       },
+      lifecycle: {
+        onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
+      },
     },
   };
 });

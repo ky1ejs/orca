@@ -7,6 +7,7 @@ import { IPC_CHANNELS } from './ipc/channels.js';
 import { PidSweepManager } from './pty/pid-sweep.js';
 import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
+import { HookServer } from './hooks/server.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -16,6 +17,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 let pidSweepManager: PidSweepManager | null = null;
+let hookServer: HookServer | null = null;
 let startupSweepCount = 0;
 let mainWindow: BrowserWindow | null = null;
 let quitConfirmed = false;
@@ -50,7 +52,7 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set dock icon on macOS
   try {
     app.dock?.setIcon(iconPath);
@@ -68,8 +70,18 @@ app.whenReady().then(() => {
     console.log(`Startup sweep: ${startupSweepCount} session(s) were interrupted since last run`);
   }
 
+  // Start hook server for Claude Code lifecycle events
+  hookServer = new HookServer();
+  try {
+    await hookServer.start();
+    console.log(`Hook server started on port ${hookServer.getPort()}`);
+  } catch (err) {
+    console.warn('Failed to start hook server:', err);
+    hookServer = null;
+  }
+
   // Register IPC handlers
-  registerIpcHandlers();
+  registerIpcHandlers(hookServer);
 
   // App menu (before auto-updater so menu exists when first check fires)
   initAppMenu({ onCheckForUpdates: checkForUpdates });
@@ -124,6 +136,7 @@ app.on('before-quit', (event) => {
   if (quitConfirmed || isAutoUpdateRestart) {
     pidSweepManager?.stop();
     getPtyManager().killAll();
+    hookServer?.stop().catch(() => {});
     closeDb();
     return;
   }
@@ -132,6 +145,7 @@ app.on('before-quit', (event) => {
 
   if (activeCount === 0) {
     pidSweepManager?.stop();
+    hookServer?.stop().catch(() => {});
     closeDb();
     return;
   }

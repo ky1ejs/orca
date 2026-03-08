@@ -67,6 +67,7 @@ export interface OrcaAPI {
   lifecycle: {
     onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
     onInterruptedSessions: (cb: (count: number) => void) => () => void;
+    onSessionStatusChanged: (cb: (sessionId: string, status: string) => void) => () => void;
   };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
@@ -139,6 +140,14 @@ const api: OrcaAPI = {
       ipcRenderer.on('startup:interrupted-sessions', listener);
       return () => {
         ipcRenderer.removeListener('startup:interrupted-sessions', listener);
+      };
+    },
+    onSessionStatusChanged: (cb) => {
+      const listener = (_event: unknown, data: { sessionId: string; status: string }) =>
+        cb(data.sessionId, data.status);
+      ipcRenderer.on('session:status-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('session:status-changed', listener);
       };
     },
   },
