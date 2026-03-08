@@ -1,12 +1,22 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { runMigrations } from '../db/migrations.js';
+import { resolve } from 'node:path';
+import { createDb } from '../db/client.js';
+
+const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
 let testDb: Database.Database;
 
-vi.mock('../db/client.js', () => ({
-  getDb: () => testDb,
-}));
+vi.mock('../db/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../db/client.js')>();
+  return {
+    ...original,
+    getDb: () => {
+      throw new Error('Use getRawDb in output-buffer');
+    },
+    getRawDb: () => testDb,
+  };
+});
 
 const { appendOutput, replayOutput, clearOutput } = await import('./output-buffer.js');
 
@@ -20,7 +30,7 @@ describe('output-buffer', () => {
   beforeEach(() => {
     testDb = new Database(':memory:');
     testDb.pragma('foreign_keys = ON');
-    runMigrations(testDb);
+    createDb(testDb, migrationsFolder);
   });
 
   afterEach(() => {

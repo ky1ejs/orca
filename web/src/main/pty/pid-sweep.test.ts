@@ -1,12 +1,20 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { runMigrations } from '../db/migrations.js';
+import { resolve } from 'node:path';
+import { createDb, type OrcaDb } from '../db/client.js';
 
-let testDb: Database.Database;
+const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
-vi.mock('../db/client.js', () => ({
-  getDb: () => testDb,
-}));
+let testDb: OrcaDb;
+let sqlite: Database.Database;
+
+vi.mock('../db/client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../db/client.js')>();
+  return {
+    ...original,
+    getDb: () => testDb,
+  };
+});
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -21,15 +29,15 @@ describe('PidSweepManager', () => {
   let sweepManager: InstanceType<typeof PidSweepManager>;
 
   beforeEach(() => {
-    testDb = new Database(':memory:');
-    testDb.pragma('foreign_keys = ON');
-    runMigrations(testDb);
+    sqlite = new Database(':memory:');
+    sqlite.pragma('foreign_keys = ON');
+    testDb = createDb(sqlite, migrationsFolder);
     sweepManager = new PidSweepManager();
   });
 
   afterEach(() => {
     sweepManager.stop();
-    testDb.close();
+    sqlite.close();
   });
 
   it('detects dead PID and updates session to ERROR', () => {

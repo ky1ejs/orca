@@ -1,10 +1,10 @@
-import { getDb } from '../db/client.js';
+import { getRawDb } from '../db/client.js';
 
 const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB per session
 const sizeMap = new Map<string, number>();
 
 export function appendOutput(sessionId: string, data: string): void {
-  const db = getDb();
+  const db = getRawDb();
   const chunk = Buffer.from(data);
 
   // Get next sequence number
@@ -29,7 +29,7 @@ export function appendOutput(sessionId: string, data: string): void {
 }
 
 function evict(sessionId: string): void {
-  const db = getDb();
+  const db = getRawDb();
   // Delete oldest 25% of chunks
   const count = db
     .prepare('SELECT COUNT(*) as cnt FROM terminal_output_buffer WHERE session_id = ?')
@@ -52,7 +52,7 @@ function evict(sessionId: string): void {
 }
 
 export function replayOutput(sessionId: string): string {
-  const db = getDb();
+  const db = getRawDb();
   const rows = db
     .prepare('SELECT chunk FROM terminal_output_buffer WHERE session_id = ? ORDER BY sequence ASC')
     .all(sessionId) as Array<{ chunk: Buffer }>;
@@ -61,7 +61,7 @@ export function replayOutput(sessionId: string): string {
 }
 
 export function clearOutput(sessionId: string): void {
-  const db = getDb();
+  const db = getRawDb();
   db.prepare('DELETE FROM terminal_output_buffer WHERE session_id = ?').run(sessionId);
   sizeMap.delete(sessionId);
 }

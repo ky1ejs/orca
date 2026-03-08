@@ -1,13 +1,20 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { runMigrations } from './migrations.js';
+import { resolve } from 'node:path';
+import { createDb, type OrcaDb } from './client.js';
 
-// We need to mock getDb before importing sessions
-let testDb: Database.Database;
+const migrationsFolder = resolve(process.cwd(), 'drizzle');
 
-vi.mock('./client.js', () => ({
-  getDb: () => testDb,
-}));
+let testDb: OrcaDb;
+let sqlite: Database.Database;
+
+vi.mock('./client.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./client.js')>();
+  return {
+    ...original,
+    getDb: () => testDb,
+  };
+});
 
 // Import after mock
 const { getSessions, getSession, createSession, updateSession, sweepStaleSessions } =
@@ -15,13 +22,13 @@ const { getSessions, getSession, createSession, updateSession, sweepStaleSession
 
 describe('sessions', () => {
   beforeEach(() => {
-    testDb = new Database(':memory:');
-    testDb.pragma('foreign_keys = ON');
-    runMigrations(testDb);
+    sqlite = new Database(':memory:');
+    sqlite.pragma('foreign_keys = ON');
+    testDb = createDb(sqlite, migrationsFolder);
   });
 
   afterEach(() => {
-    testDb.close();
+    sqlite.close();
   });
 
   it('creates and retrieves a session', () => {
