@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest';
-import { getDefaultShell } from './shell.js';
+import { getDefaultShell, getLoginShellArgs } from './shell.js';
 
 describe('getDefaultShell', () => {
   const originalShell = process.env.SHELL;
@@ -20,5 +20,14 @@ describe('getDefaultShell', () => {
   it('falls back to /bin/sh when SHELL is not set', () => {
     delete process.env.SHELL;
     expect(getDefaultShell()).toBe('/bin/sh');
+  });
+});
+
+describe('getLoginShellArgs', () => {
+  it('returns -l on non-Windows platforms', () => {
+    // This test runs on macOS/Linux in CI
+    if (process.platform !== 'win32') {
+      expect(getLoginShellArgs()).toEqual(['-l']);
+    }
   });
 });

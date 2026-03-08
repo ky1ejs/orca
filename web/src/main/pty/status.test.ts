@@ -25,6 +25,7 @@ vi.mock('electron', () => ({
 
 vi.mock('./shell.js', () => ({
   getDefaultShell: () => '/bin/echo',
+  getLoginShellArgs: () => [],
 }));
 
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
