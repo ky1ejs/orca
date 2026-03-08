@@ -2,76 +2,143 @@
  * =================================================================
  * Fathom — Orca's Design System
  *
- * Foundational tokens for spacing, radius, and typography.
+ * Monochromatic palette with warm grays and semantic color.
+ * Inspired by the orca: black, white, and purposeful contrast.
  *
  * Usage:
- *   Spacing  → gap-space-4, p-space-6, m-space-2, etc.
- *   Radius   → rounded-radius-sm, rounded-radius-md, etc.
- *   Font     → font-sans (default body), font-mono (code)
+ *   Colors   → bg-gray-950, text-gray-400, etc. (warm gray overrides)
+ *   Accent   → bg-accent, text-on-accent, hover:bg-accent-hover
+ *   Semantic → bg-success-muted, text-error, border-warning, etc.
+ *   Radius   → rounded-sm, rounded-md, rounded-lg
+ *   Font     → font-sans (automatic), font-mono (code/terminals)
  *   Text     → text-label-sm, text-body, text-heading-lg, etc.
+ *   Spacing  → standard Tailwind scale (p-4, gap-2, m-6, etc.)
  * =================================================================
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
+/* -------------------------------------------------------------------
+ * Theme Overrides
+ *
+ * Replaces Tailwind defaults for font, radius, and the gray palette.
+ * Grays have a subtle warm undertone throughout.
+ * ------------------------------------------------------------------- */
 @theme {
-  /* -----------------------------------------------------------
-   * Spacing
-   *
-   * 4px base grid, matching Tailwind's default scale.
-   * Use semantic names for consistency across components.
-   * ----------------------------------------------------------- */
-  --space-0: 0px;
-  --space-px: 1px;
-  --space-0\.5: 2px;
-  --space-1: 4px;
-  --space-1\.5: 6px;
-  --space-2: 8px;
-  --space-2\.5: 10px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
+  /* Font Family */
+  --font-sans:
+    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
 
-  /* -----------------------------------------------------------
-   * Border Radius
-   *
-   * Soft, rounded feel for a modern, approachable UI.
-   * ----------------------------------------------------------- */
+  /* Border Radius — soft, rounded feel */
+  --radius-xs: 4px;
   --radius-sm: 6px;
+  --radius: 8px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
   --radius-full: 9999px;
 
   /* -----------------------------------------------------------
-   * Font Family
+   * Warm Gray Palette
    *
-   * Plus Jakarta Sans for UI text — geometric, clean, modern.
-   * Falls back through the system font stack for reliability.
-   * Mono uses a code-friendly stack for terminals and code.
+   * Replaces Tailwind's cool-tinted grays with a warm neutral
+   * scale. Every existing bg-gray-*, text-gray-*, border-gray-*
+   * class automatically picks up these values.
    * ----------------------------------------------------------- */
-  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', ui-monospace,
-    SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --color-gray-50: #f7f6f3;
+  --color-gray-100: #e8e6e1;
+  --color-gray-200: #ccc9c3;
+  --color-gray-300: #aba8a1;
+  --color-gray-400: #908d85;
+  --color-gray-500: #6e6b64;
+  --color-gray-600: #504d47;
+  --color-gray-700: #37352f;
+  --color-gray-800: #262523;
+  --color-gray-900: #161514;
+  --color-gray-950: #0e0d0c;
 
   /* -----------------------------------------------------------
-   * Font Size / Line Height
+   * Accent — Monochromatic
    *
-   * Type scale for a tool UI — compact labels, readable body,
-   * clear headings. Each value sets font-size and line-height
-   * as a pair: (size, line-height).
+   * Primary actions use light-on-dark contrast. No color needed.
+   * White buttons with dark text on dark backgrounds.
+   * ----------------------------------------------------------- */
+  --color-accent: #f5f3f0;
+  --color-accent-hover: #e8e6e1;
+  --color-accent-active: #ccc9c3;
+  --color-on-accent: #161514;
+
+  /* Subtle accent for secondary interactive elements */
+  --color-accent-muted: #262523;
+  --color-accent-muted-hover: #37352f;
+
+  /* -----------------------------------------------------------
+   * Semantic Colors — Reserved for meaning
    *
-   * Label   — small UI chrome: badges, metadata, captions
-   * Body    — default readable text: descriptions, content
-   * Heading — section and page titles
+   * Each semantic color has three variants:
+   *   -muted   → subtle background (badges, alerts)
+   *   (base)   → readable text on dark backgrounds
+   *   -strong  → borders, emphasis
+   *
+   * Also used for task status:
+   *   Todo        → gray (neutral)
+   *   In Progress → info (blue)
+   *   In Review   → warning (amber)
+   *   Done        → success (green)
+   *   Error       → error (red)
    * ----------------------------------------------------------- */
 
+  /* Success — Done, confirmed, positive */
+  --color-success: #4ade80;
+  --color-success-muted: #0f2a1a;
+  --color-success-strong: #166534;
+
+  /* Error — Errors, destructive, danger */
+  --color-error: #f87171;
+  --color-error-muted: #2a0f0f;
+  --color-error-strong: #7f1d1d;
+
+  /* Warning — Caution, in review, attention */
+  --color-warning: #fbbf24;
+  --color-warning-muted: #2a1f0a;
+  --color-warning-strong: #78350f;
+
+  /* Info — Informational, in progress */
+  --color-info: #7dd3fc;
+  --color-info-muted: #0f1a2a;
+  --color-info-strong: #1e3a5f;
+
+  /* -----------------------------------------------------------
+   * Priority Colors — Reserved for task priority levels
+   *
+   * Each priority has a text color and muted background:
+   *   Low    → cool gray (neutral, low urgency)
+   *   Medium → amber (moderate attention)
+   *   High   → orange (elevated urgency)
+   *   Urgent → red-orange (immediate action)
+   * ----------------------------------------------------------- */
+  --color-priority-low: #aba8a1;
+  --color-priority-low-muted: #1a1918;
+  --color-priority-medium: #fbbf24;
+  --color-priority-medium-muted: #2a1f0a;
+  --color-priority-high: #fb923c;
+  --color-priority-high-muted: #2a1a0a;
+  --color-priority-urgent: #f87171;
+  --color-priority-urgent-muted: #2a0f0f;
+}
+
+/* -------------------------------------------------------------------
+ * Extensions — semantic type scale added alongside Tailwind defaults
+ *
+ * Label   — small UI chrome: badges, metadata, captions
+ * Body    — default readable text: descriptions, content
+ * Heading — section and page titles
+ * ------------------------------------------------------------------- */
+@theme extend {
   /* Labels */
   --text-label-xs: 11px;
   --text-label-xs--line-height: 16px;
@@ -98,3 +165,17 @@
   --text-heading-xl: 32px;
   --text-heading-xl--line-height: 40px;
 }
+
+/* -------------------------------------------------------------------
+ * Spacing Reference (not CSS variables — uses Tailwind's default scale)
+ *
+ * Approved spacing values on a 4px grid:
+ *
+ *   0.5 →  2px     3 → 12px     8  → 32px
+ *   1   →  4px     4 → 16px     10 → 40px
+ *   1.5 →  6px     5 → 20px     12 → 48px
+ *   2   →  8px     6 → 24px     16 → 64px
+ *   2.5 → 10px
+ *
+ * Usage: p-4, gap-2, m-6, px-3, etc. (standard Tailwind utilities)
+ * ------------------------------------------------------------------- */

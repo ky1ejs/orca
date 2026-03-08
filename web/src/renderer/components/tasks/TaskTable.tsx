@@ -210,15 +210,15 @@ function TaskTableGroup({
           <path d="M4 2l5 4-5 4V2z" />
         </svg>
         <StatusIcon status={status} className="w-4 h-4 mr-2" />
-        <span className="text-gray-300 text-sm font-medium">{STATUS_LABELS[status]}</span>
-        <span className="text-gray-500 text-xs ml-2">{tasks.length}</span>
+        <span className="text-gray-300 text-body-sm font-medium">{STATUS_LABELS[status]}</span>
+        <span className="text-gray-500 text-label-sm ml-2">{tasks.length}</span>
         <div className="flex-1" />
         <button
           onClick={(e) => {
             e.stopPropagation();
             onAddTask();
           }}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-300 text-sm transition-opacity"
+          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-300 text-body-sm transition-opacity"
           aria-label={`Add task to ${STATUS_LABELS[status]}`}
         >
           +
@@ -259,7 +259,7 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       aria-selected={isFocused}
       className={`flex items-center h-10 px-3 gap-2 cursor-pointer transition-colors duration-75 ${
         isFocused
-          ? 'bg-gray-800/30 border-l-2 border-blue-500'
+          ? 'bg-gray-800/30 border-l-2 border-gray-100'
           : 'border-l-2 border-transparent hover:bg-gray-800/50'
       }`}
       onClick={onClick}
@@ -271,10 +271,10 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
         <StatusIcon status={task.status} className="w-4 h-4" />
       </div>
       <div role="gridcell" className="flex-1 min-w-0">
-        <span className="text-gray-100 text-sm truncate block">{task.title}</span>
+        <span className="text-gray-100 text-body-sm truncate block">{task.title}</span>
       </div>
       <div role="gridcell" className="flex-shrink-0">
-        <span className="text-gray-500 text-xs">{formatRelativeDate(task.updatedAt)}</span>
+        <span className="text-gray-500 text-label-sm">{formatRelativeDate(task.updatedAt)}</span>
       </div>
     </div>
   );

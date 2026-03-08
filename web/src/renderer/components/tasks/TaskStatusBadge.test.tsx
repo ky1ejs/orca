@@ -20,23 +20,23 @@ describe('TaskStatusBadge', () => {
     render(<TaskStatusBadge status={TaskStatus.InProgress} />);
     const badge = screen.getByTestId('task-status-badge');
     expect(badge).toHaveTextContent('In Progress');
-    expect(badge.className).toContain('bg-blue-900');
-    expect(badge.className).toContain('text-blue-300');
+    expect(badge.className).toContain('bg-info-muted');
+    expect(badge.className).toContain('text-info');
   });
 
   it('renders "In Review" with yellow styling', () => {
     render(<TaskStatusBadge status={TaskStatus.InReview} />);
     const badge = screen.getByTestId('task-status-badge');
     expect(badge).toHaveTextContent('In Review');
-    expect(badge.className).toContain('bg-yellow-900');
-    expect(badge.className).toContain('text-yellow-300');
+    expect(badge.className).toContain('bg-warning-muted');
+    expect(badge.className).toContain('text-warning');
   });
 
   it('renders "Done" with green styling', () => {
     render(<TaskStatusBadge status={TaskStatus.Done} />);
     const badge = screen.getByTestId('task-status-badge');
     expect(badge).toHaveTextContent('Done');
-    expect(badge.className).toContain('bg-green-900');
-    expect(badge.className).toContain('text-green-300');
+    expect(badge.className).toContain('bg-success-muted');
+    expect(badge.className).toContain('text-success');
   });
 });

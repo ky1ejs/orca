@@ -27,7 +27,7 @@ export function TerminalTabs({
           <button
             key={session.id}
             onClick={() => onSelectSession(session.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap border-r border-gray-800 transition-colors ${
+            className={`flex items-center gap-2 px-3 py-1.5 text-label-sm font-medium whitespace-nowrap border-r border-gray-800 transition-colors ${
               isActive ? 'bg-gray-800 text-white' : 'bg-gray-900 text-gray-400 hover:text-gray-200'
             }`}
             data-testid={`terminal-tab-${session.id}`}

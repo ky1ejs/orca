@@ -55,7 +55,7 @@ function App() {
   if (authState === 'loading') {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
-        <p className="text-sm">Loading...</p>
+        <p className="text-body-sm">Loading...</p>
       </div>
     );
   }

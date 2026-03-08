@@ -4,18 +4,18 @@ const statusConfig: Record<SessionStatus, { label: string; dotClass: string; bad
   {
     [SessionStatus.Starting]: {
       label: 'Starting',
-      dotClass: 'bg-blue-400 animate-pulse',
-      badgeClass: 'bg-blue-900 text-blue-300',
+      dotClass: 'bg-info animate-pulse',
+      badgeClass: 'bg-info-muted text-info',
     },
     [SessionStatus.Running]: {
       label: 'Running',
-      dotClass: 'bg-green-400',
-      badgeClass: 'bg-green-900 text-green-300',
+      dotClass: 'bg-success',
+      badgeClass: 'bg-success-muted text-success',
     },
     [SessionStatus.WaitingForInput]: {
       label: 'Waiting for Input',
-      dotClass: 'bg-yellow-400 animate-pulse',
-      badgeClass: 'bg-yellow-900 text-yellow-300',
+      dotClass: 'bg-warning animate-pulse',
+      badgeClass: 'bg-warning-muted text-warning',
     },
     [SessionStatus.Exited]: {
       label: 'Exited',
@@ -24,8 +24,8 @@ const statusConfig: Record<SessionStatus, { label: string; dotClass: string; bad
     },
     [SessionStatus.Error]: {
       label: 'Error',
-      dotClass: 'bg-red-400',
-      badgeClass: 'bg-red-900 text-red-300',
+      dotClass: 'bg-error',
+      badgeClass: 'bg-error-muted text-error',
     },
   };
 
@@ -37,7 +37,7 @@ export function AgentStatus({ status }: AgentStatusProps) {
   const config = statusConfig[status as SessionStatus] ?? statusConfig[SessionStatus.Exited];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${config.badgeClass}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-sm font-medium ${config.badgeClass}`}
       data-testid="agent-status-badge"
     >
       <span className={`inline-block h-2 w-2 rounded-full ${config.dotClass}`} />

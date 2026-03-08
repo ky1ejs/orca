@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           <div className="py-2" data-testid="active-terminals-collapsed">
             <div className="relative flex justify-center">
               <svg
-                className="h-5 w-5 text-green-400"
+                className="h-5 w-5 text-success"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -84,7 +84,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                   d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
                 />
               </svg>
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-label-xs font-bold text-on-accent">
                 {activeTerminals.length}
               </span>
             </div>
@@ -102,7 +102,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <button
           onClick={() => navigate({ view: 'projects' })}
-          className="text-lg font-semibold text-white hover:text-blue-400 transition-colors"
+          className="text-heading-sm font-semibold text-white hover:text-gray-200 transition-colors"
         >
           Orca
         </button>
@@ -136,7 +136,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-gray-500">No projects yet</div>
+          <div className="px-3 py-2 text-body-sm text-gray-500">No projects yet</div>
         ) : (
           <ul className="space-y-0.5">
             {projects.map((project) => {
@@ -151,11 +151,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                       className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      <span className="text-xs">{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                      <span className="text-label-sm">{isExpanded ? '\u25BC' : '\u25B6'}</span>
                     </button>
                     <button
                       onClick={() => navigate({ view: 'project', id: project.id })}
-                      className={`flex-1 text-left px-2 py-1.5 text-sm rounded transition-colors ${
+                      className={`flex-1 text-left px-2 py-1.5 text-body-sm rounded transition-colors ${
                         isActive
                           ? 'bg-gray-800 text-white'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -173,7 +173,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                           <li key={task.id}>
                             <button
                               onClick={() => navigate({ view: 'task', id: task.id })}
-                              className={`w-full text-left px-2 py-1 text-xs rounded flex items-center justify-between gap-1 transition-colors ${
+                              className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
                                 isTaskActive
                                   ? 'bg-gray-800 text-white'
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
@@ -197,7 +197,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         <div className="p-2">
           <button
             onClick={() => navigate({ view: 'settings' })}
-            className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors ${
+            className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors ${
               current.view === 'settings' || current.view === 'members'
                 ? 'bg-gray-800 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
@@ -209,12 +209,12 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         <div className="p-2 pt-0">
           <button
             onClick={onLogout}
-            className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
+            className="w-full text-left px-3 py-1.5 text-label-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
           >
             Sign out
           </button>
         </div>
-        <div className="px-3 py-2 border-t border-gray-800 text-[10px] text-gray-600">
+        <div className="px-3 py-2 border-t border-gray-800 text-label-xs text-gray-600">
           v{__APP_VERSION__} ({__GIT_HASH__})
         </div>
       </div>

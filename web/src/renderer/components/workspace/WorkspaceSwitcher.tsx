@@ -34,7 +34,7 @@ export function WorkspaceSwitcher() {
     <div className="relative px-2 py-2 border-b border-gray-800" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2 py-1.5 text-sm text-gray-300 hover:bg-gray-800 rounded transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1.5 text-body-sm text-gray-300 hover:bg-gray-800 rounded transition-colors"
         data-testid="workspace-switcher"
       >
         <span className="truncate font-medium">{currentWorkspace.name}</span>
@@ -55,9 +55,9 @@ export function WorkspaceSwitcher() {
             <button
               key={ws.id}
               onClick={() => handleSwitch(ws.slug)}
-              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+              className={`w-full text-left px-3 py-2 text-body-sm transition-colors ${
                 ws.id === currentWorkspace.id
-                  ? 'bg-blue-600/20 text-blue-400'
+                  ? 'bg-gray-700 text-gray-100'
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
             >
@@ -70,7 +70,7 @@ export function WorkspaceSwitcher() {
                 setIsOpen(false);
                 setShowCreateModal(true);
               }}
-              className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors"
             >
               + Create Workspace
             </button>

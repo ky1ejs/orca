@@ -34,10 +34,10 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Tasks</h2>
+        <h2 className="text-heading-sm font-semibold text-white">Tasks</h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+          className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors"
         >
           {showCreate ? 'Cancel' : 'New Task'}
         </button>
@@ -51,13 +51,13 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
               placeholder="Task title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500"
               autoFocus
             />
             <button
               onClick={handleCreate}
               disabled={!title.trim()}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded-md transition-colors"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-gray-700 disabled:text-gray-500 text-on-accent text-label-md rounded-md transition-colors"
             >
               Create Task
             </button>
@@ -75,7 +75,7 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
               onClick={() => onTaskClick(task.id)}
               className="w-full text-left p-3 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 flex items-center justify-between transition-colors"
             >
-              <span className="text-white text-sm">{task.title}</span>
+              <span className="text-white text-body-sm">{task.title}</span>
               <TaskStatusBadge status={task.status} />
             </button>
           ))}

@@ -38,10 +38,10 @@ export function GraphQLProvider({ children }: GraphQLProviderProps) {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950 text-red-400">
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-error">
         <div className="text-center">
-          <h1 className="text-xl font-bold mb-2">Connection Error</h1>
-          <p className="text-sm">{error}</p>
+          <h1 className="text-heading-md font-bold mb-2">Connection Error</h1>
+          <p className="text-body-sm">{error}</p>
         </div>
       </div>
     );
@@ -51,7 +51,7 @@ export function GraphQLProvider({ children }: GraphQLProviderProps) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
         <div className="text-center">
-          <p className="text-sm">Connecting...</p>
+          <p className="text-body-sm">Connecting...</p>
         </div>
       </div>
     );

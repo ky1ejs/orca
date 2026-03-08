@@ -54,7 +54,7 @@ export function TaskTableInlineCreate({ projectId, status, onClose }: TaskTableI
   };
 
   return (
-    <div className="px-3 py-2 border-l-2 border-blue-500 bg-gray-800/30 transition-all duration-150">
+    <div className="px-3 py-2 border-l-2 border-gray-100 bg-gray-800/30 transition-all duration-150">
       <div className="flex flex-col gap-1.5">
         <input
           ref={titleRef}
@@ -64,11 +64,13 @@ export function TaskTableInlineCreate({ projectId, status, onClose }: TaskTableI
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={submitting}
-          className="w-full px-2 py-1 bg-transparent border-none text-gray-100 text-sm placeholder-gray-500 focus:outline-none"
+          className="w-full px-2 py-1 bg-transparent border-none text-gray-100 text-body-sm placeholder-gray-500 focus:outline-none"
         />
       </div>
-      {error && <p className="text-red-400 text-xs mt-1 px-2">{error}</p>}
-      <p className="text-gray-600 text-xs mt-1 px-2">Press Enter to create, Escape to cancel</p>
+      {error && <p className="text-error text-label-sm mt-1 px-2">{error}</p>}
+      <p className="text-gray-600 text-label-sm mt-1 px-2">
+        Press Enter to create, Escape to cancel
+      </p>
     </div>
   );
 }
