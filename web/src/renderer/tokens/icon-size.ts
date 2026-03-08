@@ -1,7 +1,8 @@
 /**
- * Icon sizing tokens.
+ * Icon sizing tokens — backed by Fathom design system (`fathom.css`).
  *
- * Placeholder — will be merged into the design-system package once it lands.
+ * Uses `size-icon-*` utilities defined in `@theme extend`, which set
+ * both width and height from a single class.
  *
  * Usage:
  *   import { iconSize } from '../../tokens/icon-size.js';
@@ -14,10 +15,10 @@
  *   lg  — empty-state illustrations only (pairs with strokeWidth 1.5)
  */
 export const iconSize = {
-  xs: 'w-3 h-3',
-  sm: 'w-4 h-4',
-  md: 'w-5 h-5',
-  lg: 'w-12 h-12',
+  xs: 'size-icon-xs',
+  sm: 'size-icon-sm',
+  md: 'size-icon-md',
+  lg: 'size-icon-lg',
 } as const;
 
 /** strokeWidth to pair with `iconSize.lg` for empty-state illustrations. */
