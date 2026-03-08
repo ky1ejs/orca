@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePendingInvitations } from '../../hooks/useGraphQL.js';
 import { InvitationList } from './InvitationList.js';
 
-interface NotificationBellProps {
-  collapsed?: boolean;
-}
-
-export function NotificationBell({ collapsed }: NotificationBellProps) {
+export function NotificationBell() {
   const { data } = usePendingInvitations();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -55,11 +51,7 @@ export function NotificationBell({ collapsed }: NotificationBellProps) {
       </button>
 
       {isOpen && (
-        <div
-          className={`absolute top-full mt-2 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 w-72 ${
-            collapsed ? 'left-0' : 'right-0'
-          }`}
-        >
+        <div className="absolute top-full mt-2 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 w-72 left-0">
           <div className="px-3 py-2 border-b border-gray-700 text-xs font-medium text-gray-400 uppercase tracking-wide">
             Invitations
           </div>
