@@ -9,6 +9,7 @@ import { useWorkspace } from '../../workspace/context.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { SidebarSkeleton } from './Skeleton.js';
 import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
+import { NotificationBell } from '../notifications/NotificationBell.js';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -45,7 +46,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         className="w-12 bg-gray-900 border-r border-gray-800 flex flex-col items-center"
         data-testid="sidebar-collapsed"
       >
-        <div className="py-4">
+        <div className="py-4 flex flex-col items-center gap-2">
           <button
             onClick={onToggleCollapse}
             className="text-gray-400 hover:text-white transition-colors p-1"
@@ -62,6 +63,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>
           </button>
+          <NotificationBell collapsed />
         </div>
       </aside>
     );
@@ -79,22 +81,29 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         >
           Orca
         </button>
-        <button
-          onClick={onToggleCollapse}
-          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
-          aria-label="Collapse sidebar"
-          data-testid="sidebar-collapse-btn"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={onToggleCollapse}
+            className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+            aria-label="Collapse sidebar"
+            data-testid="sidebar-collapse-btn"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
       <WorkspaceSwitcher />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
