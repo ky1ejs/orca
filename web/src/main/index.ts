@@ -5,7 +5,8 @@ import { sweepStaleSessions } from './db/sessions.js';
 import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
 import { PidSweepManager } from './pty/pid-sweep.js';
-import { initAutoUpdater, installUpdate } from './updater.js';
+import { initAutoUpdater, installUpdate, checkForUpdates } from './updater.js';
+import { initAppMenu, setCheckForUpdatesState } from './menu.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -70,9 +71,33 @@ app.whenReady().then(() => {
   // Register IPC handlers
   registerIpcHandlers();
 
+  // App menu (before auto-updater so menu exists when first check fires)
+  initAppMenu({ onCheckForUpdates: checkForUpdates });
+
   // Auto-update
-  initAutoUpdater();
+  initAutoUpdater(setCheckForUpdatesState);
   ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
+    const activeCount = getPtyManager().activeCount;
+
+    if (activeCount > 0) {
+      const sessionWord = activeCount === 1 ? 'session' : 'sessions';
+      const options: Electron.MessageBoxSyncOptions = {
+        type: 'warning',
+        buttons: ['Cancel', 'Update & Restart'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Update Orca?',
+        message: `You have ${activeCount} active terminal ${sessionWord}.`,
+        detail: 'Updating will restart Orca and terminate all running sessions.',
+      };
+      const result = mainWindow
+        ? dialog.showMessageBoxSync(mainWindow, options)
+        : dialog.showMessageBoxSync(options);
+
+      if (result === 0) return;
+    }
+
+    quitConfirmed = true;
     installUpdate();
   });
 
