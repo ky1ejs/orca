@@ -34,7 +34,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       workspaceId: currentWorkspace.id,
     });
     if (result.data?.createProject) {
-      setCreatedProjectId(result.data.createProject.id);
+      const projectId = result.data.createProject.id;
+      setCreatedProjectId(projectId);
+      if (defaultDirectory.trim()) {
+        await window.orca.projectDir.set(projectId, defaultDirectory.trim());
+      }
       setStep('create-task');
     }
     setCreating(false);

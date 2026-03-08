@@ -8,6 +8,13 @@
       "when": 1772928676940,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1772979530436,
+      "tag": "0001_green_jubilee",
+      "breakpoints": true
     }
   ]
 }

@@ -29,6 +29,17 @@ export const terminalOutputBuffer = sqliteTable(
   (table) => [primaryKey({ columns: [table.session_id, table.sequence] })],
 );
 
+export const projectDirectory = sqliteTable('project_directory', {
+  project_id: text('project_id').primaryKey(),
+  directory: text('directory').notNull(),
+  created_at: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updated_at: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const authToken = sqliteTable('auth_token', {
   id: text('id').primaryKey(),
   token: text('token').notNull(),
