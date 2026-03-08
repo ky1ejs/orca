@@ -5,7 +5,7 @@ import { sweepStaleSessions } from './db/sessions.js';
 import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
 import { PidSweepManager } from './pty/pid-sweep.js';
-import { initAutoUpdater, installUpdate, checkForUpdates } from './updater.js';
+import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
@@ -121,7 +121,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (quitConfirmed) {
+  if (quitConfirmed || isAutoUpdateRestart) {
     pidSweepManager?.stop();
     getPtyManager().killAll();
     closeDb();

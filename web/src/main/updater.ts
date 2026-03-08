@@ -8,6 +8,8 @@ type MenuStateCallback = (label: string, enabled: boolean) => void;
 let onMenuStateChange: MenuStateCallback | null = null;
 let isManualCheck = false;
 
+export let isAutoUpdateRestart = false;
+
 export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   onMenuStateChange = menuCallback;
 
@@ -15,15 +17,18 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   if (process.env.NODE_ENV === 'development') return;
 
   autoUpdater.on('checking-for-update', () => {
+    console.log('[updater] Checking for update...');
     onMenuStateChange?.('Checking for Updates...', false);
   });
 
-  autoUpdater.on('update-available', () => {
+  autoUpdater.on('update-available', (info) => {
+    console.log(`[updater] Update available: ${info.version}`);
     onMenuStateChange?.('Downloading Update...', false);
     isManualCheck = false;
   });
 
   autoUpdater.on('update-not-available', () => {
+    console.log('[updater] No update available');
     if (isManualCheck) {
       dialog.showMessageBox({
         type: 'info',
@@ -37,6 +42,7 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
+    console.log(`[updater] Update downloaded: ${info.version}`);
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('update:ready', info.version);
     }
@@ -45,6 +51,10 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   });
 
   autoUpdater.on('error', (err) => {
+    console.error('[updater] Error:', err.message);
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('update:error', err.message);
+    }
     if (isManualCheck) {
       dialog.showMessageBox({
         type: 'error',
@@ -77,5 +87,6 @@ export function checkForUpdates(): void {
 }
 
 export function installUpdate(): void {
+  isAutoUpdateRestart = true;
   autoUpdater.quitAndInstall(false, true);
 }
