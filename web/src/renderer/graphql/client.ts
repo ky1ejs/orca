@@ -47,7 +47,12 @@ const authErrorExchange = mapExchange({
   },
 });
 
-export async function createGraphQLClient(): Promise<Client> {
+export interface GraphQLClientHandle {
+  client: Client;
+  dispose: () => void;
+}
+
+export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
   const token = await getToken();
 
   if (!token) {
@@ -59,7 +64,7 @@ export async function createGraphQLClient(): Promise<Client> {
     headers: () => authHeaders(cachedToken),
   });
 
-  return new Client({
+  const client = new Client({
     url: GRAPHQL_URL,
     fetchOptions: () => ({
       headers: authHeaders(cachedToken),
@@ -156,4 +161,9 @@ export async function createGraphQLClient(): Promise<Client> {
       }),
     ],
   });
+
+  return {
+    client,
+    dispose: () => sseClient.dispose(),
+  };
 }
