@@ -6,6 +6,7 @@ const WORKSPACE = {
   id: 'ws1',
   name: 'Personal',
   slug: 'personal',
+  taskCounter: 0,
   createdById: 'user1',
   deletedAt: null,
   createdAt: new Date(),
@@ -29,26 +30,29 @@ const MEMBERSHIP = {
 };
 
 function createMockContext() {
-  return {
-    prisma: {
-      task: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      project: {
-        findUnique: vi.fn().mockResolvedValue(PROJECT),
-        findUniqueOrThrow: vi.fn(),
-      },
-      workspace: {
-        findUnique: vi.fn().mockResolvedValue(WORKSPACE),
-      },
-      workspaceMembership: {
-        findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
-      },
+  const prisma = {
+    task: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
+    project: {
+      findUnique: vi.fn().mockResolvedValue(PROJECT),
+      findUniqueOrThrow: vi.fn().mockResolvedValue(PROJECT),
+    },
+    workspace: {
+      findUnique: vi.fn().mockResolvedValue(WORKSPACE),
+      update: vi.fn().mockResolvedValue({ ...WORKSPACE, taskCounter: 1 }),
+    },
+    workspaceMembership: {
+      findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
+    },
+    $transaction: vi.fn((cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
+  };
+  return {
+    prisma,
     pubsub: {
       publish: vi.fn(),
       subscribe: vi.fn(),
@@ -94,7 +98,7 @@ describe('task resolvers', () => {
   });
 
   describe('Mutation', () => {
-    it('createTask creates with default status, workspaceId, and publishes', async () => {
+    it('createTask creates with default status, workspaceId, displayId, and publishes', async () => {
       const ctx = createMockContext();
       const task = {
         id: '1',
@@ -102,6 +106,8 @@ describe('task resolvers', () => {
         status: 'TODO',
         projectId: 'p1',
         workspaceId: 'ws1',
+        sequenceNumber: 1,
+        displayId: 'PERSONAL-1',
       };
       ctx.prisma.task.create.mockResolvedValue(task);
 
@@ -111,6 +117,10 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(task);
+      expect(ctx.prisma.workspace.update).toHaveBeenCalledWith({
+        where: { id: 'ws1' },
+        data: { taskCounter: { increment: 1 } },
+      });
       expect(ctx.prisma.task.create).toHaveBeenCalledWith({
         data: {
           title: 'New Task',
@@ -119,6 +129,8 @@ describe('task resolvers', () => {
           priority: 'NONE',
           projectId: 'p1',
           workspaceId: 'ws1',
+          sequenceNumber: 1,
+          displayId: 'PERSONAL-1',
         },
       });
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('taskChanged', task);
@@ -132,6 +144,8 @@ describe('task resolvers', () => {
         status: 'IN_PROGRESS',
         projectId: 'p1',
         workspaceId: 'ws1',
+        sequenceNumber: 1,
+        displayId: 'PERSONAL-1',
       };
       ctx.prisma.task.create.mockResolvedValue(task);
 
@@ -155,6 +169,8 @@ describe('task resolvers', () => {
           priority: 'NONE',
           projectId: 'p1',
           workspaceId: 'ws1',
+          sequenceNumber: 1,
+          displayId: 'PERSONAL-1',
         },
       });
     });

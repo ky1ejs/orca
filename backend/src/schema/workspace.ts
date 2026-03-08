@@ -108,6 +108,22 @@ export const workspaceResolvers = {
             },
           },
         });
+
+        // Slug-reuse safety: check for orphaned displayIds from previously deleted
+        // workspaces that used the same slug, and initialize counter accordingly
+        const prefix = `${args.input.slug.toUpperCase()}-`;
+        const maxOrphan = await context.prisma.task.findFirst({
+          where: { displayId: { startsWith: prefix } },
+          orderBy: { sequenceNumber: 'desc' },
+          select: { sequenceNumber: true },
+        });
+        if (maxOrphan) {
+          await context.prisma.workspace.update({
+            where: { id: workspace.id },
+            data: { taskCounter: maxOrphan.sequenceNumber },
+          });
+        }
+
         return workspace;
       } catch (e: unknown) {
         if (e instanceof Error && e.message.includes('Unique constraint failed')) {

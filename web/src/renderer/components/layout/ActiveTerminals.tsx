@@ -34,7 +34,10 @@ export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
               >
                 <span className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${dotClass}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate">{entry.taskTitle}</span>
+                  <span className="block truncate">
+                    <span className="text-gray-500 font-mono">{entry.displayId}</span>{' '}
+                    {entry.taskTitle}
+                  </span>
                   <span className="block truncate text-[10px] text-gray-500">
                     {entry.projectName}
                   </span>

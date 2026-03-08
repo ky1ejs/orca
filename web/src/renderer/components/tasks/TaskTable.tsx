@@ -8,6 +8,7 @@ import { EmptyTaskList } from '../layout/EmptyState.js';
 
 interface TaskSummary {
   id: string;
+  displayId: string;
   title: string;
   status: TaskStatus;
   priority: TaskPriority;
@@ -270,7 +271,8 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       <div role="gridcell" className="w-4 flex-shrink-0">
         <StatusIcon status={task.status} className="w-4 h-4" />
       </div>
-      <div role="gridcell" className="flex-1 min-w-0">
+      <div role="gridcell" className="flex-1 min-w-0 flex items-center">
+        <span className="text-gray-500 text-sm font-mono mr-2 flex-shrink-0">{task.displayId}</span>
         <span className="text-gray-100 text-sm truncate block">{task.title}</span>
       </div>
       <div role="gridcell" className="flex-shrink-0">

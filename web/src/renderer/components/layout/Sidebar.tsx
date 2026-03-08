@@ -180,6 +180,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                               }`}
                             >
                               <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
+                              <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
                               <span className="truncate">{task.title}</span>
                             </button>
                           </li>

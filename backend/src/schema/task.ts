@@ -21,20 +21,32 @@ export const taskResolvers = {
   } satisfies Pick<QueryResolvers, 'task'>,
   Mutation: {
     createTask: async (_parent, args, context) => {
-      const { project } = await requireProjectAccess(
-        context.prisma,
-        args.input.projectId,
-        context.userId,
-      );
-      const task = await context.prisma.task.create({
-        data: {
-          title: args.input.title,
-          description: args.input.description,
-          status: args.input.status ?? 'TODO',
-          priority: args.input.priority ?? 'NONE',
-          projectId: args.input.projectId,
-          workspaceId: project.workspaceId,
-        },
+      await requireProjectAccess(context.prisma, args.input.projectId, context.userId);
+      const task = await context.prisma.$transaction(async (tx) => {
+        // Re-fetch project inside transaction to guard against deletion between
+        // access check and task creation
+        const project = await tx.project.findUniqueOrThrow({
+          where: { id: args.input.projectId },
+        });
+        // Atomic increment — PostgreSQL row lock serializes concurrent updates
+        const workspace = await tx.workspace.update({
+          where: { id: project.workspaceId },
+          data: { taskCounter: { increment: 1 } },
+        });
+        const sequenceNumber = workspace.taskCounter;
+        const displayId = `${workspace.slug.toUpperCase()}-${sequenceNumber}`;
+        return tx.task.create({
+          data: {
+            title: args.input.title,
+            description: args.input.description,
+            status: args.input.status ?? 'TODO',
+            priority: args.input.priority ?? 'NONE',
+            projectId: args.input.projectId,
+            workspaceId: project.workspaceId,
+            sequenceNumber,
+            displayId,
+          },
+        });
       });
       context.pubsub.publish('taskChanged', task);
       return task;

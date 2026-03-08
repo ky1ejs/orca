@@ -35,6 +35,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
         defaultDirectory
         tasks {
           id
+          displayId
           title
           status
           priority
@@ -110,6 +111,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
       workspaceId
       tasks {
         id
+        displayId
         title
         status
         priority
@@ -126,6 +128,7 @@ export const TaskQueryDocument = /* GraphQL */ `
   query Task($id: ID!) {
     task(id: $id) {
       id
+      displayId
       title
       description
       status
