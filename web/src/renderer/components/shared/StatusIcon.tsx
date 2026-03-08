@@ -33,7 +33,7 @@ export function StatusIcon({ status, className = 'w-4 h-4' }: StatusIconProps) {
     case TaskStatus.InReview:
       return (
         <svg
-          className={`${className} text-green-400`}
+          className={`${className} text-yellow-500`}
           viewBox="0 0 16 16"
           fill="none"
           aria-label="Status: In Review"
