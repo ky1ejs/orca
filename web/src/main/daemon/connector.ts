@@ -58,9 +58,10 @@ export class DaemonConnector {
       try {
         await this.client.connect(DAEMON_SOCKET_PATH);
 
-        // Check version — if mismatched, shutdown old daemon and spawn new
+        // Check version — if mismatched and no active sessions, replace with new daemon.
+        // If there ARE active sessions, keep the old daemon to preserve them.
         const versionCheck = await this.checkVersion();
-        if (!versionCheck.match) {
+        if (!versionCheck.match && versionCheck.activeSessions === 0) {
           await this.shutdownAndRespawn();
           this.setupReconnection();
           return { reconnected: false, activeSessions: 0 };
