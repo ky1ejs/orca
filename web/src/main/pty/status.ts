@@ -1,9 +1,11 @@
 import { existsSync } from 'node:fs';
 import type { PtyManager } from './manager.js';
 import { getDefaultShell, getLoginShellArgs } from './shell.js';
+import { findClaudePath } from './claude.js';
 import { createSession, getSession, updateSession } from '../db/sessions.js';
 import { SessionStatus } from '../../shared/session-status.js';
 import {
+  ClaudeNotFoundError,
   InvalidWorkingDirectoryError,
   PtySpawnError,
   serializeError,
@@ -22,6 +24,10 @@ interface StatusManagerOptions {
   backendUrl: string;
 }
 
+export interface AgentLaunchOptions {
+  planMode?: boolean;
+}
+
 export class StatusManager {
   private manager: PtyManager;
   private monitors = new Map<string, MonitorState>();
@@ -35,6 +41,7 @@ export class StatusManager {
   async launch(
     taskId: string,
     workingDirectory: string,
+    options?: AgentLaunchOptions,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
@@ -50,9 +57,23 @@ export class StatusManager {
       });
 
       try {
-        const shell = getDefaultShell();
-        this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory);
+        if (options?.planMode) {
+          const claudePath = findClaudePath();
+          if (!claudePath) {
+            throw new ClaudeNotFoundError();
+          }
+          this.manager.spawn(
+            session.id,
+            claudePath,
+            ['--permission-mode', 'plan'],
+            workingDirectory,
+          );
+        } else {
+          const shell = getDefaultShell();
+          this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory);
+        }
       } catch (err) {
+        if (err instanceof ClaudeNotFoundError) throw err;
         throw new PtySpawnError(err);
       }
 
@@ -76,11 +97,12 @@ export class StatusManager {
     taskId: string,
     sessionId: string,
     workingDirectory: string,
+    options?: AgentLaunchOptions,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
-    return this.launch(taskId, workingDirectory);
+    return this.launch(taskId, workingDirectory, options);
   }
 
   getStatus(sessionId: string): string | null {

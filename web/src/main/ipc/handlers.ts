@@ -15,7 +15,7 @@ import {
   deleteProjectDirectory,
 } from '../db/project-directories.js';
 import { PtyManager } from '../pty/manager.js';
-import { StatusManager } from '../pty/status.js';
+import { StatusManager, type AgentLaunchOptions } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 
 let ptyManager: PtyManager | null = null;
@@ -122,9 +122,12 @@ export function registerIpcHandlers(): void {
   // Agent handlers
   const sm = getStatusManager();
 
-  ipcMain.handle(IPC_CHANNELS.AGENT_LAUNCH, (_event, taskId: string, workingDirectory: string) => {
-    return sm.launch(taskId, workingDirectory);
-  });
+  ipcMain.handle(
+    IPC_CHANNELS.AGENT_LAUNCH,
+    (_event, taskId: string, workingDirectory: string, options?: AgentLaunchOptions) => {
+      return sm.launch(taskId, workingDirectory, options);
+    },
+  );
 
   ipcMain.handle(IPC_CHANNELS.AGENT_STOP, (_event, sessionId: string) => {
     sm.stop(sessionId);
@@ -132,8 +135,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.AGENT_RESTART,
-    (_event, taskId: string, sessionId: string, workingDirectory: string) => {
-      return sm.restart(taskId, sessionId, workingDirectory);
+    (
+      _event,
+      taskId: string,
+      sessionId: string,
+      workingDirectory: string,
+      options?: AgentLaunchOptions,
+    ) => {
+      return sm.restart(taskId, sessionId, workingDirectory, options);
     },
   );
 

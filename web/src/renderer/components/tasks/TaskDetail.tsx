@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
 import {
   useTask,
@@ -49,6 +49,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [editingDirectory, setEditingDirectory] = useState('');
   const [isEditingDir, setIsEditingDir] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [launchMenuOpen, setLaunchMenuOpen] = useState(false);
+  const launchMenuRef = useRef<HTMLDivElement>(null);
   const [agentError, setAgentError] = useState<{
     message: string;
     suggestion: string;
@@ -61,6 +63,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   } = useProjectDirectory(data?.task?.projectId);
 
   useTaskSubscription(currentWorkspace?.id ?? '');
+
+  useEffect(() => {
+    if (!launchMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (launchMenuRef.current && !launchMenuRef.current.contains(e.target as Node)) {
+        setLaunchMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [launchMenuOpen]);
 
   if (fetching && !data) {
     return <TaskDetailSkeleton />;
@@ -128,7 +141,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     await updateTask(taskId, { status: newStatus });
   };
 
-  const handleLaunchAgent = async () => {
+  const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
     if (!projectDirectory) {
       setAgentError({
         message: 'No project directory set.',
@@ -139,7 +152,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.launch(taskId, projectDirectory);
+    const result = await window.orca.agent.launch(taskId, projectDirectory, options);
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -214,13 +227,50 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
 
     return (
-      <button
-        onClick={handleLaunchAgent}
-        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-        data-testid="agent-button"
-      >
-        Open Terminal
-      </button>
+      <div className="relative" ref={launchMenuRef}>
+        <div className="flex">
+          <button
+            onClick={() => handleLaunchAgent()}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-l-md transition-colors"
+            data-testid="agent-button"
+          >
+            Open Terminal
+          </button>
+          <button
+            onClick={() => setLaunchMenuOpen((prev) => !prev)}
+            className="px-1.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-r-md border-l border-blue-500 transition-colors"
+            data-testid="agent-menu-toggle"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M3 5l3 3 3-3H3z" />
+            </svg>
+          </button>
+        </div>
+        {launchMenuOpen && (
+          <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10 min-w-[160px]">
+            <button
+              onClick={() => {
+                setLaunchMenuOpen(false);
+                handleLaunchAgent();
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 rounded-t-md transition-colors"
+              data-testid="launch-terminal"
+            >
+              Open Terminal
+            </button>
+            <button
+              onClick={() => {
+                setLaunchMenuOpen(false);
+                handleLaunchAgent({ planMode: true });
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 rounded-b-md transition-colors"
+              data-testid="launch-plan-mode"
+            >
+              Open in Plan Mode
+            </button>
+          </div>
+        )}
+      </div>
     );
   };
 
