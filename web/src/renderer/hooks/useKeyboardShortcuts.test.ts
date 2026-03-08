@@ -176,6 +176,42 @@ describe('useKeyboardShortcuts', () => {
     document.body.removeChild(xtermEl);
   });
 
+  it('does not fire bare-key shortcuts when an input is focused', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      { key: '?', label: 'Help', description: 'Show shortcuts', action },
+    ];
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: '?' });
+    expect(action).not.toHaveBeenCalled();
+
+    document.body.removeChild(input);
+  });
+
+  it('still fires modifier shortcuts when an input is focused', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      { key: 'n', metaKey: true, label: 'New', description: 'New item', action },
+    ];
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: 'n', metaKey: true });
+    expect(action).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(input);
+  });
+
   it('does not fire when disabled', () => {
     const action = vi.fn();
     const shortcuts: ShortcutDefinition[] = [

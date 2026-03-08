@@ -75,6 +75,12 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Don't intercept keys when typing in an input/textarea/contenteditable
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       if (visibleTasks.length === 0) return;
 
       switch (e.key) {
