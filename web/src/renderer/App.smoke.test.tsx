@@ -35,6 +35,11 @@ const mockOrca = {
     onData: vi.fn().mockReturnValue(() => {}),
     onExit: vi.fn().mockReturnValue(() => {}),
   },
+  lifecycle: {
+    onSessionsDied: vi.fn().mockReturnValue(() => {}),
+    onInterruptedSessions: vi.fn().mockReturnValue(() => {}),
+    onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
+  },
 };
 
 // Set on the jsdom window object directly

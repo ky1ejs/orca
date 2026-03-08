@@ -19,9 +19,11 @@ import { listSystemFonts } from '../config/list-fonts.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager, type AgentLaunchOptions } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
+import type { HookServer } from '../hooks/server.js';
 
 let ptyManager: PtyManager | null = null;
 let statusManager: StatusManager | null = null;
+let storedHookServer: HookServer | null = null;
 
 export function getPtyManager(): PtyManager {
   if (!ptyManager) {
@@ -36,12 +38,16 @@ function getBackendUrl(): string {
 
 function getStatusManager(): StatusManager {
   if (!statusManager) {
-    statusManager = new StatusManager(getPtyManager(), { backendUrl: getBackendUrl() });
+    statusManager = new StatusManager(getPtyManager(), storedHookServer, {
+      backendUrl: getBackendUrl(),
+      hookServerPort: storedHookServer?.getPort() ?? null,
+    });
   }
   return statusManager;
 }
 
-export function registerIpcHandlers(): void {
+export function registerIpcHandlers(hookServer: HookServer | null): void {
+  storedHookServer = hookServer;
   const manager = getPtyManager();
 
   // Database handlers

@@ -39,6 +39,15 @@ describe('AgentStatus', () => {
     expect(badge.className).toContain('bg-gray-700');
   });
 
+  it('renders "Needs Permission" with orange styling and pulse', () => {
+    render(<AgentStatus status={SessionStatus.AwaitingPermission} />);
+    const badge = screen.getByTestId('agent-status-badge');
+    expect(badge).toHaveTextContent('Needs Permission');
+    expect(badge.className).toContain('bg-orange-900');
+    const dot = badge.querySelector('span');
+    expect(dot?.className).toContain('animate-pulse');
+  });
+
   it('renders "Error" with red styling', () => {
     render(<AgentStatus status={SessionStatus.Error} />);
     const badge = screen.getByTestId('agent-status-badge');
