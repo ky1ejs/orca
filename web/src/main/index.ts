@@ -133,7 +133,11 @@ app.whenReady().then(async () => {
   daemonClient = new DaemonClient();
   daemonConnector = new DaemonConnector(daemonClient);
 
-  let startupResult: EnsureRunningResult = { reconnected: false, activeSessions: 0 };
+  let startupResult: EnsureRunningResult = {
+    reconnected: false,
+    activeSessions: 0,
+    pendingProtocolUpdate: false,
+  };
 
   try {
     startupResult = await daemonConnector.ensureRunning();
@@ -195,12 +199,27 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  // Notify renderer about interrupted sessions after window is ready
+  // Notify renderer after window is ready
   if (startupResult.reconnected && startupResult.activeSessions > 0) {
     mainWindow!.webContents.once('did-finish-load', () => {
-      mainWindow!.webContents.send('startup:interrupted-sessions', startupResult.activeSessions);
+      if (startupResult.pendingProtocolUpdate) {
+        // Breaking protocol change — tell the renderer so it can prompt the user
+        mainWindow!.webContents.send(
+          'daemon:protocol-update-required',
+          startupResult.activeSessions,
+        );
+      } else {
+        mainWindow!.webContents.send('startup:interrupted-sessions', startupResult.activeSessions);
+      }
     });
   }
+
+  // Handle user confirming daemon restart after protocol update
+  ipcMain.handle('daemon:force-restart', async () => {
+    await daemonConnector!.forceRestart();
+    setupDaemonEventForwarding(daemonClient!);
+    await pushTokenToDaemon(daemonClient!);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

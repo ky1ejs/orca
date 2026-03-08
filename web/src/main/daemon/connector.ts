@@ -12,6 +12,7 @@ import {
   DAEMON_PID_FILE,
   DAEMON_DB_PATH,
   DAEMON_METHODS,
+  DAEMON_PROTOCOL_VERSION,
 } from '../../shared/daemon-protocol.js';
 import type { DaemonStatusResult } from '../../shared/daemon-protocol.js';
 
@@ -23,6 +24,8 @@ const VERSION_SHUTDOWN_POLL_MS = 200;
 export interface EnsureRunningResult {
   reconnected: boolean;
   activeSessions: number;
+  /** True when a breaking protocol change requires restart but sessions are still running. */
+  pendingProtocolUpdate: boolean;
 }
 
 export class DaemonConnector {
@@ -58,17 +61,28 @@ export class DaemonConnector {
       try {
         await this.client.connect(DAEMON_SOCKET_PATH);
 
-        // Check version — if mismatched and no active sessions, replace with new daemon.
-        // If there ARE active sessions, keep the old daemon to preserve them.
+        // Check protocol compatibility.
+        // - Protocol mismatch + no active sessions: restart immediately
+        // - Protocol mismatch + active sessions: connect but flag for user to close sessions
+        // - Same protocol, different app version, no sessions: restart to pick up new code
+        // - Same protocol, different app version, active sessions: keep old daemon alive
         const versionCheck = await this.checkVersion();
-        if (!versionCheck.match && versionCheck.activeSessions === 0) {
+        const needsRestart =
+          versionCheck.protocolMismatch ||
+          (!versionCheck.appMatch && versionCheck.activeSessions === 0);
+
+        if (needsRestart && versionCheck.activeSessions === 0) {
           await this.shutdownAndRespawn();
           this.setupReconnection();
-          return { reconnected: false, activeSessions: 0 };
+          return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
         }
 
         this.setupReconnection();
-        return { reconnected: true, activeSessions: versionCheck.activeSessions };
+        return {
+          reconnected: true,
+          activeSessions: versionCheck.activeSessions,
+          pendingProtocolUpdate: versionCheck.protocolMismatch,
+        };
       } catch {
         // PID alive but socket not connectable — stale state
         this.cleanupStaleFiles();
@@ -83,7 +97,7 @@ export class DaemonConnector {
     // Wait for daemon to be ready
     await this.waitForConnection();
     this.setupReconnection();
-    return { reconnected: false, activeSessions: 0 };
+    return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
   }
 
   private isDaemonAlive(): boolean {
@@ -113,18 +127,25 @@ export class DaemonConnector {
   }
 
   /**
-   * Check if the connected daemon's version matches this app's version.
+   * Check if the connected daemon's protocol and app versions match.
    */
-  private async checkVersion(): Promise<{ match: boolean; activeSessions: number }> {
+  private async checkVersion(): Promise<{
+    protocolMismatch: boolean;
+    appMatch: boolean;
+    activeSessions: number;
+  }> {
     try {
       const result = (await this.client.request(
         DAEMON_METHODS.DAEMON_STATUS,
       )) as DaemonStatusResult;
-      const match = result.version === app.getVersion();
-      return { match, activeSessions: result.activeSessions };
+      return {
+        protocolMismatch: (result.protocolVersion ?? 0) !== DAEMON_PROTOCOL_VERSION,
+        appMatch: result.version === app.getVersion(),
+        activeSessions: result.activeSessions,
+      };
     } catch {
-      // Can't get status — treat as mismatch to be safe
-      return { match: false, activeSessions: 0 };
+      // Can't get status — treat as protocol mismatch to be safe
+      return { protocolMismatch: true, appMatch: false, activeSessions: 0 };
     }
   }
 
@@ -245,6 +266,15 @@ export class DaemonConnector {
 
   stopReconnection(): void {
     this.reconnecting = false;
+  }
+
+  /**
+   * Force-restart the daemon (used after user confirms closing active sessions
+   * on a breaking protocol update).
+   */
+  async forceRestart(): Promise<void> {
+    await this.shutdownAndRespawn();
+    this.setupReconnection();
   }
 }
 

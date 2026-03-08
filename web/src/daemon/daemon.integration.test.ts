@@ -14,7 +14,7 @@ import { DaemonStatusManager } from './status-manager.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { createHandler } from './handlers.js';
 import { createSession, updateSession } from './sessions.js';
-import { DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import type { DaemonStatusResult } from '../shared/daemon-protocol.js';
 import { SessionStatus } from '../shared/session-status.js';
 
@@ -101,9 +101,10 @@ describe('daemon integration', () => {
     expect(result).toEqual({ pong: true });
   });
 
-  it('daemon.status returns version and counts', async () => {
+  it('daemon.status returns version, protocol version, and counts', async () => {
     const result = (await client.request(DAEMON_METHODS.DAEMON_STATUS)) as DaemonStatusResult;
     expect(result.version).toBe(version);
+    expect(result.protocolVersion).toBe(DAEMON_PROTOCOL_VERSION);
     expect(result.uptime).toBeGreaterThan(0);
     expect(result.activeSessions).toBe(0);
     expect(result.connectedClients).toBe(1);

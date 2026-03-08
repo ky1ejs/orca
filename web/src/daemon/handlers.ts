@@ -17,7 +17,7 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from './project-directories.js';
-import { DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import type {
   AuthSetTokenParams,
   PtySpawnParams,
@@ -204,6 +204,7 @@ export function createHandler(deps: HandlerDeps) {
       case DAEMON_METHODS.DAEMON_STATUS: {
         const result: DaemonStatusResult = {
           version: getVersion(),
+          protocolVersion: DAEMON_PROTOCOL_VERSION,
           uptime: getUptime(),
           activeSessions: ptyManager.activeCount,
           connectedClients: server.clientCount,

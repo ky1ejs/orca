@@ -41,6 +41,8 @@ const mockOrca = {
     onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
     onDaemonReconnected: vi.fn().mockReturnValue(() => {}),
     onDaemonDisconnected: vi.fn().mockReturnValue(() => {}),
+    onProtocolUpdateRequired: vi.fn().mockReturnValue(() => {}),
+    forceRestartDaemon: vi.fn().mockResolvedValue(undefined),
   },
 };
 
