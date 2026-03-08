@@ -3,6 +3,7 @@ export const IPC_CHANNELS = {
   DB_GET_SESSION: 'db:getSession',
   DB_CREATE_SESSION: 'db:createSession',
   DB_UPDATE_SESSION: 'db:updateSession',
+  DB_DELETE_SESSION: 'db:deleteSession',
   AUTH_STORE_TOKEN: 'auth:storeToken',
   AUTH_READ_TOKEN: 'auth:readToken',
   AUTH_CLEAR_TOKEN: 'auth:clearToken',

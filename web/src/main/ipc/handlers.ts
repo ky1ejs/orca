@@ -5,6 +5,7 @@ import {
   getSession,
   createSession,
   updateSession,
+  deleteSession,
   type CreateSessionInput,
   type UpdateSessionInput,
 } from '../db/sessions.js';
@@ -55,6 +56,10 @@ export function registerIpcHandlers(): void {
       return updateSession(id, input);
     },
   );
+
+  ipcMain.handle(IPC_CHANNELS.DB_DELETE_SESSION, (_event, id: string) => {
+    deleteSession(id);
+  });
 
   // Auth handlers
   ipcMain.handle(IPC_CHANNELS.AUTH_STORE_TOKEN, (_event, token: string) => {
