@@ -10,6 +10,21 @@ import { WorkspaceProvider } from '../../workspace/context.js';
 
 afterEach(cleanup);
 
+// Mock window.orca.projectDir
+const mockProjectDirSet = vi
+  .fn()
+  .mockResolvedValue({ project_id: 'proj-1', directory: '/tmp/test' });
+Object.defineProperty(window, 'orca', {
+  value: {
+    projectDir: {
+      get: vi.fn().mockResolvedValue(undefined),
+      set: mockProjectDirSet,
+      delete: vi.fn().mockResolvedValue(undefined),
+    },
+  },
+  writable: true,
+});
+
 const MOCK_WORKSPACE = {
   id: 'ws1',
   name: 'Personal',

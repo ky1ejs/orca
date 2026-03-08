@@ -8,6 +8,7 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useProjectDirectory } from '../../hooks/useProjectDirectory.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
@@ -45,12 +46,19 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.Todo);
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.None);
+  const [editingDirectory, setEditingDirectory] = useState('');
+  const [isEditingDir, setIsEditingDir] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [agentError, setAgentError] = useState<{
     message: string;
     suggestion: string;
   } | null>(null);
   const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
+  const {
+    directory: projectDirectory,
+    loading: dirLoading,
+    updateDirectory,
+  } = useProjectDirectory(data?.task?.projectId);
 
   useTaskSubscription(currentWorkspace?.id ?? '');
 
@@ -106,13 +114,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
   const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
 
-  const projectDirectory = task.project.defaultDirectory;
-
   const handleLaunchAgent = async () => {
     if (!projectDirectory) {
       setAgentError({
-        message: 'No default directory set on this project.',
-        suggestion: 'Edit the project to set a default directory before launching an agent.',
+        message: 'No project directory set.',
+        suggestion:
+          'Click "Set project directory..." above to set the local path before launching an agent.',
       });
       return;
     }
@@ -130,8 +137,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     if (!errorSession) return;
     if (!projectDirectory) {
       setAgentError({
-        message: 'No default directory set on this project.',
-        suggestion: 'Edit the project to set a default directory before restarting an agent.',
+        message: 'No project directory set.',
+        suggestion:
+          'Click "Set project directory..." above to set the local path before restarting an agent.',
       });
       return;
     }
@@ -319,21 +327,62 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div>
-              <span className="text-gray-500 text-sm">Directory:</span>
-              {projectDirectory ? (
-                <p className="text-gray-300 text-sm font-mono mt-1">
-                  {projectDirectory} <span className="text-gray-500 font-sans">(from project)</span>
+              <span className="text-gray-500 text-sm">Project Directory:</span>
+              {dirLoading ? (
+                <p className="text-gray-500 text-sm mt-1">Loading...</p>
+              ) : isEditingDir ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={editingDirectory}
+                    onChange={(e) => setEditingDirectory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        updateDirectory(editingDirectory.trim());
+                        setIsEditingDir(false);
+                      } else if (e.key === 'Escape') {
+                        setIsEditingDir(false);
+                      }
+                    }}
+                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm font-mono focus:outline-none focus:border-blue-500"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      updateDirectory(editingDirectory.trim());
+                      setIsEditingDir(false);
+                    }}
+                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setIsEditingDir(false)}
+                    className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : projectDirectory ? (
+                <p
+                  className="text-gray-300 text-sm font-mono mt-1 cursor-pointer hover:text-blue-400 transition-colors"
+                  onClick={() => {
+                    setEditingDirectory(projectDirectory);
+                    setIsEditingDir(true);
+                  }}
+                >
+                  {projectDirectory}
                 </p>
               ) : (
-                <p className="text-gray-500 text-sm mt-1">
-                  Not set —{' '}
-                  <button
-                    onClick={() => navigate({ view: 'project', id: task.projectId })}
-                    className="text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    set on project
-                  </button>
-                </p>
+                <button
+                  onClick={() => {
+                    setEditingDirectory('');
+                    setIsEditingDir(true);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 text-sm mt-1 transition-colors"
+                >
+                  Set project directory...
+                </button>
               )}
             </div>
 

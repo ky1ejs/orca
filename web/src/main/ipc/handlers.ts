@@ -9,6 +9,11 @@ import {
   type CreateSessionInput,
   type UpdateSessionInput,
 } from '../db/sessions.js';
+import {
+  getProjectDirectory,
+  setProjectDirectory,
+  deleteProjectDirectory,
+} from '../db/project-directories.js';
 import { PtyManager } from '../pty/manager.js';
 import { StatusManager } from '../pty/status.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
@@ -59,6 +64,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.DB_DELETE_SESSION, (_event, id: string) => {
     deleteSession(id);
+  });
+
+  // Project directory handlers
+  ipcMain.handle(IPC_CHANNELS.PROJECT_DIR_GET, (_event, projectId: string) => {
+    return getProjectDirectory(projectId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_DIR_SET, (_event, projectId: string, directory: string) => {
+    return setProjectDirectory(projectId, directory);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_DIR_DELETE, (_event, projectId: string) => {
+    deleteProjectDirectory(projectId);
   });
 
   // Auth handlers
