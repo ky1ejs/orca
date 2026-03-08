@@ -84,7 +84,7 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "$TAG" \
             --draft \
-            --notes "Release $TAG"
+            --generate-notes
 
   build:
     needs: [version, create-release]
@@ -198,11 +198,16 @@ jobs:
           VERSION="${{ needs.version.outputs.version }}"
           REPO="${{ github.repository }}"
 
+          EXISTING_NOTES=$(gh release view "$TAG" --repo "$REPO" --json body --jq '.body')
+
           NOTES="## Download
+
           | Platform | Download |
           |----------|----------|
           | macOS (Apple Silicon) | [Orca-${VERSION}-arm64.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}-arm64.dmg) |
-          | macOS (Intel) | [Orca-${VERSION}.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}.dmg) |"
+          | macOS (Intel) | [Orca-${VERSION}.dmg](https://github.com/${REPO}/releases/download/${TAG}/Orca-${VERSION}.dmg) |
+
+          ${EXISTING_NOTES}"
 
           gh release edit "$TAG" \
             --repo "$REPO" \
