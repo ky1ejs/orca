@@ -71,6 +71,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   const handleCloseSession = useCallback(
     async (sessionId: string) => {
       await window.orca.pty.kill(sessionId);
+      await window.orca.db.deleteSession(sessionId);
       refresh();
     },
     [refresh],

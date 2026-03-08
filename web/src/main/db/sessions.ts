@@ -49,6 +49,11 @@ export function createSession(input: CreateSessionInput): TerminalSession {
   return getSession(id)!;
 }
 
+export function deleteSession(id: string): void {
+  const db = getDb();
+  db.delete(terminalSession).where(eq(terminalSession.id, id)).run();
+}
+
 export function updateSession(id: string, input: UpdateSessionInput): TerminalSession | undefined {
   const db = getDb();
   const updates: Partial<Record<string, unknown>> = {};

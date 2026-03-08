@@ -21,6 +21,7 @@ export interface OrcaAPI {
       id: string,
       input: { pid?: number; status?: string; stoppedAt?: string },
     ) => Promise<unknown | undefined>;
+    deleteSession: (id: string) => Promise<void>;
   };
   auth: {
     storeToken: (token: string) => Promise<void>;
@@ -63,6 +64,7 @@ const api: OrcaAPI = {
     getSession: (id) => ipcRenderer.invoke('db:getSession', id),
     createSession: (input) => ipcRenderer.invoke('db:createSession', input),
     updateSession: (id, input) => ipcRenderer.invoke('db:updateSession', id, input),
+    deleteSession: (id) => ipcRenderer.invoke('db:deleteSession', id),
   },
   auth: {
     storeToken: (token) => ipcRenderer.invoke('auth:storeToken', token),
