@@ -20,7 +20,24 @@ Orca is a work management tool for orchestrating AI agents (starting with Claude
 - **Server (backend/)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks), GraphQL SDL schema
 - **Client (web/)**: Electron + React (via electron-vite) — local agent/terminal state in SQLite (better-sqlite3), PTY management (node-pty), terminal rendering (xterm.js)
 
-The server holds data multiple users need (projects, tasks, status). The client holds local-only data (terminal sessions, PIDs, output buffers). Agent processes run locally via node-pty in the Electron main process.
+The server holds data multiple users need (projects, tasks, status). The client holds local-only data (terminal sessions, PIDs, output buffers).
+
+### PTY Daemon
+
+Agent/terminal processes run in a **separate daemon process** that survives Electron restarts (e.g., during app updates). The architecture:
+
+```
+[Renderer] <--IPC--> [Electron Main (thin client)] <--Unix Socket--> [Daemon (Node)]
+```
+
+- **Daemon (`web/src/daemon/`)**: Runs via `ELECTRON_RUN_AS_NODE=1`. Owns PTY processes (node-pty), SQLite database (`~/.orca/orca.db`), session monitoring, PID sweep, output buffers. Communicates via NDJSON over a Unix domain socket (`~/.orca/daemon.sock`).
+- **Electron main (`web/src/main/`)**: Thin relay between renderer IPC and daemon socket. Owns auth (safeStorage) and pushes token to daemon.
+- **Shared code (`web/src/shared/`)**: Electron-independent modules (errors, shell, claude, input-detection, db/schema, daemon-protocol) used by both daemon and main.
+- **Renderer/preload**: Unchanged `window.orca` API.
+
+**Lifecycle**: On normal quit, Electron tells the daemon to shut down. On update restart, Electron just disconnects — the daemon stays alive with all sessions. The daemon also has a 5-minute idle timeout (no clients + no sessions) as a safety net.
+
+**Build**: Daemon is bundled separately via `bun run build:daemon` (esbuild) to `out/daemon/index.js`. Included in the app package via `out/**/*` in electron-builder.
 
 ## Monorepo Structure
 
