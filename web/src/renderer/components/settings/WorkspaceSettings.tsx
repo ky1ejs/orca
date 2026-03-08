@@ -7,13 +7,14 @@ import { MemberList } from '../members/MemberList.js';
 type Tab = 'general' | 'members';
 
 export function WorkspaceSettings() {
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, switchWorkspace } = useWorkspace();
   const { updateWorkspace, fetching: updating } = useUpdateWorkspace();
   const { deleteWorkspace, fetching: deleting } = useDeleteWorkspace();
   const { navigate } = useNavigation();
 
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [name, setName] = useState(currentWorkspace?.name ?? '');
+  const [slug, setSlug] = useState(currentWorkspace?.slug ?? '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -24,23 +25,37 @@ export function WorkspaceSettings() {
       setError(null);
       setSuccess(false);
 
-      const trimmed = name.trim();
-      if (!trimmed) {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
         setError('Name is required.');
+        return;
+      }
+      const trimmedSlug = slug.trim().toLowerCase();
+      if (!trimmedSlug) {
+        setError('Slug is required.');
         return;
       }
       if (!currentWorkspace) return;
 
-      const result = await updateWorkspace(currentWorkspace.id, { name: trimmed });
+      const input: { name: string; slug?: string } = { name: trimmedName };
+      const slugChanged = trimmedSlug !== currentWorkspace.slug;
+      if (slugChanged) {
+        input.slug = trimmedSlug;
+      }
+
+      const result = await updateWorkspace(currentWorkspace.id, input);
       if (result.error) {
         const msg = result.error.graphQLErrors?.[0]?.message ?? result.error.message;
         setError(msg);
         return;
       }
+      if (slugChanged) {
+        switchWorkspace(trimmedSlug);
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     },
-    [name, currentWorkspace, updateWorkspace],
+    [name, slug, currentWorkspace, updateWorkspace, switchWorkspace],
   );
 
   const handleDelete = useCallback(async () => {
@@ -99,11 +114,14 @@ export function WorkspaceSettings() {
               <label className="block text-sm text-gray-300 mb-1">Slug</label>
               <input
                 type="text"
-                value={currentWorkspace.slug}
-                disabled
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-500 cursor-not-allowed"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Slug cannot be changed.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Lowercase letters, numbers, and hyphens. 3-64 characters. Changing this will update
+                all task IDs.
+              </p>
             </div>
 
             {error && <p className="text-sm text-red-400">{error}</p>}
@@ -111,7 +129,7 @@ export function WorkspaceSettings() {
 
             <button
               type="submit"
-              disabled={updating || !name.trim()}
+              disabled={updating || !name.trim() || !slug.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors disabled:opacity-50"
             >
               {updating ? 'Saving...' : 'Save'}
