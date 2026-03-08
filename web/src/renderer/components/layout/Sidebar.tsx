@@ -161,14 +161,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <div className="border-t border-gray-800">
         <div className="p-2">
           <button
-            onClick={() => navigate({ view: 'members' })}
+            onClick={() => navigate({ view: 'settings' })}
             className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors ${
-              current.view === 'members'
+              current.view === 'settings' || current.view === 'members'
                 ? 'bg-gray-800 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             }`}
           >
-            Members
+            Settings
           </button>
         </div>
         <div className="p-2 pt-0">

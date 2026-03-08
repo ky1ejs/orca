@@ -5,13 +5,14 @@ import { useNavigation } from '../../navigation/context.js';
 import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
-import { MemberList } from '../members/MemberList.js';
-import { useWorkspaceBySlug } from '../../hooks/useGraphQL.js';
+import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
+import { useWorkspaceBySlug, usePendingInvitations } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
+import { PendingInvitations } from '../onboarding/PendingInvitations.js';
 import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
@@ -30,8 +31,9 @@ function MainContent() {
       return current.id ? <ProjectDetail projectId={current.id} /> : <ProjectList />;
     case 'task':
       return current.id ? <TaskDetail taskId={current.id} /> : <ProjectList />;
+    case 'settings':
     case 'members':
-      return <MemberList />;
+      return <WorkspaceSettings />;
     default:
       return <ProjectList />;
   }
@@ -49,7 +51,9 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [invitationsDismissed, setInvitationsDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const { data: invitationsData, fetching: invitationsFetching } = usePendingInvitations();
 
   // Auto-select most recent active session when navigating to a task
   useEffect(() => {
@@ -77,6 +81,11 @@ export function AppShell({ onLogout }: AppShellProps) {
     },
     [refresh],
   );
+
+  // Determine if we should show pending invitations
+  const pendingInvitations = invitationsData?.pendingInvitations ?? [];
+  const showInvitations =
+    !invitationsFetching && pendingInvitations.length > 0 && !invitationsDismissed;
 
   // Determine if we should show the onboarding flow
   const projects = workspaceData?.workspace?.projects ?? [];
@@ -189,6 +198,22 @@ export function AppShell({ onLogout }: AppShellProps) {
   );
 
   const hasActiveSessions = sessions.length > 0;
+
+  if (showInvitations) {
+    return (
+      <div className="flex h-screen bg-gray-950 text-gray-100">
+        <PendingInvitations
+          invitations={pendingInvitations}
+          onComplete={() => setInvitationsDismissed(true)}
+        />
+        <KeyboardShortcutHelp
+          shortcuts={displayShortcuts}
+          isOpen={showShortcutHelp}
+          onClose={() => setShowShortcutHelp(false)}
+        />
+      </div>
+    );
+  }
 
   if (showOnboarding) {
     return (
