@@ -66,7 +66,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>
           </button>
-          <NotificationBell collapsed />
+          <NotificationBell />
         </div>
         {activeTerminals.length > 0 && (
           <div className="py-2" data-testid="active-terminals-collapsed">
