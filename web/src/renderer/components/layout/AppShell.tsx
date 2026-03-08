@@ -4,7 +4,8 @@ import { useNavigation } from '../../navigation/context.js';
 import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
-import { useProjects } from '../../hooks/useGraphQL.js';
+import { useWorkspaceBySlug } from '../../hooks/useGraphQL.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
@@ -34,7 +35,10 @@ function MainContent() {
 
 export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate } = useNavigation();
-  const { data: projectsData, fetching: projectsFetching } = useProjects();
+  const { currentWorkspace } = useWorkspace();
+  const { data: workspaceData, fetching: projectsFetching } = useWorkspaceBySlug(
+    currentWorkspace?.slug ?? '',
+  );
   const taskId = current.view === 'task' ? current.id : undefined;
   const { sessions, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -73,7 +77,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   );
 
   // Determine if we should show the onboarding flow
-  const projects = projectsData?.projects ?? [];
+  const projects = workspaceData?.workspace?.projects ?? [];
   const showOnboarding = !projectsFetching && projects.length === 0 && !onboardingDismissed;
 
   const handleOnboardingComplete = useCallback(() => {

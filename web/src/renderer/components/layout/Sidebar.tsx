@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
-  useProjects,
+  useWorkspaceBySlug,
   useProjectSubscription,
   useTaskSubscription,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { TaskStatusBadge } from '../tasks/TaskStatusBadge.js';
 import { SidebarSkeleton } from './Skeleton.js';
+import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -15,12 +17,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps) {
-  const { data, fetching } = useProjects();
+  const { currentWorkspace } = useWorkspace();
+  const { data, fetching } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const { navigate, current } = useNavigation();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
-  useProjectSubscription();
-  useTaskSubscription();
+  useProjectSubscription(currentWorkspace?.id ?? '');
+  useTaskSubscription(currentWorkspace?.id ?? '');
 
   const toggleExpand = (projectId: string) => {
     setExpandedProjects((prev) => {
@@ -34,7 +37,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
     });
   };
 
-  const projects = data?.projects ?? [];
+  const projects = data?.workspace?.projects ?? [];
 
   if (collapsed) {
     return (
@@ -93,6 +96,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           </svg>
         </button>
       </div>
+      <WorkspaceSwitcher />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />

@@ -5,21 +5,22 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
+import {
+  requireProjectAccess,
+  requireTaskAccess,
+  requireWorkspaceAccess,
+} from '../auth/workspace.js';
 
 export const taskResolvers = {
   Query: {
-    tasks: (_parent, args, context) => {
-      return context.prisma.task.findMany({
-        where: { projectId: args.projectId },
-        orderBy: { createdAt: 'desc' },
-      });
+    task: async (_parent, args, context) => {
+      const task = await requireTaskAccess(context.prisma, args.id, context.userId);
+      return task;
     },
-    task: (_parent, args, context) => {
-      return context.prisma.task.findUnique({ where: { id: args.id } });
-    },
-  } satisfies Pick<QueryResolvers, 'tasks' | 'task'>,
+  } satisfies Pick<QueryResolvers, 'task'>,
   Mutation: {
     createTask: async (_parent, args, context) => {
+      await requireProjectAccess(context.prisma, args.input.projectId, context.userId);
       const task = await context.prisma.task.create({
         data: {
           title: args.input.title,
@@ -33,6 +34,7 @@ export const taskResolvers = {
       return task;
     },
     updateTask: async (_parent, args, context) => {
+      await requireTaskAccess(context.prisma, args.id, context.userId);
       const data: Record<string, unknown> = {};
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
@@ -46,16 +48,25 @@ export const taskResolvers = {
       return task;
     },
     deleteTask: async (_parent, args, context) => {
+      await requireTaskAccess(context.prisma, args.id, context.userId);
       await context.prisma.task.delete({ where: { id: args.id } });
       return true;
     },
   } satisfies Pick<MutationResolvers, 'createTask' | 'updateTask' | 'deleteTask'>,
   Subscription: {
     taskChanged: {
-      subscribe: (_parent: unknown, _args: unknown, context) => {
+      subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
+        await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
         return context.pubsub.subscribe('taskChanged');
       },
-      resolve: (payload: Task) => payload,
+      resolve: (
+        payload: Task & { project?: { workspaceId: string } },
+        args: { workspaceId: string },
+      ) => {
+        // Filter: only forward events for this workspace
+        if (payload.project?.workspaceId !== args.workspaceId) return undefined as never;
+        return payload;
+      },
     },
   } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {

@@ -1,9 +1,40 @@
+export const CreateWorkspaceDocument = /* GraphQL */ `
+  mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+    createWorkspace(input: $input) {
+      id
+      name
+      slug
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const UpdateWorkspaceDocument = /* GraphQL */ `
+  mutation UpdateWorkspace($id: ID!, $input: UpdateWorkspaceInput!) {
+    updateWorkspace(id: $id, input: $input) {
+      id
+      name
+      slug
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const DeleteWorkspaceDocument = /* GraphQL */ `
+  mutation DeleteWorkspace($id: ID!) {
+    deleteWorkspace(id: $id)
+  }
+`;
+
 export const CreateProjectDocument = /* GraphQL */ `
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
       id
       name
       description
+      workspaceId
       tasks {
         id
         title

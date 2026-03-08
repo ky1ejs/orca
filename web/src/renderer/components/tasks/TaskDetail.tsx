@@ -6,6 +6,7 @@ import {
   useTaskSubscription,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
@@ -31,6 +32,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const { updateTask } = useUpdateTask();
   const { deleteTask } = useDeleteTask();
   const { goBack, navigate } = useNavigation();
+  const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -43,7 +45,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   } | null>(null);
   const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
 
-  useTaskSubscription();
+  useTaskSubscription(currentWorkspace?.id ?? '');
 
   if (fetching && !data) {
     return <TaskDetailSkeleton />;

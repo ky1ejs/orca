@@ -7,6 +7,7 @@ import {
   useTaskSubscription,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { TaskList } from '../tasks/TaskList.js';
 import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
 
@@ -19,12 +20,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { updateProject } = useUpdateProject();
   const { deleteProject } = useDeleteProject();
   const { navigate, goBack } = useNavigation();
+  const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  useProjectSubscription();
-  useTaskSubscription();
+  useProjectSubscription(currentWorkspace?.id ?? '');
+  useTaskSubscription(currentWorkspace?.id ?? '');
 
   if (fetching && !data) {
     return <ProjectDetailSkeleton />;

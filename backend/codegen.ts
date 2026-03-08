@@ -8,6 +8,7 @@ const config: CodegenConfig = {
       config: {
         contextType: '../context.js#ServerContext',
         mappers: {
+          Workspace: '@prisma/client#Workspace as WorkspaceModel',
           Project: '@prisma/client#Project as ProjectModel',
           Task: '@prisma/client#Task as TaskModel',
         },

@@ -16,11 +16,18 @@ async function seedDev() {
     create: { email, name, passwordHash },
   });
 
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: 'dev' },
+    create: { name: 'Personal', slug: 'dev', ownerId: user.id },
+    update: {},
+  });
+
   console.log('');
   console.log('Dev user ready:');
   console.log(`  Email:    ${user.email}`);
   console.log(`  Password: ${password}`);
   console.log(`  ID:       ${user.id}`);
+  console.log(`  Workspace: ${workspace.name} (${workspace.slug}) [id: ${workspace.id}]`);
   console.log('');
 }
 

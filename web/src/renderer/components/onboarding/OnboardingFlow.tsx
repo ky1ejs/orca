@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useCreateProject, useCreateTask } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { useWorkspace } from '../../workspace/context.js';
 
 type OnboardingStep = 'welcome' | 'create-project' | 'create-task' | 'launch-agent';
 
@@ -21,20 +22,22 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { createProject } = useCreateProject();
   const { createTask } = useCreateTask();
   const { navigate } = useNavigation();
+  const { currentWorkspace } = useWorkspace();
 
   const handleCreateProject = useCallback(async () => {
-    if (!projectName.trim()) return;
+    if (!projectName.trim() || !currentWorkspace) return;
     setCreating(true);
     const result = await createProject({
       name: projectName.trim(),
       description: projectDescription.trim() || undefined,
+      workspaceId: currentWorkspace.id,
     });
     if (result.data?.createProject) {
       setCreatedProjectId(result.data.createProject.id);
       setStep('create-task');
     }
     setCreating(false);
-  }, [projectName, projectDescription, createProject]);
+  }, [projectName, projectDescription, createProject, currentWorkspace]);
 
   const handleCreateTask = useCallback(async () => {
     if (!taskTitle.trim() || !workingDirectory.trim() || !createdProjectId) return;
