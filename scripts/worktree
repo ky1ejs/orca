@@ -355,25 +355,26 @@ cmd_prune() {
   fi
 
   # ── Detection phase: collect prunable and non-prunable worktrees ──
-  local prune_names=() prune_slots=() prune_reasons=()
+  local prune_names=() prune_slots=() prune_reasons=() prune_warnings=()
   local skip_names=() skip_slots=() skip_reasons=()
 
   while read -r wt slot path; do
     local full_path="$MAIN_REPO/$path"
     local should_prune=false
+    local should_skip=false
     local reason=""
-    local skip_reason=""
+    local warning=""
 
     # Check if directory is missing
     if [[ ! -d "$full_path" ]]; then
       should_prune=true
       reason="directory missing"
     else
-      # Check for uncommitted changes
+      # Check for uncommitted changes (warning, not a blocker)
       local dirty
       dirty=$(git -C "$full_path" status --porcelain 2>/dev/null || true)
       if [[ -n "$dirty" ]]; then
-        skip_reason="has uncommitted changes"
+        warning="has uncommitted changes"
       fi
 
       # Check if branch is merged into main
@@ -390,25 +391,25 @@ cmd_prune() {
           should_prune=true
           reason="GitHub PR merged"
         elif [[ "$pr_state" == "OPEN" ]]; then
-          skip_reason="GitHub PR is still open"
+          should_skip=true
         fi
       fi
     fi
 
-    # Classify: prunable with skip reason → skip, prunable → prune, otherwise → skip
-    if $should_prune && [[ -n "$skip_reason" ]]; then
+    # Classify: open PR blocks pruning, uncommitted changes are just a warning
+    if $should_skip; then
       skip_names+=("$wt")
       skip_slots+=("$slot")
-      skip_reasons+=("$skip_reason")
+      skip_reasons+=("GitHub PR is still open")
     elif $should_prune; then
       prune_names+=("$wt")
       prune_slots+=("$slot")
       prune_reasons+=("$reason")
+      prune_warnings+=("$warning")
     else
-      local display_reason="${skip_reason:-active}"
       skip_names+=("$wt")
       skip_slots+=("$slot")
-      skip_reasons+=("$display_reason")
+      skip_reasons+=("active")
     fi
   done < <(jq -r '.slots[] | "\(.worktree) \(.slot) \(.path)"' "$REGISTRY")
 
@@ -430,8 +431,12 @@ cmd_prune() {
       printf "  ${BOLD_GREEN}Ready to prune${RESET}\n"
       echo ""
       for i in "${!prune_names[@]}"; do
-        printf "  ${SYM_CHECK} ${BOLD}%s${RESET}  ${DIM}slot %s${RESET}  ${DIM}→${RESET}  ${MAGENTA}%s${RESET}\n" \
-          "${prune_names[$i]}" "${prune_slots[$i]}" "${prune_reasons[$i]}"
+        local warn_suffix=""
+        if [[ -n "${prune_warnings[$i]}" ]]; then
+          warn_suffix="  ${DIM}(${YELLOW}${prune_warnings[$i]}${RESET}${DIM})${RESET}"
+        fi
+        printf "  ${SYM_CHECK} ${BOLD}%s${RESET}  ${DIM}slot %s${RESET}  ${DIM}→${RESET}  ${MAGENTA}%s${RESET}%b\n" \
+          "${prune_names[$i]}" "${prune_slots[$i]}" "${prune_reasons[$i]}" "$warn_suffix"
       done
     fi
 
