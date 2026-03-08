@@ -39,7 +39,7 @@ function MainContent() {
 
 export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate } = useNavigation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
   const { data: workspaceData, fetching: projectsFetching } = useWorkspaceBySlug(
     currentWorkspace?.slug ?? '',
   );
@@ -80,7 +80,8 @@ export function AppShell({ onLogout }: AppShellProps) {
 
   // Determine if we should show the onboarding flow
   const projects = workspaceData?.workspace?.projects ?? [];
-  const showOnboarding = !projectsFetching && projects.length === 0 && !onboardingDismissed;
+  const showOnboarding =
+    !workspaceLoading && !projectsFetching && projects.length === 0 && !onboardingDismissed;
 
   const handleOnboardingComplete = useCallback(() => {
     setOnboardingDismissed(true);
