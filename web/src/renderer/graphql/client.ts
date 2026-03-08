@@ -69,34 +69,52 @@ export async function createGraphQLClient(): Promise<Client> {
       cacheExchange({
         updates: {
           Mutation: {
+            createWorkspace(_result, _args, cache) {
+              cache.invalidate('Query', 'workspaces');
+            },
+            updateWorkspace(_result, _args, cache) {
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
+            },
+            deleteWorkspace(_result, args, cache) {
+              cache.invalidate({ __typename: 'Workspace', id: args.id as string });
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
+            },
             createProject(_result, _args, cache) {
-              cache.invalidate('Query', 'projects');
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
             },
             deleteProject(_result, args, cache) {
               cache.invalidate({ __typename: 'Project', id: args.id as string });
-              cache.invalidate('Query', 'projects');
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
             },
             createTask(_result, _args, cache) {
               const task = _result.createTask as { projectId: string } | undefined;
               if (task) {
                 cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
-                cache.invalidate('Query', 'projects');
+                cache.invalidate('Query', 'workspaces');
+                cache.invalidate('Query', 'workspace');
               }
             },
             deleteTask(_result, args, cache) {
               cache.invalidate({ __typename: 'Task', id: args.id as string });
-              cache.invalidate('Query', 'projects');
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
             },
           },
           Subscription: {
             projectChanged(_result, _args, cache) {
-              cache.invalidate('Query', 'projects');
+              cache.invalidate('Query', 'workspaces');
+              cache.invalidate('Query', 'workspace');
             },
             taskChanged(_result, _args, cache) {
               const task = _result.taskChanged as { projectId: string } | undefined;
               if (task) {
                 cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
-                cache.invalidate('Query', 'projects');
+                cache.invalidate('Query', 'workspaces');
+                cache.invalidate('Query', 'workspace');
               }
             },
           },

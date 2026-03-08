@@ -7,6 +7,16 @@ type User {
 type AuthPayload {
   token: String!
   user: User!
+  workspaces: [Workspace!]!
+}
+
+type Workspace {
+  id: ID!
+  name: String!
+  slug: String!
+  projects: [Project!]!
+  createdAt: String!
+  updatedAt: String!
 }
 
 enum TaskStatus {
@@ -20,6 +30,8 @@ type Project {
   id: ID!
   name: String!
   description: String
+  workspaceId: ID!
+  workspace: Workspace!
   tasks: [Task!]!
   createdAt: String!
   updatedAt: String!
@@ -44,9 +56,19 @@ input RegisterInput {
   inviteCode: String!
 }
 
+input CreateWorkspaceInput {
+  name: String!
+  slug: String!
+}
+
+input UpdateWorkspaceInput {
+  name: String
+}
+
 input CreateProjectInput {
   name: String!
   description: String
+  workspaceId: ID!
 }
 
 input UpdateProjectInput {
@@ -71,15 +93,18 @@ input UpdateTaskInput {
 
 type Query {
   me: User!
-  projects: [Project!]!
+  workspace(slug: String!): Workspace
+  workspaces: [Workspace!]!
   project(id: ID!): Project
-  tasks(projectId: ID!): [Task!]!
   task(id: ID!): Task
 }
 
 type Mutation {
   login(email: String!, password: String!): AuthPayload!
   register(input: RegisterInput!): AuthPayload!
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
+  deleteWorkspace(id: ID!): Boolean!
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   deleteProject(id: ID!): Boolean!
@@ -89,6 +114,6 @@ type Mutation {
 }
 
 type Subscription {
-  projectChanged: Project!
-  taskChanged: Task!
+  projectChanged(workspaceId: ID!): Project!
+  taskChanged(workspaceId: ID!): Task!
 }

@@ -6,12 +6,21 @@ import { Provider, Client } from 'urql';
 import { fromValue, never } from 'wonka';
 import { OnboardingFlow } from './OnboardingFlow.js';
 import { NavigationProvider } from '../../navigation/context.js';
+import { WorkspaceProvider } from '../../workspace/context.js';
 
 afterEach(cleanup);
 
+const MOCK_WORKSPACE = {
+  id: 'ws1',
+  name: 'Personal',
+  slug: 'personal',
+  createdAt: '',
+  updatedAt: '',
+};
+
 function createMockClient(overrides?: { executeMutation?: ReturnType<typeof vi.fn> }) {
   return {
-    executeQuery: vi.fn(() => fromValue({ data: { projects: [] } })),
+    executeQuery: vi.fn(() => fromValue({ data: { workspaces: [MOCK_WORKSPACE] } })),
     executeMutation: overrides?.executeMutation ?? vi.fn(() => never),
     executeSubscription: vi.fn(() => never),
   } as unknown as Client;
@@ -20,9 +29,11 @@ function createMockClient(overrides?: { executeMutation?: ReturnType<typeof vi.f
 function renderWithProviders(client: Client, onComplete = vi.fn()) {
   return render(
     <Provider value={client}>
-      <NavigationProvider>
-        <OnboardingFlow onComplete={onComplete} />
-      </NavigationProvider>
+      <WorkspaceProvider>
+        <NavigationProvider>
+          <OnboardingFlow onComplete={onComplete} />
+        </NavigationProvider>
+      </WorkspaceProvider>
     </Provider>,
   );
 }

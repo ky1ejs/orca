@@ -1,13 +1,32 @@
-export const ProjectsQueryDocument = /* GraphQL */ `
-  query Projects {
-    projects {
+export const WorkspacesQueryDocument = /* GraphQL */ `
+  query Workspaces {
+    workspaces {
       id
       name
-      description
-      tasks {
+      slug
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const WorkspaceQueryDocument = /* GraphQL */ `
+  query Workspace($slug: String!) {
+    workspace(slug: $slug) {
+      id
+      name
+      slug
+      projects {
         id
-        title
-        status
+        name
+        description
+        tasks {
+          id
+          title
+          status
+        }
+        createdAt
+        updatedAt
       }
       createdAt
       updatedAt
@@ -21,6 +40,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
       id
       name
       description
+      workspaceId
       tasks {
         id
         title
@@ -28,21 +48,6 @@ export const ProjectQueryDocument = /* GraphQL */ `
         createdAt
         updatedAt
       }
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const TasksQueryDocument = /* GraphQL */ `
-  query Tasks($projectId: ID!) {
-    tasks(projectId: $projectId) {
-      id
-      title
-      description
-      status
-      projectId
-      workingDirectory
       createdAt
       updatedAt
     }

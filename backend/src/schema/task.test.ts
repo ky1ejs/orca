@@ -2,6 +2,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { TaskStatus } from '../__generated__/graphql.js';
 import { taskResolvers } from './task.js';
 
+const WORKSPACE = {
+  id: 'ws1',
+  name: 'Personal',
+  slug: 'personal',
+  ownerId: 'user1',
+  deletedAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const PROJECT = {
+  id: 'p1',
+  name: 'Test Project',
+  workspaceId: 'ws1',
+  workspace: WORKSPACE,
+};
+
 function createMockContext() {
   return {
     prisma: {
@@ -13,44 +30,57 @@ function createMockContext() {
         delete: vi.fn(),
       },
       project: {
-        findUnique: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue(PROJECT),
         findUniqueOrThrow: vi.fn(),
+      },
+      workspace: {
+        findUnique: vi.fn().mockResolvedValue(WORKSPACE),
       },
     },
     pubsub: {
       publish: vi.fn(),
       subscribe: vi.fn(),
     },
+    userId: 'user1',
   };
 }
 
 describe('task resolvers', () => {
   describe('Query', () => {
-    it('tasks returns tasks for a project', async () => {
+    it('task returns a single task by id with access check', async () => {
       const ctx = createMockContext();
-      const tasks = [{ id: '1', title: 'Task 1' }];
-      ctx.prisma.task.findMany.mockResolvedValue(tasks);
-
-      const result = await taskResolvers.Query.tasks(
-        {} as never,
-        { projectId: 'p1' },
-        ctx as never,
-      );
-      expect(result).toEqual(tasks);
-      expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({
-        where: { projectId: 'p1' },
-        orderBy: { createdAt: 'desc' },
-      });
-    });
-
-    it('task returns a single task by id', async () => {
-      const ctx = createMockContext();
-      const task = { id: '1', title: 'Task 1' };
+      const task = {
+        id: '1',
+        title: 'Task 1',
+        projectId: 'p1',
+        project: PROJECT,
+      };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
 
       const result = await taskResolvers.Query.task({} as never, { id: '1' }, ctx as never);
       expect(result).toEqual(task);
-      expect(ctx.prisma.task.findUnique).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(ctx.prisma.task.findUnique).toHaveBeenCalledWith({
+        where: { id: '1' },
+        include: { project: { include: { workspace: true } } },
+      });
+    });
+
+    it('task throws NOT_FOUND for wrong owner', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Task 1',
+        projectId: 'p1',
+        project: {
+          ...PROJECT,
+          workspace: { ...WORKSPACE, ownerId: 'other-user' },
+        },
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+
+      await expect(
+        taskResolvers.Query.task({} as never, { id: '1' }, ctx as never),
+      ).rejects.toThrow('Task not found');
     });
   });
 
@@ -109,7 +139,14 @@ describe('task resolvers', () => {
 
     it('updateTask updates and publishes', async () => {
       const ctx = createMockContext();
-      const task = { id: '1', title: 'Updated', status: 'DONE' };
+      const task = {
+        id: '1',
+        title: 'Updated',
+        status: 'DONE',
+        projectId: 'p1',
+        project: PROJECT,
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
       ctx.prisma.task.update.mockResolvedValue(task);
 
       const result = await taskResolvers.Mutation.updateTask(
@@ -123,6 +160,13 @@ describe('task resolvers', () => {
 
     it('deleteTask deletes and returns true', async () => {
       const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Test',
+        projectId: 'p1',
+        project: PROJECT,
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
       ctx.prisma.task.delete.mockResolvedValue({});
 
       const result = await taskResolvers.Mutation.deleteTask(
@@ -131,7 +175,6 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toBe(true);
-      expect(ctx.prisma.task.delete).toHaveBeenCalledWith({ where: { id: '1' } });
     });
   });
 

@@ -26,7 +26,22 @@ async function seed() {
     create: { email: values.email, name: values.name, passwordHash },
   });
 
+  const slug = values.name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 64);
+
+  const workspace = await prisma.workspace.upsert({
+    where: { slug },
+    create: { name: 'Personal', slug, ownerId: user.id },
+    update: {},
+  });
+
   console.log(`User ${user.email} (${user.name}) created/updated [id: ${user.id}]`);
+  console.log(`Workspace "${workspace.name}" (${workspace.slug}) ready [id: ${workspace.id}]`);
 }
 
 seed()

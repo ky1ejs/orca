@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useSubscription } from 'urql';
 import { useCallback } from 'react';
 import {
-  ProjectsDocument,
+  WorkspacesDocument,
+  WorkspaceDocument,
   ProjectDocument,
   TaskDocument,
+  CreateWorkspaceDocument,
+  UpdateWorkspaceDocument,
+  DeleteWorkspaceDocument,
   CreateProjectDocument,
   UpdateProjectDocument,
   DeleteProjectDocument,
@@ -14,6 +18,8 @@ import {
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
+  CreateWorkspaceInput,
+  UpdateWorkspaceInput,
   CreateProjectInput,
   UpdateProjectInput,
   CreateTaskInput,
@@ -22,8 +28,17 @@ import type {
 
 // Query hooks
 
-export function useProjects() {
-  const [result, reexecute] = useQuery({ query: ProjectsDocument });
+export function useWorkspaces() {
+  const [result, reexecute] = useQuery({ query: WorkspacesDocument });
+  return { ...result, refetch: reexecute };
+}
+
+export function useWorkspaceBySlug(slug: string) {
+  const [result, reexecute] = useQuery({
+    query: WorkspaceDocument,
+    variables: { slug },
+    pause: !slug,
+  });
   return { ...result, refetch: reexecute };
 }
 
@@ -46,6 +61,30 @@ export function useTask(id: string) {
 }
 
 // Mutation hooks
+
+export function useCreateWorkspace() {
+  const [result, executeMutation] = useMutation(CreateWorkspaceDocument);
+  const createWorkspace = useCallback(
+    (input: CreateWorkspaceInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, createWorkspace };
+}
+
+export function useUpdateWorkspace() {
+  const [result, executeMutation] = useMutation(UpdateWorkspaceDocument);
+  const updateWorkspace = useCallback(
+    (id: string, input: UpdateWorkspaceInput) => executeMutation({ id, input }),
+    [executeMutation],
+  );
+  return { ...result, updateWorkspace };
+}
+
+export function useDeleteWorkspace() {
+  const [result, executeMutation] = useMutation(DeleteWorkspaceDocument);
+  const deleteWorkspace = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, deleteWorkspace };
+}
 
 export function useCreateProject() {
   const [result, executeMutation] = useMutation(CreateProjectDocument);
@@ -97,10 +136,18 @@ export function useDeleteTask() {
 
 // Subscription hooks — Graphcache handles cache updates automatically
 
-export function useProjectSubscription() {
-  useSubscription({ query: ProjectChangedDocument });
+export function useProjectSubscription(workspaceId: string) {
+  useSubscription({
+    query: ProjectChangedDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
 }
 
-export function useTaskSubscription() {
-  useSubscription({ query: TaskChangedDocument });
+export function useTaskSubscription(workspaceId: string) {
+  useSubscription({
+    query: TaskChangedDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
 }

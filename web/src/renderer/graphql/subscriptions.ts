@@ -1,9 +1,10 @@
 export const ProjectChangedDocument = /* GraphQL */ `
-  subscription ProjectChanged {
-    projectChanged {
+  subscription ProjectChanged($workspaceId: ID!) {
+    projectChanged(workspaceId: $workspaceId) {
       id
       name
       description
+      workspaceId
       tasks {
         id
         title
@@ -16,8 +17,8 @@ export const ProjectChangedDocument = /* GraphQL */ `
 `;
 
 export const TaskChangedDocument = /* GraphQL */ `
-  subscription TaskChanged {
-    taskChanged {
+  subscription TaskChanged($workspaceId: ID!) {
+    taskChanged(workspaceId: $workspaceId) {
       id
       title
       description

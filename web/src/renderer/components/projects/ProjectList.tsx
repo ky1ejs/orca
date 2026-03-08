@@ -1,22 +1,32 @@
 import { useState } from 'react';
-import { useProjects, useCreateProject, useProjectSubscription } from '../../hooks/useGraphQL.js';
+import {
+  useWorkspaceBySlug,
+  useCreateProject,
+  useProjectSubscription,
+} from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { ProjectListSkeleton } from '../layout/Skeleton.js';
 import { EmptyProjectList } from '../layout/EmptyState.js';
 
 export function ProjectList() {
-  const { data, fetching, error } = useProjects();
+  const { currentWorkspace } = useWorkspace();
+  const { data, fetching, error } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const { createProject } = useCreateProject();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  useProjectSubscription();
+  useProjectSubscription(currentWorkspace?.id ?? '');
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
-    await createProject({ name: name.trim(), description: description.trim() || undefined });
+    if (!name.trim() || !currentWorkspace) return;
+    await createProject({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      workspaceId: currentWorkspace.id,
+    });
     setName('');
     setDescription('');
     setShowCreate(false);
@@ -34,7 +44,7 @@ export function ProjectList() {
     );
   }
 
-  const projects = data?.projects ?? [];
+  const projects = data?.workspace?.projects ?? [];
 
   return (
     <div className="p-6">

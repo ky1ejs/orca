@@ -8,6 +8,8 @@ const TEST_PORT = 4444;
 const TEST_JWT_SECRET = 'test-jwt-secret-for-integration-tests';
 let serverProcess: ChildProcess;
 let authToken: string;
+let workspaceId: string;
+let workspaceSlug: string;
 
 async function gql(
   query: string,
@@ -89,10 +91,14 @@ describe('server integration', () => {
       setTimeout(() => reject(new Error('Server startup timeout')), 10000);
     });
 
-    // Login to get a JWT
+    // Login to get a JWT and workspaces
     const loginRes = await gql(
       `mutation Login($email: String!, $password: String!) {
-        login(email: $email, password: $password) { token user { id name } }
+        login(email: $email, password: $password) {
+          token
+          user { id name }
+          workspaces { id slug }
+        }
       }`,
       undefined,
       {
@@ -103,8 +109,15 @@ describe('server integration', () => {
     if (loginRes.body.errors) {
       throw new Error(`Login failed: ${JSON.stringify(loginRes.body.errors)}`);
     }
-    const loginData = loginRes.body.data as { login: { token: string } };
+    const loginData = loginRes.body.data as {
+      login: {
+        token: string;
+        workspaces: Array<{ id: string; slug: string }>;
+      };
+    };
     authToken = loginData.login.token;
+    workspaceId = loginData.login.workspaces[0].id;
+    workspaceSlug = loginData.login.workspaces[0].slug;
   }, 30000);
 
   afterAll(() => {
@@ -118,30 +131,47 @@ describe('server integration', () => {
   });
 
   it('rejects requests without auth token', async () => {
-    const { body } = await gql('{ projects { id } }');
+    const { body } = await gql('{ workspaces { id } }');
     const errors = body.errors as Array<{ message: string }>;
     expect(errors).toBeDefined();
     expect(errors[0].message).toContain('Missing or invalid authentication');
   });
 
   it('rejects requests with invalid auth token', async () => {
-    const { body } = await gql('{ projects { id } }', 'invalid-token');
+    const { body } = await gql('{ workspaces { id } }', 'invalid-token');
     const errors = body.errors as Array<{ message: string }>;
     expect(errors).toBeDefined();
     expect(errors[0].message).toContain('Missing or invalid authentication');
   });
 
-  it('accepts requests with valid JWT', async () => {
-    const { body } = await gql('{ projects { id name } }', authToken);
+  it('lists workspaces', async () => {
+    const { body } = await gql('{ workspaces { id name slug } }', authToken);
     expect(body.errors).toBeUndefined();
-    const data = body.data as { projects: unknown[] };
-    expect(data.projects).toEqual([]);
+    const data = body.data as { workspaces: Array<{ name: string; slug: string }> };
+    expect(data.workspaces.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('login returns token and user', async () => {
+  it('fetches workspace by slug with projects', async () => {
+    const { body } = await gql(
+      `query Workspace($slug: String!) {
+        workspace(slug: $slug) { id name slug projects { id name } }
+      }`,
+      authToken,
+      { operationName: 'Workspace', variables: { slug: workspaceSlug } },
+    );
+    expect(body.errors).toBeUndefined();
+    const data = body.data as { workspace: { name: string; slug: string } };
+    expect(data.workspace.slug).toBe(workspaceSlug);
+  });
+
+  it('login returns token, user, and workspaces', async () => {
     const res = await gql(
       `mutation Login($email: String!, $password: String!) {
-        login(email: $email, password: $password) { token user { id name email } }
+        login(email: $email, password: $password) {
+          token
+          user { id name email }
+          workspaces { id slug }
+        }
       }`,
       undefined,
       {
@@ -150,9 +180,12 @@ describe('server integration', () => {
       },
     );
     expect(res.body.errors).toBeUndefined();
-    const data = res.body.data as { login: { token: string; user: { email: string } } };
+    const data = res.body.data as {
+      login: { token: string; user: { email: string }; workspaces: Array<{ id: string }> };
+    };
     expect(data.login.token).toBeTruthy();
     expect(data.login.user.email).toBe('test@orca.local');
+    expect(data.login.workspaces.length).toBeGreaterThanOrEqual(1);
   });
 
   it('login rejects wrong password', async () => {
@@ -179,27 +212,64 @@ describe('server integration', () => {
     expect(data.me.name).toBe('Test User');
   });
 
-  it('creates and queries a project', async () => {
+  it('creates and queries a project in a workspace', async () => {
     const createRes = await gql(
-      `mutation {
-        createProject(input: { name: "Test Project", description: "A test" }) {
-          id name description
-        }
+      `mutation CreateProject($input: CreateProjectInput!) {
+        createProject(input: $input) { id name description workspaceId }
       }`,
       authToken,
+      {
+        operationName: 'CreateProject',
+        variables: {
+          input: { name: 'Test Project', description: 'A test', workspaceId },
+        },
+      },
     );
     expect(createRes.body.errors).toBeUndefined();
-    const data = createRes.body.data as { createProject: { id: string; name: string } };
+    const data = createRes.body.data as {
+      createProject: { id: string; name: string; workspaceId: string };
+    };
     expect(data.createProject.name).toBe('Test Project');
+    expect(data.createProject.workspaceId).toBe(workspaceId);
 
     const queryRes = await gql(
-      `{ project(id: "${data.createProject.id}") { id name } }`,
+      `query Project($id: ID!) { project(id: $id) { id name } }`,
       authToken,
+      { operationName: 'Project', variables: { id: data.createProject.id } },
     );
     const queryData = queryRes.body.data as { project: { name: string } };
     expect(queryData.project.name).toBe('Test Project');
 
     // Cleanup
-    await gql(`mutation { deleteProject(id: "${data.createProject.id}") }`, authToken);
+    await gql(`mutation DeleteProject($id: ID!) { deleteProject(id: $id) }`, authToken, {
+      operationName: 'DeleteProject',
+      variables: { id: data.createProject.id },
+    });
+  });
+
+  it('creates and deletes a workspace', async () => {
+    const createRes = await gql(
+      `mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+        createWorkspace(input: $input) { id name slug }
+      }`,
+      authToken,
+      {
+        operationName: 'CreateWorkspace',
+        variables: { input: { name: 'Test WS', slug: 'test-ws' } },
+      },
+    );
+    expect(createRes.body.errors).toBeUndefined();
+    const data = createRes.body.data as {
+      createWorkspace: { id: string; name: string; slug: string };
+    };
+    expect(data.createWorkspace.slug).toBe('test-ws');
+
+    // Delete
+    const deleteRes = await gql(
+      `mutation DeleteWorkspace($id: ID!) { deleteWorkspace(id: $id) }`,
+      authToken,
+      { operationName: 'DeleteWorkspace', variables: { id: data.createWorkspace.id } },
+    );
+    expect(deleteRes.body.errors).toBeUndefined();
   });
 });

@@ -6,12 +6,27 @@ import { Provider, Client, CombinedError } from 'urql';
 import { fromValue, never } from 'wonka';
 import { ProjectList } from './ProjectList.js';
 import { NavigationProvider } from '../../navigation/context.js';
+import { WorkspaceProvider } from '../../workspace/context.js';
 
 afterEach(cleanup);
 
+const MOCK_WORKSPACE = {
+  id: 'ws1',
+  name: 'Personal',
+  slug: 'personal',
+  createdAt: '',
+  updatedAt: '',
+};
+
 function createMockClient(result: { data?: unknown; error?: CombinedError }) {
   return {
-    executeQuery: vi.fn(() => fromValue(result)),
+    executeQuery: vi.fn(({ query }) => {
+      const queryStr = typeof query === 'string' ? query : (query?.loc?.source?.body ?? '');
+      if (queryStr.includes('WorkspacesContext')) {
+        return fromValue({ data: { workspaces: [MOCK_WORKSPACE] } });
+      }
+      return fromValue(result);
+    }),
     executeMutation: vi.fn(() => never),
     executeSubscription: vi.fn(() => never),
   } as unknown as Client;
@@ -20,9 +35,11 @@ function createMockClient(result: { data?: unknown; error?: CombinedError }) {
 function renderWithProviders(client: Client) {
   return render(
     <Provider value={client}>
-      <NavigationProvider>
-        <ProjectList />
-      </NavigationProvider>
+      <WorkspaceProvider>
+        <NavigationProvider>
+          <ProjectList />
+        </NavigationProvider>
+      </WorkspaceProvider>
     </Provider>,
   );
 }
@@ -31,10 +48,13 @@ describe('ProjectList', () => {
   it('renders projects from data', () => {
     const client = createMockClient({
       data: {
-        projects: [
-          { id: '1', name: 'Project Alpha', description: 'First project', tasks: [] },
-          { id: '2', name: 'Project Beta', description: null, tasks: [] },
-        ],
+        workspace: {
+          ...MOCK_WORKSPACE,
+          projects: [
+            { id: '1', name: 'Project Alpha', description: 'First project', tasks: [] },
+            { id: '2', name: 'Project Beta', description: null, tasks: [] },
+          ],
+        },
       },
     });
 
@@ -47,7 +67,7 @@ describe('ProjectList', () => {
 
   it('renders empty state when no projects', () => {
     const client = createMockClient({
-      data: { projects: [] },
+      data: { workspace: { ...MOCK_WORKSPACE, projects: [] } },
     });
 
     renderWithProviders(client);
@@ -57,7 +77,7 @@ describe('ProjectList', () => {
 
   it('renders heading', () => {
     const client = createMockClient({
-      data: { projects: [] },
+      data: { workspace: { ...MOCK_WORKSPACE, projects: [] } },
     });
 
     renderWithProviders(client);
@@ -67,7 +87,7 @@ describe('ProjectList', () => {
 
   it('renders New Project button', () => {
     const client = createMockClient({
-      data: { projects: [] },
+      data: { workspace: { ...MOCK_WORKSPACE, projects: [] } },
     });
 
     renderWithProviders(client);
