@@ -44,14 +44,21 @@ describe('ensureHooks', () => {
     }
   });
 
-  it('each hook entry has correct structure', () => {
+  it('each hook entry has correct nested matcher-group structure', () => {
     ensureHooks(workDir, 4242);
 
     const settings = readSettings(workDir);
-    const hooks = settings.hooks as Record<string, Record<string, unknown>[]>;
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
 
     for (const eventType of HOOK_EVENT_TYPES) {
-      const entry = hooks[eventType][0];
+      const matcherGroup = hooks[eventType][0];
+      expect(matcherGroup.matcher).toBe('');
+      expect(matcherGroup.hooks).toHaveLength(1);
+
+      const entry = matcherGroup.hooks[0];
       expect(entry.type).toBe('http');
       expect(entry.url).toBe('http://127.0.0.1:4242/orca-hooks');
       expect(entry.headers).toEqual({ 'X-Orca-Session-Id': '$ORCA_SESSION_ID' });
@@ -75,13 +82,18 @@ describe('ensureHooks', () => {
     expect(settings.hooks).toBeDefined();
   });
 
-  it('merges with existing hooks — preserves non-Orca hooks in same event type', () => {
+  it('merges with existing new-format non-Orca matcher group — preserves it', () => {
     mkdirSync(path.join(workDir, '.claude'), { recursive: true });
     writeFileSync(
       settingsPath(workDir),
       JSON.stringify({
         hooks: {
-          Stop: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+          Stop: [
+            {
+              matcher: '',
+              hooks: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+            },
+          ],
         },
       }),
       'utf-8',
@@ -90,13 +102,16 @@ describe('ensureHooks', () => {
     ensureHooks(workDir, 9999);
 
     const settings = readSettings(workDir);
-    const hooks = settings.hooks as Record<string, Record<string, unknown>[]>;
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
     expect(hooks.Stop).toHaveLength(2);
     expect(hooks.Stop[0]).toEqual({
-      type: 'command',
-      url: 'https://other-service.com/webhook',
+      matcher: '',
+      hooks: [{ type: 'command', url: 'https://other-service.com/webhook' }],
     });
-    expect(hooks.Stop[1].url).toBe('http://127.0.0.1:9999/orca-hooks');
+    expect(hooks.Stop[1].hooks[0].url).toBe('http://127.0.0.1:9999/orca-hooks');
   });
 
   it('is idempotent — calling twice with same port produces same result', () => {
@@ -114,11 +129,14 @@ describe('ensureHooks', () => {
     ensureHooks(workDir, 2222);
 
     const settings = readSettings(workDir);
-    const hooks = settings.hooks as Record<string, Record<string, unknown>[]>;
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
 
     for (const eventType of HOOK_EVENT_TYPES) {
       expect(hooks[eventType]).toHaveLength(1);
-      expect(hooks[eventType][0].url).toBe('http://127.0.0.1:2222/orca-hooks');
+      expect(hooks[eventType][0].hooks[0].url).toBe('http://127.0.0.1:2222/orca-hooks');
     }
   });
 
@@ -134,6 +152,62 @@ describe('ensureHooks', () => {
     for (const eventType of HOOK_EVENT_TYPES) {
       expect(hooks[eventType]).toHaveLength(1);
     }
+  });
+
+  it('migrates old flat-format entries and appends Orca hook', () => {
+    mkdirSync(path.join(workDir, '.claude'), { recursive: true });
+    writeFileSync(
+      settingsPath(workDir),
+      JSON.stringify({
+        hooks: {
+          Stop: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+        },
+      }),
+      'utf-8',
+    );
+
+    ensureHooks(workDir, 9999);
+
+    const settings = readSettings(workDir);
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
+
+    // Old entry should be wrapped in a matcher group
+    expect(hooks.Stop).toHaveLength(2);
+    expect(hooks.Stop[0]).toEqual({
+      matcher: '',
+      hooks: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+    });
+    // Orca hook appended as new matcher group
+    expect(hooks.Stop[1].matcher).toBe('');
+    expect(hooks.Stop[1].hooks[0].url).toBe('http://127.0.0.1:9999/orca-hooks');
+  });
+
+  it('migrates old flat-format Orca entry and replaces it', () => {
+    mkdirSync(path.join(workDir, '.claude'), { recursive: true });
+    writeFileSync(
+      settingsPath(workDir),
+      JSON.stringify({
+        hooks: {
+          Stop: [{ type: 'http', url: 'http://127.0.0.1:1111/orca-hooks' }],
+        },
+      }),
+      'utf-8',
+    );
+
+    ensureHooks(workDir, 2222);
+
+    const settings = readSettings(workDir);
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
+
+    // Should replace, not duplicate
+    expect(hooks.Stop).toHaveLength(1);
+    expect(hooks.Stop[0].hooks[0].url).toBe('http://127.0.0.1:2222/orca-hooks');
   });
 });
 
@@ -155,7 +229,39 @@ describe('removeHooks', () => {
     expect(existsSync(settingsPath(workDir))).toBe(false);
   });
 
-  it('preserves non-Orca hooks', () => {
+  it('preserves non-Orca matcher groups', () => {
+    mkdirSync(path.join(workDir, '.claude'), { recursive: true });
+    writeFileSync(
+      settingsPath(workDir),
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              matcher: '',
+              hooks: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+            },
+            {
+              matcher: '',
+              hooks: [{ type: 'http', url: 'http://127.0.0.1:9999/orca-hooks' }],
+            },
+          ],
+        },
+      }),
+      'utf-8',
+    );
+
+    removeHooks(workDir);
+
+    const settings = readSettings(workDir);
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
+    expect(hooks.Stop).toHaveLength(1);
+    expect(hooks.Stop[0].hooks[0].url).toBe('https://other-service.com/webhook');
+  });
+
+  it('migrates old flat-format entries and preserves non-Orca ones', () => {
     mkdirSync(path.join(workDir, '.claude'), { recursive: true });
     writeFileSync(
       settingsPath(workDir),
@@ -173,9 +279,16 @@ describe('removeHooks', () => {
     removeHooks(workDir);
 
     const settings = readSettings(workDir);
-    const hooks = settings.hooks as Record<string, Record<string, unknown>[]>;
+    const hooks = settings.hooks as Record<
+      string,
+      { matcher: string; hooks: Record<string, unknown>[] }[]
+    >;
     expect(hooks.Stop).toHaveLength(1);
-    expect(hooks.Stop[0].url).toBe('https://other-service.com/webhook');
+    // Old entry should now be wrapped in a matcher group
+    expect(hooks.Stop[0]).toEqual({
+      matcher: '',
+      hooks: [{ type: 'command', url: 'https://other-service.com/webhook' }],
+    });
   });
 
   it('deletes file when settings become empty', () => {
