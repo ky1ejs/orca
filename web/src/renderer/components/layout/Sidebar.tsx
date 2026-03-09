@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
+import { Box, ChevronDown, ChevronRight, PanelLeft } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -56,15 +57,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
+            <PanelLeft className="h-5 w-5" />
           </button>
           <NotificationBell />
         </div>
@@ -114,19 +107,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Collapse sidebar"
             data-testid="sidebar-collapse-btn"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
-            </svg>
+            <PanelLeft className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -147,21 +128,26 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                 <li key={project.id}>
                   <div className="flex items-center">
                     <button
-                      onClick={() => toggleExpand(project.id)}
-                      className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
-                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                    >
-                      <span className="text-xs">{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                    </button>
-                    <button
                       onClick={() => navigate({ view: 'project', id: project.id })}
-                      className={`flex-1 text-left px-2 py-1.5 text-sm rounded transition-colors ${
+                      className={`flex-1 text-left px-2 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 ${
                         isActive
                           ? 'bg-gray-800 text-white'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
-                      {project.name}
+                      <Box className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                    <button
+                      onClick={() => toggleExpand(project.id)}
+                      className="p-1 text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0"
+                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
 
