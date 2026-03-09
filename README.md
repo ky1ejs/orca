@@ -6,6 +6,8 @@
 
 Orca brings project management to agent orchestration into one tool.
 
+## Why is Orca?
+
 **The problem:** Running multiple AI agents in terminal tabs doesn't scale. You lose track of what each agent is doing, which ones need input, and how their work maps to your project. Existing PM tools (Linear, Jira, Asana) hold the metadata but can't show you a live view of your local agents or let you interact with them.
 
 **Orca's approach:** Treat agent sessions as first-class objects tied to tasks. Every session has a status, a terminal, and a place in your project hierarchy.
