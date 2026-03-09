@@ -11,8 +11,8 @@
  *   Accent   → bg-accent, text-on-accent, hover:bg-accent-hover
  *   Semantic → bg-success-muted, text-error, border-warning, etc.
  *   Radius   → rounded-sm, rounded-md, rounded-lg
- *   Font     → font-sans (automatic), font-mono (code/terminals)
- *   Text     → text-label-sm, text-body, text-heading-lg, etc.
+ *   Font     → font-sans (Plus Jakarta Sans), font-mono (Geist Mono)
+ *   Text     → text-label-sm, text-body, text-heading-lg, text-code-sm, etc.
  *   Icons    → size-icon-xs, size-icon-sm, size-icon-md, size-icon-lg
  *   Shadows  → shadow-xs, shadow-sm, shadow-dropdown, shadow-modal
  *   Z-index  → z-dropdown, z-sticky, z-modal-backdrop, z-modal, z-tooltip, z-toast
@@ -34,8 +34,8 @@
     'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono:
-    'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, monospace;
+    'Geist Mono', 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
 
   /* Border Radius — soft, rounded feel */
   --radius-xs: 4px;
@@ -180,6 +180,32 @@
  * Heading — section and page titles
  * ------------------------------------------------------------------- */
 @theme extend {
+  /* -----------------------------------------------------------
+   * Mono Text Scale — Geist Mono
+   *
+   * Sized ~1px smaller than the proportional equivalents to
+   * visually balance the wider monospace character width.
+   *
+   * Usage (always pair with font-mono):
+   *   code-xs → ticket/task IDs in compact lists, badge counts
+   *   code-sm → inline ticket IDs, keyboard shortcuts, branch names
+   *   code    → inline code, file paths, default mono text
+   *
+   * Where to use font-mono:
+   *   • Task/ticket IDs (e.g., "ORCA-123")
+   *   • Keyboard shortcuts (e.g., ⌘K)
+   *   • Branch names
+   *   • Counts/numbers in tabular lists
+   *   • Inline code and file paths
+   *   • Terminal output (uses --color-terminal-* tokens)
+   * ----------------------------------------------------------- */
+  --text-code-xs: 10px;
+  --text-code-xs--line-height: 16px;
+  --text-code-sm: 11px;
+  --text-code-sm--line-height: 16px;
+  --text-code: 12px;
+  --text-code--line-height: 20px;
+
   /* Labels */
   --text-label-xs: 11px;
   --text-label-xs--line-height: 16px;

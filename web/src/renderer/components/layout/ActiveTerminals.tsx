@@ -63,7 +63,7 @@ export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsPr
                 <span className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${dotClass}`} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">
-                    <span className="text-gray-500 font-mono">{entry.displayId}</span>{' '}
+                    <span className="text-gray-500 font-mono text-code-xs">{entry.displayId}</span>{' '}
                     {entry.taskTitle}
                   </span>
                   {label ? (

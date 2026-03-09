@@ -212,7 +212,7 @@ function TaskTableGroup({
         />
         <StatusIcon status={status} className={`${iconSize.sm} mr-2`} />
         <span className="text-gray-300 text-body-sm font-medium">{STATUS_LABELS[status]}</span>
-        <span className="text-gray-500 text-label-sm ml-2">{tasks.length}</span>
+        <span className="text-gray-500 text-code-sm font-mono ml-2">{tasks.length}</span>
         <div className="flex-1" />
         <button
           onClick={(e) => {
@@ -272,7 +272,7 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
         <StatusIcon status={task.status} className={iconSize.sm} />
       </div>
       <div role="gridcell" className="flex-1 min-w-0 flex items-center gap-1.5">
-        <span className="text-gray-500 text-body-sm font-mono mr-1 flex-shrink-0">
+        <span className="text-gray-500 text-code-sm font-mono mr-1 flex-shrink-0">
           {task.displayId}
         </span>
         <span className="text-gray-100 text-body-sm truncate">{task.title}</span>

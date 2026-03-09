@@ -373,6 +373,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
+              {/* Uses text-heading-sm (not text-code-*) because this is the detail header — needs to match heading scale */}
               <span className="text-gray-500 text-heading-sm font-mono mr-3">{task.displayId}</span>
               <h1 className="text-heading-lg font-bold text-white">{task.title}</h1>
             </div>

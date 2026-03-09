@@ -227,11 +227,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </p>
             <p className="text-gray-500 text-label-sm mb-8">
               Tip: Use{' '}
-              <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300">
+              <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono text-code-xs">
                 {'\u2318'}Enter
               </kbd>{' '}
               to quickly open or restart a terminal. Press{' '}
-              <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300">
+              <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono text-code-xs">
                 {'\u2318'}/
               </kbd>{' '}
               to see all keyboard shortcuts.
