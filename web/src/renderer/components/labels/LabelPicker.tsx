@@ -44,7 +44,7 @@ export function LabelPicker({ workspaceId, selectedLabelIds, onChange }: LabelPi
         + Label
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10 min-w-[180px] max-h-[240px] overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown min-w-[180px] max-h-[240px] overflow-y-auto animate-slide-up">
           {labels.map((label) => {
             const isSelected = selectedLabelIds.includes(label.id);
             return (

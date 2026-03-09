@@ -29,13 +29,13 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-modal-backdrop flex items-center justify-center bg-surface-overlay animate-fade-in"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
       data-testid="shortcut-help-modal"
     >
-      <div className="w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 shadow-2xl">
+      <div className="w-full max-w-md rounded-lg border border-gray-700 bg-surface-primary shadow-modal animate-scale-in">
         <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
           <h2 className="text-heading-sm font-semibold text-white">Keyboard Shortcuts</h2>
           <button

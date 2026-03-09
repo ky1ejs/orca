@@ -85,12 +85,12 @@ export function QuickCreateTask({ isOpen, onClose, projects }: QuickCreateTaskPr
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-start justify-center pt-[20vh] z-50"
+      className="fixed inset-0 bg-surface-overlay flex items-start justify-center pt-[20vh] z-modal-backdrop animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-lg p-4">
+      <div className="bg-surface-primary border border-gray-700 rounded-lg shadow-modal w-full max-w-lg p-4 animate-scale-in">
         <input
           ref={inputRef}
           type="text"
@@ -99,14 +99,14 @@ export function QuickCreateTask({ isOpen, onClose, projects }: QuickCreateTaskPr
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={submitting}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring"
           autoFocus
         />
         <div className="mt-3 flex items-center gap-3">
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
+            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
           >
             <option value="">No project (Inbox)</option>
             {projects.map((p) => (

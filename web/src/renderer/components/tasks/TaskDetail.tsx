@@ -273,7 +273,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           </button>
         </div>
         {launchMenuOpen && (
-          <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10 min-w-[160px]">
+          <div className="absolute top-full left-0 mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown min-w-[160px] animate-slide-up">
             <button
               onClick={() => {
                 setLaunchMenuOpen(false);
@@ -321,20 +321,20 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (supports Markdown)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500 resize-none"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring resize-none"
               rows={6}
             />
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -345,7 +345,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
             >
               {PRIORITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -400,7 +400,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               <select
                 value={task.status}
                 onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -416,7 +416,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               <select
                 value={task.priority}
                 onChange={(e) => updateTask(taskId, { priority: e.target.value as TaskPriority })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
               >
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -431,7 +431,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               <select
                 value={task.projectId ?? ''}
                 onChange={(e) => updateTask(taskId, { projectId: e.target.value || null })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
               >
                 <option value="">Inbox (no project)</option>
                 {workspaceProjects.map((p) => (
@@ -447,7 +447,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               <select
                 value={task.assignee?.id ?? ''}
                 onChange={(e) => updateTask(taskId, { assigneeId: e.target.value || null })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
                 data-testid="assignee-select"
               >
                 <option value="">Unassigned</option>
@@ -502,7 +502,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                         setIsEditingDir(false);
                       }
                     }}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm font-mono focus:outline-none focus:border-gray-500"
+                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm font-mono focus-ring"
                     autoFocus
                   />
                   <button

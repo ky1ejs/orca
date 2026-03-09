@@ -91,13 +91,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus:outline-none focus:border-gray-500 resize-none"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring resize-none"
               rows={3}
             />
             <input
@@ -105,7 +105,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               value={defaultDirectory}
               onChange={(e) => setDefaultDirectory(e.target.value)}
               placeholder="Default directory (e.g., /Users/you/projects/my-app)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500 font-mono"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring font-mono"
             />
             <div className="flex gap-2">
               <button

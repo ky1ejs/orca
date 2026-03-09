@@ -100,7 +100,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   if (collapsed) {
     return (
       <aside
-        className="w-12 bg-gray-900 border-r border-gray-800 flex flex-col items-center"
+        className="w-12 bg-surface-primary border-r border-gray-800 flex flex-col items-center"
         data-testid="sidebar-collapsed"
       >
         <div className="py-4 flex flex-col items-center gap-2">
@@ -132,7 +132,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
   return (
     <aside
-      className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col"
+      className="w-64 bg-surface-primary border-r border-gray-800 flex flex-col"
       data-testid="sidebar"
     >
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
