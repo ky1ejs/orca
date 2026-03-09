@@ -6,7 +6,7 @@ const ORCA_MARKER = '<!-- Managed by Orca. Do not edit manually. -->';
 
 export function writeTaskContext(workingDirectory: string, metadata: TaskMetadata): void {
   const dirPath = path.join(workingDirectory, '.claude');
-  const filePath = path.join(dirPath, 'CLAUDE.md');
+  const filePath = path.join(dirPath, 'CLAUDE.local.md');
 
   mkdirSync(dirPath, { recursive: true });
 
@@ -41,7 +41,7 @@ export function writeTaskContext(workingDirectory: string, metadata: TaskMetadat
 }
 
 export function removeTaskContext(workingDirectory: string): void {
-  const filePath = path.join(workingDirectory, '.claude', 'CLAUDE.md');
+  const filePath = path.join(workingDirectory, '.claude', 'CLAUDE.local.md');
 
   try {
     const content = readFileSync(filePath, 'utf-8');

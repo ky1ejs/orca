@@ -24,24 +24,24 @@ describe('writeTaskContext', () => {
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  it('creates .claude/ directory and CLAUDE.md', () => {
+  it('creates .claude/ directory and CLAUDE.local.md', () => {
     writeTaskContext(workDir, metadata);
 
     expect(existsSync(path.join(workDir, '.claude'))).toBe(true);
-    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.local.md'))).toBe(true);
   });
 
   it('file starts with Orca marker', () => {
     writeTaskContext(workDir, metadata);
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content.startsWith('<!-- Managed by Orca. Do not edit manually. -->')).toBe(true);
   });
 
   it('contains task ID, title, and project name', () => {
     writeTaskContext(workDir, metadata);
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).toContain('ORCA-42');
     expect(content).toContain('Add user authentication');
     expect(content).toContain('Backend API');
@@ -50,14 +50,14 @@ describe('writeTaskContext', () => {
   it('contains description', () => {
     writeTaskContext(workDir, metadata);
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).toContain('Implement JWT-based authentication for the API');
   });
 
   it('contains naming conventions', () => {
     writeTaskContext(workDir, metadata);
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).toContain('feat/ORCA-42-short-description');
     expect(content).toContain('ORCA-42: Short description');
   });
@@ -65,14 +65,14 @@ describe('writeTaskContext', () => {
   it('omits project line when projectName is null', () => {
     writeTaskContext(workDir, { ...metadata, projectName: null });
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).not.toContain('**Project**');
   });
 
   it('omits description section when description is null', () => {
     writeTaskContext(workDir, { ...metadata, description: null });
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).not.toContain('## Description');
   });
 
@@ -80,7 +80,7 @@ describe('writeTaskContext', () => {
     writeTaskContext(workDir, metadata);
     writeTaskContext(workDir, { ...metadata, title: 'Updated title' });
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).toContain('Updated title');
     expect(content).not.toContain('Add user authentication');
   });
@@ -89,7 +89,7 @@ describe('writeTaskContext', () => {
     const longDesc = 'a'.repeat(2000);
     writeTaskContext(workDir, { ...metadata, description: longDesc });
 
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     // Description should be truncated
     const descriptionSection = content.split('## Description')[1];
     expect(descriptionSection).toBeDefined();
@@ -114,17 +114,17 @@ describe('removeTaskContext', () => {
     writeTaskContext(workDir, metadata);
     removeTaskContext(workDir);
 
-    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.md'))).toBe(false);
+    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.local.md'))).toBe(false);
   });
 
   it('does not remove file without Orca marker', () => {
     mkdirSync(path.join(workDir, '.claude'), { recursive: true });
-    writeFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), '# My custom docs\n', 'utf-8');
+    writeFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), '# My custom docs\n', 'utf-8');
 
     removeTaskContext(workDir);
 
-    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.md'))).toBe(true);
-    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.md'), 'utf-8');
+    expect(existsSync(path.join(workDir, '.claude', 'CLAUDE.local.md'))).toBe(true);
+    const content = readFileSync(path.join(workDir, '.claude', 'CLAUDE.local.md'), 'utf-8');
     expect(content).toBe('# My custom docs\n');
   });
 
