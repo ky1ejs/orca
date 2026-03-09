@@ -5,7 +5,7 @@
 import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
-import { appendOutput, replayOutput, clearOutput } from './output-buffer.js';
+import { appendOutput, replayOutput, clearOutput, getOutputSize } from './output-buffer.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -87,6 +87,10 @@ export class DaemonPtyManager {
 
   replay(sessionId: string): string {
     return replayOutput(sessionId);
+  }
+
+  outputSize(sessionId: string): number {
+    return getOutputSize(sessionId);
   }
 
   clear(sessionId: string): void {
