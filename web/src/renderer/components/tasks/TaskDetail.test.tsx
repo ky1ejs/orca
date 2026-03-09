@@ -6,7 +6,7 @@ import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.
 import { SessionStatus } from '../../../shared/session-status.js';
 
 const mockUpdateTask = vi.fn().mockResolvedValue({});
-const mockDeleteTask = vi.fn().mockResolvedValue({});
+const mockArchiveTask = vi.fn().mockResolvedValue({});
 const mockRefreshSessions = vi.fn();
 const mockGoToParent = vi.fn();
 const mockNavigate = vi.fn();
@@ -34,7 +34,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
     error: null,
   }),
   useUpdateTask: () => ({ updateTask: mockUpdateTask }),
-  useDeleteTask: () => ({ deleteTask: mockDeleteTask }),
+  useArchiveTask: () => ({ archiveTask: mockArchiveTask }),
   useTaskSubscription: vi.fn(),
   useWorkspaceBySlug: () => ({
     data: {
@@ -155,13 +155,13 @@ describe('TaskDetail', () => {
       expect(screen.queryByText(/Back to Test Project/)).not.toBeInTheDocument();
     });
 
-    it('delete calls goToParent', async () => {
+    it('archive calls goToParent', async () => {
       await importAndRender();
 
-      fireEvent.click(screen.getByText('Delete'));
+      fireEvent.click(screen.getByText('Archive'));
 
       await vi.waitFor(() => {
-        expect(mockDeleteTask).toHaveBeenCalledWith('task-1');
+        expect(mockArchiveTask).toHaveBeenCalledWith('task-1');
         expect(mockGoToParent).toHaveBeenCalled();
       });
     });

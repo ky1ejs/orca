@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Archive } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   useProject,
   useUpdateProject,
-  useDeleteProject,
+  useArchiveProject,
   useProjectSubscription,
   useTaskSubscription,
 } from '../../hooks/useGraphQL.js';
@@ -20,7 +20,7 @@ interface ProjectDetailProps {
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { data, fetching, error } = useProject(projectId);
   const { updateProject } = useUpdateProject();
-  const { deleteProject } = useDeleteProject();
+  const { archiveProject } = useArchiveProject();
   const { navigate, goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
@@ -69,8 +69,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     setEditing(false);
   };
 
-  const handleDelete = async () => {
-    await deleteProject(projectId);
+  const handleArchive = async () => {
+    await archiveProject(projectId);
     goToParent();
   };
 
@@ -128,11 +128,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 Edit
               </button>
               <button
-                onClick={handleDelete}
+                onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Trash2 className={`${iconSize.sm} mr-1`} />
-                Delete
+                <Archive className={`${iconSize.sm} mr-1`} />
+                Archive
               </button>
             </div>
           </div>

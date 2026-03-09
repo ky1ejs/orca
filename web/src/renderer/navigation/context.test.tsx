@@ -35,14 +35,14 @@ function TestNavigationConsumer() {
 }
 
 describe('NavigationProvider', () => {
-  it('starts with projects view', () => {
+  it('starts with initiatives view', () => {
     render(
       <NavigationProvider>
         <TestNavigationConsumer />
       </NavigationProvider>,
     );
 
-    expect(screen.getByTestId('view')).toHaveTextContent('projects');
+    expect(screen.getByTestId('view')).toHaveTextContent('initiatives');
     expect(screen.getByTestId('id')).toHaveTextContent('none');
     expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('no');
   });
@@ -93,7 +93,7 @@ describe('NavigationProvider', () => {
     act(() => {
       screen.getByText('Go to Parent').click();
     });
-    expect(screen.getByTestId('view')).toHaveTextContent('projects');
+    expect(screen.getByTestId('view')).toHaveTextContent('initiatives');
     expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('no');
   });
 
@@ -108,7 +108,7 @@ describe('NavigationProvider', () => {
       screen.getByText('Go to Parent').click();
     });
 
-    expect(screen.getByTestId('view')).toHaveTextContent('projects');
+    expect(screen.getByTestId('view')).toHaveTextContent('initiatives');
     expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('no');
   });
 
@@ -139,6 +139,6 @@ describe('NavigationProvider', () => {
     act(() => {
       screen.getByText('Go to Parent').click();
     });
-    expect(screen.getByTestId('view')).toHaveTextContent('projects');
+    expect(screen.getByTestId('view')).toHaveTextContent('initiatives');
   });
 });

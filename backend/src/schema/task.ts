@@ -167,12 +167,16 @@ export const taskResolvers = {
       context.pubsub.publish('taskChanged', task);
       return task;
     },
-    deleteTask: async (_parent, args, context) => {
+    archiveTask: async (_parent, args, context) => {
       await requireTaskAccess(context.prisma, args.id, context.userId);
-      await context.prisma.task.delete({ where: { id: args.id } });
-      return true;
+      const task = await context.prisma.task.update({
+        where: { id: args.id },
+        data: { archivedAt: new Date() },
+      });
+      context.pubsub.publish('taskChanged', task);
+      return task;
     },
-  } satisfies Pick<MutationResolvers, 'createTask' | 'updateTask' | 'deleteTask'>,
+  } satisfies Pick<MutationResolvers, 'createTask' | 'updateTask' | 'archiveTask'>,
   Subscription: {
     taskChanged: {
       subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {

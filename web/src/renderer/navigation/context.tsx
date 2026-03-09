@@ -1,6 +1,14 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 
-type ViewType = 'projects' | 'project' | 'task' | 'members' | 'invitations' | 'settings';
+type ViewType =
+  | 'initiatives'
+  | 'initiative'
+  | 'projects'
+  | 'project'
+  | 'task'
+  | 'members'
+  | 'invitations'
+  | 'settings';
 
 interface NavigationState {
   view: ViewType;
@@ -24,7 +32,7 @@ interface NavigationProviderProps {
 }
 
 export function NavigationProvider({ children }: NavigationProviderProps) {
-  const [current, setCurrent] = useState<NavigationState>({ view: 'projects' });
+  const [current, setCurrent] = useState<NavigationState>({ view: 'initiatives' });
 
   const navigate = useCallback((state: NavigationState) => {
     if (import.meta.env.DEV && state.view === 'task' && !state.projectId) {
@@ -41,16 +49,19 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         case 'task':
           return prev.projectId
             ? { view: 'project' as const, id: prev.projectId, projectName: prev.projectName }
-            : { view: 'projects' as const };
+            : { view: 'initiatives' as const };
         case 'project':
-          return { view: 'projects' as const };
+          return { view: 'initiatives' as const };
+        case 'initiative':
+          return { view: 'initiatives' as const };
         default:
           return prev;
       }
     });
   }, []);
 
-  const canGoToParent = current.view === 'project' || current.view === 'task';
+  const canGoToParent =
+    current.view === 'project' || current.view === 'task' || current.view === 'initiative';
 
   const value = useMemo(
     () => ({ current, navigate, goToParent, canGoToParent }),

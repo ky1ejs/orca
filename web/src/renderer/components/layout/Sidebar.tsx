@@ -7,9 +7,11 @@ import {
   SquareTerminal,
   Settings,
   LogOut,
+  Target,
 } from 'lucide-react';
 import {
   useWorkspaceBySlug,
+  useInitiativeSubscription,
   useProjectSubscription,
   useTaskSubscription,
 } from '../../hooks/useGraphQL.js';
@@ -66,6 +68,100 @@ function collapsedBadgeColor(statuses: string[]): string {
   return 'bg-info-strong';
 }
 
+function ExpandToggle({ isExpanded, onToggle }: { isExpanded: boolean; onToggle: () => void }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onToggle();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      className="p-0.5 hover:text-fg-muted transition-colors flex-shrink-0"
+      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+    >
+      {isExpanded ? (
+        <ChevronDown className={iconSize.xs} />
+      ) : (
+        <ChevronRight className={iconSize.xs} />
+      )}
+    </span>
+  );
+}
+
+function toggleSetItem(prev: Set<string>, id: string): Set<string> {
+  const next = new Set(prev);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}
+
+interface SidebarProjectItemProps {
+  project: {
+    id: string;
+    name: string;
+    tasks: SidebarTask[];
+  };
+  isExpanded: boolean;
+  isActive: boolean;
+  isAncestor: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+  onTaskClick: (task: SidebarTask) => void;
+  activeTaskId?: string;
+  indent?: boolean;
+}
+
+function SidebarProjectItem({
+  project,
+  isExpanded,
+  isActive,
+  isAncestor,
+  onToggle,
+  onNavigate,
+  onTaskClick,
+  activeTaskId,
+  indent,
+}: SidebarProjectItemProps) {
+  return (
+    <li>
+      <button
+        onClick={onNavigate}
+        className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${indent ? 'ml-4' : ''} ${
+          isActive
+            ? 'bg-surface-inset text-fg'
+            : isAncestor
+              ? 'bg-surface-inset text-fg-muted'
+              : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+        }`}
+      >
+        <span className="flex-1 truncate">{project.name}</span>
+        <ExpandToggle isExpanded={isExpanded} onToggle={onToggle} />
+      </button>
+      {isExpanded && project.tasks.length > 0 && (
+        <ul className={`${indent ? 'ml-10' : 'ml-6'} mt-0.5 space-y-0.5`}>
+          {project.tasks.map((task) => (
+            <SidebarTaskItem
+              key={task.id}
+              task={task}
+              isActive={activeTaskId === task.id}
+              onClick={() => onTaskClick(task)}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -76,27 +172,25 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const { currentWorkspace } = useWorkspace();
   const { data, fetching } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const { navigate, current } = useNavigation();
+  const [expandedInitiatives, setExpandedInitiatives] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [inboxExpanded, setInboxExpanded] = useState(false);
 
+  useInitiativeSubscription(currentWorkspace?.id ?? '');
   useProjectSubscription(currentWorkspace?.id ?? '');
   useTaskSubscription(currentWorkspace?.id ?? '');
 
-  const toggleExpand = (projectId: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  };
+  const toggleInitiative = (id: string) =>
+    setExpandedInitiatives((prev) => toggleSetItem(prev, id));
 
-  const projects = data?.workspace?.projects ?? [];
+  const toggleProject = (id: string) => setExpandedProjects((prev) => toggleSetItem(prev, id));
+
+  const initiatives = data?.workspace?.initiatives ?? [];
+  const allProjects = data?.workspace?.projects ?? [];
+  const standaloneProjects = allProjects.filter((p) => !p.initiativeId);
   const inboxTasks = data?.workspace?.tasks ?? [];
-  const activeTerminals = useActiveTerminals(projects, inboxTasks);
+  const activeTaskId = current.view === 'task' ? current.id : undefined;
+  const activeTerminals = useActiveTerminals(allProjects, inboxTasks);
   const activeSessionIds = useSessionActivity();
 
   if (collapsed) {
@@ -139,7 +233,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
     >
       <div className="p-4 border-b border-edge flex items-center justify-between">
         <button
-          onClick={() => navigate({ view: 'projects' })}
+          onClick={() => navigate({ view: 'initiatives' })}
           className="text-heading-sm font-semibold text-fg hover:text-fg transition-colors"
         >
           Orca
@@ -194,88 +288,122 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             )}
           </div>
         )}
+
+        {/* Initiatives */}
+        {initiatives.length > 0 && (
+          <>
+            <div className="px-2 py-2.5 flex items-center gap-2 text-fg-faint">
+              <Target className={iconSize.sm} />
+              <span className="text-label-sm font-medium">Initiatives</span>
+            </div>
+            {fetching && initiatives.length === 0 ? (
+              <SidebarSkeleton />
+            ) : (
+              <ul className="space-y-0.5">
+                {initiatives.map((initiative) => {
+                  const isExpanded = expandedInitiatives.has(initiative.id);
+                  const isActive = current.view === 'initiative' && current.id === initiative.id;
+
+                  return (
+                    <li key={initiative.id}>
+                      <button
+                        onClick={() => navigate({ view: 'initiative', id: initiative.id })}
+                        className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
+                          isActive
+                            ? 'bg-surface-inset text-fg'
+                            : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+                        }`}
+                      >
+                        <span className="flex-1 truncate">{initiative.name}</span>
+                        <ExpandToggle
+                          isExpanded={isExpanded}
+                          onToggle={() => toggleInitiative(initiative.id)}
+                        />
+                      </button>
+                      {isExpanded && initiative.projects.length > 0 && (
+                        <ul className="mt-0.5 space-y-0.5">
+                          {initiative.projects.map((project) => (
+                            <SidebarProjectItem
+                              key={project.id}
+                              project={project}
+                              isExpanded={expandedProjects.has(project.id)}
+                              isActive={current.view === 'project' && current.id === project.id}
+                              isAncestor={
+                                current.view === 'task' && current.projectId === project.id
+                              }
+                              onToggle={() => toggleProject(project.id)}
+                              onNavigate={() =>
+                                navigate({
+                                  view: 'project',
+                                  id: project.id,
+                                  projectName: project.name,
+                                })
+                              }
+                              onTaskClick={(task) =>
+                                navigate({
+                                  view: 'task',
+                                  id: task.id,
+                                  projectId: project.id,
+                                  projectName: project.name,
+                                  taskName: task.title,
+                                })
+                              }
+                              activeTaskId={activeTaskId}
+                              indent
+                            />
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+
+        {/* Standalone Projects */}
         <button
-          onClick={() => navigate({ view: 'projects' })}
+          onClick={() => navigate({ view: 'initiatives' })}
           className="w-full px-2 py-2.5 flex items-center gap-2 text-fg-faint hover:text-fg-muted transition-colors"
         >
           <Box className={iconSize.sm} />
           <span className="text-label-sm font-medium">Projects</span>
         </button>
-        {fetching && projects.length === 0 ? (
+        {fetching && standaloneProjects.length === 0 ? (
           <SidebarSkeleton />
-        ) : projects.length === 0 ? (
-          <div className="px-3 py-2 text-body-sm text-fg-faint">No projects yet</div>
+        ) : standaloneProjects.length === 0 ? (
+          <div className="px-3 py-2 text-body-sm text-fg-faint">No standalone projects</div>
         ) : (
           <ul className="space-y-0.5">
-            {projects.map((project) => {
-              const isExpanded = expandedProjects.has(project.id);
-              const isActive = current.view === 'project' && current.id === project.id;
-              const isAncestor = current.view === 'task' && current.projectId === project.id;
-
-              return (
-                <li key={project.id}>
-                  <button
-                    onClick={() =>
-                      navigate({ view: 'project', id: project.id, projectName: project.name })
-                    }
-                    className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
-                      isActive
-                        ? 'bg-surface-inset text-fg'
-                        : isAncestor
-                          ? 'bg-surface-inset text-fg-muted'
-                          : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
-                    }`}
-                  >
-                    <span className="flex-1 truncate">{project.name}</span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        toggleExpand(project.id);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          toggleExpand(project.id);
-                        }
-                      }}
-                      className="p-0.5 hover:text-fg-muted transition-colors flex-shrink-0"
-                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className={iconSize.xs} />
-                      ) : (
-                        <ChevronRight className={iconSize.xs} />
-                      )}
-                    </span>
-                  </button>
-
-                  {isExpanded && project.tasks.length > 0 && (
-                    <ul className="ml-6 mt-0.5 space-y-0.5">
-                      {project.tasks.map((task) => (
-                        <SidebarTaskItem
-                          key={task.id}
-                          task={task}
-                          isActive={current.view === 'task' && current.id === task.id}
-                          onClick={() =>
-                            navigate({
-                              view: 'task',
-                              id: task.id,
-                              projectId: project.id,
-                              projectName: project.name,
-                              taskName: task.title,
-                            })
-                          }
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+            {standaloneProjects.map((project) => (
+              <SidebarProjectItem
+                key={project.id}
+                project={project}
+                isExpanded={expandedProjects.has(project.id)}
+                isActive={current.view === 'project' && current.id === project.id}
+                isAncestor={current.view === 'task' && current.projectId === project.id}
+                onToggle={() => toggleProject(project.id)}
+                onNavigate={() =>
+                  navigate({
+                    view: 'project',
+                    id: project.id,
+                    projectName: project.name,
+                  })
+                }
+                onTaskClick={(task) =>
+                  navigate({
+                    view: 'task',
+                    id: task.id,
+                    projectId: project.id,
+                    projectName: project.name,
+                    taskName: task.title,
+                  })
+                }
+                currentView={current.view}
+                currentId={current.id}
+              />
+            ))}
           </ul>
         )}
       </nav>

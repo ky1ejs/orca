@@ -1,3 +1,4 @@
+import { GraphQLError } from 'graphql';
 import type { Project } from '@prisma/client';
 import type {
   ProjectResolvers,
@@ -6,7 +7,26 @@ import type {
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
 import type { ServerContext } from '../context.js';
-import { requireProjectAccess, requireWorkspaceAccess } from '../auth/workspace.js';
+import type { PrismaClient } from '@prisma/client';
+import {
+  requireInitiativeAccess,
+  requireProjectAccess,
+  requireWorkspaceAccess,
+} from '../auth/workspace.js';
+
+async function validateInitiativeBelongsToWorkspace(
+  prisma: PrismaClient,
+  initiativeId: string,
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  const { initiative } = await requireInitiativeAccess(prisma, initiativeId, userId);
+  if (initiative.workspaceId !== workspaceId) {
+    throw new GraphQLError('Initiative does not belong to this workspace', {
+      extensions: { code: 'BAD_USER_INPUT' },
+    });
+  }
+}
 
 export const projectResolvers = {
   Query: {
@@ -18,24 +38,54 @@ export const projectResolvers = {
   Mutation: {
     createProject: async (_parent, args, context) => {
       await requireWorkspaceAccess(context.prisma, args.input.workspaceId, context.userId);
+
+      if (args.input.initiativeId) {
+        await validateInitiativeBelongsToWorkspace(
+          context.prisma,
+          args.input.initiativeId,
+          args.input.workspaceId,
+          context.userId,
+        );
+      }
+
       const project = await context.prisma.project.create({
         data: {
           name: args.input.name,
           description: args.input.description,
           defaultDirectory: args.input.defaultDirectory ?? null,
           workspaceId: args.input.workspaceId,
+          initiativeId: args.input.initiativeId ?? null,
         },
       });
       context.pubsub.publish('projectChanged', project);
       return project;
     },
     updateProject: async (_parent, args, context) => {
-      await requireProjectAccess(context.prisma, args.id, context.userId);
+      const { project: existingProject } = await requireProjectAccess(
+        context.prisma,
+        args.id,
+        context.userId,
+      );
       const data: Record<string, unknown> = {};
       if (args.input.name != null) data.name = args.input.name;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.defaultDirectory !== undefined)
         data.defaultDirectory = args.input.defaultDirectory;
+
+      if (args.input.initiativeId !== undefined) {
+        if (args.input.initiativeId) {
+          await validateInitiativeBelongsToWorkspace(
+            context.prisma,
+            args.input.initiativeId,
+            existingProject.workspaceId,
+            context.userId,
+          );
+          data.initiativeId = args.input.initiativeId;
+        } else {
+          data.initiativeId = null;
+        }
+      }
+
       const project = await context.prisma.project.update({
         where: { id: args.id },
         data,
@@ -43,12 +93,16 @@ export const projectResolvers = {
       context.pubsub.publish('projectChanged', project);
       return project;
     },
-    deleteProject: async (_parent, args, context) => {
+    archiveProject: async (_parent, args, context) => {
       await requireProjectAccess(context.prisma, args.id, context.userId);
-      await context.prisma.project.delete({ where: { id: args.id } });
-      return true;
+      const project = await context.prisma.project.update({
+        where: { id: args.id },
+        data: { archivedAt: new Date() },
+      });
+      context.pubsub.publish('projectChanged', project);
+      return project;
     },
-  } satisfies Pick<MutationResolvers, 'createProject' | 'updateProject' | 'deleteProject'>,
+  } satisfies Pick<MutationResolvers, 'createProject' | 'updateProject' | 'archiveProject'>,
   Subscription: {
     projectChanged: {
       subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
@@ -75,10 +129,16 @@ export const projectResolvers = {
   } satisfies Pick<SubscriptionResolvers, 'projectChanged'>,
   Project: {
     tasks: (parent, _args, context) => {
-      return context.prisma.task.findMany({ where: { projectId: parent.id } });
+      return context.prisma.task.findMany({
+        where: { projectId: parent.id, archivedAt: null },
+      });
     },
     workspace: (parent, _args, context) => {
       return context.prisma.workspace.findUniqueOrThrow({ where: { id: parent.workspaceId } });
+    },
+    initiative: (parent, _args, context) => {
+      if (!parent.initiativeId) return null;
+      return context.prisma.initiative.findUnique({ where: { id: parent.initiativeId } });
     },
   } satisfies ProjectResolvers,
 };

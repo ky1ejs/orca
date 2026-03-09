@@ -1,3 +1,33 @@
+export const InitiativeChangedDocument = /* GraphQL */ `
+  subscription InitiativeChanged($workspaceId: ID!) {
+    initiativeChanged(workspaceId: $workspaceId) {
+      id
+      name
+      description
+      workspaceId
+      projects {
+        id
+        name
+        description
+        defaultDirectory
+        initiativeId
+        tasks {
+          id
+          displayId
+          title
+          status
+        }
+        archivedAt
+        createdAt
+        updatedAt
+      }
+      archivedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const ProjectChangedDocument = /* GraphQL */ `
   subscription ProjectChanged($workspaceId: ID!) {
     projectChanged(workspaceId: $workspaceId) {
@@ -6,12 +36,14 @@ export const ProjectChangedDocument = /* GraphQL */ `
       description
       defaultDirectory
       workspaceId
+      initiativeId
       tasks {
         id
         displayId
         title
         status
       }
+      archivedAt
       createdAt
       updatedAt
     }
@@ -36,6 +68,7 @@ export const TaskChangedDocument = /* GraphQL */ `
         name
         color
       }
+      archivedAt
       createdAt
       updatedAt
     }
