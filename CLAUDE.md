@@ -16,6 +16,9 @@ When you've finished a coding pass, use the `/simplify` skill to refactor and si
 ### Keep documentation up to date
 When making changes, always check for documentation that may need updating (e.g., README files, CLAUDE.md, inline docs, code comments). Update any documentation that is affected by your changes.
 
+### End with a PR
+When you've verified that all criteria of the plan have been completed and all tests are passing, create a pull request and share the link so the developer can review it.
+
 ## Architecture
 
 Orca is a work management tool for orchestrating AI agents (starting with Claude Code). It uses a **split-state client/server architecture**:
