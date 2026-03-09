@@ -198,6 +198,8 @@ export const taskResolvers = {
     },
   } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {
+    createdAt: (parent) => parent.createdAt.toISOString(),
+    updatedAt: (parent) => parent.updatedAt.toISOString(),
     project: (parent, _args, context) => {
       if (!parent.projectId) return null;
       return context.prisma.project.findUnique({ where: { id: parent.projectId } });

@@ -40,6 +40,9 @@ const resolvers: Resolvers = {
   Workspace: workspaceResolvers.Workspace,
   Project: projectResolvers.Project,
   Task: taskResolvers.Task,
+  Label: labelResolvers.Label,
+  WorkspaceMember: membershipResolvers.WorkspaceMember,
+  WorkspaceInvitation: membershipResolvers.WorkspaceInvitation,
   AddMemberResult: {
     __resolveType: (obj) => {
       if ('member' in obj) return 'MemberAdded';

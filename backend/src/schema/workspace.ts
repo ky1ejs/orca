@@ -218,6 +218,8 @@ export const workspaceResolvers = {
     },
   } satisfies Pick<MutationResolvers, 'createWorkspace' | 'updateWorkspace' | 'deleteWorkspace'>,
   Workspace: {
+    createdAt: (parent) => parent.createdAt.toISOString(),
+    updatedAt: (parent) => parent.updatedAt.toISOString(),
     projects: (parent, _args, context) => {
       return context.prisma.project.findMany({
         where: { workspaceId: parent.id },

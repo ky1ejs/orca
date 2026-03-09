@@ -1,5 +1,10 @@
 import { GraphQLError } from 'graphql';
-import type { MutationResolvers, QueryResolvers } from '../__generated__/graphql.js';
+import type {
+  MutationResolvers,
+  QueryResolvers,
+  WorkspaceMemberResolvers,
+  WorkspaceInvitationResolvers,
+} from '../__generated__/graphql.js';
 import { requireWorkspaceOwner, requireWorkspaceAccess } from '../auth/workspace.js';
 
 const MAX_MEMBERS_PER_WORKSPACE = 25;
@@ -368,4 +373,11 @@ export const membershipResolvers = {
     | 'acceptInvitation'
     | 'declineInvitation'
   >,
+  WorkspaceMember: {
+    createdAt: (parent) => parent.createdAt.toISOString(),
+  } satisfies WorkspaceMemberResolvers,
+  WorkspaceInvitation: {
+    createdAt: (parent) => parent.createdAt.toISOString(),
+    expiresAt: (parent) => parent.expiresAt.toISOString(),
+  } satisfies WorkspaceInvitationResolvers,
 };

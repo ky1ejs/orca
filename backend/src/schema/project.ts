@@ -74,6 +74,8 @@ export const projectResolvers = {
     },
   } satisfies Pick<SubscriptionResolvers, 'projectChanged'>,
   Project: {
+    createdAt: (parent) => parent.createdAt.toISOString(),
+    updatedAt: (parent) => parent.updatedAt.toISOString(),
     tasks: (parent, _args, context) => {
       return context.prisma.task.findMany({ where: { projectId: parent.id } });
     },
