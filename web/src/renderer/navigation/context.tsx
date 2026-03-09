@@ -27,6 +27,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const [current, setCurrent] = useState<NavigationState>({ view: 'projects' });
 
   const navigate = useCallback((state: NavigationState) => {
+    if (import.meta.env.DEV && state.view === 'task' && !state.projectId) {
+      console.warn(
+        '[Navigation] Navigating to task without projectId — breadcrumbs will be incomplete',
+      );
+    }
     setCurrent(state);
   }, []);
 

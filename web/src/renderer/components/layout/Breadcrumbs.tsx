@@ -1,3 +1,5 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { useNavigation } from '../../navigation/context.js';
 
 interface BreadcrumbSegment {
@@ -51,34 +53,30 @@ export function Breadcrumbs() {
         <button
           onClick={goToParent}
           aria-label="Go to parent"
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors py-0.5"
         >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ChevronLeft className={iconSize.sm} />
         </button>
       )}
-      <ol className="flex items-center gap-1 text-sm">
+      <ol className="flex items-center gap-1 text-label-sm">
         {segments.map((segment, index) => {
           const isLast = index === segments.length - 1;
           return (
             <li key={index} className="flex items-center gap-1">
-              {index > 0 && <span className="text-gray-600">›</span>}
+              {index > 0 && (
+                <ChevronRight className={`${iconSize.xs} text-gray-700`} aria-hidden="true" />
+              )}
               {segment.onClick && !isLast ? (
                 <button
                   onClick={segment.onClick}
-                  className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  className="text-gray-400 hover:text-white transition-colors cursor-pointer py-0.5 px-1 -mx-1 rounded"
                 >
                   {segment.label}
                 </button>
               ) : (
-                <span className="text-gray-100">{segment.label}</span>
+                <span className="text-gray-100" aria-current="page">
+                  {segment.label}
+                </span>
               )}
             </li>
           );
