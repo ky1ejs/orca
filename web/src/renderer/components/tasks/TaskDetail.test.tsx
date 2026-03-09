@@ -8,7 +8,7 @@ import { SessionStatus } from '../../../shared/session-status.js';
 const mockUpdateTask = vi.fn().mockResolvedValue({});
 const mockDeleteTask = vi.fn().mockResolvedValue({});
 const mockRefreshSessions = vi.fn();
-const mockNavigateBack = vi.fn();
+const mockGoToParent = vi.fn();
 const mockNavigate = vi.fn();
 const mockUpdateDirectory = vi.fn();
 const mockAgentStop = vi.fn().mockResolvedValue(undefined);
@@ -65,7 +65,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
 }));
 
 vi.mock('../../navigation/context.js', () => ({
-  useNavigation: () => ({ navigateBack: mockNavigateBack, navigate: mockNavigate }),
+  useNavigation: () => ({ goToParent: mockGoToParent, navigate: mockNavigate }),
 }));
 
 vi.mock('../../workspace/context.js', () => ({
@@ -88,8 +88,14 @@ vi.mock('../../hooks/useTerminalSessions.js', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useSessionActivity.js', () => ({
+  useSessionActivity: () => new Set<string>(),
+}));
+
 vi.mock('../terminal/AgentStatus.js', () => ({
-  AgentStatus: ({ status }: { status: string }) => <span data-testid="agent-status">{status}</span>,
+  AgentStatus: ({ status }: { status: string }) => (
+    <span data-testid="agent-status">{status}</span>
+  ),
 }));
 
 vi.mock('../markdown/MarkdownRenderer.js', () => ({
@@ -98,6 +104,14 @@ vi.mock('../markdown/MarkdownRenderer.js', () => ({
 
 vi.mock('../layout/Skeleton.js', () => ({
   TaskDetailSkeleton: () => <div data-testid="skeleton">Loading...</div>,
+}));
+
+vi.mock('../labels/LabelBadge.js', () => ({
+  LabelBadge: () => null,
+}));
+
+vi.mock('../labels/LabelPicker.js', () => ({
+  LabelPicker: () => null,
 }));
 
 // Mock window.orca
@@ -137,24 +151,20 @@ async function importAndRender(taskId = 'task-1') {
 
 describe('TaskDetail', () => {
   describe('back navigation', () => {
-    it('back button shows project name and calls navigateBack', async () => {
+    it('no inline back button (breadcrumbs handle navigation)', async () => {
       await importAndRender();
 
-      const backButton = screen.getByText(/Back to Test Project/);
-      expect(backButton).toBeInTheDocument();
-
-      fireEvent.click(backButton);
-      expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+      expect(screen.queryByText(/Back to Test Project/)).not.toBeInTheDocument();
     });
 
-    it('delete calls navigateBack to parent project', async () => {
+    it('delete calls goToParent', async () => {
       await importAndRender();
 
       fireEvent.click(screen.getByText('Delete'));
 
       await vi.waitFor(() => {
         expect(mockDeleteTask).toHaveBeenCalledWith('task-1');
-        expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+        expect(mockGoToParent).toHaveBeenCalled();
       });
     });
   });
