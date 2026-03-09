@@ -2,7 +2,14 @@
  * DaemonConnector: discovers, spawns, and maintains connection to the PTY daemon.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  symlinkSync,
+  unlinkSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { DaemonClient } from './client.js';
@@ -13,6 +20,7 @@ import {
   DAEMON_DB_PATH,
   DAEMON_METHODS,
   DAEMON_PROTOCOL_VERSION,
+  ORCA_DIR,
 } from '../../shared/daemon-protocol.js';
 import type { DaemonStatusResult } from '../../shared/daemon-protocol.js';
 
@@ -173,8 +181,31 @@ export class DaemonConnector {
     await this.waitForConnection();
   }
 
+  /**
+   * Get the executable path for spawning the daemon.
+   * On macOS, creates a symlink at ~/.orca/node pointing to the Electron binary.
+   * Spawning from outside the .app bundle prevents macOS from registering a dock icon.
+   */
+  private getDaemonExecutable(): string {
+    if (process.platform !== 'darwin') return process.execPath;
+
+    const symlinkPath = join(ORCA_DIR, 'node');
+    mkdirSync(ORCA_DIR, { recursive: true });
+
+    try {
+      const target = readlinkSync(symlinkPath);
+      if (target === process.execPath) return symlinkPath;
+      unlinkSync(symlinkPath);
+    } catch {
+      // Symlink doesn't exist or isn't a symlink — create it below
+    }
+
+    symlinkSync(process.execPath, symlinkPath);
+    return symlinkPath;
+  }
+
   private spawnDaemon(): void {
-    const electronPath = process.execPath;
+    const electronPath = this.getDaemonExecutable();
     const daemonScript = this.getDaemonScriptPath();
     const migrationsFolder = this.getMigrationsFolder();
     const backendUrl = process.env.BACKEND_URL || __BACKEND_URL__;
