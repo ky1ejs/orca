@@ -1,3 +1,5 @@
+scalar DateTime
+
 type User {
   id: ID!
   email: String!
@@ -20,7 +22,7 @@ type WorkspaceMember {
   id: ID!
   user: User!
   role: WorkspaceRole!
-  createdAt: String!
+  createdAt: DateTime!
 }
 
 type WorkspaceInvitation {
@@ -29,8 +31,8 @@ type WorkspaceInvitation {
   role: WorkspaceRole!
   workspace: Workspace!
   invitedBy: User!
-  expiresAt: String!
-  createdAt: String!
+  expiresAt: DateTime!
+  createdAt: DateTime!
 }
 
 type Workspace {
@@ -43,8 +45,8 @@ type Workspace {
   projects: [Project!]!
   tasks(unassociatedOnly: Boolean): [Task!]!
   labels: [Label!]!
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 enum TaskStatus {
@@ -70,8 +72,8 @@ type Project {
   workspaceId: ID!
   workspace: Workspace!
   tasks: [Task!]!
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type Label {
@@ -79,8 +81,8 @@ type Label {
   name: String!
   color: String!
   workspaceId: ID!
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type Task {
@@ -94,8 +96,8 @@ type Task {
   project: Project
   assignee: User
   labels: [Label!]!
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input RegisterInput {

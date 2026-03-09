@@ -8,6 +8,7 @@ import { authResolvers } from './auth.js';
 import { membershipResolvers } from './membership.js';
 import { projectResolvers } from './project.js';
 import { labelResolvers } from './label.js';
+import { DateTimeScalar } from './scalars.js';
 import { taskResolvers } from './task.js';
 import { workspaceResolvers } from './workspace.js';
 
@@ -17,6 +18,7 @@ const typeDefs = readFileSync(resolve(__dirname, 'schema.graphql'), 'utf-8');
 
 // Merge resolvers
 const resolvers: Resolvers = {
+  DateTime: DateTimeScalar,
   Query: {
     ...authResolvers.Query,
     ...workspaceResolvers.Query,

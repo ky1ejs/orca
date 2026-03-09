@@ -7,6 +7,9 @@ const config: CodegenConfig = {
       plugins: ['typescript', 'typescript-resolvers'],
       config: {
         contextType: '../context.js#ServerContext',
+        scalars: {
+          DateTime: 'Date',
+        },
         mappers: {
           Workspace: '@prisma/client#Workspace as WorkspaceModel',
           Project: '@prisma/client#Project as ProjectModel',
