@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { ensureHooks, removeHooks } from './settings.js';
+import { ensureHooks, removeHooks, ensureMcpConfig, removeMcpConfig } from './settings.js';
 
 const HOOK_EVENT_TYPES = ['Stop', 'PermissionRequest', 'UserPromptSubmit'] as const;
 
@@ -317,5 +317,155 @@ describe('removeHooks', () => {
     const result = readSettings(workDir);
     expect(result.customKey).toBe('preserved');
     expect(result.hooks).toBeUndefined();
+  });
+});
+
+describe('ensureMcpConfig', () => {
+  let workDir: string;
+
+  beforeEach(() => {
+    workDir = mkdtempSync(path.join(tmpdir(), 'orca-mcp-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  it('creates .claude/ directory and settings.local.json when they do not exist', () => {
+    ensureMcpConfig(workDir, 9999);
+
+    expect(existsSync(path.join(workDir, '.claude'))).toBe(true);
+    expect(existsSync(settingsPath(workDir))).toBe(true);
+  });
+
+  it('writes mcpServers.orca with correct url and headers', () => {
+    ensureMcpConfig(workDir, 4242);
+
+    const settings = readSettings(workDir) as {
+      mcpServers: Record<
+        string,
+        { url: string; headers: Record<string, string>; allowedEnvVars: string[] }
+      >;
+    };
+
+    expect(settings.mcpServers).toBeDefined();
+    expect(settings.mcpServers.orca).toEqual({
+      url: 'http://127.0.0.1:4242/mcp',
+      headers: { 'X-Orca-Session-Id': '$ORCA_SESSION_ID' },
+      allowedEnvVars: ['ORCA_SESSION_ID'],
+    });
+  });
+
+  it('merges with existing hooks settings', () => {
+    ensureHooks(workDir, 9999);
+    ensureMcpConfig(workDir, 9999);
+
+    const settings = readSettings(workDir);
+    expect(settings.hooks).toBeDefined();
+    expect(settings.mcpServers).toBeDefined();
+  });
+
+  it('preserves other mcpServers entries', () => {
+    mkdirSync(path.join(workDir, '.claude'), { recursive: true });
+    writeFileSync(
+      settingsPath(workDir),
+      JSON.stringify({
+        mcpServers: {
+          other: { url: 'http://localhost:3000/mcp' },
+        },
+      }),
+      'utf-8',
+    );
+
+    ensureMcpConfig(workDir, 9999);
+
+    const settings = readSettings(workDir) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    expect(settings.mcpServers.other.url).toBe('http://localhost:3000/mcp');
+    expect(settings.mcpServers.orca.url).toBe('http://127.0.0.1:9999/mcp');
+  });
+
+  it('is idempotent — calling twice with same port produces same result', () => {
+    ensureMcpConfig(workDir, 9999);
+    const first = readFileSync(settingsPath(workDir), 'utf-8');
+
+    ensureMcpConfig(workDir, 9999);
+    const second = readFileSync(settingsPath(workDir), 'utf-8');
+
+    expect(first).toBe(second);
+  });
+
+  it('updates port when called with different port', () => {
+    ensureMcpConfig(workDir, 1111);
+    ensureMcpConfig(workDir, 2222);
+
+    const settings = readSettings(workDir) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    expect(settings.mcpServers.orca.url).toBe('http://127.0.0.1:2222/mcp');
+  });
+});
+
+describe('removeMcpConfig', () => {
+  let workDir: string;
+
+  beforeEach(() => {
+    workDir = mkdtempSync(path.join(tmpdir(), 'orca-mcp-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  it('removes mcpServers.orca from settings', () => {
+    ensureMcpConfig(workDir, 9999);
+    removeMcpConfig(workDir);
+
+    // File should be deleted since only mcpServers.orca was in it
+    expect(existsSync(settingsPath(workDir))).toBe(false);
+  });
+
+  it('preserves other mcpServers entries', () => {
+    mkdirSync(path.join(workDir, '.claude'), { recursive: true });
+    writeFileSync(
+      settingsPath(workDir),
+      JSON.stringify({
+        mcpServers: {
+          orca: { url: 'http://127.0.0.1:9999/mcp' },
+          other: { url: 'http://localhost:3000/mcp' },
+        },
+      }),
+      'utf-8',
+    );
+
+    removeMcpConfig(workDir);
+
+    const settings = readSettings(workDir) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    expect(settings.mcpServers.orca).toBeUndefined();
+    expect(settings.mcpServers.other.url).toBe('http://localhost:3000/mcp');
+  });
+
+  it('preserves hooks and other settings', () => {
+    ensureHooks(workDir, 9999);
+    ensureMcpConfig(workDir, 9999);
+    removeMcpConfig(workDir);
+
+    const settings = readSettings(workDir);
+    expect(settings.hooks).toBeDefined();
+    expect(settings.mcpServers).toBeUndefined();
+  });
+
+  it('no-op when file does not exist', () => {
+    expect(() => removeMcpConfig(workDir)).not.toThrow();
+  });
+
+  it('deletes file when settings become empty', () => {
+    ensureMcpConfig(workDir, 9999);
+    removeMcpConfig(workDir);
+
+    expect(existsSync(settingsPath(workDir))).toBe(false);
   });
 });

@@ -156,6 +156,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     await updateTask(taskId, { status: newStatus });
   };
 
+  const buildMetadata = () => ({
+    displayId: task.displayId,
+    title: task.title,
+    description: task.description ?? null,
+    projectName: task.project?.name ?? null,
+    workspaceSlug: currentWorkspace?.slug ?? '',
+  });
+
   const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
     if (!projectDirectory) {
       setAgentError({
@@ -167,7 +175,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.launch(taskId, projectDirectory, options);
+    const result = await window.orca.agent.launch(
+      taskId,
+      projectDirectory,
+      options,
+      buildMetadata(),
+    );
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -187,7 +200,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.restart(taskId, errorSession.id, projectDirectory);
+    const result = await window.orca.agent.restart(
+      taskId,
+      errorSession.id,
+      projectDirectory,
+      undefined,
+      buildMetadata(),
+    );
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }

@@ -82,10 +82,19 @@ export interface AgentLaunchOptions {
   planMode?: boolean;
 }
 
+export interface TaskMetadata {
+  displayId: string;
+  title: string;
+  description: string | null;
+  projectName: string | null;
+  workspaceSlug: string;
+}
+
 export interface AgentLaunchParams {
   taskId: string;
   workingDirectory: string;
   options?: AgentLaunchOptions;
+  metadata?: TaskMetadata;
 }
 
 export interface AgentStopParams {
@@ -97,6 +106,7 @@ export interface AgentRestartParams {
   sessionId: string;
   workingDirectory: string;
   options?: AgentLaunchOptions;
+  metadata?: TaskMetadata;
 }
 
 export interface AgentStatusParams {

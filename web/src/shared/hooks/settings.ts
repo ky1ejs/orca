@@ -20,10 +20,46 @@ interface MatcherGroup {
   hooks: HookEntry[];
 }
 
+interface McpServerEntry {
+  url: string;
+  headers?: Record<string, string>;
+  allowedEnvVars?: string[];
+}
+
 interface SettingsFile {
   hooks?: Record<string, MatcherGroup[]>;
+  mcpServers?: Record<string, McpServerEntry>;
   [key: string]: unknown;
 }
+
+// ── Shared file helpers ─────────────────────────────────────────────
+
+function settingsPath(workingDirectory: string): string {
+  return path.join(workingDirectory, '.claude', 'settings.local.json');
+}
+
+function readSettingsFile(workingDirectory: string): SettingsFile {
+  const filePath = settingsPath(workingDirectory);
+  if (!existsSync(filePath)) return {};
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8')) as SettingsFile;
+  } catch {
+    logger.warn(`Invalid JSON in ${filePath}, overwriting`);
+    return {};
+  }
+}
+
+function writeSettingsFile(workingDirectory: string, settings: SettingsFile): void {
+  const filePath = settingsPath(workingDirectory);
+  if (Object.keys(settings).length === 0) {
+    if (existsSync(filePath)) unlinkSync(filePath);
+    return;
+  }
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+}
+
+// ── Hook helpers ────────────────────────────────────────────────────
 
 function buildHookEntry(port: number): HookEntry {
   return {
@@ -41,10 +77,6 @@ function buildMatcherGroup(port: number): MatcherGroup {
     matcher: '',
     hooks: [buildHookEntry(port)],
   };
-}
-
-function settingsPath(workingDirectory: string): string {
-  return path.join(workingDirectory, '.claude', 'settings.local.json');
 }
 
 function isOrcaHookEntry(entry: HookEntry): boolean {
@@ -72,23 +104,7 @@ function migrateToMatcherGroups(entries: unknown[]): MatcherGroup[] {
   });
 }
 
-export function ensureHooks(workingDirectory: string, port: number): void {
-  const filePath = settingsPath(workingDirectory);
-  const dirPath = path.dirname(filePath);
-
-  mkdirSync(dirPath, { recursive: true });
-
-  let settings: SettingsFile = {};
-  if (existsSync(filePath)) {
-    try {
-      const raw = readFileSync(filePath, 'utf-8');
-      settings = JSON.parse(raw) as SettingsFile;
-    } catch {
-      logger.warn(`Invalid JSON in ${filePath}, overwriting with Orca hooks only`);
-      settings = {};
-    }
-  }
-
+function applyHooks(settings: SettingsFile, port: number): void {
   if (!settings.hooks || typeof settings.hooks !== 'object') {
     settings.hooks = {};
   }
@@ -111,45 +127,101 @@ export function ensureHooks(workingDirectory: string, port: number): void {
     }
     settings.hooks[eventType] = migrated;
   }
+}
 
-  writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+function applyMcpConfig(settings: SettingsFile, port: number): void {
+  if (!settings.mcpServers || typeof settings.mcpServers !== 'object') {
+    settings.mcpServers = {};
+  }
+
+  settings.mcpServers.orca = {
+    url: `http://127.0.0.1:${port}/mcp`,
+    headers: {
+      'X-Orca-Session-Id': '$ORCA_SESSION_ID',
+    },
+    allowedEnvVars: ['ORCA_SESSION_ID'],
+  };
+}
+
+function stripHooks(settings: SettingsFile): void {
+  if (!settings.hooks || typeof settings.hooks !== 'object') return;
+
+  for (const eventType of HOOK_EVENT_TYPES) {
+    const existing = settings.hooks[eventType];
+    if (!Array.isArray(existing)) continue;
+
+    const migrated = migrateToMatcherGroups(existing);
+    const filtered = migrated.filter((group) => !isOrcaMatcherGroup(group));
+    if (filtered.length === 0) {
+      delete settings.hooks[eventType];
+    } else {
+      settings.hooks[eventType] = filtered;
+    }
+  }
+
+  if (Object.keys(settings.hooks).length === 0) {
+    delete settings.hooks;
+  }
+}
+
+function stripMcpConfig(settings: SettingsFile): void {
+  if (!settings.mcpServers || typeof settings.mcpServers !== 'object') return;
+
+  delete settings.mcpServers.orca;
+
+  if (Object.keys(settings.mcpServers).length === 0) {
+    delete settings.mcpServers;
+  }
+}
+
+// ── Public API ──────────────────────────────────────────────────────
+
+export function ensureHooks(workingDirectory: string, port: number): void {
+  const settings = readSettingsFile(workingDirectory);
+  applyHooks(settings, port);
+  writeSettingsFile(workingDirectory, settings);
+}
+
+export function ensureMcpConfig(workingDirectory: string, port: number): void {
+  const settings = readSettingsFile(workingDirectory);
+  applyMcpConfig(settings, port);
+  writeSettingsFile(workingDirectory, settings);
+}
+
+export function ensureOrcaSettings(workingDirectory: string, port: number): void {
+  const settings = readSettingsFile(workingDirectory);
+  applyHooks(settings, port);
+  applyMcpConfig(settings, port);
+  writeSettingsFile(workingDirectory, settings);
 }
 
 export function removeHooks(workingDirectory: string): void {
-  const filePath = settingsPath(workingDirectory);
-
-  if (!existsSync(filePath)) return;
-
   try {
-    const raw = readFileSync(filePath, 'utf-8');
-    const settings = JSON.parse(raw) as SettingsFile;
-
-    if (!settings.hooks || typeof settings.hooks !== 'object') return;
-
-    for (const eventType of HOOK_EVENT_TYPES) {
-      const existing = settings.hooks[eventType];
-      if (!Array.isArray(existing)) continue;
-
-      const migrated = migrateToMatcherGroups(existing);
-      const filtered = migrated.filter((group) => !isOrcaMatcherGroup(group));
-      if (filtered.length === 0) {
-        delete settings.hooks[eventType];
-      } else {
-        settings.hooks[eventType] = filtered;
-      }
-    }
-
-    if (Object.keys(settings.hooks).length === 0) {
-      delete settings.hooks;
-    }
-
-    if (Object.keys(settings).length === 0) {
-      unlinkSync(filePath);
-      return;
-    }
-
-    writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+    const settings = readSettingsFile(workingDirectory);
+    stripHooks(settings);
+    writeSettingsFile(workingDirectory, settings);
   } catch (err) {
     logger.error('Failed to remove hooks', err);
+  }
+}
+
+export function removeMcpConfig(workingDirectory: string): void {
+  try {
+    const settings = readSettingsFile(workingDirectory);
+    stripMcpConfig(settings);
+    writeSettingsFile(workingDirectory, settings);
+  } catch (err) {
+    logger.error('Failed to remove MCP config', err);
+  }
+}
+
+export function removeOrcaSettings(workingDirectory: string): void {
+  try {
+    const settings = readSettingsFile(workingDirectory);
+    stripHooks(settings);
+    stripMcpConfig(settings);
+    writeSettingsFile(workingDirectory, settings);
+  } catch (err) {
+    logger.error('Failed to remove Orca settings', err);
   }
 }

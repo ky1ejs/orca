@@ -17,9 +17,11 @@ import {
 } from '../shared/errors.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
-import { ensureHooks, removeHooks } from '../shared/hooks/settings.js';
+import { ensureOrcaSettings, removeOrcaSettings } from '../shared/hooks/settings.js';
+import { writeTaskContext, removeTaskContext } from '../shared/hooks/task-context.js';
 import { logger } from './logger.js';
 import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
+import type { TaskMetadata } from '../shared/daemon-protocol.js';
 
 /**
  * Minimum additional output bytes before we consider Claude to have resumed after a permission
@@ -75,6 +77,7 @@ export class DaemonStatusManager {
     taskId: string,
     workingDirectory: string,
     options?: AgentLaunchOptions,
+    metadata?: TaskMetadata,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
@@ -89,17 +92,35 @@ export class DaemonStatusManager {
         workingDirectory,
       });
 
-      // Ensure Claude Code hooks are configured before spawning
+      // Ensure Claude Code hooks and MCP config are configured before spawning
       const hookPort = this.hookServer?.getPort();
       if (hookPort) {
         try {
-          ensureHooks(workingDirectory, hookPort);
+          ensureOrcaSettings(workingDirectory, hookPort);
         } catch (err) {
-          logger.warn(`Failed to ensure hooks: ${err}`);
+          logger.warn(`Failed to ensure Orca settings: ${err}`);
         }
       }
 
-      const env = { ORCA_SESSION_ID: session.id };
+      // Write task context file
+      if (metadata) {
+        try {
+          writeTaskContext(workingDirectory, metadata);
+        } catch (err) {
+          logger.warn(`Failed to write task context: ${err}`);
+        }
+      }
+
+      const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
+      if (metadata) {
+        env.ORCA_TASK_ID = metadata.displayId;
+        env.ORCA_TASK_UUID = taskId;
+        env.ORCA_TASK_TITLE = metadata.title;
+        env.ORCA_PROJECT_NAME = metadata.projectName ?? '';
+        env.ORCA_WORKSPACE_SLUG = metadata.workspaceSlug;
+        env.ORCA_TASK_DESCRIPTION = (metadata.description ?? '').slice(0, 1000);
+        env.ORCA_SERVER_URL = this.backendUrl;
+      }
 
       try {
         if (options?.planMode) {
@@ -143,9 +164,10 @@ export class DaemonStatusManager {
 
     if (workingDirectory) {
       try {
-        removeHooks(workingDirectory);
+        removeOrcaSettings(workingDirectory);
+        removeTaskContext(workingDirectory);
       } catch (err) {
-        logger.warn(`Failed to remove hooks on stop: ${err}`);
+        logger.warn(`Failed to clean up on stop: ${err}`);
       }
     }
   }
@@ -155,11 +177,12 @@ export class DaemonStatusManager {
     sessionId: string,
     workingDirectory: string,
     options?: AgentLaunchOptions,
+    metadata?: TaskMetadata,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
-    return this.launch(taskId, workingDirectory, options);
+    return this.launch(taskId, workingDirectory, options, metadata);
   }
 
   getStatus(sessionId: string): string | null {
@@ -170,9 +193,10 @@ export class DaemonStatusManager {
   dispose(): void {
     for (const [sessionId, monitor] of this.monitors) {
       try {
-        removeHooks(monitor.workingDirectory);
+        removeOrcaSettings(monitor.workingDirectory);
+        removeTaskContext(monitor.workingDirectory);
       } catch (err) {
-        logger.warn(`Failed to remove hooks on dispose: ${err}`);
+        logger.warn(`Failed to clean up on dispose: ${err}`);
       }
       this.stopMonitoring(sessionId);
     }

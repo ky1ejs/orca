@@ -4,6 +4,14 @@ export interface AgentLaunchOptions {
   planMode?: boolean;
 }
 
+export interface TaskMetadata {
+  displayId: string;
+  title: string;
+  description: string | null;
+  projectName: string | null;
+  workspaceSlug: string;
+}
+
 export interface AgentLaunchResult {
   success: boolean;
   sessionId?: string;
@@ -62,6 +70,7 @@ export interface OrcaAPI {
       taskId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
     ) => Promise<AgentLaunchResult>;
     stop: (sessionId: string) => Promise<void>;
     restart: (
@@ -69,6 +78,7 @@ export interface OrcaAPI {
       sessionId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
@@ -141,11 +151,11 @@ const api: OrcaAPI = {
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
   },
   agent: {
-    launch: (taskId, workingDirectory, options) =>
-      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options),
+    launch: (taskId, workingDirectory, options, metadata) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options, metadata),
     stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
-    restart: (taskId, sessionId, workingDirectory, options) =>
-      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options),
+    restart: (taskId, sessionId, workingDirectory, options, metadata) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options, metadata),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
   lifecycle: {
