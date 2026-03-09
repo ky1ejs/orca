@@ -75,13 +75,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               className={`flex items-center gap-3 rounded-md border px-4 py-3 shadow-dropdown animate-slide-up ${
                 toast.type === 'warning'
                   ? 'border-warning/30 bg-warning/10 text-warning'
-                  : 'border-gray-700 bg-gray-800 text-white'
+                  : 'border-edge bg-surface-raised text-fg'
               }`}
             >
               <span className="text-body-sm">{toast.message}</span>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="ml-2 text-gray-400 hover:text-white"
+                className="ml-2 text-fg-faint hover:text-fg"
               >
                 &times;
               </button>

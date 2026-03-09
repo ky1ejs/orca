@@ -16,16 +16,16 @@ export function ProtocolUpdateDialog({ activeSessions, onConfirm }: ProtocolUpda
 
   return (
     <div className="fixed inset-0 z-modal-backdrop flex items-center justify-center bg-surface-overlay animate-fade-in">
-      <div className="mx-4 w-full max-w-md rounded-lg border border-gray-700 bg-surface-primary p-6 shadow-modal animate-scale-in">
-        <h2 className="text-heading-sm text-white">Update requires restart</h2>
-        <p className="mt-3 text-body-sm text-gray-300">
+      <div className="mx-4 w-full max-w-md rounded-lg border border-edge bg-surface-raised p-6 shadow-modal animate-scale-in">
+        <h2 className="text-heading-sm text-fg">Update requires restart</h2>
+        <p className="mt-3 text-body-sm text-fg-muted">
           This update includes changes that require restarting the terminal daemon. You have{' '}
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-fg">
             {activeSessions} active session{activeSessions === 1 ? '' : 's'}
           </span>{' '}
           that will be terminated.
         </p>
-        <p className="mt-2 text-body-sm text-gray-400">
+        <p className="mt-2 text-body-sm text-fg-faint">
           You can continue using the app, but new terminal features won&apos;t work until the daemon
           is restarted.
         </p>
@@ -44,7 +44,7 @@ export function ProtocolUpdateDialog({ activeSessions, onConfirm }: ProtocolUpda
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={restarting}
-                className="rounded-md px-4 py-2 text-body-sm text-gray-400 hover:text-white disabled:opacity-50"
+                className="rounded-md px-4 py-2 text-body-sm text-fg-muted hover:text-fg disabled:opacity-50"
               >
                 Cancel
               </button>
