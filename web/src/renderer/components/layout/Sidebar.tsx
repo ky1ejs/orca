@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
-            <PanelLeft className={iconSize.md} />
+            <PanelLeft className={iconSize.sm} />
           </button>
           <NotificationBell />
         </div>
@@ -121,6 +121,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <WorkspaceSwitcher />
       <ActiveTerminals entries={activeTerminals} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
+        <div className="px-2 py-2.5 flex items-center gap-2 text-gray-500">
+          <Box className={iconSize.sm} />
+          <span className="text-label-sm font-medium">Projects</span>
+        </div>
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
@@ -133,21 +137,31 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
               return (
                 <li key={project.id}>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => navigate({ view: 'project', id: project.id })}
-                      className={`flex-1 text-left px-2 py-1.5 text-body-sm rounded transition-colors flex items-center gap-1.5 ${
-                        isActive
-                          ? 'bg-gray-800 text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      }`}
-                    >
-                      <Box className={`${iconSize.xs} flex-shrink-0`} />
-                      <span className="truncate">{project.name}</span>
-                    </button>
-                    <button
-                      onClick={() => toggleExpand(project.id)}
-                      className="p-1 text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0"
+                  <button
+                    onClick={() => navigate({ view: 'project', id: project.id })}
+                    className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
+                      isActive
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="flex-1 truncate">{project.name}</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        toggleExpand(project.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          toggleExpand(project.id);
+                        }
+                      }}
+                      className="p-0.5 hover:text-gray-300 transition-colors flex-shrink-0"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? (
@@ -155,8 +169,8 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                       ) : (
                         <ChevronRight className={iconSize.xs} />
                       )}
-                    </button>
-                  </div>
+                    </span>
+                  </button>
 
                   {isExpanded && project.tasks.length > 0 && (
                     <ul className="ml-6 mt-0.5 space-y-0.5">
