@@ -64,6 +64,10 @@ export function replayOutput(sessionId: string): string {
   return Buffer.concat(rows.map((r) => r.chunk)).toString();
 }
 
+export function getOutputSize(sessionId: string): number {
+  return sizeMap.get(sessionId) ?? 0;
+}
+
 export function clearOutput(sessionId: string): void {
   const db = getRawDb();
   db.prepare('DELETE FROM terminal_output_buffer WHERE session_id = ?').run(sessionId);

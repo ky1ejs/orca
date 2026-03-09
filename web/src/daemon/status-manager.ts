@@ -21,6 +21,13 @@ import { ensureHooks, removeHooks } from '../shared/hooks/settings.js';
 import { logger } from './logger.js';
 import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 
+/**
+ * Minimum additional output bytes before we consider Claude to have resumed after a permission
+ * grant. Permission dialog echoes and acknowledgements are typically 10-30 bytes; this threshold
+ * ensures we only transition once actual work output appears.
+ */
+const PERMISSION_RESUME_THRESHOLD = 50;
+
 interface MonitorState {
   interval: ReturnType<typeof setInterval>;
   inputDetector: InputDetector;
@@ -29,6 +36,8 @@ interface MonitorState {
   stopDebounce: ReturnType<typeof setTimeout> | null;
   hookListener: ((event: HookEvent) => void) | null;
   workingDirectory: string;
+  /** Output length when AwaitingPermission was set; used to detect permission granted */
+  permissionOutputLen: number | null;
 }
 
 interface DaemonStatusManagerOptions {
@@ -214,6 +223,7 @@ export class DaemonStatusManager {
         }
         case 'PermissionRequest': {
           cancelDebounce();
+          monitor.permissionOutputLen = this.manager.outputSize(sessionId);
           this.updateStatusAndNotify(sessionId, SessionStatus.AwaitingPermission);
           break;
         }
@@ -244,9 +254,9 @@ export class DaemonStatusManager {
         lastStatus = session.status;
       }
 
-      // Only feed InputDetector if hooks haven't taken over
       const monitor = this.monitors.get(sessionId);
       if (monitor && !monitor.hooksActive) {
+        // Only feed InputDetector if hooks haven't taken over
         try {
           const output = this.manager.replay(sessionId);
           if (output) {
@@ -256,6 +266,19 @@ export class DaemonStatusManager {
           }
         } catch {
           // Session may no longer exist
+        }
+      } else if (
+        monitor &&
+        monitor.hooksActive &&
+        session.status === SessionStatus.AwaitingPermission &&
+        monitor.permissionOutputLen !== null
+      ) {
+        // Claude doesn't fire a hook when permission is granted, so detect it
+        // by watching for new output (Claude resumed work after permission)
+        const currentSize = this.manager.outputSize(sessionId);
+        if (currentSize > monitor.permissionOutputLen + PERMISSION_RESUME_THRESHOLD) {
+          monitor.permissionOutputLen = null;
+          this.updateStatusAndNotify(sessionId, SessionStatus.Running);
         }
       }
     }, 500);
@@ -268,6 +291,7 @@ export class DaemonStatusManager {
       stopDebounce: null,
       hookListener,
       workingDirectory,
+      permissionOutputLen: null,
     });
   }
 
