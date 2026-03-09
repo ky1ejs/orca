@@ -10,8 +10,8 @@ const statusConfig: Record<SessionStatus, { label: string; badgeClass: string }>
     badgeClass: 'bg-success-muted text-success',
   },
   [SessionStatus.WaitingForInput]: {
-    label: 'Waiting for Input',
-    badgeClass: 'bg-warning-muted text-warning',
+    label: 'Idle',
+    badgeClass: 'bg-surface-hover text-fg-muted',
   },
   [SessionStatus.AwaitingPermission]: {
     label: 'Needs Permission',
