@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
+import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { SessionStatus } from '../../../shared/session-status.js';
 
 interface SidebarTask {
@@ -84,6 +85,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const projects = data?.workspace?.projects ?? [];
   const inboxTasks = data?.workspace?.tasks ?? [];
   const activeTerminals = useActiveTerminals(projects, inboxTasks);
+  const activeSessionIds = useSessionActivity();
 
   if (collapsed) {
     return (
@@ -175,7 +177,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         </div>
       </div>
       <WorkspaceSwitcher />
-      <ActiveTerminals entries={activeTerminals} />
+      <ActiveTerminals entries={activeTerminals} activeSessionIds={activeSessionIds} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
         {inboxTasks.length > 0 && (
           <div className="mb-2">

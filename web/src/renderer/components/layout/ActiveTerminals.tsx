@@ -2,7 +2,7 @@ import type { ActiveTerminalEntry } from '../../hooks/useActiveTerminals.js';
 import {
   SessionStatus,
   type SessionStatus as SessionStatusType,
-  statusDotClass,
+  getStatusDotClasses,
 } from '../../../shared/session-status.js';
 import { useNavigation } from '../../navigation/context.js';
 
@@ -19,9 +19,10 @@ const attentionLabel: Partial<Record<SessionStatusType, { text: string; classNam
 
 interface ActiveTerminalsProps {
   entries: ActiveTerminalEntry[];
+  activeSessionIds?: Set<string>;
 }
 
-export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
+export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsProps) {
   const { navigate, current } = useNavigation();
 
   if (entries.length === 0) return null;
@@ -44,7 +45,10 @@ export function ActiveTerminals({ entries }: ActiveTerminalsProps) {
       <ul className="space-y-0.5 max-h-40 overflow-y-auto">
         {entries.map((entry) => {
           const isActive = current.view === 'task' && current.id === entry.taskId;
-          const dotClass = statusDotClass[entry.status as SessionStatusType] ?? 'bg-gray-500';
+          const hasActivity = activeSessionIds
+            ? entry.sessionIds.some((id) => activeSessionIds.has(id))
+            : false;
+          const dotClass = getStatusDotClasses(entry.status as SessionStatusType, hasActivity);
           const label = attentionLabel[entry.status as SessionStatusType];
 
           return (

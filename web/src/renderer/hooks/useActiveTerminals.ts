@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTerminalSessions, type TerminalSessionInfo } from './useTerminalSessions.js';
-import { isActiveSessionStatus } from '../../shared/session-status.js';
+import { SessionStatus, isActiveSessionStatus } from '../../shared/session-status.js';
 
 export interface ActiveTerminalEntry {
   taskId: string;
@@ -8,6 +8,7 @@ export interface ActiveTerminalEntry {
   taskTitle: string;
   projectName: string;
   sessionCount: number;
+  sessionIds: string[];
   status: string;
 }
 
@@ -80,6 +81,7 @@ export function useActiveTerminals(
         taskTitle: info.title,
         projectName: info.projectName,
         sessionCount: taskSessions.length,
+        sessionIds: taskSessions.map((s) => s.id),
         status,
       });
     }
@@ -92,9 +94,9 @@ export function useActiveTerminals(
 function pickMostActiveStatus(sessions: TerminalSessionInfo[]): string {
   // Priority: AWAITING_PERMISSION > WAITING_FOR_INPUT > RUNNING > STARTING
   const statuses = new Set(sessions.map((s) => s.status));
-  if (statuses.has('AWAITING_PERMISSION')) return 'AWAITING_PERMISSION';
-  if (statuses.has('WAITING_FOR_INPUT')) return 'WAITING_FOR_INPUT';
-  if (statuses.has('RUNNING')) return 'RUNNING';
-  if (statuses.has('STARTING')) return 'STARTING';
+  if (statuses.has(SessionStatus.AwaitingPermission)) return SessionStatus.AwaitingPermission;
+  if (statuses.has(SessionStatus.WaitingForInput)) return SessionStatus.WaitingForInput;
+  if (statuses.has(SessionStatus.Running)) return SessionStatus.Running;
+  if (statuses.has(SessionStatus.Starting)) return SessionStatus.Starting;
   return sessions[0].status;
 }

@@ -16,6 +16,7 @@ export type BroadcastFn = (event: string, params: unknown) => void;
 
 export class DaemonPtyManager {
   private processes = new Map<string, PtyProcess>();
+  private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
 
@@ -44,6 +45,7 @@ export class DaemonPtyManager {
 
     shell.onData((data: string) => {
       if (this.disposed) return;
+      this.lastDataAt.set(sessionId, Date.now());
       try {
         appendOutput(sessionId, data);
       } catch {
@@ -54,6 +56,7 @@ export class DaemonPtyManager {
 
     shell.onExit(({ exitCode }: { exitCode: number }) => {
       this.processes.delete(sessionId);
+      this.lastDataAt.delete(sessionId);
       if (this.disposed) return;
       try {
         updateSession(sessionId, {
@@ -82,6 +85,7 @@ export class DaemonPtyManager {
     if (proc) {
       proc.pty.kill();
       this.processes.delete(sessionId);
+      this.lastDataAt.delete(sessionId);
     }
   }
 
@@ -107,6 +111,11 @@ export class DaemonPtyManager {
       proc.pty.kill('SIGTERM');
     }
     this.processes.clear();
+    this.lastDataAt.clear();
+  }
+
+  getLastDataAt(sessionId: string): number | undefined {
+    return this.lastDataAt.get(sessionId);
   }
 
   getManagedPids(): Map<string, number> {

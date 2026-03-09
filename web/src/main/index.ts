@@ -15,6 +15,7 @@ import type {
   PtyExitEvent,
   PidSweepSessionsDiedEvent,
   SessionStatusChangedEvent,
+  SessionActivityChangedEvent,
 } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
 import { exportDiagnostics } from './diagnostics.js';
@@ -95,11 +96,17 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
     sendToAllWindows('session:status-changed', { sessionId, status });
   });
 
+  const unsub5 = client.subscribe(DAEMON_EVENTS.SESSION_ACTIVITY_CHANGED, (params) => {
+    const { sessionId, active } = params as SessionActivityChangedEvent;
+    sendToAllWindows('session:activity-changed', { sessionId, active });
+  });
+
   cleanupDaemonEvents = () => {
     unsub1();
     unsub2();
     unsub3();
     unsub4();
+    unsub5();
   };
 }
 
