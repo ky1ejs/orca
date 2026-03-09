@@ -1,5 +1,7 @@
 # Orca
 
+[**Download the latest release**](https://github.com/ky1ejs/orca/releases/latest)
+
 ![](./docs/orca-screenshot.png)
 
 ## What is Orca?
