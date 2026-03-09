@@ -8,15 +8,10 @@ import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
 import { listSystemFonts } from '../config/list-fonts.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 import type { DaemonClient } from '../daemon/client.js';
-import type { HookServer } from '../hooks/server.js';
 import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 import type { AgentLaunchOptions } from '../../shared/daemon-protocol.js';
 
-let daemonClient: DaemonClient | null = null;
-
-export function registerIpcHandlers(client: DaemonClient, _hookServer: HookServer | null): void {
-  daemonClient = client;
-
+export function registerIpcHandlers(client: DaemonClient): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
   ipcMain.handle(IPC_CHANNELS.DB_GET_SESSIONS, () => {
     return client.request(DAEMON_METHODS.DB_GET_SESSIONS);
@@ -155,11 +150,4 @@ export function registerIpcHandlers(client: DaemonClient, _hookServer: HookServe
   ipcMain.handle(IPC_CHANNELS.AGENT_STATUS, (_event, sessionId: string) => {
     return client.request(DAEMON_METHODS.AGENT_STATUS, { sessionId });
   });
-}
-
-export function getDaemonClient(): DaemonClient {
-  if (!daemonClient) {
-    throw new Error('Daemon client not initialized');
-  }
-  return daemonClient;
 }

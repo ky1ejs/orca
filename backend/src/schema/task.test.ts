@@ -119,7 +119,7 @@ describe('task resolvers', () => {
 
       const result = await taskResolvers.Mutation.createTask(
         {} as never,
-        { input: { title: 'New Task', projectId: 'p1' } },
+        { input: { title: 'New Task', projectId: 'p1', workspaceId: 'ws1' } },
         ctx as never,
       );
       expect(result).toEqual(task);
@@ -162,6 +162,7 @@ describe('task resolvers', () => {
             title: 'New Task',
             status: TaskStatus.IN_PROGRESS,
             projectId: 'p1',
+            workspaceId: 'ws1',
           },
         },
         ctx as never,
@@ -179,6 +180,41 @@ describe('task resolvers', () => {
           displayId: 'PERSONAL-1',
         },
       });
+    });
+
+    it('createTask creates without projectId (inbox task)', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '2',
+        title: 'Inbox Task',
+        status: 'TODO',
+        projectId: null,
+        workspaceId: 'ws1',
+        sequenceNumber: 1,
+        displayId: 'PERSONAL-1',
+      };
+      ctx.prisma.task.create.mockResolvedValue(task);
+
+      const result = await taskResolvers.Mutation.createTask(
+        {} as never,
+        { input: { title: 'Inbox Task', workspaceId: 'ws1' } },
+        ctx as never,
+      );
+      expect(result).toEqual(task);
+      expect(ctx.prisma.task.create).toHaveBeenCalledWith({
+        data: {
+          title: 'Inbox Task',
+          description: undefined,
+          status: 'TODO',
+          priority: 'NONE',
+          projectId: null,
+          workspaceId: 'ws1',
+          sequenceNumber: 1,
+          displayId: 'PERSONAL-1',
+        },
+      });
+      // Should not have tried to look up a project
+      expect(ctx.prisma.project.findUnique).not.toHaveBeenCalled();
     });
 
     it('updateTask updates and publishes', async () => {
@@ -229,6 +265,29 @@ describe('task resolvers', () => {
       expect(ctx.prisma.task.update).toHaveBeenCalledWith({
         where: { id: '1' },
         data: { projectId: 'p2' },
+      });
+    });
+
+    it('updateTask removes projectId with explicit null', async () => {
+      const ctx = createMockContext();
+      const task = {
+        id: '1',
+        title: 'Task 1',
+        projectId: 'p1',
+        workspaceId: 'ws1',
+      };
+      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      ctx.prisma.task.update.mockResolvedValue({ ...task, projectId: null });
+
+      const result = await taskResolvers.Mutation.updateTask(
+        {} as never,
+        { id: '1', input: { projectId: null } },
+        ctx as never,
+      );
+      expect(result.projectId).toBeNull();
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { projectId: null },
       });
     });
 
@@ -292,7 +351,9 @@ describe('task resolvers', () => {
       await expect(
         taskResolvers.Mutation.createTask(
           {} as never,
-          { input: { title: 'Task', projectId: 'p1', assigneeId: 'nonmember' } },
+          {
+            input: { title: 'Task', projectId: 'p1', workspaceId: 'ws1', assigneeId: 'nonmember' },
+          },
           ctx as never,
         ),
       ).rejects.toThrow('Assignee must be a workspace member');
@@ -305,7 +366,9 @@ describe('task resolvers', () => {
       await expect(
         taskResolvers.Mutation.createTask(
           {} as never,
-          { input: { title: 'Task', projectId: 'p1', labelIds: ['bad-label'] } },
+          {
+            input: { title: 'Task', projectId: 'p1', workspaceId: 'ws1', labelIds: ['bad-label'] },
+          },
           ctx as never,
         ),
       ).rejects.toThrow('One or more labels do not belong to this workspace');
@@ -394,7 +457,7 @@ describe('task resolvers', () => {
     it('project resolves the parent project', async () => {
       const ctx = createMockContext();
       const project = { id: 'p1', name: 'Project 1' };
-      ctx.prisma.project.findUniqueOrThrow.mockResolvedValue(project);
+      ctx.prisma.project.findUnique.mockResolvedValue(project);
 
       const result = await taskResolvers.Task.project(
         { projectId: 'p1' } as never,
@@ -402,7 +465,19 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(project);
-      expect(ctx.prisma.project.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'p1' } });
+      expect(ctx.prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: 'p1' } });
+    });
+
+    it('project resolves null when projectId is null', async () => {
+      const ctx = createMockContext();
+
+      const result = await taskResolvers.Task.project(
+        { projectId: null } as never,
+        {},
+        ctx as never,
+      );
+      expect(result).toBeNull();
+      expect(ctx.prisma.project.findUnique).not.toHaveBeenCalled();
     });
 
     it('assignee resolves null when no assigneeId', async () => {

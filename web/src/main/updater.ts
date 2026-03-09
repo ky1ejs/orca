@@ -2,6 +2,7 @@ import { BrowserWindow, dialog } from 'electron';
 // electron-updater is CJS — named imports don't work in ESM
 import electronUpdater from 'electron-updater';
 const { autoUpdater } = electronUpdater;
+import { logger } from './logger.js';
 
 type MenuStateCallback = (label: string, enabled: boolean) => void;
 
@@ -17,18 +18,18 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   if (process.env.NODE_ENV === 'development') return;
 
   autoUpdater.on('checking-for-update', () => {
-    console.log('[updater] Checking for update...');
+    logger.info('Checking for update...');
     onMenuStateChange?.('Checking for Updates...', false);
   });
 
   autoUpdater.on('update-available', (info) => {
-    console.log(`[updater] Update available: ${info.version}`);
+    logger.info(`Update available: ${info.version}`);
     onMenuStateChange?.('Downloading Update...', false);
     isManualCheck = false;
   });
 
   autoUpdater.on('update-not-available', () => {
-    console.log('[updater] No update available');
+    logger.info('No update available');
     if (isManualCheck) {
       dialog.showMessageBox({
         type: 'info',
@@ -42,7 +43,7 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    console.log(`[updater] Update downloaded: ${info.version}`);
+    logger.info(`Update downloaded: ${info.version}`);
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('update:ready', info.version);
     }
@@ -51,7 +52,7 @@ export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   });
 
   autoUpdater.on('error', (err) => {
-    console.error('[updater] Error:', err.message);
+    logger.error('Update error', err);
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('update:error', err.message);
     }

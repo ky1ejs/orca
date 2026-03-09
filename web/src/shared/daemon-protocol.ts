@@ -44,6 +44,7 @@ export interface PtySpawnParams {
   command: string;
   args: string[];
   cwd: string;
+  env?: Record<string, string>;
 }
 
 export interface PtyWriteParams {
@@ -137,6 +138,7 @@ export interface ProjectDirDeleteParams {
 
 export interface DaemonStatusResult {
   version: string;
+  protocolVersion: number;
   uptime: number;
   activeSessions: number;
   connectedClients: number;
@@ -163,16 +165,29 @@ export interface SessionStatusChangedEvent {
   status: string;
 }
 
+export interface SessionActivityChangedEvent {
+  sessionId: string;
+  active: boolean;
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+
+/**
+ * Bump this when the daemon protocol changes in a breaking way.
+ * A mismatch forces a daemon restart even if sessions are active.
+ * Non-breaking changes (new optional fields, new methods) don't need a bump.
+ */
+export const DAEMON_PROTOCOL_VERSION = 1;
 
 export const ORCA_DIR = join(homedir(), '.orca');
 export const DAEMON_SOCKET_PATH = join(ORCA_DIR, 'daemon.sock');
 export const DAEMON_PID_FILE = join(ORCA_DIR, 'daemon.pid');
 export const DAEMON_DB_PATH = join(ORCA_DIR, 'orca.db');
 export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
+export const MAIN_LOG_FILE = join(ORCA_DIR, 'main.log');
 
 /** Methods the daemon supports */
 export const DAEMON_METHODS = {
@@ -208,4 +223,5 @@ export const DAEMON_EVENTS = {
   PTY_EXIT: 'pty.exit',
   PID_SWEEP_SESSIONS_DIED: 'pid-sweep.sessions-died',
   SESSION_STATUS_CHANGED: 'session.statusChanged',
+  SESSION_ACTIVITY_CHANGED: 'session.activityChanged',
 } as const;

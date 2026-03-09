@@ -4,16 +4,29 @@ import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
 import { DaemonClient } from './daemon/client.js';
 import { DaemonConnector } from './daemon/connector.js';
+import type { EnsureRunningResult } from './daemon/connector.js';
 import { readToken } from './pty/auth.js';
 import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
-import { HookServer } from './hooks/server.js';
 import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
   PtyDataEvent,
   PtyExitEvent,
   PidSweepSessionsDiedEvent,
+  SessionStatusChangedEvent,
+  SessionActivityChangedEvent,
 } from '../shared/daemon-protocol.js';
+import { logger } from './logger.js';
+import { exportDiagnostics } from './diagnostics.js';
+import { DockBadgeManager } from './dock-badge.js';
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', reason);
+});
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -25,8 +38,8 @@ if (process.env.NODE_ENV === 'development') {
 let mainWindow: BrowserWindow | null = null;
 let daemonClient: DaemonClient | null = null;
 let daemonConnector: DaemonConnector | null = null;
-let hookServer: HookServer | null = null;
 let cleanupDaemonEvents: (() => void) | null = null;
+const dockBadge = new DockBadgeManager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -77,13 +90,27 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
 
   const unsub3 = client.subscribe(DAEMON_EVENTS.PID_SWEEP_SESSIONS_DIED, (params) => {
     const { sessionIds } = params as PidSweepSessionsDiedEvent;
+    dockBadge.handleSessionsDied(sessionIds);
     sendToAllWindows('pid-sweep:sessions-died', sessionIds);
+  });
+
+  const unsub4 = client.subscribe(DAEMON_EVENTS.SESSION_STATUS_CHANGED, (params) => {
+    const { sessionId, status } = params as SessionStatusChangedEvent;
+    dockBadge.handleStatusChange(sessionId, status);
+    sendToAllWindows('session:status-changed', { sessionId, status });
+  });
+
+  const unsub5 = client.subscribe(DAEMON_EVENTS.SESSION_ACTIVITY_CHANGED, (params) => {
+    const { sessionId, active } = params as SessionActivityChangedEvent;
+    sendToAllWindows('session:activity-changed', { sessionId, active });
   });
 
   cleanupDaemonEvents = () => {
     unsub1();
     unsub2();
     unsub3();
+    unsub4();
+    unsub5();
   };
 }
 
@@ -101,37 +128,52 @@ async function pushTokenToDaemon(client: DaemonClient): Promise<void> {
   }
 }
 
+/**
+ * Re-subscribe to all active sessions so PTY data flows after reconnect.
+ */
+async function resubscribeToActiveSessions(client: DaemonClient): Promise<void> {
+  try {
+    const sessions = (await client.request(DAEMON_METHODS.DB_GET_SESSIONS)) as Array<{
+      id: string;
+      status: string;
+    }>;
+    dockBadge.initFromSessions(sessions);
+    const active = sessions.filter((s) => isActiveSessionStatus(s.status));
+    await Promise.all(
+      active.map((s) => client.request(DAEMON_METHODS.PTY_SUBSCRIBE, { sessionId: s.id })),
+    );
+  } catch {
+    // Best effort — sessions may not exist
+  }
+}
+
 app.whenReady().then(async () => {
   // Set dock icon on macOS
   try {
     app.dock?.setIcon(iconPath);
   } catch (err) {
-    console.warn('Failed to set dock icon:', err);
+    logger.warn(`Failed to set dock icon: ${err}`);
   }
 
   // Create and connect to daemon
   daemonClient = new DaemonClient();
   daemonConnector = new DaemonConnector(daemonClient);
 
+  let startupResult: EnsureRunningResult = {
+    reconnected: false,
+    activeSessions: 0,
+    pendingProtocolUpdate: false,
+  };
+
   try {
-    await daemonConnector.ensureRunning();
-    console.log('Connected to PTY daemon');
+    startupResult = await daemonConnector.ensureRunning();
+    logger.info('Connected to PTY daemon');
   } catch (err) {
-    console.error('Failed to connect to daemon:', err);
+    logger.error('Failed to connect to daemon', err);
     dialog.showErrorBox(
       'Daemon Error',
       'Failed to start the PTY daemon. Terminal sessions will not work.',
     );
-  }
-
-  // Start hook server for Claude Code lifecycle events
-  hookServer = new HookServer();
-  try {
-    await hookServer.start();
-    console.log(`Hook server started on port ${hookServer.getPort()}`);
-  } catch (err) {
-    console.warn('Failed to start hook server:', err);
-    hookServer = null;
   }
 
   // Forward daemon events to renderer
@@ -140,24 +182,30 @@ app.whenReady().then(async () => {
   // Push auth token to daemon
   await pushTokenToDaemon(daemonClient);
 
+  // Re-subscribe to active sessions if reconnecting to existing daemon
+  if (startupResult.reconnected) {
+    await resubscribeToActiveSessions(daemonClient);
+  }
+
   // Handle reconnection
   daemonConnector.setOnReconnect(async () => {
-    console.log('Reconnected to PTY daemon');
+    logger.info('Reconnected to PTY daemon');
     setupDaemonEventForwarding(daemonClient!);
     await pushTokenToDaemon(daemonClient!);
+    await resubscribeToActiveSessions(daemonClient!);
     sendToAllWindows('daemon:reconnected');
   });
 
   daemonConnector.setOnDisconnect(() => {
-    console.log('Disconnected from PTY daemon');
+    logger.info('Disconnected from PTY daemon');
     sendToAllWindows('daemon:disconnected');
   });
 
   // Register IPC handlers (proxy to daemon)
-  registerIpcHandlers(daemonClient, hookServer);
+  registerIpcHandlers(daemonClient);
 
   // App menu (before auto-updater so menu exists when first check fires)
-  initAppMenu({ onCheckForUpdates: checkForUpdates });
+  initAppMenu({ onCheckForUpdates: checkForUpdates, onExportDiagnostics: exportDiagnostics });
 
   // Auto-update — no more session termination warning!
   initAutoUpdater(setCheckForUpdatesState);
@@ -166,6 +214,28 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+
+  // Notify renderer after window is ready
+  if (startupResult.reconnected && startupResult.activeSessions > 0) {
+    mainWindow!.webContents.once('did-finish-load', () => {
+      if (startupResult.pendingProtocolUpdate) {
+        // Breaking protocol change — tell the renderer so it can prompt the user
+        mainWindow!.webContents.send(
+          'daemon:protocol-update-required',
+          startupResult.activeSessions,
+        );
+      } else {
+        mainWindow!.webContents.send('startup:interrupted-sessions', startupResult.activeSessions);
+      }
+    });
+  }
+
+  // Handle user confirming daemon restart after protocol update
+  ipcMain.handle('daemon:force-restart', async () => {
+    await daemonConnector!.forceRestart();
+    setupDaemonEventForwarding(daemonClient!);
+    await pushTokenToDaemon(daemonClient!);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -181,8 +251,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  dockBadge.clear();
   daemonConnector?.stopReconnection();
-  hookServer?.stop().catch(() => {});
 
   if (isAutoUpdateRestart) {
     // Update restart: just disconnect — daemon stays alive, sessions survive.

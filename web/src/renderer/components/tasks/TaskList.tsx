@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { useCreateTask } from '../../hooks/useGraphQL.js';
+import { useWorkspace } from '../../workspace/context.js';
 import { EmptyTaskList } from '../layout/EmptyState.js';
 import type { TaskStatus } from '../../graphql/__generated__/generated.js';
 
@@ -19,14 +20,16 @@ interface TaskListProps {
 
 export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
   const { createTask } = useCreateTask();
+  const { currentWorkspace } = useWorkspace();
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
 
   const handleCreate = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !currentWorkspace) return;
     await createTask({
       title: title.trim(),
       projectId,
+      workspaceId: currentWorkspace.id,
     });
     setTitle('');
     setShowCreate(false);

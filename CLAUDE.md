@@ -5,6 +5,9 @@
 ### Worktrees
 You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
+### Run simplifier
+When you've finished a coding pass, use the `/simplify` skill to refactor and simplify your code. This will help keep the codebase clean and maintainable.
+
 ### Commands
 - Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
 - Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down.
@@ -12,6 +15,9 @@ You must NEVER make changes on main or in the main worktree. Always create a wor
 
 ### Keep documentation up to date
 When making changes, always check for documentation that may need updating (e.g., README files, CLAUDE.md, inline docs, code comments). Update any documentation that is affected by your changes.
+
+### End with a PR
+When you've verified that all criteria of the plan have been completed and all tests are passing, create a pull request and share the link so the developer can review it.
 
 ## Architecture
 
@@ -52,7 +58,8 @@ No workspaces — each package manages its own dependencies with `bun install`.
 
 - **ESLint** — flat config (`eslint.config.js`) per package, TypeScript + React rules (web only)
 - **Prettier** — single quotes, trailing commas, semicolons, 100 char width (`.prettierrc` per package)
-- Run `bun run validate` in each package before pushing (lint + format:check + typecheck + test)
+- **Knip** — dead code detection (`knip.json` per package), catches unused exports, files, and dependencies
+- Run `bun run validate` in each package before pushing (lint + format:check + knip + typecheck + test)
 
 ## Testing
 
@@ -119,7 +126,7 @@ These features require Electron's main process and cannot run in a plain browser
 
 - Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`, `fix/pty-cleanup`)
 - All PRs target `main`
-- CI must pass (lint, format, typecheck, test)
+- CI must pass (lint, format, knip, typecheck, test)
 
 ## Commands
 
@@ -130,7 +137,8 @@ All commands are run within each package directory (`backend/`, `web/`):
 - `bun run format` / `bun run format:check` — Prettier
 - `bun run typecheck` — TypeScript check
 - `bun run test` — Vitest
-- `bun run validate` — all checks (lint + format:check + typecheck + test)
+- `bun run knip` — dead code check (unused exports, files, dependencies)
+- `bun run validate` — all checks (lint + format:check + knip + typecheck + test)
 - `bun run seed --email <email> --name <name> --password <pass>` — create/update a user (backend)
 - `bun run seed:dev` — create default dev user (backend)
 - `docker compose up -d` / `docker compose down` — Postgres

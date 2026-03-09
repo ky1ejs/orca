@@ -3,15 +3,30 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { Provider, Client } from 'urql';
-import { never } from 'wonka';
+import { never, fromValue } from 'wonka';
 import { TaskList } from './TaskList.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
+import { WorkspaceProvider } from '../../workspace/context.js';
 
 afterEach(cleanup);
 
+const MOCK_WORKSPACE = {
+  id: 'ws1',
+  name: 'Personal',
+  slug: 'personal',
+  createdAt: '',
+  updatedAt: '',
+};
+
 function createMockClient() {
   return {
-    executeQuery: vi.fn(() => never),
+    executeQuery: vi.fn(({ query }) => {
+      const queryStr = typeof query === 'string' ? query : (query?.loc?.source?.body ?? '');
+      if (queryStr.includes('query Workspaces')) {
+        return fromValue({ data: { workspaces: [MOCK_WORKSPACE] } });
+      }
+      return never;
+    }),
     executeMutation: vi.fn(() => never),
     executeSubscription: vi.fn(() => never),
   } as unknown as Client;
@@ -28,7 +43,9 @@ describe('TaskList', () => {
 
     render(
       <Provider value={client}>
-        <TaskList projectId="proj-1" tasks={tasks} onTaskClick={vi.fn()} />
+        <WorkspaceProvider>
+          <TaskList projectId="proj-1" tasks={tasks} onTaskClick={vi.fn()} />
+        </WorkspaceProvider>
       </Provider>,
     );
 
@@ -45,7 +62,9 @@ describe('TaskList', () => {
 
     render(
       <Provider value={client}>
-        <TaskList projectId="proj-1" tasks={[]} onTaskClick={vi.fn()} />
+        <WorkspaceProvider>
+          <TaskList projectId="proj-1" tasks={[]} onTaskClick={vi.fn()} />
+        </WorkspaceProvider>
       </Provider>,
     );
 
@@ -57,7 +76,9 @@ describe('TaskList', () => {
 
     render(
       <Provider value={client}>
-        <TaskList projectId="proj-1" tasks={[]} onTaskClick={vi.fn()} />
+        <WorkspaceProvider>
+          <TaskList projectId="proj-1" tasks={[]} onTaskClick={vi.fn()} />
+        </WorkspaceProvider>
       </Provider>,
     );
 
@@ -71,7 +92,9 @@ describe('TaskList', () => {
 
     render(
       <Provider value={client}>
-        <TaskList projectId="proj-1" tasks={tasks} onTaskClick={onTaskClick} />
+        <WorkspaceProvider>
+          <TaskList projectId="proj-1" tasks={tasks} onTaskClick={onTaskClick} />
+        </WorkspaceProvider>
       </Provider>,
     );
 

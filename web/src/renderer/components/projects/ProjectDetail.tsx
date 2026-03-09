@@ -21,7 +21,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { data, fetching, error } = useProject(projectId);
   const { updateProject } = useUpdateProject();
   const { deleteProject } = useDeleteProject();
-  const { navigate, goBack } = useNavigation();
+  const { navigate, navigateBack } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
@@ -71,13 +71,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   const handleDelete = async () => {
     await deleteProject(projectId);
-    goBack();
+    navigateBack({ view: 'projects' });
   };
 
   return (
     <div className="p-6">
       <button
-        onClick={goBack}
+        onClick={() => navigateBack({ view: 'projects' })}
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
         <ArrowLeft className={`${iconSize.sm} mr-1`} />

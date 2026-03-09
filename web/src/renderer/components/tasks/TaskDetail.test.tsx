@@ -8,7 +8,7 @@ import { SessionStatus } from '../../../shared/session-status.js';
 const mockUpdateTask = vi.fn().mockResolvedValue({});
 const mockDeleteTask = vi.fn().mockResolvedValue({});
 const mockRefreshSessions = vi.fn();
-const mockGoBack = vi.fn();
+const mockNavigateBack = vi.fn();
 const mockNavigate = vi.fn();
 const mockUpdateDirectory = vi.fn();
 const mockAgentStop = vi.fn().mockResolvedValue(undefined);
@@ -65,7 +65,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
 }));
 
 vi.mock('../../navigation/context.js', () => ({
-  useNavigation: () => ({ goBack: mockGoBack, navigate: mockNavigate }),
+  useNavigation: () => ({ navigateBack: mockNavigateBack, navigate: mockNavigate }),
 }));
 
 vi.mock('../../workspace/context.js', () => ({
@@ -136,6 +136,29 @@ async function importAndRender(taskId = 'task-1') {
 }
 
 describe('TaskDetail', () => {
+  describe('back navigation', () => {
+    it('back button shows project name and calls navigateBack', async () => {
+      await importAndRender();
+
+      const backButton = screen.getByText(/Back to Test Project/);
+      expect(backButton).toBeInTheDocument();
+
+      fireEvent.click(backButton);
+      expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+    });
+
+    it('delete calls navigateBack to parent project', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Delete'));
+
+      await vi.waitFor(() => {
+        expect(mockDeleteTask).toHaveBeenCalledWith('task-1');
+        expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+      });
+    });
+  });
+
   describe('Close Terminal button', () => {
     it('shows Close Terminal button when session is active', async () => {
       mockSessions = [{ id: 'sess-1', status: SessionStatus.Running }];

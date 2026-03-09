@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTerminalSessions, type TerminalSessionInfo } from './useTerminalSessions.js';
-import { isActiveSessionStatus } from '../../shared/session-status.js';
+import { SessionStatus, isActiveSessionStatus } from '../../shared/session-status.js';
 
 export interface ActiveTerminalEntry {
   taskId: string;
@@ -8,16 +8,26 @@ export interface ActiveTerminalEntry {
   taskTitle: string;
   projectName: string;
   sessionCount: number;
+  sessionIds: string[];
   status: string;
+}
+
+interface TaskRef {
+  id: string;
+  displayId: string;
+  title: string;
 }
 
 interface ProjectData {
   id: string;
   name: string;
-  tasks: Array<{ id: string; displayId: string; title: string }>;
+  tasks: TaskRef[];
 }
 
-export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry[] {
+export function useActiveTerminals(
+  projects: ProjectData[],
+  inboxTasks: TaskRef[] = [],
+): ActiveTerminalEntry[] {
   const { sessions } = useTerminalSessions();
 
   return useMemo(() => {
@@ -33,6 +43,15 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
           displayId: task.displayId,
           title: task.title,
           projectName: project.name,
+        });
+      }
+    }
+    for (const task of inboxTasks) {
+      if (!taskLookup.has(task.id)) {
+        taskLookup.set(task.id, {
+          displayId: task.displayId,
+          title: task.title,
+          projectName: 'Inbox',
         });
       }
     }
@@ -62,21 +81,22 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
         taskTitle: info.title,
         projectName: info.projectName,
         sessionCount: taskSessions.length,
+        sessionIds: taskSessions.map((s) => s.id),
         status,
       });
     }
 
     return entries;
-  }, [sessions, projects]);
+  }, [sessions, projects, inboxTasks]);
 }
 
 /** Pick the most prominent status to display for a group of sessions. */
 function pickMostActiveStatus(sessions: TerminalSessionInfo[]): string {
   // Priority: AWAITING_PERMISSION > WAITING_FOR_INPUT > RUNNING > STARTING
   const statuses = new Set(sessions.map((s) => s.status));
-  if (statuses.has('AWAITING_PERMISSION')) return 'AWAITING_PERMISSION';
-  if (statuses.has('WAITING_FOR_INPUT')) return 'WAITING_FOR_INPUT';
-  if (statuses.has('RUNNING')) return 'RUNNING';
-  if (statuses.has('STARTING')) return 'STARTING';
+  if (statuses.has(SessionStatus.AwaitingPermission)) return SessionStatus.AwaitingPermission;
+  if (statuses.has(SessionStatus.WaitingForInput)) return SessionStatus.WaitingForInput;
+  if (statuses.has(SessionStatus.Running)) return SessionStatus.Running;
+  if (statuses.has(SessionStatus.Starting)) return SessionStatus.Starting;
   return sessions[0].status;
 }

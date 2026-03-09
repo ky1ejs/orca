@@ -23,8 +23,18 @@ export function isActiveSessionStatus(status: string): boolean {
   return (ACTIVE_SESSION_STATUSES as readonly string[]).includes(status);
 }
 
+/** Statuses that indicate the session is blocked and needs user attention. */
+const NEEDS_ATTENTION_STATUSES: readonly SessionStatus[] = [
+  SessionStatus.AwaitingPermission,
+  SessionStatus.WaitingForInput,
+];
+
+export function isNeedsAttentionStatus(status: string): boolean {
+  return (NEEDS_ATTENTION_STATUSES as readonly string[]).includes(status);
+}
+
 /** CSS classes for status indicator dots. */
-export const statusDotClass: Record<SessionStatus, string> = {
+const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.Running]: 'bg-success',
   [SessionStatus.Exited]: 'bg-gray-500',
   [SessionStatus.Error]: 'bg-error',
@@ -32,3 +42,21 @@ export const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.WaitingForInput]: 'bg-warning animate-pulse',
   [SessionStatus.AwaitingPermission]: 'bg-warning animate-pulse',
 };
+
+/** CSS glow class applied when a session has recent PTY output activity. */
+const statusGlowClass: Record<SessionStatus, string> = {
+  [SessionStatus.Running]: 'glow-success',
+  [SessionStatus.Starting]: 'glow-info',
+  [SessionStatus.WaitingForInput]: 'glow-warning',
+  [SessionStatus.AwaitingPermission]: 'glow-orange',
+  [SessionStatus.Exited]: '',
+  [SessionStatus.Error]: '',
+};
+
+/** Combine base dot classes with optional glow. */
+export function getStatusDotClasses(status: SessionStatus, active: boolean): string {
+  const base = statusDotClass[status] ?? 'bg-gray-500';
+  if (!active) return base;
+  const glow = statusGlowClass[status] ?? '';
+  return glow ? `${base} ${glow}` : base;
+}

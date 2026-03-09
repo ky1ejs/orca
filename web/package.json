@@ -15,10 +15,11 @@
     "build:daemon": "node scripts/build-daemon.mjs",
     "typecheck": "bun run codegen && tsc --noEmit",
     "test": "bun run setup && ELECTRON_RUN_AS_NODE=1 electron ./node_modules/.bin/vitest run",
-    "validate": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build",
+    "validate": "bun run lint && bun run format:check && bun run knip && bun run typecheck && bun run test && bun run build",
     "build:mac": "bun run build && electron-builder --mac --config electron-builder.yml",
     "codegen": "graphql-codegen --config codegen.ts",
-    "drizzle:generate": "drizzle-kit generate"
+    "drizzle:generate": "drizzle-kit generate",
+    "knip": "knip"
   },
   "dependencies": {
     "@urql/exchange-graphcache": "^9.0.0",
@@ -54,17 +55,19 @@
     "@typescript-eslint/parser": "^8.28.0",
     "@vitejs/plugin-react": "^4.3.4",
     "drizzle-kit": "^0.31.9",
-    "esbuild": "^0.25.0",
     "electron": "^35.1.2",
     "electron-builder": "^25.1.8",
     "electron-vite": "^5.0.0",
+    "esbuild": "^0.25.0",
     "eslint": "^9.22.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^25.0.1",
+    "knip": "^5.86.0",
     "prettier": "^3.5.3",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.9"
+    "vitest": "^3.0.9",
+    "wonka": "^6.3.5"
   }
 }

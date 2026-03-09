@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useQuery } from 'urql';
 import type { WorkspaceRole } from '../graphql/__generated__/generated.js';
+import { WorkspacesQueryDocument } from '../graphql/queries.js';
 
 const STORAGE_KEY = 'orca:activeWorkspaceSlug';
 
@@ -30,19 +31,6 @@ interface WorkspaceContextValue {
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
-
-const WorkspacesQueryDocument = /* GraphQL */ `
-  query WorkspacesContext {
-    workspaces {
-      id
-      name
-      slug
-      role
-      createdAt
-      updatedAt
-    }
-  }
-`;
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [result] = useQuery({ query: WorkspacesQueryDocument });

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Check, X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { useAcceptInvitation, useDeclineInvitation } from '../../hooks/useGraphQL.js';
+import { useWorkspace } from '../../workspace/context.js';
 
 interface Invitation {
   id: string;
@@ -19,15 +20,17 @@ interface InvitationListProps {
 export function InvitationList({ invitations }: InvitationListProps) {
   const { acceptInvitation } = useAcceptInvitation();
   const { declineInvitation } = useDeclineInvitation();
+  const { switchWorkspace } = useWorkspace();
   const [processing, setProcessing] = useState<string | null>(null);
 
   const handleAccept = useCallback(
-    async (id: string) => {
-      setProcessing(id);
-      await acceptInvitation(id);
+    async (invitation: Invitation) => {
+      setProcessing(invitation.id);
+      await acceptInvitation(invitation.id);
+      switchWorkspace(invitation.workspace.slug);
       setProcessing(null);
     },
-    [acceptInvitation],
+    [acceptInvitation, switchWorkspace],
   );
 
   const handleDecline = useCallback(
@@ -53,7 +56,7 @@ export function InvitationList({ invitations }: InvitationListProps) {
           </div>
           <div className="flex gap-2 mt-2">
             <button
-              onClick={() => handleAccept(inv.id)}
+              onClick={() => handleAccept(inv)}
               disabled={processing === inv.id}
               className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors disabled:opacity-50 inline-flex items-center"
             >

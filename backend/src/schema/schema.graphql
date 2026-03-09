@@ -41,6 +41,7 @@ type Workspace {
   members: [WorkspaceMember!]!
   invitations: [WorkspaceInvitation!]!
   projects: [Project!]!
+  tasks(unassociatedOnly: Boolean): [Task!]!
   labels: [Label!]!
   createdAt: String!
   updatedAt: String!
@@ -89,8 +90,8 @@ type Task {
   description: String
   status: TaskStatus!
   priority: TaskPriority!
-  projectId: ID!
-  project: Project!
+  projectId: ID
+  project: Project
   assignee: User
   labels: [Label!]!
   createdAt: String!
@@ -132,7 +133,8 @@ input CreateTaskInput {
   description: String
   status: TaskStatus
   priority: TaskPriority
-  projectId: ID!
+  projectId: ID
+  workspaceId: ID!
   assigneeId: ID
   labelIds: [ID!]
 }

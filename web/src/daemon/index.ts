@@ -8,24 +8,23 @@
  *   --socket-path <path>     Unix socket path (default: ~/.orca/daemon.sock)
  *   --backend-url <url>      Backend GraphQL URL
  *   --version <version>      App version string
+ *   --log-level <level>      Log level: debug | info | warn | error (default: info)
  */
-import { mkdirSync, writeFileSync, unlinkSync, existsSync, appendFileSync } from 'node:fs';
+process.title = 'orca-daemon';
+
+import { mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { initDaemonDb, closeDaemonDb } from './db.js';
 import { sweepStaleSessions } from './sessions.js';
 import { DaemonServer } from './server.js';
 import { DaemonPtyManager, type BroadcastFn } from './pty-manager.js';
 import { DaemonStatusManager } from './status-manager.js';
+import { HookServer } from '../shared/hooks/server.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { IdleManager } from './idle.js';
 import { createHandler } from './handlers.js';
-import {
-  ORCA_DIR,
-  DAEMON_SOCKET_PATH,
-  DAEMON_PID_FILE,
-  DAEMON_DB_PATH,
-  DAEMON_LOG_FILE,
-} from '../shared/daemon-protocol.js';
+import { DAEMON_SOCKET_PATH, DAEMON_PID_FILE, DAEMON_DB_PATH } from '../shared/daemon-protocol.js';
+import { logger } from './logger.js';
 
 // ── Parse args ──────────────────────────────────────────────────────────
 
@@ -43,20 +42,13 @@ const socketPath = getArg('socket-path', DAEMON_SOCKET_PATH);
 const backendUrl = getArg('backend-url', 'https://orca-api.fly.dev');
 const version = getArg('version', '0.0.0');
 
-// ── Setup logging ───────────────────────────────────────────────────────
-
-mkdirSync(ORCA_DIR, { recursive: true });
-
-function log(msg: string): void {
-  const timestamp = new Date().toISOString();
-  const line = `[${timestamp}] ${msg}\n`;
-  try {
-    appendFileSync(DAEMON_LOG_FILE, line);
-  } catch {
-    // Ignore log errors
-  }
-  process.stderr.write(line);
-}
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', reason);
+});
 
 // ── State ───────────────────────────────────────────────────────────────
 
@@ -67,8 +59,8 @@ let shuttingDown = false;
 // ── Initialize ──────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  log(`Daemon starting (version=${version}, pid=${process.pid})`);
-  log(`DB: ${dbPath}, Socket: ${socketPath}, Migrations: ${migrationsFolder}`);
+  logger.info(`Daemon starting (version=${version}, pid=${process.pid})`);
+  logger.info(`DB: ${dbPath}, Socket: ${socketPath}, Migrations: ${migrationsFolder}`);
 
   // Ensure directories exist
   mkdirSync(dirname(dbPath), { recursive: true });
@@ -88,16 +80,16 @@ async function main(): Promise<void> {
 
   // Initialize database
   if (!migrationsFolder) {
-    log('ERROR: --migrations argument is required');
+    logger.error('--migrations argument is required');
     process.exit(1);
   }
   initDaemonDb(dbPath, migrationsFolder);
-  log('Database initialized');
+  logger.info('Database initialized');
 
   // Sweep stale sessions from previous run
   const sweepResult = sweepStaleSessions();
   if (sweepResult.total > 0) {
-    log(`Swept ${sweepResult.total} stale session(s)`);
+    logger.info(`Swept ${sweepResult.total} stale session(s)`);
   }
 
   // Create broadcast function — will be wired to server after creation
@@ -119,11 +111,24 @@ async function main(): Promise<void> {
     }
   };
 
+  // Create and start hook server for Claude Code lifecycle events
+  const hookServer = new HookServer();
+  let hookServerPort: number | null = null;
+  try {
+    await hookServer.start();
+    hookServerPort = hookServer.getPort();
+    logger.info(`Hook server started on port ${hookServerPort}`);
+  } catch (err) {
+    logger.warn(`Failed to start hook server: ${err}`);
+  }
+
   // Create components
   const ptyManager = new DaemonPtyManager(broadcast);
   const statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl,
     getToken: () => authToken,
+    hookServer: hookServerPort ? hookServer : null,
+    broadcast,
   });
   const pidSweepManager = new DaemonPidSweepManager(broadcast);
 
@@ -131,11 +136,12 @@ async function main(): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
 
-    log('Daemon shutting down...');
+    logger.info('Daemon shutting down...');
 
     idleManager.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
+    hookServer.stop().catch(() => {});
     ptyManager.killAll();
 
     server
@@ -152,11 +158,11 @@ async function main(): Promise<void> {
         } catch {
           // May already be gone
         }
-        log('Daemon stopped');
+        logger.info('Daemon stopped');
         process.exit(0);
       })
       .catch((err) => {
-        log(`Error during shutdown: ${err}`);
+        logger.error('Error during shutdown', err);
         process.exit(1);
       });
   }
@@ -183,7 +189,7 @@ async function main(): Promise<void> {
     () => server.clientCount,
     () => ptyManager.activeCount,
     () => {
-      log('Idle timeout — shutting down');
+      logger.info('Idle timeout — shutting down');
       shutdown();
     },
   );
@@ -197,13 +203,13 @@ async function main(): Promise<void> {
 
   // Start server
   await server.start(socketPath);
-  log(`Daemon listening on ${socketPath}`);
+  logger.info(`Daemon listening on ${socketPath}`);
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 }
 
 main().catch((err) => {
-  log(`Fatal error: ${err}`);
+  logger.error('Fatal error', err);
   process.exit(1);
 });

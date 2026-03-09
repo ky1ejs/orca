@@ -17,7 +17,7 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from './project-directories.js';
-import { DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import type {
   AuthSetTokenParams,
   PtySpawnParams,
@@ -53,9 +53,12 @@ interface HandlerDeps {
 }
 
 export function createHandler(deps: HandlerDeps) {
-  const { ptyManager, statusManager, server, setToken, getVersion, getUptime, shutdown } = deps;
+  // Note: `server` is accessed lazily via `deps.server` (not destructured) because
+  // it's created after the handler — the getter resolves it at call time.
+  const { ptyManager, statusManager, setToken, getVersion, getUptime, shutdown } = deps;
 
   return async (client: ClientConnection, method: string, params: unknown): Promise<unknown> => {
+    const server = deps.server;
     switch (method) {
       // ── Auth ────────────────────────────────────────
       case DAEMON_METHODS.AUTH_SET_TOKEN: {
@@ -67,7 +70,7 @@ export function createHandler(deps: HandlerDeps) {
       // ── PTY ────────────────────────────────────────
       case DAEMON_METHODS.PTY_SPAWN: {
         const p = params as PtySpawnParams;
-        ptyManager.spawn(p.sessionId, p.command, p.args, p.cwd);
+        ptyManager.spawn(p.sessionId, p.command, p.args, p.cwd, p.env);
         // Auto-subscribe the caller to this session's output
         server.subscribeClient(client.id, p.sessionId);
         return { ok: true };
@@ -201,6 +204,7 @@ export function createHandler(deps: HandlerDeps) {
       case DAEMON_METHODS.DAEMON_STATUS: {
         const result: DaemonStatusResult = {
           version: getVersion(),
+          protocolVersion: DAEMON_PROTOCOL_VERSION,
           uptime: getUptime(),
           activeSessions: ptyManager.activeCount,
           connectedClients: server.clientCount,

@@ -196,3 +196,79 @@
  *
  * Usage: p-4, gap-2, m-6, px-3, etc. (standard Tailwind utilities)
  * ------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------
+ * Activity Glow — box-shadow breathe effect for status dots
+ *
+ * Applied when a session has recent PTY output activity.
+ * Uses box-shadow so it's visually distinct from animate-pulse (opacity).
+ * ------------------------------------------------------------------- */
+@keyframes glow-green {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 1px rgba(74, 222, 128, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgba(74, 222, 128, 0.6);
+  }
+}
+
+@keyframes glow-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 1px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgba(251, 191, 36, 0.6);
+  }
+}
+
+@keyframes glow-blue {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 1px rgba(125, 211, 252, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgba(125, 211, 252, 0.6);
+  }
+}
+
+@keyframes glow-orange {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 1px rgba(251, 146, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgba(251, 146, 60, 0.6);
+  }
+}
+
+@keyframes glow-red {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 1px rgba(248, 113, 113, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgba(248, 113, 113, 0.6);
+  }
+}
+
+.glow-success {
+  animation: glow-green 1.5s ease-in-out infinite;
+}
+
+.glow-warning {
+  animation: glow-amber 1.5s ease-in-out infinite;
+}
+
+.glow-info {
+  animation: glow-blue 1.5s ease-in-out infinite;
+}
+
+.glow-orange {
+  animation: glow-orange 1.5s ease-in-out infinite;
+}
+
+.glow-error {
+  animation: glow-red 1.5s ease-in-out infinite;
+}

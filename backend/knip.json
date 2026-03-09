@@ -1,0 +1,5 @@
+{
+  "entry": ["src/scripts/*.ts"],
+  "project": ["src/**/*.ts"],
+  "ignoreBinaries": ["fly"]
+}

@@ -26,6 +26,7 @@ import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
+import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
@@ -54,7 +55,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { deleteTask } = useDeleteTask();
-  const { goBack, navigate } = useNavigation();
+  const { navigateBack } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -71,6 +72,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     suggestion: string;
   } | null>(null);
   const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
+  const activeSessionIds = useSessionActivity();
   const {
     directory: projectDirectory,
     loading: dirLoading,
@@ -150,7 +152,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleDelete = async () => {
     await deleteTask(taskId);
-    goBack();
+    if (task.projectId) {
+      navigateBack({ view: 'project', id: task.projectId });
+    } else {
+      navigateBack({ view: 'projects' });
+    }
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
@@ -297,21 +303,16 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   return (
     <div className="p-6">
       <button
-        onClick={goBack}
+        onClick={() =>
+          task.projectId
+            ? navigateBack({ view: 'project', id: task.projectId })
+            : navigateBack({ view: 'projects' })
+        }
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
         <ArrowLeft className={`${iconSize.sm} mr-1`} />
-        Back
+        Back to {task.project?.name ?? 'Projects'}
       </button>
-
-      <div className="mb-2">
-        <button
-          onClick={() => navigate({ view: 'project', id: task.projectId })}
-          className="text-gray-300 hover:text-gray-200 text-label-md transition-colors"
-        >
-          {task.project.name} &rarr;
-        </button>
-      </div>
 
       {editing ? (
         <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
@@ -428,10 +429,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex items-center gap-4">
               <span className="text-gray-500 text-label-md">Project:</span>
               <select
-                value={task.projectId}
-                onChange={(e) => updateTask(taskId, { projectId: e.target.value })}
+                value={task.projectId ?? ''}
+                onChange={(e) => updateTask(taskId, { projectId: e.target.value || null })}
                 className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
               >
+                <option value="">Inbox (no project)</option>
                 {workspaceProjects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -546,7 +548,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex items-center gap-3">
               <span className="text-gray-500 text-label-md">Terminal:</span>
               {renderAgentButton()}
-              {activeSession && <AgentStatus status={activeSession.status} />}
+              {activeSession && (
+                <AgentStatus
+                  status={activeSession.status}
+                  active={activeSessionIds.has(activeSession.id)}
+                />
+              )}
             </div>
 
             {agentError && (

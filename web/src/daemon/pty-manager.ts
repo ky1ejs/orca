@@ -5,7 +5,7 @@
 import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
-import { appendOutput, replayOutput, clearOutput } from './output-buffer.js';
+import { appendOutput, replayOutput, clearOutput, getOutputSize } from './output-buffer.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -16,6 +16,7 @@ export type BroadcastFn = (event: string, params: unknown) => void;
 
 export class DaemonPtyManager {
   private processes = new Map<string, PtyProcess>();
+  private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
 
@@ -23,12 +24,19 @@ export class DaemonPtyManager {
     this.broadcast = broadcast;
   }
 
-  spawn(sessionId: string, command: string, args: string[], cwd: string): void {
+  spawn(
+    sessionId: string,
+    command: string,
+    args: string[],
+    cwd: string,
+    env?: Record<string, string>,
+  ): void {
     const shell = pty.spawn(command, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd,
+      ...(env && { env: { ...process.env, ...env } }),
     });
 
     this.processes.set(sessionId, { pty: shell, sessionId });
@@ -37,6 +45,7 @@ export class DaemonPtyManager {
 
     shell.onData((data: string) => {
       if (this.disposed) return;
+      this.lastDataAt.set(sessionId, Date.now());
       try {
         appendOutput(sessionId, data);
       } catch {
@@ -47,6 +56,7 @@ export class DaemonPtyManager {
 
     shell.onExit(({ exitCode }: { exitCode: number }) => {
       this.processes.delete(sessionId);
+      this.lastDataAt.delete(sessionId);
       if (this.disposed) return;
       try {
         updateSession(sessionId, {
@@ -75,11 +85,16 @@ export class DaemonPtyManager {
     if (proc) {
       proc.pty.kill();
       this.processes.delete(sessionId);
+      this.lastDataAt.delete(sessionId);
     }
   }
 
   replay(sessionId: string): string {
     return replayOutput(sessionId);
+  }
+
+  outputSize(sessionId: string): number {
+    return getOutputSize(sessionId);
   }
 
   clear(sessionId: string): void {
@@ -96,6 +111,11 @@ export class DaemonPtyManager {
       proc.pty.kill('SIGTERM');
     }
     this.processes.clear();
+    this.lastDataAt.clear();
+  }
+
+  getLastDataAt(sessionId: string): number | undefined {
+    return this.lastDataAt.get(sessionId);
   }
 
   getManagedPids(): Map<string, number> {

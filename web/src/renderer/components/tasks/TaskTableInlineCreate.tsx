@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCreateTask } from '../../hooks/useGraphQL.js';
+import { useWorkspace } from '../../workspace/context.js';
 import type { TaskStatus } from '../../graphql/__generated__/generated.js';
 
 interface TaskTableInlineCreateProps {
@@ -10,6 +11,7 @@ interface TaskTableInlineCreateProps {
 
 export function TaskTableInlineCreate({ projectId, status, onClose }: TaskTableInlineCreateProps) {
   const { createTask } = useCreateTask();
+  const { currentWorkspace } = useWorkspace();
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,13 +22,14 @@ export function TaskTableInlineCreate({ projectId, status, onClose }: TaskTableI
   }, []);
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !currentWorkspace) return;
     setError(null);
     setSubmitting(true);
     try {
       const result = await createTask({
         title: title.trim(),
         projectId,
+        workspaceId: currentWorkspace.id,
         status,
       });
       if (result.error) {

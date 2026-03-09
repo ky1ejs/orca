@@ -7,6 +7,10 @@ import { AppShell } from './components/layout/AppShell.js';
 import { LoginScreen } from './components/auth/LoginScreen.js';
 import { RegisterScreen } from './components/auth/RegisterScreen.js';
 import { setOnAuthError, clearCachedToken } from './graphql/client.js';
+import { ToastProvider } from './components/toast/ToastProvider.js';
+import { useDaemonLifecycle } from './hooks/useDaemonLifecycle.js';
+import { SessionActivityProvider } from './hooks/useSessionActivity.js';
+import { ProtocolUpdateDialog } from './components/toast/ProtocolUpdateDialog.js';
 
 type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired' | 'registering';
 
@@ -82,11 +86,30 @@ function App() {
       <PreferencesProvider>
         <WorkspaceProvider>
           <NavigationProvider>
-            <AppShell onLogout={handleLogout} />
+            <SessionActivityProvider>
+              <ToastProvider>
+                <AuthenticatedApp onLogout={handleLogout} />
+              </ToastProvider>
+            </SessionActivityProvider>
           </NavigationProvider>
         </WorkspaceProvider>
       </PreferencesProvider>
     </GraphQLProvider>
+  );
+}
+
+function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
+  const { protocolUpdate, confirmProtocolUpdate } = useDaemonLifecycle();
+  return (
+    <>
+      <AppShell onLogout={onLogout} />
+      {protocolUpdate.required && (
+        <ProtocolUpdateDialog
+          activeSessions={protocolUpdate.activeSessions}
+          onConfirm={confirmProtocolUpdate}
+        />
+      )}
+    </>
   );
 }
 

@@ -4,9 +4,66 @@ Work management for AI agents. Orchestrate local Claude Code agents from a singl
 
 ## What is Orca?
 
-Orca connects project management to agent orchestration. Create projects and tasks, launch Claude Code agents against them, and see every agent's status and terminal output at a glance -- all from one Electron desktop app.
+Orca connects project management to agent orchestration. There's a natural relationship between the two: you break work into tasks in a PM tool, then assign those tasks to agents. Orca makes that loop seamless -- create tasks, launch Claude Code agents against them, and see every agent's status and terminal output at a glance from one desktop app.
 
-**Core idea:** Running multiple AI agents in terminal tabs doesn't scale. You lose track of what each agent is doing, which ones need input, and how their work maps to your project. Orca solves this by treating agent sessions as first-class objects tied to tasks.
+**The problem:** Running multiple AI agents in terminal tabs doesn't scale. You lose track of what each agent is doing, which ones need input, and how their work maps to your project. Existing PM tools (Linear, Jira, Asana) hold the metadata but can't show you a live view of your local agents or let you interact with them.
+
+**Orca's approach:** Treat agent sessions as first-class objects tied to tasks. Every session has a status, a terminal, and a place in your project hierarchy.
+
+## Features
+
+### Project & Task Management
+
+- Workspaces, projects, and tasks with a full CRUD workflow
+- Task fields: status (Todo, In Progress, In Review, Done), priority (None, Low, Medium, High, Urgent), labels, assignee, markdown descriptions
+- Auto-generated display IDs (e.g. `ORCA-42`) for easy reference
+- Per-project default working directory for agent sessions
+- Real-time collaboration via GraphQL subscriptions -- task and project changes broadcast to all workspace members
+
+### Agent Terminal Integration
+
+- Launch Claude Code agents directly from a task, with standard or plan permission modes
+- Tabbed terminal view with live output streaming via xterm.js
+- Status indicators per session: running (green), starting (blue), needs permission (orange pulse), waiting for input (orange pulse), exited (gray), error (red)
+- Output replay -- terminal history is stored and replayed when you reopen a session
+- Input detection via Claude Code lifecycle hooks -- Orca knows when an agent is waiting for your input vs. actively working
+- Per-task session list with support for multiple concurrent sessions
+
+### PTY Daemon
+
+Agent processes run in a separate daemon that survives Electron restarts (e.g. during auto-updates):
+
+```
+[Renderer] <--IPC--> [Electron Main] <--Unix Socket--> [Daemon]
+```
+
+- Communicates over NDJSON on a Unix domain socket (`~/.orca/daemon.sock`)
+- Owns all PTY processes (node-pty) and a local SQLite database (`~/.orca/orca.db`)
+- **Startup sweep:** Detects orphaned sessions (RUNNING/STARTING status but PID dead) and marks them as ERROR
+- **Periodic PID sweep:** Background monitor checks tracked PIDs and reaps dead sessions
+- **Graceful shutdown:** On app close, sends SIGTERM to all managed PTY processes
+- **Idle timeout:** 5-minute safety net shuts down the daemon if no clients are connected and no sessions are active
+
+### Workspace Collaboration
+
+- Multi-user workspaces with Owner and Member roles
+- Invite teammates by email -- invitations expire after 7 days
+- Pending invitations shown in the sidebar; accept or decline inline
+- Per-workspace labels with custom colors for organizing tasks
+
+### Desktop App
+
+- macOS Electron app with auto-updates (checks on launch, then every 4 hours)
+- Onboarding wizard: Welcome, Create Project, Create Task, Open Terminal
+- Diagnostics export (ZIP with system info, daemon logs, main process logs)
+- Keyboard shortcuts with context-aware disabling (disabled when terminal is focused)
+
+### Auth
+
+- JWT-based email/password authentication (tokens expire after 30 days)
+- Self-registration with invite codes
+- Secure token storage via the OS keychain (Electron `safeStorage`)
+- Default dev user via `bun run seed:dev` for local development
 
 ## Prerequisites
 
@@ -87,9 +144,17 @@ If you want to test the UI in a regular browser via the Vite dev server:
 |  React + xterm.js                   |
 |  Project/Task navigation            |
 |  Agent terminal viewer (tabbed)     |
-|  Local SQLite (terminal sessions)   |
-|  node-pty (agent process mgmt)      |
 +----------+--------------------------+
+           | IPC
+           v
++-------------------------------------+
+|     PTY Daemon (~/.orca/)           |
+|                                     |
+|  node-pty (agent processes)         |
+|  SQLite (terminal sessions)         |
+|  Claude Code hook server            |
++----------+--------------------------+
+           |
            | GraphQL + SSE
            v
 +-------------------------------------+
@@ -100,7 +165,7 @@ If you want to test the UI in a regular browser via the Vite dev server:
 +-------------------------------------+
 ```
 
-**Split-state design:** The server holds shared collaborative data (projects, tasks). The client holds local agent state (terminal sessions, PIDs, output buffers). Agent processes run locally -- their runtime state never leaves your machine.
+**Split-state design:** The server holds shared collaborative data (projects, tasks, workspaces). The client holds local agent state (terminal sessions, PIDs, output buffers) in a daemon process. Agent processes run locally -- their runtime state never leaves your machine.
 
 ## Tech Stack
 
@@ -176,20 +241,18 @@ This produces a DMG and zip in `web/dist-electron/`. The build uses electron-bui
 orca/
 ├── backend/     # Bun server -- GraphQL API, Prisma, Postgres, GraphQL schema
 ├── web/         # Electron + React client -- terminals, local state
+│   └── src/
+│       ├── daemon/     # PTY daemon -- session management, SQLite, hook server
+│       ├── main/       # Electron main process -- IPC relay, auth, auto-updates
+│       ├── renderer/   # React UI -- projects, tasks, terminals
+│       ├── shared/     # Electron-independent modules shared by daemon and main
+│       └── preload/    # Preload scripts exposing window.orca API
 └── docs/        # Implementation plans
 ```
 
-## Process Management
-
-Orca tracks all spawned agent processes (PIDs) and manages their lifecycle:
-
-- **Startup sweep:** On app launch, detects sessions left in RUNNING/STARTING state from a previous run and marks them as ERROR
-- **Periodic sweep:** Every 60 seconds, checks if tracked PIDs are still alive. Dead processes are marked as ERROR and the UI is notified
-- **Graceful shutdown:** On app close, sends SIGTERM to all managed PTY processes for clean termination
-
 ## Status
 
-Early development. Building toward a prototype for self-validation, then 5-10 teammates for feedback.
+Active development. The core workflow is functional: create workspaces and projects, manage tasks, launch Claude Code agents, and monitor their output in real time. Currently used for self-validation, expanding to a small group of teammates for feedback.
 
 ## License
 
