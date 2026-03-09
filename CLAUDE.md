@@ -55,7 +55,8 @@ No workspaces — each package manages its own dependencies with `bun install`.
 
 - **ESLint** — flat config (`eslint.config.js`) per package, TypeScript + React rules (web only)
 - **Prettier** — single quotes, trailing commas, semicolons, 100 char width (`.prettierrc` per package)
-- Run `bun run validate` in each package before pushing (lint + format:check + typecheck + test)
+- **Knip** — dead code detection (`knip.json` per package), catches unused exports, files, and dependencies
+- Run `bun run validate` in each package before pushing (lint + format:check + knip + typecheck + test)
 
 ## Testing
 
@@ -122,7 +123,7 @@ These features require Electron's main process and cannot run in a plain browser
 
 - Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`, `fix/pty-cleanup`)
 - All PRs target `main`
-- CI must pass (lint, format, typecheck, test)
+- CI must pass (lint, format, knip, typecheck, test)
 
 ## Commands
 
@@ -133,7 +134,8 @@ All commands are run within each package directory (`backend/`, `web/`):
 - `bun run format` / `bun run format:check` — Prettier
 - `bun run typecheck` — TypeScript check
 - `bun run test` — Vitest
-- `bun run validate` — all checks (lint + format:check + typecheck + test)
+- `bun run knip` — dead code check (unused exports, files, dependencies)
+- `bun run validate` — all checks (lint + format:check + knip + typecheck + test)
 - `bun run seed --email <email> --name <name> --password <pass>` — create/update a user (backend)
 - `bun run seed:dev` — create default dev user (backend)
 - `docker compose up -d` / `docker compose down` — Postgres

@@ -8,7 +8,7 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export interface JwtPayload {
+interface JwtPayload {
   sub: string;
   email: string;
 }
