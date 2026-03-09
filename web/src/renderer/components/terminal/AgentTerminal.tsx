@@ -30,7 +30,6 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     const container = containerRef.current;
     if (!container) return;
 
-    const styles = getComputedStyle(document.documentElement);
     const terminal = new Terminal({
       theme: readTerminalTheme(),
       fontFamily: fontRef.current,
