@@ -1,14 +1,19 @@
 # Orca
 
-Work management for AI agents. Orchestrate local Claude Code agents from a single UI instead of juggling terminal tabs.
+![](./docs/orca-screenshot.png)
 
 ## What is Orca?
 
-Orca connects project management to agent orchestration. There's a natural relationship between the two: you break work into tasks in a PM tool, then assign those tasks to agents. Orca makes that loop seamless -- create tasks, launch Claude Code agents against them, and see every agent's status and terminal output at a glance from one desktop app.
+Orca brings project management to agent orchestration into one tool.
 
 **The problem:** Running multiple AI agents in terminal tabs doesn't scale. You lose track of what each agent is doing, which ones need input, and how their work maps to your project. Existing PM tools (Linear, Jira, Asana) hold the metadata but can't show you a live view of your local agents or let you interact with them.
 
 **Orca's approach:** Treat agent sessions as first-class objects tied to tasks. Every session has a status, a terminal, and a place in your project hierarchy.
+
+**Other problems Orca solves:**
+- Knowing when an agent is waiting for your input vs. actively working
+- No tool-hopping when queuing new ideas/tasks you come across while developing
+- Remove the need to report progress to your team or even tell Claude to do it (every terminal session has the ticket context injected into it)
 
 ## Features
 
