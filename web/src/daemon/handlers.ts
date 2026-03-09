@@ -120,7 +120,12 @@ export function createHandler(deps: HandlerDeps) {
       // ── Agent ──────────────────────────────────────
       case DAEMON_METHODS.AGENT_LAUNCH: {
         const p = params as AgentLaunchParams;
-        const result = await statusManager.launch(p.taskId, p.workingDirectory, p.options);
+        const result = await statusManager.launch(
+          p.taskId,
+          p.workingDirectory,
+          p.options,
+          p.metadata,
+        );
         if (result.success) {
           // Auto-subscribe the caller
           server.subscribeClient(client.id, result.sessionId);
@@ -141,6 +146,7 @@ export function createHandler(deps: HandlerDeps) {
           p.sessionId,
           p.workingDirectory,
           p.options,
+          p.metadata,
         );
         if (result.success) {
           server.subscribeClient(client.id, result.sessionId);

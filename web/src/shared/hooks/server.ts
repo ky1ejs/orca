@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { EventEmitter } from 'node:events';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { createMcpServer, type McpToolsDeps } from './mcp-tools.js';
 
 export type HookEventName = 'Stop' | 'PermissionRequest' | 'UserPromptSubmit';
 
@@ -12,11 +14,21 @@ interface HookServerEvents {
   hook: [event: HookEvent];
 }
 
+interface HookServerOptions {
+  mcpDeps?: McpToolsDeps;
+}
+
 const VALID_EVENT_NAMES = new Set<HookEventName>(['Stop', 'PermissionRequest', 'UserPromptSubmit']);
 
 export class HookServer extends EventEmitter<HookServerEvents> {
   private server: Server | null = null;
   private port: number | null = null;
+  private mcpDeps: McpToolsDeps | null;
+
+  constructor(options?: HookServerOptions) {
+    super();
+    this.mcpDeps = options?.mcpDeps ?? null;
+  }
 
   async start(): Promise<void> {
     if (this.server) return;
@@ -57,12 +69,23 @@ export class HookServer extends EventEmitter<HookServerEvents> {
   }
 
   private handleRequest(req: IncomingMessage, res: ServerResponse): void {
-    if (req.method !== 'POST' || req.url !== '/orca-hooks') {
-      res.writeHead(404);
-      res.end();
+    const url = req.url ?? '';
+
+    if (req.method === 'POST' && url === '/orca-hooks') {
+      this.handleHookRequest(req, res);
       return;
     }
 
+    if (url === '/mcp' && this.mcpDeps) {
+      this.handleMcpRequest(req, res);
+      return;
+    }
+
+    res.writeHead(404);
+    res.end();
+  }
+
+  private handleHookRequest(req: IncomingMessage, res: ServerResponse): void {
     const sessionId = req.headers['x-orca-session-id'];
     if (!sessionId || typeof sessionId !== 'string') {
       res.writeHead(400);
@@ -100,5 +123,44 @@ export class HookServer extends EventEmitter<HookServerEvents> {
 
       this.emit('hook', { sessionId, eventName: eventName as HookEventName });
     });
+  }
+
+  private async handleMcpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== 'POST') {
+      res.writeHead(405);
+      res.end(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Method not allowed.' },
+          id: null,
+        }),
+      );
+      return;
+    }
+
+    const mcpServer = createMcpServer(this.mcpDeps!);
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+    });
+
+    try {
+      await mcpServer.connect(transport);
+      await transport.handleRequest(req, res);
+      res.on('close', () => {
+        transport.close();
+        mcpServer.close();
+      });
+    } catch {
+      if (!res.headersSent) {
+        res.writeHead(500);
+        res.end(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            error: { code: -32603, message: 'Internal server error' },
+            id: null,
+          }),
+        );
+      }
+    }
   }
 }

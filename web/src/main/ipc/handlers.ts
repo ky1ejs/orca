@@ -9,7 +9,7 @@ import { listSystemFonts } from '../config/list-fonts.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 import type { DaemonClient } from '../daemon/client.js';
 import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
-import type { AgentLaunchOptions } from '../../shared/daemon-protocol.js';
+import type { AgentLaunchOptions, TaskMetadata } from '../../shared/daemon-protocol.js';
 
 export function registerIpcHandlers(client: DaemonClient): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
@@ -120,8 +120,19 @@ export function registerIpcHandlers(client: DaemonClient): void {
   // ── Agent handlers (proxy to daemon) ────────────────────────────────
   ipcMain.handle(
     IPC_CHANNELS.AGENT_LAUNCH,
-    (_event, taskId: string, workingDirectory: string, options?: AgentLaunchOptions) => {
-      return client.request(DAEMON_METHODS.AGENT_LAUNCH, { taskId, workingDirectory, options });
+    (
+      _event,
+      taskId: string,
+      workingDirectory: string,
+      options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
+    ) => {
+      return client.request(DAEMON_METHODS.AGENT_LAUNCH, {
+        taskId,
+        workingDirectory,
+        options,
+        metadata,
+      });
     },
   );
 
@@ -137,12 +148,14 @@ export function registerIpcHandlers(client: DaemonClient): void {
       sessionId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
     ) => {
       return client.request(DAEMON_METHODS.AGENT_RESTART, {
         taskId,
         sessionId,
         workingDirectory,
         options,
+        metadata,
       });
     },
   );

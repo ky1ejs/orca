@@ -111,8 +111,13 @@ async function main(): Promise<void> {
     }
   };
 
-  // Create and start hook server for Claude Code lifecycle events
-  const hookServer = new HookServer();
+  // Create and start hook server for Claude Code lifecycle events + MCP
+  const hookServer = new HookServer({
+    mcpDeps: {
+      backendUrl,
+      getToken: () => authToken,
+    },
+  });
   let hookServerPort: number | null = null;
   try {
     await hookServer.start();
