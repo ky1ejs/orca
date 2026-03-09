@@ -22,16 +22,23 @@ export const taskResolvers = {
   } satisfies Pick<QueryResolvers, 'task'>,
   Mutation: {
     createTask: async (_parent, args, context) => {
-      await requireProjectAccess(context.prisma, args.input.projectId, context.userId);
+      const { workspaceId } = args.input;
+      await requireWorkspaceAccess(context.prisma, workspaceId, context.userId);
       const task = await context.prisma.$transaction(async (tx) => {
-        // Re-fetch project inside transaction to guard against deletion between
-        // access check and task creation
-        const project = await tx.project.findUniqueOrThrow({
-          where: { id: args.input.projectId },
-        });
+        // If projectId provided, validate it belongs to the workspace
+        if (args.input.projectId) {
+          const project = await tx.project.findUnique({
+            where: { id: args.input.projectId },
+          });
+          if (!project || project.workspaceId !== workspaceId) {
+            throw new GraphQLError('Project not found in this workspace', {
+              extensions: { code: 'BAD_USER_INPUT' },
+            });
+          }
+        }
         // Atomic increment — PostgreSQL row lock serializes concurrent updates
         const workspace = await tx.workspace.update({
-          where: { id: project.workspaceId },
+          where: { id: workspaceId },
           data: { taskCounter: { increment: 1 } },
         });
         const sequenceNumber = workspace.taskCounter;
@@ -41,7 +48,7 @@ export const taskResolvers = {
           const assigneeMembership = await tx.workspaceMembership.findUnique({
             where: {
               workspaceId_userId: {
-                workspaceId: project.workspaceId,
+                workspaceId,
                 userId: args.input.assigneeId,
               },
             },
@@ -56,7 +63,7 @@ export const taskResolvers = {
         // Validate labels belong to workspace
         if (args.input.labelIds?.length) {
           const labels = await tx.label.findMany({
-            where: { id: { in: args.input.labelIds }, workspaceId: project.workspaceId },
+            where: { id: { in: args.input.labelIds }, workspaceId },
           });
           if (labels.length !== args.input.labelIds.length) {
             throw new GraphQLError('One or more labels do not belong to this workspace', {
@@ -71,8 +78,8 @@ export const taskResolvers = {
             description: args.input.description,
             status: args.input.status ?? 'TODO',
             priority: args.input.priority ?? 'NONE',
-            projectId: args.input.projectId,
-            workspaceId: project.workspaceId,
+            projectId: args.input.projectId ?? null,
+            workspaceId,
             sequenceNumber,
             displayId,
             assigneeId: args.input.assigneeId ?? undefined,
@@ -96,18 +103,22 @@ export const taskResolvers = {
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
       if (args.input.priority != null) data.priority = args.input.priority;
-      if (args.input.projectId != null) {
-        const { project: targetProject } = await requireProjectAccess(
-          context.prisma,
-          args.input.projectId,
-          context.userId,
-        );
-        if (targetProject.workspaceId !== existingTask.workspaceId) {
-          throw new GraphQLError('Cannot move task to a project in a different workspace', {
-            extensions: { code: 'BAD_REQUEST' },
-          });
+      if (args.input.projectId !== undefined) {
+        if (args.input.projectId) {
+          const { project: targetProject } = await requireProjectAccess(
+            context.prisma,
+            args.input.projectId,
+            context.userId,
+          );
+          if (targetProject.workspaceId !== existingTask.workspaceId) {
+            throw new GraphQLError('Cannot move task to a project in a different workspace', {
+              extensions: { code: 'BAD_REQUEST' },
+            });
+          }
+          data.projectId = args.input.projectId;
+        } else {
+          data.projectId = null;
         }
-        data.projectId = args.input.projectId;
       }
 
       // Handle assignee
@@ -188,7 +199,8 @@ export const taskResolvers = {
   } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {
     project: (parent, _args, context) => {
-      return context.prisma.project.findUniqueOrThrow({ where: { id: parent.projectId } });
+      if (!parent.projectId) return null;
+      return context.prisma.project.findUnique({ where: { id: parent.projectId } });
     },
     assignee: (parent, _args, context) => {
       if (!parent.assigneeId) return null;

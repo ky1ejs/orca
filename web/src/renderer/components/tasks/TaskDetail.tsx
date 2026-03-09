@@ -139,7 +139,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleDelete = async () => {
     await deleteTask(taskId);
-    navigateBack({ view: 'project', id: task.projectId });
+    if (task.projectId) {
+      navigateBack({ view: 'project', id: task.projectId });
+    } else {
+      navigateBack({ view: 'projects' });
+    }
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
@@ -286,10 +290,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   return (
     <div className="p-6">
       <button
-        onClick={() => navigateBack({ view: 'project', id: task.projectId })}
+        onClick={() =>
+          task.projectId
+            ? navigateBack({ view: 'project', id: task.projectId })
+            : navigateBack({ view: 'projects' })
+        }
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
-        &larr; Back to {task.project.name}
+        &larr; Back to {task.project?.name ?? 'Projects'}
       </button>
 
       {editing ? (
@@ -405,10 +413,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex items-center gap-4">
               <span className="text-gray-500 text-label-md">Project:</span>
               <select
-                value={task.projectId}
-                onChange={(e) => updateTask(taskId, { projectId: e.target.value })}
+                value={task.projectId ?? ''}
+                onChange={(e) => updateTask(taskId, { projectId: e.target.value || null })}
                 className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus:outline-none focus:border-gray-500"
               >
+                <option value="">Inbox (no project)</option>
                 {workspaceProjects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

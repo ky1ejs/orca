@@ -11,13 +11,22 @@ export interface ActiveTerminalEntry {
   status: string;
 }
 
+interface TaskRef {
+  id: string;
+  displayId: string;
+  title: string;
+}
+
 interface ProjectData {
   id: string;
   name: string;
-  tasks: Array<{ id: string; displayId: string; title: string }>;
+  tasks: TaskRef[];
 }
 
-export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry[] {
+export function useActiveTerminals(
+  projects: ProjectData[],
+  inboxTasks: TaskRef[] = [],
+): ActiveTerminalEntry[] {
   const { sessions } = useTerminalSessions();
 
   return useMemo(() => {
@@ -33,6 +42,15 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
           displayId: task.displayId,
           title: task.title,
           projectName: project.name,
+        });
+      }
+    }
+    for (const task of inboxTasks) {
+      if (!taskLookup.has(task.id)) {
+        taskLookup.set(task.id, {
+          displayId: task.displayId,
+          title: task.title,
+          projectName: 'Inbox',
         });
       }
     }
@@ -67,7 +85,7 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
     }
 
     return entries;
-  }, [sessions, projects]);
+  }, [sessions, projects, inboxTasks]);
 }
 
 /** Pick the most prominent status to display for a group of sessions. */
