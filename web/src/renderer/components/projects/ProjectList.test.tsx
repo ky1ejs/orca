@@ -22,7 +22,7 @@ function createMockClient(result: { data?: unknown; error?: CombinedError }) {
   return {
     executeQuery: vi.fn(({ query }) => {
       const queryStr = typeof query === 'string' ? query : (query?.loc?.source?.body ?? '');
-      if (queryStr.includes('WorkspacesContext')) {
+      if (queryStr.includes('query Workspaces')) {
         return fromValue({ data: { workspaces: [MOCK_WORKSPACE] } });
       }
       return fromValue(result);
