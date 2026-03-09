@@ -34,6 +34,9 @@ beforeEach(() => {
       db: {
         getSessions: vi.fn().mockResolvedValue(mockSessions),
       },
+      lifecycle: {
+        onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
+      },
     },
   };
 });
@@ -108,5 +111,33 @@ describe('useTerminalSessions', () => {
     });
 
     expect(getSessions).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates session status via IPC listener', async () => {
+    let statusChangedCallback: ((sessionId: string, status: string) => void) | null = null;
+    (
+      window as unknown as {
+        orca: { lifecycle: { onSessionStatusChanged: ReturnType<typeof vi.fn> } };
+      }
+    ).orca.lifecycle.onSessionStatusChanged = vi.fn((cb: typeof statusChangedCallback) => {
+      statusChangedCallback = cb;
+      return () => {};
+    });
+
+    const { result } = renderHook(() => useTerminalSessions());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.sessions[0].status).toBe(SessionStatus.Running);
+    expect(statusChangedCallback).not.toBeNull();
+
+    // Simulate IPC status change
+    act(() => {
+      statusChangedCallback!('session-1', SessionStatus.AwaitingPermission);
+    });
+
+    expect(result.current.sessions[0].status).toBe(SessionStatus.AwaitingPermission);
   });
 });

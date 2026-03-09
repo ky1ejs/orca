@@ -4,6 +4,7 @@ import { isActiveSessionStatus } from '../../shared/session-status.js';
 
 export interface ActiveTerminalEntry {
   taskId: string;
+  displayId: string;
   taskTitle: string;
   projectName: string;
   sessionCount: number;
@@ -13,7 +14,7 @@ export interface ActiveTerminalEntry {
 interface ProjectData {
   id: string;
   name: string;
-  tasks: Array<{ id: string; title: string }>;
+  tasks: Array<{ id: string; displayId: string; title: string }>;
 }
 
 export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry[] {
@@ -25,10 +26,14 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
     );
 
     // Build a lookup map from task_id -> task info
-    const taskLookup = new Map<string, { title: string; projectName: string }>();
+    const taskLookup = new Map<string, { displayId: string; title: string; projectName: string }>();
     for (const project of projects) {
       for (const task of project.tasks) {
-        taskLookup.set(task.id, { title: task.title, projectName: project.name });
+        taskLookup.set(task.id, {
+          displayId: task.displayId,
+          title: task.title,
+          projectName: project.name,
+        });
       }
     }
 
@@ -53,6 +58,7 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
       const status = pickMostActiveStatus(taskSessions);
       entries.push({
         taskId,
+        displayId: info.displayId,
         taskTitle: info.title,
         projectName: info.projectName,
         sessionCount: taskSessions.length,
@@ -66,8 +72,9 @@ export function useActiveTerminals(projects: ProjectData[]): ActiveTerminalEntry
 
 /** Pick the most prominent status to display for a group of sessions. */
 function pickMostActiveStatus(sessions: TerminalSessionInfo[]): string {
-  // Priority: WAITING_FOR_INPUT > RUNNING > STARTING
+  // Priority: AWAITING_PERMISSION > WAITING_FOR_INPUT > RUNNING > STARTING
   const statuses = new Set(sessions.map((s) => s.status));
+  if (statuses.has('AWAITING_PERMISSION')) return 'AWAITING_PERMISSION';
   if (statuses.has('WAITING_FOR_INPUT')) return 'WAITING_FOR_INPUT';
   if (statuses.has('RUNNING')) return 'RUNNING';
   if (statuses.has('STARTING')) return 'STARTING';

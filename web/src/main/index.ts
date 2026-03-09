@@ -1,12 +1,19 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
-import { initDb, closeDb } from './db/client.js';
-import { sweepStaleSessions } from './db/sessions.js';
-import { registerIpcHandlers, getPtyManager } from './ipc/handlers.js';
+import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
-import { PidSweepManager } from './pty/pid-sweep.js';
-import { initAutoUpdater, installUpdate, checkForUpdates } from './updater.js';
+import { DaemonClient } from './daemon/client.js';
+import { DaemonConnector } from './daemon/connector.js';
+import { readToken } from './pty/auth.js';
+import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
+import { HookServer } from './hooks/server.js';
+import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
+import type {
+  PtyDataEvent,
+  PtyExitEvent,
+  PidSweepSessionsDiedEvent,
+} from '../shared/daemon-protocol.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -15,10 +22,11 @@ if (process.env.NODE_ENV === 'development') {
   app.setPath('userData', `${defaultUserData} Dev`);
 }
 
-let pidSweepManager: PidSweepManager | null = null;
-let startupSweepCount = 0;
 let mainWindow: BrowserWindow | null = null;
-let quitConfirmed = false;
+let daemonClient: DaemonClient | null = null;
+let daemonConnector: DaemonConnector | null = null;
+let hookServer: HookServer | null = null;
+let cleanupDaemonEvents: (() => void) | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -41,16 +49,59 @@ function createWindow() {
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
-
-  // Notify renderer about interrupted sessions from startup sweep
-  mainWindow.webContents.on('did-finish-load', () => {
-    if (startupSweepCount > 0) {
-      mainWindow?.webContents.send('startup:interrupted-sessions', startupSweepCount);
-    }
-  });
 }
 
-app.whenReady().then(() => {
+function sendToAllWindows(channel: string, ...args: unknown[]): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(channel, ...args);
+  }
+}
+
+/**
+ * Forward daemon events to the renderer process via Electron IPC.
+ * Returns an unsubscribe function to clean up before re-registering.
+ */
+function setupDaemonEventForwarding(client: DaemonClient): void {
+  // Clean up previous subscriptions to avoid duplicate handlers on reconnect
+  cleanupDaemonEvents?.();
+
+  const unsub1 = client.subscribe(DAEMON_EVENTS.PTY_DATA, (params) => {
+    const { sessionId, data } = params as PtyDataEvent;
+    sendToAllWindows(`pty:data:${sessionId}`, data);
+  });
+
+  const unsub2 = client.subscribe(DAEMON_EVENTS.PTY_EXIT, (params) => {
+    const { sessionId, exitCode } = params as PtyExitEvent;
+    sendToAllWindows(`pty:exit:${sessionId}`, exitCode);
+  });
+
+  const unsub3 = client.subscribe(DAEMON_EVENTS.PID_SWEEP_SESSIONS_DIED, (params) => {
+    const { sessionIds } = params as PidSweepSessionsDiedEvent;
+    sendToAllWindows('pid-sweep:sessions-died', sessionIds);
+  });
+
+  cleanupDaemonEvents = () => {
+    unsub1();
+    unsub2();
+    unsub3();
+  };
+}
+
+/**
+ * Push the auth token from safeStorage to the daemon.
+ */
+async function pushTokenToDaemon(client: DaemonClient): Promise<void> {
+  const token = readToken();
+  if (token) {
+    try {
+      await client.request(DAEMON_METHODS.AUTH_SET_TOKEN, { token });
+    } catch {
+      // Daemon may not be ready yet
+    }
+  }
+}
+
+app.whenReady().then(async () => {
   // Set dock icon on macOS
   try {
     app.dock?.setIcon(iconPath);
@@ -58,52 +109,61 @@ app.whenReady().then(() => {
     console.warn('Failed to set dock icon:', err);
   }
 
-  // Initialize database
-  initDb();
+  // Create and connect to daemon
+  daemonClient = new DaemonClient();
+  daemonConnector = new DaemonConnector(daemonClient);
 
-  // Sweep stale sessions from previous run
-  const sweepResult = sweepStaleSessions();
-  startupSweepCount = sweepResult.total;
-  if (startupSweepCount > 0) {
-    console.log(`Startup sweep: ${startupSweepCount} session(s) were interrupted since last run`);
+  try {
+    await daemonConnector.ensureRunning();
+    console.log('Connected to PTY daemon');
+  } catch (err) {
+    console.error('Failed to connect to daemon:', err);
+    dialog.showErrorBox(
+      'Daemon Error',
+      'Failed to start the PTY daemon. Terminal sessions will not work.',
+    );
   }
 
-  // Register IPC handlers
-  registerIpcHandlers();
+  // Start hook server for Claude Code lifecycle events
+  hookServer = new HookServer();
+  try {
+    await hookServer.start();
+    console.log(`Hook server started on port ${hookServer.getPort()}`);
+  } catch (err) {
+    console.warn('Failed to start hook server:', err);
+    hookServer = null;
+  }
+
+  // Forward daemon events to renderer
+  setupDaemonEventForwarding(daemonClient);
+
+  // Push auth token to daemon
+  await pushTokenToDaemon(daemonClient);
+
+  // Handle reconnection
+  daemonConnector.setOnReconnect(async () => {
+    console.log('Reconnected to PTY daemon');
+    setupDaemonEventForwarding(daemonClient!);
+    await pushTokenToDaemon(daemonClient!);
+    sendToAllWindows('daemon:reconnected');
+  });
+
+  daemonConnector.setOnDisconnect(() => {
+    console.log('Disconnected from PTY daemon');
+    sendToAllWindows('daemon:disconnected');
+  });
+
+  // Register IPC handlers (proxy to daemon)
+  registerIpcHandlers(daemonClient, hookServer);
 
   // App menu (before auto-updater so menu exists when first check fires)
   initAppMenu({ onCheckForUpdates: checkForUpdates });
 
-  // Auto-update
+  // Auto-update — no more session termination warning!
   initAutoUpdater(setCheckForUpdatesState);
   ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
-    const activeCount = getPtyManager().activeCount;
-
-    if (activeCount > 0) {
-      const sessionWord = activeCount === 1 ? 'session' : 'sessions';
-      const options: Electron.MessageBoxSyncOptions = {
-        type: 'warning',
-        buttons: ['Cancel', 'Update & Restart'],
-        defaultId: 0,
-        cancelId: 0,
-        title: 'Update Orca?',
-        message: `You have ${activeCount} active terminal ${sessionWord}.`,
-        detail: 'Updating will restart Orca and terminate all running sessions.',
-      };
-      const result = mainWindow
-        ? dialog.showMessageBoxSync(mainWindow, options)
-        : dialog.showMessageBoxSync(options);
-
-      if (result === 0) return;
-    }
-
-    quitConfirmed = true;
     installUpdate();
   });
-
-  // Start periodic PID sweep (every 60s)
-  pidSweepManager = new PidSweepManager();
-  pidSweepManager.start();
 
   createWindow();
 
@@ -120,40 +180,21 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', (event) => {
-  if (quitConfirmed) {
-    pidSweepManager?.stop();
-    getPtyManager().killAll();
-    closeDb();
-    return;
-  }
+app.on('before-quit', () => {
+  daemonConnector?.stopReconnection();
+  hookServer?.stop().catch(() => {});
 
-  const activeCount = getPtyManager().activeCount;
-
-  if (activeCount === 0) {
-    pidSweepManager?.stop();
-    closeDb();
-    return;
-  }
-
-  event.preventDefault();
-
-  const sessionWord = activeCount === 1 ? 'session' : 'sessions';
-  const options: Electron.MessageBoxSyncOptions = {
-    type: 'warning',
-    buttons: ['Cancel', 'Quit'],
-    defaultId: 0,
-    cancelId: 0,
-    title: 'Quit Orca?',
-    message: `You have ${activeCount} active terminal ${sessionWord}.`,
-    detail: `Quitting will terminate all running ${sessionWord}. Are you sure?`,
-  };
-  const result = mainWindow
-    ? dialog.showMessageBoxSync(mainWindow, options)
-    : dialog.showMessageBoxSync(options);
-
-  if (result === 1) {
-    quitConfirmed = true;
-    app.quit();
+  if (isAutoUpdateRestart) {
+    // Update restart: just disconnect — daemon stays alive, sessions survive.
+    // When the updated app launches, it reconnects to the same daemon.
+    daemonClient?.disconnect();
+  } else {
+    // Normal quit: tell the daemon to shut down.
+    // Fire-and-forget — we can't await in before-quit, and the daemon
+    // handles shutdown gracefully (kills PTYs, closes DB, removes socket).
+    if (daemonClient?.connected) {
+      daemonClient.request(DAEMON_METHODS.DAEMON_SHUTDOWN).catch(() => {});
+    }
+    daemonClient?.disconnect();
   }
 });

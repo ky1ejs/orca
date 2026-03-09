@@ -41,5 +41,12 @@ export function useTerminalSessions(taskId?: string) {
     };
   }, [fetchSessions]);
 
+  useEffect(() => {
+    const unsubscribe = window.orca.lifecycle.onSessionStatusChanged((sessionId, status) => {
+      setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, status } : s)));
+    });
+    return unsubscribe;
+  }, []);
+
   return { sessions, loading, refresh };
 }

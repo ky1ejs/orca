@@ -7,6 +7,7 @@ import type { Resolvers } from '../__generated__/graphql.js';
 import { authResolvers } from './auth.js';
 import { membershipResolvers } from './membership.js';
 import { projectResolvers } from './project.js';
+import { labelResolvers } from './label.js';
 import { taskResolvers } from './task.js';
 import { workspaceResolvers } from './workspace.js';
 
@@ -21,6 +22,7 @@ const resolvers: Resolvers = {
     ...workspaceResolvers.Query,
     ...projectResolvers.Query,
     ...taskResolvers.Query,
+    ...labelResolvers.Query,
     ...membershipResolvers.Query,
   },
   Mutation: {
@@ -28,6 +30,7 @@ const resolvers: Resolvers = {
     ...workspaceResolvers.Mutation,
     ...projectResolvers.Mutation,
     ...taskResolvers.Mutation,
+    ...labelResolvers.Mutation,
     ...membershipResolvers.Mutation,
   },
   Subscription: {

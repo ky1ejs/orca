@@ -31,11 +31,11 @@ describe('PriorityIcon', () => {
     expect(svg?.getAttribute('aria-label')).toBe('Priority: High');
   });
 
-  it('renders an SVG for URGENT priority with orange color', () => {
+  it('renders an SVG for URGENT priority with priority-urgent color', () => {
     const { container } = render(<PriorityIcon priority={TaskPriority.Urgent} />);
     const svg = container.querySelector('svg');
     expect(svg?.getAttribute('aria-label')).toBe('Priority: Urgent');
-    expect(svg?.className.baseVal).toContain('text-orange-500');
+    expect(svg?.className.baseVal).toContain('text-priority-urgent');
   });
 
   it('renders 4 bars for all priorities (some dimmed)', () => {

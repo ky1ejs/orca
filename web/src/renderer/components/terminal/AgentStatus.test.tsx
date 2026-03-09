@@ -12,21 +12,21 @@ describe('AgentStatus', () => {
     render(<AgentStatus status={SessionStatus.Starting} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Starting');
-    expect(badge.className).toContain('bg-blue-900');
+    expect(badge.className).toContain('bg-info-muted');
   });
 
   it('renders "Running" with green styling', () => {
     render(<AgentStatus status={SessionStatus.Running} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Running');
-    expect(badge.className).toContain('bg-green-900');
+    expect(badge.className).toContain('bg-success-muted');
   });
 
   it('renders "Waiting for Input" with yellow styling and pulse', () => {
     render(<AgentStatus status={SessionStatus.WaitingForInput} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Waiting for Input');
-    expect(badge.className).toContain('bg-yellow-900');
+    expect(badge.className).toContain('bg-warning-muted');
     // Pulse is on the dot span inside the badge
     const dot = badge.querySelector('span');
     expect(dot?.className).toContain('animate-pulse');
@@ -39,11 +39,20 @@ describe('AgentStatus', () => {
     expect(badge.className).toContain('bg-gray-700');
   });
 
+  it('renders "Needs Permission" with orange styling and pulse', () => {
+    render(<AgentStatus status={SessionStatus.AwaitingPermission} />);
+    const badge = screen.getByTestId('agent-status-badge');
+    expect(badge).toHaveTextContent('Needs Permission');
+    expect(badge.className).toContain('bg-orange-900');
+    const dot = badge.querySelector('span');
+    expect(dot?.className).toContain('animate-pulse');
+  });
+
   it('renders "Error" with red styling', () => {
     render(<AgentStatus status={SessionStatus.Error} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Error');
-    expect(badge.className).toContain('bg-red-900');
+    expect(badge.className).toContain('bg-error-muted');
   });
 
   it('falls back to EXITED styling for unknown status', () => {

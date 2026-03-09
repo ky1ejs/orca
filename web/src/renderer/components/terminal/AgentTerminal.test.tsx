@@ -17,6 +17,7 @@ vi.mock('@xterm/xterm', () => ({
     dispose: mockDispose,
     loadAddon: mockLoadAddon,
     onData: mockOnData,
+    options: {},
     cols: 80,
     rows: 24,
   })),
@@ -33,6 +34,13 @@ vi.mock('@xterm/addon-web-links', () => ({
 }));
 
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
+
+vi.mock('../../preferences/context.js', () => ({
+  usePreferences: () => ({
+    terminalFontFamily: 'monospace',
+    setTerminalFontFamily: vi.fn(),
+  }),
+}));
 
 const mockReplay = vi.fn().mockResolvedValue('previous output');
 const mockPtyOnData = vi.fn().mockReturnValue(vi.fn());

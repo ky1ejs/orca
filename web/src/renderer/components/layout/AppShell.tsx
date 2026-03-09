@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Download } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { isActiveSessionStatus } from '../../../shared/session-status.js';
 import { Sidebar } from './Sidebar.js';
 import { useNavigation } from '../../navigation/context.js';
@@ -75,6 +77,14 @@ export function AppShell({ onLogout }: AppShellProps) {
     if (!window.orca?.updates) return;
     return window.orca.updates.onUpdateReady((version) => {
       setUpdateVersion(version);
+    });
+  }, []);
+
+  // Listen for auto-update errors
+  useEffect(() => {
+    if (!window.orca?.updates?.onUpdateError) return;
+    return window.orca.updates.onUpdateError((message) => {
+      console.error('[updater] Error:', message);
     });
   }, []);
 
@@ -221,12 +231,13 @@ export function AppShell({ onLogout }: AppShellProps) {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         {updateVersion && (
-          <div className="bg-blue-600 text-white px-4 py-2 text-sm flex items-center justify-between shrink-0">
+          <div className="bg-gray-800 border-b border-gray-700 text-white px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
             <span>Orca v{updateVersion} is ready to install.</span>
             <button
               onClick={() => window.orca.updates.install()}
-              className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-xs font-medium transition-colors"
+              className="bg-accent hover:bg-accent-hover text-on-accent px-3 py-1 rounded text-label-sm font-medium transition-colors"
             >
+              <Download className={`${iconSize.sm} mr-1 inline-block`} />
               Restart &amp; Update
             </button>
           </div>

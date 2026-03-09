@@ -159,12 +159,20 @@ jobs:
         run: |
           TAG="${{ needs.version.outputs.tag }}"
           REPO="${{ github.repository }}"
+          ARCH="${{ matrix.arch }}"
 
-          for file in web/dist-electron/*.dmg web/dist-electron/*.zip web/dist-electron/latest-mac*.yml; do
+          for file in web/dist-electron/*.dmg web/dist-electron/*.zip; do
             [ -f "$file" ] || continue
             echo "Uploading $(basename "$file")..."
             gh release upload "$TAG" "$file" --repo "$REPO" --clobber
           done
+
+          # Upload latest-mac.yml under an arch-specific name to avoid clobber races
+          if [ -f "web/dist-electron/latest-mac.yml" ]; then
+            cp "web/dist-electron/latest-mac.yml" "web/dist-electron/latest-mac-${ARCH}.yml"
+            echo "Uploading latest-mac-${ARCH}.yml..."
+            gh release upload "$TAG" "web/dist-electron/latest-mac-${ARCH}.yml" --repo "$REPO" --clobber
+          fi
 
   finalize-release:
     needs: [version, build]
@@ -188,6 +196,88 @@ jobs:
           else
             echo "has_assets=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Merge architecture manifests
+        if: steps.check.outputs.has_assets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          # Download arch-specific manifests
+          gh release download "$TAG" --repo "$REPO" --pattern "latest-mac-arm64.yml" --dir . || true
+          gh release download "$TAG" --repo "$REPO" --pattern "latest-mac-x64.yml" --dir . || true
+
+          if [ ! -f "latest-mac-arm64.yml" ] || [ ! -f "latest-mac-x64.yml" ]; then
+            echo "Warning: Missing one or both arch manifests, skipping merge"
+            # If only one exists, upload it as latest-mac.yml
+            for f in latest-mac-arm64.yml latest-mac-x64.yml; do
+              if [ -f "$f" ]; then
+                cp "$f" latest-mac.yml
+                gh release upload "$TAG" latest-mac.yml --repo "$REPO" --clobber
+              fi
+            done
+            exit 0
+          fi
+
+          # Merge both manifests into a single latest-mac.yml
+          node -e "
+            const fs = require('fs');
+
+            function parseYaml(text) {
+              const result = { files: [] };
+              let currentFile = null;
+              for (const line of text.split('\n')) {
+                if (line.startsWith('version:')) result.version = line.split(': ')[1].trim();
+                else if (line.startsWith('path:')) result.path = line.split(': ')[1].trim();
+                else if (line.startsWith('sha512:') && !currentFile) result.sha512 = line.split(': ')[1].trim();
+                else if (line.startsWith('releaseDate:')) result.releaseDate = line.replace('releaseDate: ', '').trim();
+                else if (line.trim() === '- url:' || line.trim().startsWith('- url: ')) {
+                  currentFile = { url: line.trim().replace('- url: ', '') };
+                  result.files.push(currentFile);
+                } else if (currentFile && line.trim().startsWith('sha512:')) {
+                  currentFile.sha512 = line.trim().split(': ')[1];
+                } else if (currentFile && line.trim().startsWith('size:')) {
+                  currentFile.size = line.trim().split(': ')[1];
+                  currentFile = null;
+                }
+              }
+              return result;
+            }
+
+            const arm64 = parseYaml(fs.readFileSync('latest-mac-arm64.yml', 'utf8'));
+            const x64 = parseYaml(fs.readFileSync('latest-mac-x64.yml', 'utf8'));
+
+            // Use x64 as the base for root-level path/sha512 (backward compat)
+            const merged = {
+              version: x64.version || arm64.version,
+              files: [...arm64.files, ...x64.files],
+              path: x64.path || arm64.path,
+              sha512: x64.sha512 || arm64.sha512,
+              releaseDate: x64.releaseDate || arm64.releaseDate,
+            };
+
+            let yml = 'version: ' + merged.version + '\n';
+            yml += 'files:\n';
+            for (const f of merged.files) {
+              yml += '  - url: ' + f.url + '\n';
+              yml += '    sha512: ' + f.sha512 + '\n';
+              yml += '    size: ' + f.size + '\n';
+            }
+            yml += 'path: ' + merged.path + '\n';
+            yml += 'sha512: ' + merged.sha512 + '\n';
+            yml += 'releaseDate: ' + merged.releaseDate + '\n';
+
+            fs.writeFileSync('latest-mac.yml', yml);
+            console.log('Merged latest-mac.yml:');
+            console.log(yml);
+          "
+
+          # Upload merged manifest and clean up arch-specific ones
+          gh release upload "$TAG" latest-mac.yml --repo "$REPO" --clobber
+          gh release delete-asset "$TAG" latest-mac-arm64.yml --repo "$REPO" --yes || true
+          gh release delete-asset "$TAG" latest-mac-x64.yml --repo "$REPO" --yes || true
 
       - name: Publish release
         if: steps.check.outputs.has_assets == 'true'

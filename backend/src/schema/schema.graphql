@@ -41,6 +41,7 @@ type Workspace {
   members: [WorkspaceMember!]!
   invitations: [WorkspaceInvitation!]!
   projects: [Project!]!
+  labels: [Label!]!
   createdAt: String!
   updatedAt: String!
 }
@@ -72,14 +73,26 @@ type Project {
   updatedAt: String!
 }
 
+type Label {
+  id: ID!
+  name: String!
+  color: String!
+  workspaceId: ID!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type Task {
   id: ID!
+  displayId: String!
   title: String!
   description: String
   status: TaskStatus!
   priority: TaskPriority!
   projectId: ID!
   project: Project!
+  assignee: User
+  labels: [Label!]!
   createdAt: String!
   updatedAt: String!
 }
@@ -98,6 +111,7 @@ input CreateWorkspaceInput {
 
 input UpdateWorkspaceInput {
   name: String
+  slug: String
 }
 
 input CreateProjectInput {
@@ -119,6 +133,8 @@ input CreateTaskInput {
   status: TaskStatus
   priority: TaskPriority
   projectId: ID!
+  assigneeId: ID
+  labelIds: [ID!]
 }
 
 input UpdateTaskInput {
@@ -126,6 +142,20 @@ input UpdateTaskInput {
   description: String
   status: TaskStatus
   priority: TaskPriority
+  projectId: ID
+  assigneeId: ID
+  labelIds: [ID!]
+}
+
+input CreateLabelInput {
+  name: String!
+  color: String!
+  workspaceId: ID!
+}
+
+input UpdateLabelInput {
+  name: String
+  color: String
 }
 
 input AddMemberInput {
@@ -158,6 +188,7 @@ type Query {
   workspaces: [Workspace!]!
   project(id: ID!): Project
   task(id: ID!): Task
+  labels(workspaceId: ID!): [Label!]!
   pendingInvitations: [WorkspaceInvitation!]!
 }
 
@@ -179,6 +210,9 @@ type Mutation {
   cancelInvitation(id: ID!): Boolean!
   acceptInvitation(id: ID!): Workspace!
   declineInvitation(id: ID!): Boolean!
+  createLabel(input: CreateLabelInput!): Label!
+  updateLabel(id: ID!, input: UpdateLabelInput!): Label!
+  deleteLabel(id: ID!): Boolean!
 }
 
 type Subscription {

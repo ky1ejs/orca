@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GraphQLProvider } from './graphql/provider.js';
 import { NavigationProvider } from './navigation/context.js';
 import { WorkspaceProvider } from './workspace/context.js';
+import { PreferencesProvider } from './preferences/context.js';
 import { AppShell } from './components/layout/AppShell.js';
 import { LoginScreen } from './components/auth/LoginScreen.js';
 import { RegisterScreen } from './components/auth/RegisterScreen.js';
@@ -55,7 +56,7 @@ function App() {
   if (authState === 'loading') {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
-        <p className="text-sm">Loading...</p>
+        <p className="text-body-sm">Loading...</p>
       </div>
     );
   }
@@ -78,11 +79,13 @@ function App() {
 
   return (
     <GraphQLProvider key={clientKey}>
-      <WorkspaceProvider>
-        <NavigationProvider>
-          <AppShell onLogout={handleLogout} />
-        </NavigationProvider>
-      </WorkspaceProvider>
+      <PreferencesProvider>
+        <WorkspaceProvider>
+          <NavigationProvider>
+            <AppShell onLogout={handleLogout} />
+          </NavigationProvider>
+        </WorkspaceProvider>
+      </PreferencesProvider>
     </GraphQLProvider>
   );
 }

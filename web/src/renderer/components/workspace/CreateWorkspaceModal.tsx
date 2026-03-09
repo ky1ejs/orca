@@ -74,19 +74,19 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
         onSubmit={handleSubmit}
         className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-full max-w-md p-6"
       >
-        <h2 className="text-lg font-semibold text-white mb-4">Create Workspace</h2>
+        <h2 className="text-heading-sm font-semibold text-white mb-4">Create Workspace</h2>
 
-        <label className="block text-sm text-gray-300 mb-1">Name</label>
+        <label className="block text-label-md text-gray-300 mb-1">Name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 mb-3"
           placeholder="My Workspace"
           autoFocus
         />
 
-        <label className="block text-sm text-gray-300 mb-1">Slug</label>
+        <label className="block text-label-md text-gray-300 mb-1">Slug</label>
         <input
           type="text"
           value={slug}
@@ -94,24 +94,24 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
             setSlugTouched(true);
             setSlug(e.target.value);
           }}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-4"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 mb-4"
           placeholder="my-workspace"
         />
 
-        {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
+        {error && <p className="text-body-sm text-error mb-4">{error}</p>}
 
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-label-md text-gray-400 hover:text-white transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={fetching || !name.trim() || !slug.trim()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded transition-colors disabled:opacity-50"
           >
             {fetching ? 'Creating...' : 'Create'}
           </button>

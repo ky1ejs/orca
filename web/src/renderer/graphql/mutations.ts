@@ -38,6 +38,7 @@ export const CreateProjectDocument = /* GraphQL */ `
       workspaceId
       tasks {
         id
+        displayId
         title
         status
       }
@@ -70,6 +71,7 @@ export const CreateTaskDocument = /* GraphQL */ `
   mutation CreateTask($input: CreateTaskInput!) {
     createTask(input: $input) {
       id
+      displayId
       title
       description
       status
@@ -78,6 +80,15 @@ export const CreateTaskDocument = /* GraphQL */ `
       project {
         id
         name
+      }
+      assignee {
+        id
+        name
+      }
+      labels {
+        id
+        name
+        color
       }
       createdAt
       updatedAt
@@ -89,11 +100,25 @@ export const UpdateTaskDocument = /* GraphQL */ `
   mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
     updateTask(id: $id, input: $input) {
       id
+      displayId
       title
       description
       status
       priority
       projectId
+      project {
+        id
+        name
+      }
+      assignee {
+        id
+        name
+      }
+      labels {
+        id
+        name
+        color
+      }
       createdAt
       updatedAt
     }
@@ -173,5 +198,37 @@ export const AcceptInvitationDocument = /* GraphQL */ `
 export const DeclineInvitationDocument = /* GraphQL */ `
   mutation DeclineInvitation($id: ID!) {
     declineInvitation(id: $id)
+  }
+`;
+
+export const CreateLabelDocument = /* GraphQL */ `
+  mutation CreateLabel($input: CreateLabelInput!) {
+    createLabel(input: $input) {
+      id
+      name
+      color
+      workspaceId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const UpdateLabelDocument = /* GraphQL */ `
+  mutation UpdateLabel($id: ID!, $input: UpdateLabelInput!) {
+    updateLabel(id: $id, input: $input) {
+      id
+      name
+      color
+      workspaceId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const DeleteLabelDocument = /* GraphQL */ `
+  mutation DeleteLabel($id: ID!) {
+    deleteLabel(id: $id)
   }
 `;

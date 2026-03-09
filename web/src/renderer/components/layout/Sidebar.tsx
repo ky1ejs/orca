@@ -1,5 +1,14 @@
 import { useState } from 'react';
 import {
+  Box,
+  PanelLeft,
+  ChevronRight,
+  ChevronDown,
+  SquareTerminal,
+  Settings,
+  LogOut,
+} from 'lucide-react';
+import {
   useWorkspaceBySlug,
   useProjectSubscription,
   useTaskSubscription,
@@ -12,7 +21,15 @@ import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
-import { Box, ChevronDown, ChevronRight, PanelLeft } from 'lucide-react';
+import { SessionStatus } from '../../../shared/session-status.js';
+import { iconSize } from '../../tokens/icon-size.js';
+
+function collapsedBadgeColor(statuses: string[]): string {
+  const set = new Set(statuses);
+  if (set.has(SessionStatus.AwaitingPermission)) return 'bg-warning animate-pulse';
+  if (set.has(SessionStatus.WaitingForInput)) return 'bg-warning animate-pulse';
+  return 'bg-info';
+}
 
 interface SidebarProps {
   collapsed: boolean;
@@ -57,27 +74,17 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
-            <PanelLeft className="h-5 w-5" />
+            <PanelLeft className={iconSize.md} />
           </button>
           <NotificationBell />
         </div>
         {activeTerminals.length > 0 && (
           <div className="py-2" data-testid="active-terminals-collapsed">
             <div className="relative flex justify-center">
-              <svg
-                className="h-5 w-5 text-green-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+              <SquareTerminal className={`${iconSize.md} text-success`} />
+              <span
+                className={`absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-label-xs font-bold text-white ${collapsedBadgeColor(activeTerminals.map((t) => t.status))}`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
-                />
-              </svg>
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
                 {activeTerminals.length}
               </span>
             </div>
@@ -95,7 +102,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <button
           onClick={() => navigate({ view: 'projects' })}
-          className="text-lg font-semibold text-white hover:text-blue-400 transition-colors"
+          className="text-heading-sm font-semibold text-white hover:text-gray-200 transition-colors"
         >
           Orca
         </button>
@@ -107,7 +114,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Collapse sidebar"
             data-testid="sidebar-collapse-btn"
           >
-            <PanelLeft className="h-4 w-4" />
+            <PanelLeft className={iconSize.sm} />
           </button>
         </div>
       </div>
@@ -117,7 +124,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-gray-500">No projects yet</div>
+          <div className="px-3 py-2 text-body-sm text-gray-500">No projects yet</div>
         ) : (
           <ul className="space-y-0.5">
             {projects.map((project) => {
@@ -129,13 +136,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                   <div className="flex items-center">
                     <button
                       onClick={() => navigate({ view: 'project', id: project.id })}
-                      className={`flex-1 text-left px-2 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 ${
+                      className={`flex-1 text-left px-2 py-1.5 text-body-sm rounded transition-colors flex items-center gap-1.5 ${
                         isActive
                           ? 'bg-gray-800 text-white'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
-                      <Box className="w-3.5 h-3.5 flex-shrink-0" />
+                      <Box className={`${iconSize.xs} flex-shrink-0`} />
                       <span className="truncate">{project.name}</span>
                     </button>
                     <button
@@ -144,9 +151,9 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
+                        <ChevronDown className={iconSize.xs} />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <ChevronRight className={iconSize.xs} />
                       )}
                     </button>
                   </div>
@@ -159,13 +166,17 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                           <li key={task.id}>
                             <button
                               onClick={() => navigate({ view: 'task', id: task.id })}
-                              className={`w-full text-left px-2 py-1 text-xs rounded flex items-center justify-between gap-1 transition-colors ${
+                              className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
                                 isTaskActive
                                   ? 'bg-gray-800 text-white'
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                               }`}
                             >
-                              <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
+                              <StatusIcon
+                                status={task.status}
+                                className={`${iconSize.xs} flex-shrink-0`}
+                              />
+                              <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
                               <span className="truncate">{task.title}</span>
                             </button>
                           </li>
@@ -183,24 +194,26 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         <div className="p-2">
           <button
             onClick={() => navigate({ view: 'settings' })}
-            className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors ${
+            className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors ${
               current.view === 'settings' || current.view === 'members'
                 ? 'bg-gray-800 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             }`}
           >
+            <Settings className={`${iconSize.sm} inline-block mr-2`} />
             Settings
           </button>
         </div>
         <div className="p-2 pt-0">
           <button
             onClick={onLogout}
-            className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
+            className="w-full text-left px-3 py-1.5 text-label-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
           >
+            <LogOut className={`${iconSize.sm} inline-block mr-2`} />
             Sign out
           </button>
         </div>
-        <div className="px-3 py-2 border-t border-gray-800 text-[10px] text-gray-600">
+        <div className="px-3 py-2 border-t border-gray-800 text-label-xs text-gray-600">
           v{__APP_VERSION__} ({__GIT_HASH__})
         </div>
       </div>
