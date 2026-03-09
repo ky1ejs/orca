@@ -1,5 +1,3 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { iconSize } from '../../tokens/icon-size.js';
 import { useNavigation } from '../../navigation/context.js';
 
 interface BreadcrumbSegment {
@@ -55,16 +53,39 @@ export function Breadcrumbs() {
           aria-label="Go to parent"
           className="text-gray-400 hover:text-white transition-colors py-0.5"
         >
-          <ChevronLeft className={iconSize.sm} />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
         </button>
       )}
-      <ol className="flex items-center gap-1 text-label-sm">
+      <ol className="flex items-center gap-1 text-xs">
         {segments.map((segment, index) => {
           const isLast = index === segments.length - 1;
           return (
             <li key={index} className="flex items-center gap-1">
               {index > 0 && (
-                <ChevronRight className={`${iconSize.xs} text-gray-700`} aria-hidden="true" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-3 h-3 text-gray-700"
+                  aria-hidden="true"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
               )}
               {segment.onClick && !isLast ? (
                 <button
