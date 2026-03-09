@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { Check, X } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { useAcceptInvitation, useDeclineInvitation } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
 
@@ -56,15 +58,17 @@ export function InvitationList({ invitations }: InvitationListProps) {
             <button
               onClick={() => handleAccept(inv)}
               disabled={processing === inv.id}
-              className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors disabled:opacity-50"
+              className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors disabled:opacity-50 inline-flex items-center"
             >
+              <Check className={`${iconSize.xs} mr-1`} />
               Accept
             </button>
             <button
               onClick={() => handleDecline(inv.id)}
               disabled={processing === inv.id}
-              className="px-2.5 py-1 text-label-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              className="px-2.5 py-1 text-label-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50 inline-flex items-center"
             >
+              <X className={`${iconSize.xs} mr-1`} />
               Decline
             </button>
           </div>

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import {
   useProject,
   useUpdateProject,
@@ -78,7 +80,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         onClick={() => navigateBack({ view: 'projects' })}
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
-        &larr; Back to Projects
+        <ArrowLeft className={`${iconSize.sm} mr-1`} />
+        Back to Projects
       </button>
 
       {editing ? (
@@ -127,14 +130,16 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors inline-flex items-center"
               >
+                <Pencil className={`${iconSize.sm} mr-1`} />
                 Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
+                <Trash2 className={`${iconSize.sm} mr-1`} />
                 Delete
               </button>
             </div>

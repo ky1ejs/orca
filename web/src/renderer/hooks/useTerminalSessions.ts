@@ -19,6 +19,10 @@ export function useTerminalSessions(taskId?: string) {
   const mountedRef = useRef(true);
 
   const fetchSessions = useCallback(async () => {
+    if (!window.orca?.db) {
+      setLoading(false);
+      return;
+    }
     const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
     if (!mountedRef.current) return;
     const filtered = taskId ? all.filter((s) => s.task_id === taskId) : all;
@@ -34,6 +38,7 @@ export function useTerminalSessions(taskId?: string) {
     mountedRef.current = true;
     fetchSessions();
 
+    if (!window.orca?.db) return;
     const interval = setInterval(fetchSessions, POLL_INTERVAL);
     return () => {
       mountedRef.current = false;
@@ -42,9 +47,12 @@ export function useTerminalSessions(taskId?: string) {
   }, [fetchSessions]);
 
   useEffect(() => {
-    const unsubscribe = window.orca.lifecycle.onSessionStatusChanged((sessionId, status) => {
-      setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, status } : s)));
-    });
+    if (!window.orca?.lifecycle) return;
+    const unsubscribe = window.orca.lifecycle.onSessionStatusChanged(
+      (sessionId: string, status: string) => {
+        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, status } : s)));
+      },
+    );
     return unsubscribe;
   }, []);
 

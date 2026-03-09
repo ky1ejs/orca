@@ -1,11 +1,12 @@
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
+import { iconSize } from '../../tokens/icon-size.js';
 
 interface StatusIconProps {
   status: TaskStatus;
   className?: string;
 }
 
-export function StatusIcon({ status, className = 'w-4 h-4' }: StatusIconProps) {
+export function StatusIcon({ status, className = iconSize.sm }: StatusIconProps) {
   switch (status) {
     case TaskStatus.Todo:
       return (

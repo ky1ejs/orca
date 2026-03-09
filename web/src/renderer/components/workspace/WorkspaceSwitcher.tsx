@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Plus } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useNavigation } from '../../navigation/context.js';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal.js';
@@ -38,15 +40,9 @@ export function WorkspaceSwitcher() {
         data-testid="workspace-switcher"
       >
         <span className="truncate font-medium">{currentWorkspace.name}</span>
-        <svg
-          className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown
+          className={`${iconSize.sm} text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {isOpen && (
@@ -70,9 +66,10 @@ export function WorkspaceSwitcher() {
                 setIsOpen(false);
                 setShowCreateModal(true);
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors flex items-center"
             >
-              + Create Workspace
+              <Plus className={`${iconSize.sm} mr-1`} />
+              Create Workspace
             </button>
           </div>
         </div>

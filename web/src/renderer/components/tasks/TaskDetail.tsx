@@ -1,4 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  SquareTerminal,
+  RotateCcw,
+  FolderOpen,
+  X,
+  ChevronDown,
+} from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
 import {
   useTask,
@@ -233,9 +244,10 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       return (
         <button
           onClick={handleRestartAgent}
-          className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
+          className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
           data-testid="agent-button"
         >
+          <RotateCcw className={`${iconSize.sm} mr-1`} />
           Restart Terminal
         </button>
       );
@@ -246,9 +258,10 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div className="flex">
           <button
             onClick={() => handleLaunchAgent()}
-            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-l-md transition-colors"
+            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-l-md transition-colors inline-flex items-center"
             data-testid="agent-button"
           >
+            <SquareTerminal className={`${iconSize.sm} mr-1`} />
             Open Terminal
           </button>
           <button
@@ -256,9 +269,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             className="px-1.5 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-r-md border-l border-accent-active transition-colors"
             data-testid="agent-menu-toggle"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M3 5l3 3 3-3H3z" />
-            </svg>
+            <ChevronDown className={iconSize.xs} />
           </button>
         </div>
         {launchMenuOpen && (
@@ -299,7 +310,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         }
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
-        &larr; Back to {task.project?.name ?? 'Projects'}
+        <ArrowLeft className={`${iconSize.sm} mr-1`} />
+        Back to {task.project?.name ?? 'Projects'}
       </button>
 
       {editing ? (
@@ -367,14 +379,16 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors inline-flex items-center"
               >
+                <Pencil className={`${iconSize.sm} mr-1`} />
                 Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
+                <Trash2 className={`${iconSize.sm} mr-1`} />
                 Delete
               </button>
             </div>
@@ -523,8 +537,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                     setEditingDirectory('');
                     setIsEditingDir(true);
                   }}
-                  className="text-gray-300 hover:text-gray-200 text-label-md mt-1 transition-colors"
+                  className="text-gray-300 hover:text-gray-200 text-label-md mt-1 transition-colors inline-flex items-center"
                 >
+                  <FolderOpen className={`${iconSize.sm} mr-1`} />
                   Set project directory...
                 </button>
               )}
@@ -556,7 +571,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                     className="text-error hover:text-error text-label-md ml-2"
                     data-testid="dismiss-error"
                   >
-                    &times;
+                    <X className={iconSize.sm} />
                   </button>
                 </div>
               </div>

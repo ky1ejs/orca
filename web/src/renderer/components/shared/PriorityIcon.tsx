@@ -1,4 +1,5 @@
 import { TaskPriority } from '../../graphql/__generated__/generated.js';
+import { iconSize } from '../../tokens/icon-size.js';
 
 interface PriorityIconProps {
   priority: TaskPriority;
@@ -16,7 +17,7 @@ const priorityConfig: Record<
   [TaskPriority.Urgent]: { bars: 4, colorClass: 'text-priority-urgent', label: 'Priority: Urgent' },
 };
 
-export function PriorityIcon({ priority, className = 'w-4 h-4' }: PriorityIconProps) {
+export function PriorityIcon({ priority, className = iconSize.sm }: PriorityIconProps) {
   const config = priorityConfig[priority];
 
   if (!config) {

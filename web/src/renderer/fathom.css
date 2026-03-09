@@ -12,6 +12,7 @@
  *   Radius   → rounded-sm, rounded-md, rounded-lg
  *   Font     → font-sans (automatic), font-mono (code/terminals)
  *   Text     → text-label-sm, text-body, text-heading-lg, etc.
+ *   Icons    → size-icon-xs, size-icon-sm, size-icon-md, size-icon-lg
  *   Spacing  → standard Tailwind scale (p-4, gap-2, m-6, etc.)
  * =================================================================
  */
@@ -164,6 +165,22 @@
   --text-heading-lg--line-height: 32px;
   --text-heading-xl: 32px;
   --text-heading-xl--line-height: 40px;
+
+  /* -----------------------------------------------------------
+   * Icon Sizing
+   *
+   * Square sizing tokens for Lucide icons. Each generates a
+   * `size-icon-*` utility that sets both width and height.
+   *
+   *   xs — compact: disclosure chevrons, tab close, inline badges
+   *   sm — default: buttons, navigation, actions, close/dismiss
+   *   md — prominent: collapsed sidebar toolbar, standalone icons
+   *   lg — decorative: empty-state illustrations (pair with strokeWidth 1.5)
+   * ----------------------------------------------------------- */
+  --size-icon-xs: 12px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 48px;
 }
 
 /* -------------------------------------------------------------------

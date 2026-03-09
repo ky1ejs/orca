@@ -1,5 +1,14 @@
 import { useState } from 'react';
 import {
+  Box,
+  PanelLeft,
+  ChevronRight,
+  ChevronDown,
+  SquareTerminal,
+  Settings,
+  LogOut,
+} from 'lucide-react';
+import {
   useWorkspaceBySlug,
   useProjectSubscription,
   useTaskSubscription,
@@ -14,6 +23,7 @@ import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { SessionStatus } from '../../../shared/session-status.js';
+import { iconSize } from '../../tokens/icon-size.js';
 
 interface SidebarTask {
   id: string;
@@ -100,34 +110,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
+            <PanelLeft className={iconSize.sm} />
           </button>
           <NotificationBell />
         </div>
         {activeTerminals.length > 0 && (
           <div className="py-2" data-testid="active-terminals-collapsed">
             <div className="relative flex justify-center">
-              <svg
-                className="h-5 w-5 text-success"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
-                />
-              </svg>
+              <SquareTerminal className={`${iconSize.md} text-success`} />
               <span
                 className={`absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-label-xs font-bold text-white ${collapsedBadgeColor(activeTerminals.map((t) => t.status))}`}
               >
@@ -160,19 +150,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             aria-label="Collapse sidebar"
             data-testid="sidebar-collapse-btn"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
-            </svg>
+            <PanelLeft className={iconSize.sm} />
           </button>
         </div>
       </div>
@@ -208,17 +186,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             )}
           </div>
         )}
-        <button
-          onClick={() => navigate({ view: 'projects' })}
-          className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors mb-1 ${
-            current.view === 'projects'
-              ? 'bg-gray-800 text-white'
-              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-          }`}
-          data-testid="sidebar-projects-btn"
-        >
-          Projects
-        </button>
+        <div className="px-2 py-2.5 flex items-center gap-2 text-gray-500">
+          <Box className={iconSize.sm} />
+          <span className="text-label-sm font-medium">Projects</span>
+        </div>
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
@@ -231,25 +202,40 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
               return (
                 <li key={project.id}>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => toggleExpand(project.id)}
-                      className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+                  <button
+                    onClick={() => navigate({ view: 'project', id: project.id })}
+                    className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
+                      isActive
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="flex-1 truncate">{project.name}</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        toggleExpand(project.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          toggleExpand(project.id);
+                        }
+                      }}
+                      className="p-0.5 hover:text-gray-300 transition-colors flex-shrink-0"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      <span className="text-label-sm">{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                    </button>
-                    <button
-                      onClick={() => navigate({ view: 'project', id: project.id })}
-                      className={`flex-1 text-left px-2 py-1.5 text-body-sm rounded transition-colors ${
-                        isActive
-                          ? 'bg-gray-800 text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      }`}
-                    >
-                      {project.name}
-                    </button>
-                  </div>
+                      {isExpanded ? (
+                        <ChevronDown className={iconSize.xs} />
+                      ) : (
+                        <ChevronRight className={iconSize.xs} />
+                      )}
+                    </span>
+                  </button>
 
                   {isExpanded && project.tasks.length > 0 && (
                     <ul className="ml-6 mt-0.5 space-y-0.5">
@@ -279,6 +265,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             }`}
           >
+            <Settings className={`${iconSize.sm} inline-block mr-2`} />
             Settings
           </button>
         </div>
@@ -287,6 +274,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             onClick={onLogout}
             className="w-full text-left px-3 py-1.5 text-label-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
           >
+            <LogOut className={`${iconSize.sm} inline-block mr-2`} />
             Sign out
           </button>
         </div>
