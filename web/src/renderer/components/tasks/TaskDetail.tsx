@@ -112,7 +112,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   if (!task) {
     return (
-      <div className="p-6 text-gray-400">
+      <div className="p-6 text-fg-muted">
         <p>Task not found.</p>
       </div>
     );
@@ -206,7 +206,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       return (
         <button
           disabled
-          className="px-3 py-1.5 bg-gray-700 text-gray-400 text-label-md rounded-md cursor-not-allowed"
+          className="px-3 py-1.5 bg-surface-hover text-fg-muted text-label-md rounded-md cursor-not-allowed"
           data-testid="agent-button"
         >
           Opening...
@@ -219,7 +219,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
         <div className="flex gap-2">
           <button
             disabled
-            className="px-3 py-1.5 bg-gray-700 text-gray-400 text-label-md rounded-md cursor-not-allowed"
+            className="px-3 py-1.5 bg-surface-hover text-fg-muted text-label-md rounded-md cursor-not-allowed"
             data-testid="agent-button"
           >
             Running...
@@ -268,13 +268,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           </button>
         </div>
         {launchMenuOpen && (
-          <div className="absolute top-full left-0 mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown min-w-[160px] animate-slide-up">
+          <div className="absolute top-full left-0 mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 min-w-[160px] animate-slide-up">
             <button
               onClick={() => {
                 setLaunchMenuOpen(false);
                 handleLaunchAgent();
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-white hover:bg-gray-700 rounded-t-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-t-md transition-colors"
               data-testid="launch-terminal"
             >
               Open Terminal
@@ -284,7 +284,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 setLaunchMenuOpen(false);
                 handleLaunchAgent({ planMode: true });
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-white hover:bg-gray-700 rounded-b-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-b-md transition-colors"
               data-testid="launch-plan-mode"
             >
               Open in Plan Mode
@@ -298,26 +298,26 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   return (
     <div className="p-6">
       {editing ? (
-        <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
+        <div className="mb-6 p-4 bg-surface-raised rounded-lg border border-edge">
           <div className="space-y-3">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (supports Markdown)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring resize-none"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle resize-none"
               rows={6}
             />
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -328,7 +328,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
             >
               {PRIORITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -345,7 +345,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-surface-hover hover:bg-surface-overlay text-fg text-label-md rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -357,13 +357,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               {/* Uses text-heading-sm (not text-code-*) because this is the detail header — needs to match heading scale */}
-              <span className="text-gray-500 text-heading-sm font-mono mr-3">{task.displayId}</span>
-              <h1 className="text-heading-lg font-bold text-white">{task.title}</h1>
+              <span className="text-fg-faint text-heading-sm font-mono mr-3">{task.displayId}</span>
+              <h1 className="text-heading-lg font-bold text-fg">{task.title}</h1>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors inline-flex items-center"
+                className="px-3 py-1.5 bg-surface-hover hover:bg-surface-overlay text-fg text-label-md rounded-md transition-colors inline-flex items-center"
               >
                 <Pencil className={`${iconSize.sm} mr-1`} />
                 Edit
@@ -380,11 +380,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-label-md">Status:</span>
+              <span className="text-fg-faint text-label-md">Status:</span>
               <select
                 value={task.status}
                 onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
+                className="px-2 py-1 bg-surface-inset border border-edge-subtle rounded text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -396,11 +396,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-label-md">Priority:</span>
+              <span className="text-fg-faint text-label-md">Priority:</span>
               <select
                 value={task.priority}
                 onChange={(e) => updateTask(taskId, { priority: e.target.value as TaskPriority })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
+                className="px-2 py-1 bg-surface-inset border border-edge-subtle rounded text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
               >
                 {PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -411,11 +411,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-label-md">Project:</span>
+              <span className="text-fg-faint text-label-md">Project:</span>
               <select
                 value={task.projectId ?? ''}
                 onChange={(e) => updateTask(taskId, { projectId: e.target.value || null })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
+                className="px-2 py-1 bg-surface-inset border border-edge-subtle rounded text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
               >
                 <option value="">Inbox (no project)</option>
                 {workspaceProjects.map((p) => (
@@ -427,11 +427,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-label-md">Assignee:</span>
+              <span className="text-fg-faint text-label-md">Assignee:</span>
               <select
                 value={task.assignee?.id ?? ''}
                 onChange={(e) => updateTask(taskId, { assigneeId: e.target.value || null })}
-                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm focus-ring"
+                className="px-2 py-1 bg-surface-inset border border-edge-subtle rounded text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
                 data-testid="assignee-select"
               >
                 <option value="">Unassigned</option>
@@ -444,7 +444,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
-              <span className="text-gray-500 text-label-md">Labels:</span>
+              <span className="text-fg-faint text-label-md">Labels:</span>
               <div className="flex items-center gap-1 flex-wrap">
                 {task.labels.map((label) => (
                   <LabelBadge
@@ -469,9 +469,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div>
-              <span className="text-gray-500 text-label-md">Project Directory:</span>
+              <span className="text-fg-faint text-label-md">Project Directory:</span>
               {dirLoading ? (
-                <p className="text-gray-500 text-body-sm mt-1">Loading...</p>
+                <p className="text-fg-faint text-body-sm mt-1">Loading...</p>
               ) : isEditingDir ? (
                 <div className="flex items-center gap-2 mt-1">
                   <input
@@ -486,7 +486,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                         setIsEditingDir(false);
                       }
                     }}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-body-sm font-mono focus-ring"
+                    className="flex-1 px-2 py-1 bg-surface-inset border border-edge-subtle rounded text-fg text-body-sm font-mono focus:outline-none focus:border-edge-subtle"
                     autoFocus
                   />
                   <button
@@ -500,14 +500,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                   </button>
                   <button
                     onClick={() => setIsEditingDir(false)}
-                    className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-label-sm rounded transition-colors"
+                    className="px-2 py-1 bg-surface-hover hover:bg-surface-overlay text-fg text-label-sm rounded transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
               ) : projectDirectory ? (
                 <p
-                  className="text-gray-300 text-body-sm font-mono mt-1 cursor-pointer hover:text-gray-200 transition-colors"
+                  className="text-fg-muted text-body-sm font-mono mt-1 cursor-pointer hover:text-fg transition-colors"
                   onClick={() => {
                     setEditingDirectory(projectDirectory);
                     setIsEditingDir(true);
@@ -521,7 +521,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                     setEditingDirectory('');
                     setIsEditingDir(true);
                   }}
-                  className="text-gray-300 hover:text-gray-200 text-label-md mt-1 transition-colors inline-flex items-center"
+                  className="text-fg-muted hover:text-fg text-label-md mt-1 transition-colors inline-flex items-center"
                 >
                   <FolderOpen className={`${iconSize.sm} mr-1`} />
                   Set project directory...
@@ -530,7 +530,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-gray-500 text-label-md">Terminal:</span>
+              <span className="text-fg-faint text-label-md">Terminal:</span>
               {renderAgentButton()}
               {activeSession && (
                 <AgentStatus
@@ -563,7 +563,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
             {task.description && (
               <div>
-                <span className="text-gray-500 text-label-md block mb-2">Description:</span>
+                <span className="text-fg-faint text-label-md block mb-2">Description:</span>
                 <MarkdownRenderer content={task.description} />
               </div>
             )}

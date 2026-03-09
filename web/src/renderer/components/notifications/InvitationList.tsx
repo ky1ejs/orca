@@ -43,15 +43,15 @@ export function InvitationList({ invitations }: InvitationListProps) {
   );
 
   if (invitations.length === 0) {
-    return <div className="px-3 py-4 text-body-sm text-gray-500">No pending invitations</div>;
+    return <div className="px-3 py-4 text-body-sm text-fg-faint">No pending invitations</div>;
   }
 
   return (
     <div className="max-h-64 overflow-y-auto">
       {invitations.map((inv) => (
-        <div key={inv.id} className="px-3 py-2.5 border-b border-gray-700 last:border-b-0">
-          <div className="text-body-sm font-medium text-white">{inv.workspace.name}</div>
-          <div className="text-label-sm text-gray-400 mt-0.5">
+        <div key={inv.id} className="px-3 py-2.5 border-b border-edge-subtle last:border-b-0">
+          <div className="text-body-sm font-medium text-fg">{inv.workspace.name}</div>
+          <div className="text-label-sm text-fg-muted mt-0.5">
             Invited by {inv.invitedBy.name} as {inv.role}
           </div>
           <div className="flex gap-2 mt-2">
@@ -66,7 +66,7 @@ export function InvitationList({ invitations }: InvitationListProps) {
             <button
               onClick={() => handleDecline(inv.id)}
               disabled={processing === inv.id}
-              className="px-2.5 py-1 text-label-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50 inline-flex items-center"
+              className="px-2.5 py-1 text-label-sm text-fg-muted hover:text-fg transition-colors disabled:opacity-50 inline-flex items-center"
             >
               <X className={`${iconSize.xs} mr-1`} />
               Decline

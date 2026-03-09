@@ -5,6 +5,16 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { usePreferences } from '../../preferences/context.js';
 import '@xterm/xterm/css/xterm.css';
 
+function readTerminalTheme() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    background: s.getPropertyValue('--color-terminal-bg').trim() || '#0e0d0c',
+    foreground: s.getPropertyValue('--color-terminal-fg').trim() || '#ccc9c3',
+    cursor: s.getPropertyValue('--color-terminal-cursor').trim() || '#ccc9c3',
+    selectionBackground: s.getPropertyValue('--color-terminal-selection').trim() || '#37352f',
+  };
+}
+
 interface AgentTerminalProps {
   sessionId: string;
 }
@@ -22,13 +32,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
 
     const styles = getComputedStyle(document.documentElement);
     const terminal = new Terminal({
-      theme: {
-        background: styles.getPropertyValue('--color-terminal-bg').trim() || '#0e0d0c',
-        foreground: styles.getPropertyValue('--color-terminal-fg').trim() || '#ccc9c3',
-        cursor: styles.getPropertyValue('--color-terminal-cursor').trim() || '#ccc9c3',
-        selectionBackground:
-          styles.getPropertyValue('--color-terminal-selection').trim() || '#37352f',
-      },
+      theme: readTerminalTheme(),
       fontFamily: fontRef.current,
       fontSize: 13,
       cursorBlink: true,
@@ -80,9 +84,25 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
     resizeObserver.observe(container);
 
+    // Update terminal theme when color scheme changes (media query or class toggle)
+    const handleColorSchemeChange = () => {
+      terminal.options.theme = readTerminalTheme();
+    };
+    const colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    colorSchemeQuery.addEventListener('change', handleColorSchemeChange);
+
+    // Also watch for class changes on <html> (light/dark forced via preferences)
+    const classObserver = new MutationObserver(handleColorSchemeChange);
+    classObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
     return () => {
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
+      colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
+      classObserver.disconnect();
       onDataDisposable.dispose();
       unsubData();
       unsubExit();

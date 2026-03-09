@@ -5,7 +5,7 @@ interface SkeletonProps {
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded bg-gray-800 ${className}`}
+      className={`animate-pulse rounded bg-surface-overlay ${className}`}
       data-testid="skeleton"
       role="status"
       aria-label="Loading"
@@ -22,7 +22,7 @@ export function ProjectListSkeleton() {
       </div>
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="p-4 bg-gray-900 rounded-lg border border-gray-800">
+          <div key={i} className="p-4 bg-surface-raised rounded-lg border border-edge">
             <Skeleton className="h-5 w-48 mb-2" />
             <Skeleton className="h-4 w-72" />
           </div>
@@ -48,7 +48,7 @@ export function ProjectDetailSkeleton() {
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="p-3 bg-gray-900 rounded-lg border border-gray-800 flex items-center justify-between"
+            className="p-3 bg-surface-raised rounded-lg border border-edge flex items-center justify-between"
           >
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-5 w-20 rounded-full" />

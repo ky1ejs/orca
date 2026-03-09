@@ -224,7 +224,7 @@ export function AppShell({ onLogout }: AppShellProps) {
 
   if (showOnboarding) {
     return (
-      <div className="flex h-screen bg-surface-base text-gray-100">
+      <div className="flex h-screen bg-surface text-fg">
         <OnboardingFlow onComplete={handleOnboardingComplete} />
         <KeyboardShortcutHelp
           shortcuts={displayShortcuts}
@@ -236,7 +236,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   }
 
   return (
-    <div className="flex h-screen bg-surface-base text-gray-100">
+    <div className="flex h-screen bg-surface text-fg">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
@@ -244,7 +244,7 @@ export function AppShell({ onLogout }: AppShellProps) {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         {updateVersion && (
-          <div className="bg-surface-secondary border-b border-gray-700 text-white px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
+          <div className="bg-surface-overlay border-b border-edge-subtle text-fg px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
             <span>Orca v{updateVersion} is ready to install.</span>
             <button
               onClick={() => window.orca.updates.install()}
@@ -260,7 +260,7 @@ export function AppShell({ onLogout }: AppShellProps) {
           <MainContent />
         </main>
         {current.view === 'task' && (
-          <div className="h-80 border-t border-gray-800 flex flex-col">
+          <div className="h-80 border-t border-edge flex flex-col">
             {hasActiveSessions ? (
               <>
                 <TerminalTabs

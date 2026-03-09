@@ -38,7 +38,7 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-heading-sm font-semibold text-white">Tasks</h2>
+        <h2 className="text-heading-sm font-semibold text-fg">Tasks</h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
           className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors"
@@ -48,20 +48,20 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
       </div>
 
       {showCreate && (
-        <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-800">
+        <div className="mb-4 p-4 bg-surface-raised rounded-lg border border-edge">
           <div className="space-y-3">
             <input
               type="text"
               placeholder="Task title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle"
               autoFocus
             />
             <button
               onClick={handleCreate}
               disabled={!title.trim()}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-gray-700 disabled:text-gray-500 text-on-accent text-label-md rounded-md transition-colors"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-surface-hover disabled:text-fg-faint text-on-accent text-label-md rounded-md transition-colors"
             >
               Create Task
             </button>
@@ -77,11 +77,11 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
             <button
               key={task.id}
               onClick={() => onTaskClick(task.id)}
-              className="w-full text-left p-3 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 flex items-center justify-between transition-colors"
+              className="w-full text-left p-3 bg-surface-raised hover:bg-surface-hover rounded-lg border border-edge flex items-center justify-between transition-colors"
             >
               <span className="flex items-center gap-2">
-                <span className="text-gray-500 text-code-sm font-mono">{task.displayId}</span>
-                <span className="text-white text-body-sm">{task.title}</span>
+                <span className="text-fg-faint text-code-sm font-mono">{task.displayId}</span>
+                <span className="text-fg text-body-sm">{task.title}</span>
               </span>
               <TaskStatusBadge status={task.status} />
             </button>

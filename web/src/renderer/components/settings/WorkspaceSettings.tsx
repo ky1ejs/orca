@@ -5,8 +5,9 @@ import { useNavigation } from '../../navigation/context.js';
 import { MemberList } from '../members/MemberList.js';
 import { TerminalSettings } from './TerminalSettings.js';
 import { LabelManager } from '../labels/LabelManager.js';
+import { AppearanceSettings } from './AppearanceSettings.js';
 
-type Tab = 'general' | 'members' | 'labels' | 'terminal';
+type Tab = 'general' | 'members' | 'labels' | 'terminal' | 'appearance';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -79,21 +80,22 @@ export function WorkspaceSettings() {
     { key: 'members', label: 'Members' },
     { key: 'labels', label: 'Labels' },
     { key: 'terminal', label: 'Terminal' },
+    { key: 'appearance', label: 'Appearance' },
   ];
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-heading-md font-semibold text-white mb-6">Workspace Settings</h1>
+      <h1 className="text-heading-md font-semibold text-fg mb-6">Workspace Settings</h1>
 
-      <div className="flex gap-4 border-b border-gray-800 mb-6">
+      <div className="flex gap-4 border-b border-edge mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`pb-2 text-label-md transition-colors ${
               activeTab === tab.key
-                ? 'text-white border-b-2 border-gray-100'
-                : 'text-gray-400 hover:text-gray-300'
+                ? 'text-fg border-b-2 border-fg'
+                : 'text-fg-muted hover:text-fg-muted'
             }`}
           >
             {tab.label}
@@ -105,24 +107,24 @@ export function WorkspaceSettings() {
         <div>
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-label-md text-gray-300 mb-1">Workspace Name</label>
+              <label className="block text-label-md text-fg-muted mb-1">Workspace Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring"
+                className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded text-label-md text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle"
               />
             </div>
 
             <div>
-              <label className="block text-label-md text-gray-300 mb-1">Slug</label>
+              <label className="block text-label-md text-fg-muted mb-1">Slug</label>
               <input
                 type="text"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring"
+                className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded text-label-md text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle"
               />
-              <p className="text-label-sm text-gray-500 mt-1">
+              <p className="text-label-sm text-fg-faint mt-1">
                 Lowercase letters, numbers, and hyphens. 3-64 characters. Changing this will update
                 all task IDs.
               </p>
@@ -140,7 +142,7 @@ export function WorkspaceSettings() {
             </button>
           </form>
 
-          <div className="mt-12 pt-6 border-t border-gray-800">
+          <div className="mt-12 pt-6 border-t border-edge">
             <h3 className="text-label-md font-medium text-error mb-2">Danger Zone</h3>
             {!confirmDelete ? (
               <button
@@ -151,7 +153,7 @@ export function WorkspaceSettings() {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-body-sm text-gray-300">
+                <span className="text-body-sm text-fg-muted">
                   Are you sure? This cannot be undone.
                 </span>
                 <button
@@ -163,7 +165,7 @@ export function WorkspaceSettings() {
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="px-3 py-2 text-label-md text-gray-400 hover:text-white transition-colors"
+                  className="px-3 py-2 text-label-md text-fg-muted hover:text-fg transition-colors"
                 >
                   Cancel
                 </button>
@@ -178,6 +180,8 @@ export function WorkspaceSettings() {
       {activeTab === 'labels' && <LabelManager />}
 
       {activeTab === 'terminal' && <TerminalSettings />}
+
+      {activeTab === 'appearance' && <AppearanceSettings />}
     </div>
   );
 }

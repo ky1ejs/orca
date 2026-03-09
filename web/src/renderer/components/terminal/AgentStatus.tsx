@@ -15,11 +15,11 @@ const statusConfig: Record<SessionStatus, { label: string; badgeClass: string }>
   },
   [SessionStatus.AwaitingPermission]: {
     label: 'Needs Permission',
-    badgeClass: 'bg-orange-900 text-orange-300',
+    badgeClass: 'bg-permission-muted text-permission',
   },
   [SessionStatus.Exited]: {
     label: 'Exited',
-    badgeClass: 'bg-gray-700 text-gray-300',
+    badgeClass: 'bg-surface-hover text-fg-muted',
   },
   [SessionStatus.Error]: {
     label: 'Error',

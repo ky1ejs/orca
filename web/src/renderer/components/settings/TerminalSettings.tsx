@@ -29,7 +29,7 @@ export function TerminalSettings() {
   return (
     <form onSubmit={handleSave} className="space-y-4">
       <div>
-        <label htmlFor="font-family" className="block text-sm text-gray-300 mb-1">
+        <label htmlFor="font-family" className="block text-sm text-fg-muted mb-1">
           Font Family
         </label>
         <input
@@ -39,24 +39,24 @@ export function TerminalSettings() {
           value={fontInput}
           onChange={(e) => setFontInput(e.target.value)}
           placeholder="monospace"
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus-ring"
+          className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded text-sm text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle"
         />
         <datalist id="system-fonts">
           {systemFonts.map((font) => (
             <option key={font} value={font} />
           ))}
         </datalist>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-fg-faint mt-1">
           Select a font installed on your system or type a custom name.
         </p>
       </div>
 
-      {success && <p className="text-sm text-green-400">Saved.</p>}
+      {success && <p className="text-sm text-success">Saved.</p>}
 
       <button
         type="submit"
         disabled={saving}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+        className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded transition-colors disabled:opacity-50"
       >
         {saving ? 'Saving...' : 'Save'}
       </button>

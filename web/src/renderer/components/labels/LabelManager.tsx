@@ -72,20 +72,20 @@ export function LabelManager() {
   );
 
   if (fetching && labels.length === 0) {
-    return <p className="text-sm text-gray-400 p-8">Loading labels...</p>;
+    return <p className="text-sm text-fg-muted p-8">Loading labels...</p>;
   }
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h2 className="text-xl font-semibold text-white mb-1">Labels</h2>
-      <p className="text-sm text-gray-400 mb-6">
+      <h2 className="text-xl font-semibold text-fg mb-1">Labels</h2>
+      <p className="text-sm text-fg-muted mb-6">
         {labels.length} label{labels.length !== 1 ? 's' : ''}
       </p>
 
       {error && (
-        <div className="mb-4 px-3 py-2 bg-red-900/30 border border-red-800 rounded text-sm text-red-300">
+        <div className="mb-4 px-3 py-2 bg-error-muted border border-error-strong rounded text-sm text-error">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-200">
+          <button onClick={() => setError(null)} className="ml-2 text-error hover:text-error">
             dismiss
           </button>
         </div>
@@ -97,7 +97,7 @@ export function LabelManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Label name"
-          className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 focus-ring"
+          className="flex-1 bg-surface-inset border border-edge-subtle rounded px-3 py-1.5 text-sm text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle"
           data-testid="label-name-input"
           required
         />
@@ -105,12 +105,12 @@ export function LabelManager() {
           type="color"
           value={color}
           onChange={(e) => setColor(e.target.value)}
-          className="w-8 h-8 bg-transparent border border-gray-700 rounded cursor-pointer"
+          className="w-8 h-8 bg-transparent border border-edge-subtle rounded cursor-pointer"
           data-testid="label-color-input"
         />
         <button
           type="submit"
-          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+          className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded transition-colors"
           data-testid="label-create-button"
         >
           Create
@@ -121,7 +121,7 @@ export function LabelManager() {
         {labels.map((label) => (
           <div
             key={label.id}
-            className="flex items-center justify-between px-3 py-2 rounded hover:bg-gray-800/50"
+            className="flex items-center justify-between px-3 py-2 rounded hover:bg-surface-overlay/50"
             data-testid={`label-row-${label.id}`}
           >
             {editingId === label.id ? (
@@ -130,7 +130,7 @@ export function LabelManager() {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white focus-ring"
+                  className="flex-1 bg-surface-inset border border-edge-subtle rounded px-2 py-1 text-sm text-fg focus:outline-none focus:border-edge-subtle"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleUpdate(label.id);
@@ -141,17 +141,17 @@ export function LabelManager() {
                   type="color"
                   value={editColor}
                   onChange={(e) => setEditColor(e.target.value)}
-                  className="w-7 h-7 bg-transparent border border-gray-700 rounded cursor-pointer"
+                  className="w-7 h-7 bg-transparent border border-edge-subtle rounded cursor-pointer"
                 />
                 <button
                   onClick={() => handleUpdate(label.id)}
-                  className="text-xs text-blue-400 hover:text-blue-300"
+                  className="text-xs text-accent hover:text-accent-hover"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
-                  className="text-xs text-gray-500 hover:text-gray-300"
+                  className="text-xs text-fg-faint hover:text-fg-muted"
                 >
                   Cancel
                 </button>
@@ -164,8 +164,8 @@ export function LabelManager() {
                     style={{ backgroundColor: label.color }}
                     data-testid={`label-swatch-${label.id}`}
                   />
-                  <span className="text-sm text-white truncate">{label.name}</span>
-                  <span className="text-code-xs text-gray-500 font-mono">{label.color}</span>
+                  <span className="text-sm text-fg truncate">{label.name}</span>
+                  <span className="text-xs text-fg-faint font-mono">{label.color}</span>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <button
@@ -174,7 +174,7 @@ export function LabelManager() {
                       setEditName(label.name);
                       setEditColor(label.color);
                     }}
-                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                    className="text-xs text-fg-faint hover:text-fg-muted transition-colors"
                     data-testid={`label-edit-${label.id}`}
                   >
                     Edit
@@ -183,14 +183,14 @@ export function LabelManager() {
                     <span className="flex items-center gap-1">
                       <button
                         onClick={() => handleDelete(label.id)}
-                        className="text-xs text-red-400 hover:text-red-300"
+                        className="text-xs text-error hover:text-error"
                         data-testid={`label-confirm-delete-${label.id}`}
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="text-xs text-gray-500 hover:text-gray-300"
+                        className="text-xs text-fg-faint hover:text-fg-muted"
                       >
                         Cancel
                       </button>
@@ -198,7 +198,7 @@ export function LabelManager() {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(label.id)}
-                      className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                      className="text-xs text-fg-faint hover:text-error transition-colors"
                       data-testid={`label-delete-${label.id}`}
                     >
                       Delete

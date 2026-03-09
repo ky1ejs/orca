@@ -46,11 +46,11 @@ function SidebarTaskItem({
       <button
         onClick={onClick}
         className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
-          isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          isActive ? 'bg-surface-inset text-fg' : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
         }`}
       >
         <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
-        <span className="text-gray-500 font-mono text-code-xs mr-1">{task.displayId}</span>
+        <span className="text-fg-faint font-mono text-code-xs mr-1">{task.displayId}</span>
         <span className="truncate">{task.title}</span>
       </button>
     </li>
@@ -59,9 +59,9 @@ function SidebarTaskItem({
 
 function collapsedBadgeColor(statuses: string[]): string {
   const set = new Set(statuses);
-  if (set.has(SessionStatus.AwaitingPermission)) return 'bg-warning animate-pulse';
-  if (set.has(SessionStatus.WaitingForInput)) return 'bg-warning animate-pulse';
-  return 'bg-info';
+  if (set.has(SessionStatus.AwaitingPermission)) return 'bg-permission-dot animate-pulse';
+  if (set.has(SessionStatus.WaitingForInput)) return 'bg-permission-dot animate-pulse';
+  return 'bg-info-strong';
 }
 
 interface SidebarProps {
@@ -100,13 +100,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   if (collapsed) {
     return (
       <aside
-        className="w-12 bg-surface-primary border-r border-gray-800 flex flex-col items-center"
+        className="w-12 bg-surface-raised border-r border-edge flex flex-col items-center"
         data-testid="sidebar-collapsed"
       >
         <div className="py-4 flex flex-col items-center gap-2">
           <button
             onClick={onToggleCollapse}
-            className="text-gray-400 hover:text-white transition-colors p-1"
+            className="text-fg-muted hover:text-fg transition-colors p-1"
             aria-label="Expand sidebar"
             data-testid="sidebar-expand-btn"
           >
@@ -132,13 +132,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
   return (
     <aside
-      className="w-64 bg-surface-primary border-r border-gray-800 flex flex-col"
+      className="w-64 bg-surface-raised border-r border-edge flex flex-col"
       data-testid="sidebar"
     >
-      <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+      <div className="p-4 border-b border-edge flex items-center justify-between">
         <button
           onClick={() => navigate({ view: 'projects' })}
-          className="text-heading-sm font-semibold text-white hover:text-gray-200 transition-colors"
+          className="text-heading-sm font-semibold text-fg hover:text-fg transition-colors"
         >
           Orca
         </button>
@@ -146,7 +146,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           <NotificationBell />
           <button
             onClick={onToggleCollapse}
-            className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+            className="text-fg-faint hover:text-fg-muted transition-colors p-1"
             aria-label="Collapse sidebar"
             data-testid="sidebar-collapse-btn"
           >
@@ -161,14 +161,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           <div className="mb-2">
             <button
               onClick={() => setInboxExpanded((v) => !v)}
-              className="w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors text-gray-400 hover:bg-gray-800 hover:text-white flex items-center justify-between"
+              className="w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors text-fg-muted hover:bg-surface-hover hover:text-fg flex items-center justify-between"
               data-testid="sidebar-inbox-btn"
             >
               <span className="flex items-center gap-1">
                 <span className="text-label-sm">{inboxExpanded ? '\u25BC' : '\u25B6'}</span>
                 Inbox
               </span>
-              <span className="text-label-xs text-gray-500 bg-gray-800 rounded-full px-1.5 py-0.5">
+              <span className="text-label-xs text-fg-faint bg-surface-inset rounded-full px-1.5 py-0.5">
                 {inboxTasks.length}
               </span>
             </button>
@@ -192,14 +192,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             )}
           </div>
         )}
-        <div className="px-2 py-2.5 flex items-center gap-2 text-gray-500">
+        <div className="px-2 py-2.5 flex items-center gap-2 text-fg-faint">
           <Box className={iconSize.sm} />
           <span className="text-label-sm font-medium">Projects</span>
         </div>
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
-          <div className="px-3 py-2 text-body-sm text-gray-500">No projects yet</div>
+          <div className="px-3 py-2 text-body-sm text-fg-faint">No projects yet</div>
         ) : (
           <ul className="space-y-0.5">
             {projects.map((project) => {
@@ -215,10 +215,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                     }
                     className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
                       isActive
-                        ? 'bg-gray-800 text-white'
+                        ? 'bg-surface-inset text-fg'
                         : isAncestor
-                          ? 'bg-gray-800 text-gray-400'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          ? 'bg-surface-inset text-fg-muted'
+                          : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
                     }`}
                   >
                     <span className="flex-1 truncate">{project.name}</span>
@@ -237,7 +237,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                           toggleExpand(project.id);
                         }
                       }}
-                      className="p-0.5 hover:text-gray-300 transition-colors flex-shrink-0"
+                      className="p-0.5 hover:text-fg-muted transition-colors flex-shrink-0"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? (
@@ -274,14 +274,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
           </ul>
         )}
       </nav>
-      <div className="border-t border-gray-800">
+      <div className="border-t border-edge">
         <div className="p-2">
           <button
             onClick={() => navigate({ view: 'settings' })}
             className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors ${
               current.view === 'settings' || current.view === 'members'
-                ? 'bg-gray-800 text-white'
-                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                ? 'bg-surface-inset text-fg'
+                : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
             }`}
           >
             <Settings className={`${iconSize.sm} inline-block mr-2`} />
@@ -291,13 +291,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         <div className="p-2 pt-0">
           <button
             onClick={onLogout}
-            className="w-full text-left px-3 py-1.5 text-label-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded transition-colors"
+            className="w-full text-left px-3 py-1.5 text-label-sm text-fg-faint hover:text-fg-muted hover:bg-surface-hover rounded transition-colors"
           >
             <LogOut className={`${iconSize.sm} inline-block mr-2`} />
             Sign out
           </button>
         </div>
-        <div className="px-3 py-2 border-t border-gray-800 text-label-xs text-gray-600">
+        <div className="px-3 py-2 border-t border-edge text-label-xs text-fg-faint">
           v{__APP_VERSION__} ({__GIT_HASH__})
         </div>
       </div>
