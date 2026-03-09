@@ -62,8 +62,8 @@ describe('TerminalTabs', () => {
 
     const activeTab = screen.getByTestId('terminal-tab-sess-1');
     const inactiveTab = screen.getByTestId('terminal-tab-sess-2');
-    expect(activeTab.className).toContain('bg-gray-800');
-    expect(inactiveTab.className).toContain('bg-gray-900');
+    expect(activeTab.className).toContain('bg-surface-secondary');
+    expect(inactiveTab.className).toContain('bg-surface-primary');
   });
 
   it('calls onSelectSession when tab is clicked', () => {

@@ -65,14 +65,14 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-modal-backdrop flex items-center justify-center bg-surface-overlay animate-fade-in"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-full max-w-md p-6"
+        className="bg-surface-primary border border-gray-700 rounded-lg shadow-modal w-full max-w-md p-6 animate-scale-in"
       >
         <h2 className="text-heading-sm font-semibold text-white mb-4">Create Workspace</h2>
 
@@ -81,7 +81,7 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
           type="text"
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 mb-3"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring mb-3"
           placeholder="My Workspace"
           autoFocus
         />
@@ -94,7 +94,7 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
             setSlugTouched(true);
             setSlug(e.target.value);
           }}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 mb-4"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring mb-4"
           placeholder="my-workspace"
         />
 

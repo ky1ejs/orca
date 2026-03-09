@@ -68,11 +68,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
       {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-4 right-4 z-toast flex flex-col gap-2">
           {toasts.map((toast) => (
             <div
               key={toast.id}
-              className={`flex items-center gap-3 rounded-md border px-4 py-3 shadow-lg ${
+              className={`flex items-center gap-3 rounded-md border px-4 py-3 shadow-dropdown animate-slide-up ${
                 toast.type === 'warning'
                   ? 'border-warning/30 bg-warning/10 text-warning'
                   : 'border-gray-700 bg-gray-800 text-white'

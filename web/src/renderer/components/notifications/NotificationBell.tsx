@@ -41,7 +41,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 w-72 left-0">
+        <div className="absolute top-full mt-2 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown w-72 left-0 animate-slide-up">
           <div className="px-3 py-2 border-b border-gray-700 text-label-sm font-medium text-gray-400 uppercase tracking-wide">
             Invitations
           </div>

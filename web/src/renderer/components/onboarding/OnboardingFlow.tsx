@@ -127,7 +127,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="e.g., My App"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus:outline-none focus:border-gray-500"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus-ring"
                   autoFocus
                   data-testid="onboarding-project-name"
                 />
@@ -140,7 +140,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   value={projectDescription}
                   onChange={(e) => setProjectDescription(e.target.value)}
                   placeholder="Brief description of the project"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus:outline-none focus:border-gray-500 resize-none"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus-ring resize-none"
                   rows={2}
                   data-testid="onboarding-project-description"
                 />
@@ -154,7 +154,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   value={defaultDirectory}
                   onChange={(e) => setDefaultDirectory(e.target.value)}
                   placeholder="e.g., /Users/you/projects/my-app"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus:outline-none focus:border-gray-500 font-mono"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus-ring font-mono"
                   data-testid="onboarding-default-dir"
                 />
               </div>
@@ -194,7 +194,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="e.g., Add user authentication"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus:outline-none focus:border-gray-500"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-label-md focus-ring"
                   autoFocus
                   data-testid="onboarding-task-title"
                 />

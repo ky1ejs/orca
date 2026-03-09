@@ -223,7 +223,7 @@ export function AppShell({ onLogout }: AppShellProps) {
 
   if (showOnboarding) {
     return (
-      <div className="flex h-screen bg-gray-950 text-gray-100">
+      <div className="flex h-screen bg-surface-base text-gray-100">
         <OnboardingFlow onComplete={handleOnboardingComplete} />
         <KeyboardShortcutHelp
           shortcuts={displayShortcuts}
@@ -235,7 +235,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-gray-100">
+    <div className="flex h-screen bg-surface-base text-gray-100">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
@@ -243,7 +243,7 @@ export function AppShell({ onLogout }: AppShellProps) {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         {updateVersion && (
-          <div className="bg-gray-800 border-b border-gray-700 text-white px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
+          <div className="bg-surface-secondary border-b border-gray-700 text-white px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
             <span>Orca v{updateVersion} is ready to install.</span>
             <button
               onClick={() => window.orca.updates.install()}

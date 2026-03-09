@@ -39,7 +39,7 @@ export function TerminalSettings() {
           value={fontInput}
           onChange={(e) => setFontInput(e.target.value)}
           placeholder="monospace"
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus-ring"
         />
         <datalist id="system-fonts">
           {systemFonts.map((font) => (

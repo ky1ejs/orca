@@ -20,12 +20,14 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     const container = containerRef.current;
     if (!container) return;
 
+    const styles = getComputedStyle(document.documentElement);
     const terminal = new Terminal({
       theme: {
-        background: '#030712',
-        foreground: '#e5e7eb',
-        cursor: '#e5e7eb',
-        selectionBackground: '#374151',
+        background: styles.getPropertyValue('--color-terminal-bg').trim() || '#0e0d0c',
+        foreground: styles.getPropertyValue('--color-terminal-fg').trim() || '#ccc9c3',
+        cursor: styles.getPropertyValue('--color-terminal-cursor').trim() || '#ccc9c3',
+        selectionBackground:
+          styles.getPropertyValue('--color-terminal-selection').trim() || '#37352f',
       },
       fontFamily: fontRef.current,
       fontSize: 13,
@@ -112,7 +114,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       ref={containerRef}
       data-testid="agent-terminal"
       className="h-full w-full"
-      style={{ backgroundColor: '#030712' }}
+      style={{ backgroundColor: 'var(--color-terminal-bg)' }}
     />
   );
 }

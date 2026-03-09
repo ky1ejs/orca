@@ -20,7 +20,7 @@ export function TerminalTabs({
 }: TerminalTabsProps) {
   return (
     <div
-      className="flex overflow-x-auto flex-nowrap border-b border-gray-800 bg-gray-900"
+      className="flex overflow-x-auto flex-nowrap border-b border-gray-800 bg-surface-primary"
       data-testid="terminal-tabs"
     >
       {sessions.map((session) => {
@@ -33,7 +33,9 @@ export function TerminalTabs({
             key={session.id}
             onClick={() => onSelectSession(session.id)}
             className={`flex items-center gap-2 px-3 py-1.5 text-label-sm font-medium whitespace-nowrap border-r border-gray-800 transition-colors ${
-              isActive ? 'bg-gray-800 text-white' : 'bg-gray-900 text-gray-400 hover:text-gray-200'
+              isActive
+                ? 'bg-surface-secondary text-white'
+                : 'bg-surface-primary text-gray-400 hover:text-gray-200'
             }`}
             data-testid={`terminal-tab-${session.id}`}
           >

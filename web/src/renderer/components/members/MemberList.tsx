@@ -20,8 +20,8 @@ interface ConfirmDialogProps {
 
 function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md mx-4">
+    <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-modal-backdrop animate-fade-in">
+      <div className="bg-surface-primary border border-gray-700 rounded-lg p-6 max-w-md mx-4 shadow-modal animate-scale-in">
         <p className="text-gray-200 mb-4">{message}</p>
         <div className="flex justify-end gap-2">
           <button
@@ -210,13 +210,13 @@ export function MemberList() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white placeholder-gray-500 focus-ring"
             required
           />
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as WorkspaceRole)}
-            className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white focus:outline-none focus:border-gray-500"
+            className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white focus-ring"
           >
             <option value="MEMBER">Member</option>
             <option value="OWNER">Owner</option>

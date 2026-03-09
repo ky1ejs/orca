@@ -97,7 +97,7 @@ export function LabelManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Label name"
-          className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 focus-ring"
           data-testid="label-name-input"
           required
         />
@@ -130,7 +130,7 @@ export function LabelManager() {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white focus-ring"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleUpdate(label.id);

@@ -110,7 +110,7 @@ export function WorkspaceSettings() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring"
               />
             </div>
 
@@ -120,7 +120,7 @@ export function WorkspaceSettings() {
                 type="text"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring"
               />
               <p className="text-label-sm text-gray-500 mt-1">
                 Lowercase letters, numbers, and hyphens. 3-64 characters. Changing this will update

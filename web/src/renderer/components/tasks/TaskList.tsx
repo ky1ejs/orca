@@ -55,7 +55,7 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
               placeholder="Task title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus:outline-none focus:border-gray-500"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring"
               autoFocus
             />
             <button

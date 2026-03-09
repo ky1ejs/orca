@@ -46,7 +46,7 @@ export function WorkspaceSwitcher() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-2 right-2 top-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 overflow-hidden">
+        <div className="absolute left-2 right-2 top-full mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown overflow-hidden animate-slide-up">
           {workspaces.map((ws) => (
             <button
               key={ws.id}

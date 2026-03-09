@@ -15,8 +15,8 @@ export function ProtocolUpdateDialog({ activeSessions, onConfirm }: ProtocolUpda
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="mx-4 w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 p-6 shadow-xl">
+    <div className="fixed inset-0 z-modal-backdrop flex items-center justify-center bg-surface-overlay animate-fade-in">
+      <div className="mx-4 w-full max-w-md rounded-lg border border-gray-700 bg-surface-primary p-6 shadow-modal animate-scale-in">
         <h2 className="text-heading-sm text-white">Update requires restart</h2>
         <p className="mt-3 text-body-sm text-gray-300">
           This update includes changes that require restarting the terminal daemon. You have{' '}
