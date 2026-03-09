@@ -2,7 +2,6 @@ import { useQuery, useMutation, useSubscription } from 'urql';
 import { useCallback, useEffect } from 'react';
 import {
   MeDocument,
-  WorkspacesDocument,
   WorkspaceDocument,
   ProjectDocument,
   TaskDocument,
@@ -41,18 +40,12 @@ import type {
   UpdateLabelInput,
   AddMemberInput,
   UpdateMemberRoleInput,
-  WorkspaceRole,
 } from '../graphql/__generated__/generated.js';
 
 // Query hooks
 
 export function useMe() {
   const [result, reexecute] = useQuery({ query: MeDocument });
-  return { ...result, refetch: reexecute };
-}
-
-export function useWorkspaces() {
-  const [result, reexecute] = useQuery({ query: WorkspacesDocument });
   return { ...result, refetch: reexecute };
 }
 
@@ -272,6 +265,3 @@ export function useTaskSubscription(workspaceId: string) {
     pause: !workspaceId,
   });
 }
-
-// Re-export types for convenience
-export type { WorkspaceRole };

@@ -9,7 +9,7 @@ export interface ShortcutDefinition {
   action: () => void;
 }
 
-export interface KeyboardShortcutsOptions {
+interface KeyboardShortcutsOptions {
   shortcuts: ShortcutDefinition[];
   enabled?: boolean;
 }

@@ -37,7 +37,7 @@ interface DaemonStatusManagerOptions {
   broadcast: BroadcastFn;
 }
 
-export interface AgentLaunchOptions {
+interface AgentLaunchOptions {
   planMode?: boolean;
 }
 

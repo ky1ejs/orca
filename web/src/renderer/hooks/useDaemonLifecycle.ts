@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '../components/toast/ToastProvider.js';
 
-export interface ProtocolUpdateState {
+interface ProtocolUpdateState {
   required: boolean;
   activeSessions: number;
 }

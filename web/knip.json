@@ -1,0 +1,15 @@
+{
+  "entry": [
+    "src/main/index.ts",
+    "src/preload/index.ts",
+    "src/renderer/index.tsx",
+    "src/daemon/index.ts",
+    "scripts/*.mjs",
+    "electron.vite.config.ts",
+    "src/**/*.test.{ts,tsx}",
+    "src/renderer/types/*.d.ts",
+    "src/renderer/graphql/*.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": ["@graphql-typed-document-node/core", "tailwindcss"]
+}

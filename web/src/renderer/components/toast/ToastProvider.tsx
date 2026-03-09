@@ -1,7 +1,7 @@
 import { createContext, useContext, useCallback, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
-export interface Toast {
+interface Toast {
   id: string;
   message: string;
   type: 'info' | 'warning';
