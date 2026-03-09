@@ -46,21 +46,20 @@ The current navigation uses an unbounded linear stack. Every `navigate()` call p
 2. **Go to parent**: A `goToParent()` action navigates to the structural parent:
    - Task → its parent Project
    - Project → Projects list
-   - Settings / Members → Projects list
-   - Projects → no-op (already at root)
+   - Projects, Settings, Members → no-op (all root-level pages)
 3. **Breadcrumbs**: A breadcrumb bar renders top-left of the main content area showing the user's location:
    - `projects` view → "Projects" (current page, not clickable)
    - `project` view → "Projects › Project Name" ("Projects" is clickable)
    - `task` view → "Projects › Project Name › Task Name" (first two segments clickable)
-   - `settings` / `members` view → "Settings" (flat page, not clickable)
-4. **Up arrow affordance**: A subtle up/back arrow appears before the breadcrumbs when `goToParent` is available (i.e., not at root).
+   - `settings` / `members` view → "Settings" (root page, not clickable, no back arrow)
+4. **Back arrow affordance**: A subtle left-pointing back arrow (←) appears before the breadcrumbs when `goToParent` is available (i.e., on project or task views only — not on root pages like Projects, Settings, or Members).
 5. **Sidebar ancestry highlighting**: When viewing a task, both the task AND its parent project are visually highlighted in the sidebar. When viewing a project, just the project is highlighted.
 6. **ProjectId in navigation state**: When navigating to a task, the navigation state includes the parent `projectId` so breadcrumbs and `goToParent` can work without an extra data fetch.
 
 ### Non-Functional Requirements
 
 - **Performance**: No additional network requests for breadcrumb data — project/task names should come from already-fetched data or the navigation state itself
-- **Accessibility**: Breadcrumbs should use a `<nav aria-label="Breadcrumb">` landmark with an `<ol>` list, following WAI-ARIA breadcrumb pattern. The up arrow should have an accessible label.
+- **Accessibility**: Breadcrumbs should use a `<nav aria-label="Breadcrumb">` landmark with an `<ol>` list, following WAI-ARIA breadcrumb pattern. The back arrow should have an accessible label (e.g., "Go to parent").
 - **Compatibility**: This is a breaking change to the navigation context API. All consumers of `useNavigation()` must be updated in the same change.
 
 ---
@@ -129,9 +128,8 @@ interface NavigationContextValue {
 - `goToParent()` — derives the parent from `current`:
   - `task` → `{ view: 'project', id: current.projectId, projectName: current.projectName }`
   - `project` → `{ view: 'projects' }`
-  - `settings` / `members` → `{ view: 'projects' }`
-  - `projects` → no-op
-- `canGoToParent` — `true` when `current.view !== 'projects'`
+  - `projects`, `settings`, `members` → no-op (all root-level)
+- `canGoToParent` — `true` only when `current.view` is `'project'` or `'task'`
 
 #### `Breadcrumbs` (new component)
 
@@ -139,7 +137,7 @@ interface NavigationContextValue {
 - Renders a `<nav aria-label="Breadcrumb">` with an `<ol>` of segments
 - Each ancestor segment is a `<button>` calling `navigate()`
 - The current (last) segment is a `<span>` (not clickable)
-- An up-arrow icon button calls `goToParent()`, hidden when `!canGoToParent`
+- A left-pointing back arrow (←) button calls `goToParent()`, hidden when `!canGoToParent`
 - Chevron (`›`) separators between segments
 
 #### Sidebar highlighting changes
@@ -187,21 +185,21 @@ The visual treatment for `isAncestor` should be a subtler variant of `isActive` 
 - [ ] `NavigationProvider`: `navigate()` replaces state (does not accumulate)
 - [ ] `NavigationProvider`: `goToParent()` from task navigates to parent project with correct `projectId` and `projectName`
 - [ ] `NavigationProvider`: `goToParent()` from project navigates to projects list
-- [ ] `NavigationProvider`: `goToParent()` from settings navigates to projects list
-- [ ] `NavigationProvider`: `goToParent()` from projects is a no-op
-- [ ] `NavigationProvider`: `canGoToParent` is `false` when on projects view, `true` otherwise
+- [ ] `NavigationProvider`: `goToParent()` from settings is a no-op (root page)
+- [ ] `NavigationProvider`: `goToParent()` from projects is a no-op (root page)
+- [ ] `NavigationProvider`: `canGoToParent` is `true` only for `project` and `task` views, `false` for `projects`, `settings`, `members`
 - [ ] `Breadcrumbs`: renders "Projects" (non-clickable) on projects view
 - [ ] `Breadcrumbs`: renders "Projects › Project Name" on project view, "Projects" is clickable
 - [ ] `Breadcrumbs`: renders "Projects › Project Name › Task Name" on task view, first two are clickable
 - [ ] `Breadcrumbs`: renders "Settings" on settings view
-- [ ] `Breadcrumbs`: up arrow hidden on projects view, visible otherwise
+- [ ] `Breadcrumbs`: back arrow hidden on root pages (projects, settings, members), visible on project and task views
 - [ ] Sidebar: parent project highlighted when viewing a child task
 
 ### Manual Testing
 
 - [ ] Click through Projects → Project → Task, verify breadcrumbs update at each level
 - [ ] Click breadcrumb segments to navigate up the hierarchy
-- [ ] Click the up arrow to verify it goes to the structural parent
+- [ ] Click the back arrow (←) to verify it goes to the structural parent
 - [ ] Use sidebar to jump between unrelated projects/tasks, verify no "stack buildup" (single back-to-parent always works)
 - [ ] Verify sidebar highlights both parent project and active task
 - [ ] Switch workspaces and verify navigation resets to projects
@@ -210,7 +208,7 @@ The visual treatment for `isAncestor` should be a subtler variant of `isActive` 
 ### Acceptance Criteria
 
 - [ ] No stack-based history — navigation state is always a single location
-- [ ] Back/up always goes to the structural parent, never to an unrelated previous location
+- [ ] Back arrow (←) always goes to the structural parent, never to an unrelated previous location
 - [ ] Breadcrumbs visible on all views, showing correct hierarchy
 - [ ] All breadcrumb segments except the current one are clickable
 - [ ] Sidebar highlights full ancestry path when viewing a task
