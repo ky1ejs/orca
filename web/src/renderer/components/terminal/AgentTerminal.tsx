@@ -45,6 +45,16 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     terminal.open(container);
     fitAddon.fit();
 
+    // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
+    // plain \r so Claude Code can distinguish it and insert a newline.
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type === 'keydown' && event.key === 'Enter' && event.shiftKey) {
+        window.orca.pty.write(sessionId, '\x1b[13;2u');
+        return false;
+      }
+      return true;
+    });
+
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 

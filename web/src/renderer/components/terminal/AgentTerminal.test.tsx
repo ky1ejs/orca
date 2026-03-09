@@ -24,6 +24,7 @@ const mockOpen = vi.fn();
 const mockDispose = vi.fn();
 const mockLoadAddon = vi.fn();
 const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
+const mockAttachCustomKeyEventHandler = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -32,6 +33,7 @@ vi.mock('@xterm/xterm', () => ({
     dispose: mockDispose,
     loadAddon: mockLoadAddon,
     onData: mockOnData,
+    attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     options: {},
     cols: 80,
     rows: 24,
@@ -120,6 +122,29 @@ describe('AgentTerminal', () => {
     const onDataCallback = mockOnData.mock.calls[0][0];
     onDataCallback('hello');
     expect(mockPtyWrite).toHaveBeenCalledWith('test-session', 'hello');
+  });
+
+  it('intercepts Shift+Enter to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockAttachCustomKeyEventHandler).toHaveBeenCalled();
+
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    // Shift+Enter keydown should send CSI u and return false
+    const shiftEnter = { type: 'keydown', key: 'Enter', shiftKey: true };
+    expect(handler(shiftEnter)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[13;2u');
+
+    mockPtyWrite.mockClear();
+
+    // Plain Enter should return true (default handling)
+    const plainEnter = { type: 'keydown', key: 'Enter', shiftKey: false };
+    expect(handler(plainEnter)).toBe(true);
+    expect(mockPtyWrite).not.toHaveBeenCalled();
+
+    // Other keys should return true
+    const otherKey = { type: 'keydown', key: 'a', shiftKey: false };
+    expect(handler(otherKey)).toBe(true);
   });
 
   it('disposes terminal on unmount', () => {
