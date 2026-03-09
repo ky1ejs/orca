@@ -53,7 +53,7 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
               className="flex items-center justify-between"
             >
               <span className="text-gray-300 text-body-sm">{shortcut.description}</span>
-              <kbd className="ml-4 shrink-0 rounded bg-gray-800 px-2 py-1 font-mono text-label-sm text-gray-300 border border-gray-700">
+              <kbd className="ml-4 shrink-0 rounded bg-gray-800 px-2 py-1 font-mono text-code-sm text-gray-300 border border-gray-700">
                 {formatShortcut(shortcut)}
               </kbd>
             </div>

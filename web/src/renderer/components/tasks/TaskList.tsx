@@ -80,7 +80,7 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
               className="w-full text-left p-3 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 flex items-center justify-between transition-colors"
             >
               <span className="flex items-center gap-2">
-                <span className="text-gray-500 text-body-sm font-mono">{task.displayId}</span>
+                <span className="text-gray-500 text-code-sm font-mono">{task.displayId}</span>
                 <span className="text-white text-body-sm">{task.title}</span>
               </span>
               <TaskStatusBadge status={task.status} />

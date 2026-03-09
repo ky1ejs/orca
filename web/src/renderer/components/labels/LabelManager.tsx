@@ -165,7 +165,7 @@ export function LabelManager() {
                     data-testid={`label-swatch-${label.id}`}
                   />
                   <span className="text-sm text-white truncate">{label.name}</span>
-                  <span className="text-xs text-gray-500 font-mono">{label.color}</span>
+                  <span className="text-code-xs text-gray-500 font-mono">{label.color}</span>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <button
