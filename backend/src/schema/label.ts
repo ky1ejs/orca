@@ -1,9 +1,5 @@
 import { GraphQLError } from 'graphql';
-import type {
-  QueryResolvers,
-  MutationResolvers,
-  LabelResolvers,
-} from '../__generated__/graphql.js';
+import type { QueryResolvers, MutationResolvers } from '../__generated__/graphql.js';
 import { requireWorkspaceAccess } from '../auth/workspace.js';
 
 const COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
@@ -101,8 +97,4 @@ export const labelResolvers = {
       return true;
     },
   } satisfies Pick<MutationResolvers, 'createLabel' | 'updateLabel' | 'deleteLabel'>,
-  Label: {
-    createdAt: (parent) => parent.createdAt.toISOString(),
-    updatedAt: (parent) => parent.updatedAt.toISOString(),
-  } satisfies LabelResolvers,
 };
