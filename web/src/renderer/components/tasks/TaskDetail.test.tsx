@@ -93,9 +93,7 @@ vi.mock('../../hooks/useSessionActivity.js', () => ({
 }));
 
 vi.mock('../terminal/AgentStatus.js', () => ({
-  AgentStatus: ({ status }: { status: string }) => (
-    <span data-testid="agent-status">{status}</span>
-  ),
+  AgentStatus: ({ status }: { status: string }) => <span data-testid="agent-status">{status}</span>,
 }));
 
 vi.mock('../markdown/MarkdownRenderer.js', () => ({
