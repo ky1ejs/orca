@@ -30,6 +30,7 @@ import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
+import { PullRequestList } from './PullRequestList.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -579,6 +580,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 </div>
               </div>
             )}
+
+            <PullRequestList pullRequests={task.pullRequests ?? []} />
 
             {task.description && (
               <div>

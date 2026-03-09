@@ -1,11 +1,11 @@
-import { createYoga, createPubSub, type Plugin } from 'graphql-yoga';
+import { createYoga, type Plugin } from 'graphql-yoga';
 import { GraphQLError, type DefinitionNode, type SelectionNode } from 'graphql';
 import { schema } from './schema/index.js';
 import { prisma } from './db/client.js';
+import { pubsub } from './pubsub.js';
 import { verifyJwt } from './auth/jwt.js';
+import { handleGitHubWebhook } from './webhooks/github.js';
 import type { ServerContext } from './context.js';
-
-const pubsub = createPubSub();
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
 
@@ -67,10 +67,27 @@ const server = Bun.serve({
     if (url.pathname === '/health') {
       return new Response('ok', { status: 200 });
     }
+    if (url.pathname === '/webhooks/github' && request.method === 'POST') {
+      return handleGitHubWebhook(request);
+    }
     return yoga.fetch(request);
   },
 });
 
 console.log(`Orca server running at http://0.0.0.0:${server.port}/graphql`);
+
+// Prune old webhook deliveries (>7 days) on startup
+prisma.webhookDelivery
+  .deleteMany({
+    where: { processedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+  })
+  .then((result) => {
+    if (result.count > 0) {
+      console.log(`Pruned ${result.count} old webhook deliveries`);
+    }
+  })
+  .catch(() => {
+    // Non-critical — log and continue
+  });
 
 export { server };

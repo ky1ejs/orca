@@ -53,6 +53,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
               name
               color
             }
+            pullRequestCount
           }
           archivedAt
           createdAt
@@ -83,6 +84,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
             name
             color
           }
+          pullRequestCount
         }
         archivedAt
         createdAt
@@ -103,6 +105,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
           name
           color
         }
+        pullRequestCount
       }
       createdAt
       updatedAt
@@ -190,6 +193,7 @@ export const InitiativeQueryDocument = /* GraphQL */ `
             name
             color
           }
+          pullRequestCount
           createdAt
           updatedAt
         }
@@ -232,6 +236,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
           name
           color
         }
+        pullRequestCount
         createdAt
         updatedAt
       }
@@ -266,6 +271,19 @@ export const TaskQueryDocument = /* GraphQL */ `
         id
         name
         color
+      }
+      pullRequests {
+        id
+        number
+        title
+        url
+        status
+        reviewStatus
+        repository
+        headBranch
+        author
+        draft
+        createdAt
       }
       archivedAt
       createdAt
