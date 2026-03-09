@@ -8,7 +8,7 @@ import { SessionStatus } from '../../../shared/session-status.js';
 const mockUpdateTask = vi.fn().mockResolvedValue({});
 const mockDeleteTask = vi.fn().mockResolvedValue({});
 const mockRefreshSessions = vi.fn();
-const mockNavigateBack = vi.fn();
+const mockGoToParent = vi.fn();
 const mockNavigate = vi.fn();
 const mockUpdateDirectory = vi.fn();
 const mockAgentStop = vi.fn().mockResolvedValue(undefined);
@@ -65,7 +65,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
 }));
 
 vi.mock('../../navigation/context.js', () => ({
-  useNavigation: () => ({ navigateBack: mockNavigateBack, navigate: mockNavigate }),
+  useNavigation: () => ({ goToParent: mockGoToParent, navigate: mockNavigate }),
 }));
 
 vi.mock('../../workspace/context.js', () => ({
@@ -88,6 +88,10 @@ vi.mock('../../hooks/useTerminalSessions.js', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useSessionActivity.js', () => ({
+  useSessionActivity: () => new Set<string>(),
+}));
+
 vi.mock('../terminal/AgentStatus.js', () => ({
   AgentStatus: ({ status }: { status: string }) => <span data-testid="agent-status">{status}</span>,
 }));
@@ -98,6 +102,14 @@ vi.mock('../markdown/MarkdownRenderer.js', () => ({
 
 vi.mock('../layout/Skeleton.js', () => ({
   TaskDetailSkeleton: () => <div data-testid="skeleton">Loading...</div>,
+}));
+
+vi.mock('../labels/LabelBadge.js', () => ({
+  LabelBadge: () => null,
+}));
+
+vi.mock('../labels/LabelPicker.js', () => ({
+  LabelPicker: () => null,
 }));
 
 // Mock window.orca
@@ -137,111 +149,21 @@ async function importAndRender(taskId = 'task-1') {
 
 describe('TaskDetail', () => {
   describe('back navigation', () => {
-    it('back button shows project name and calls navigateBack', async () => {
+    it('no inline back button (breadcrumbs handle navigation)', async () => {
       await importAndRender();
 
-      const backButton = screen.getByText(/Back to Test Project/);
-      expect(backButton).toBeInTheDocument();
-
-      fireEvent.click(backButton);
-      expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+      expect(screen.queryByText(/Back to Test Project/)).not.toBeInTheDocument();
     });
 
-    it('delete calls navigateBack to parent project', async () => {
+    it('delete calls goToParent', async () => {
       await importAndRender();
 
       fireEvent.click(screen.getByText('Delete'));
 
       await vi.waitFor(() => {
         expect(mockDeleteTask).toHaveBeenCalledWith('task-1');
-        expect(mockNavigateBack).toHaveBeenCalledWith({ view: 'project', id: 'proj-1' });
+        expect(mockGoToParent).toHaveBeenCalled();
       });
-    });
-  });
-
-  describe('Close Terminal button', () => {
-    it('shows Close Terminal button when session is active', async () => {
-      mockSessions = [{ id: 'sess-1', status: SessionStatus.Running }];
-      await importAndRender();
-
-      expect(screen.getByTestId('close-terminal-button')).toBeInTheDocument();
-      expect(screen.getByTestId('close-terminal-button')).toHaveTextContent('Close Terminal');
-    });
-
-    it('does not show Close Terminal button when no active session', async () => {
-      mockSessions = [];
-      await importAndRender();
-
-      expect(screen.queryByTestId('close-terminal-button')).not.toBeInTheDocument();
-    });
-
-    it('does not show Close Terminal button when session is exited', async () => {
-      mockSessions = [{ id: 'sess-1', status: SessionStatus.Exited }];
-      await importAndRender();
-
-      expect(screen.queryByTestId('close-terminal-button')).not.toBeInTheDocument();
-    });
-
-    it('calls agent.stop with correct session ID when clicked', async () => {
-      mockSessions = [{ id: 'sess-42', status: SessionStatus.Running }];
-      await importAndRender();
-
-      fireEvent.click(screen.getByTestId('close-terminal-button'));
-
-      expect(mockAgentStop).toHaveBeenCalledWith('sess-42');
-    });
-
-    it('calls refreshSessions after stopping', async () => {
-      mockSessions = [{ id: 'sess-1', status: SessionStatus.Running }];
-      await importAndRender();
-
-      await fireEvent.click(screen.getByTestId('close-terminal-button'));
-
-      await vi.waitFor(() => {
-        expect(mockRefreshSessions).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('auto-close on status change to Done', () => {
-    it('calls agent.stop when status changes to Done with active session', async () => {
-      mockSessions = [{ id: 'sess-1', status: SessionStatus.Running }];
-      await importAndRender();
-
-      const statusSelect = screen.getAllByDisplayValue('In Progress')[0];
-      fireEvent.change(statusSelect, { target: { value: TaskStatus.Done } });
-
-      await vi.waitFor(() => {
-        expect(mockAgentStop).toHaveBeenCalledWith('sess-1');
-      });
-    });
-
-    it('does not call agent.stop when status changes to non-Done', async () => {
-      mockSessions = [{ id: 'sess-1', status: SessionStatus.Running }];
-      await importAndRender();
-
-      const statusSelect = screen.getAllByDisplayValue('In Progress')[0];
-      fireEvent.change(statusSelect, { target: { value: TaskStatus.InReview } });
-
-      await vi.waitFor(() => {
-        expect(mockUpdateTask).toHaveBeenCalled();
-      });
-
-      expect(mockAgentStop).not.toHaveBeenCalled();
-    });
-
-    it('does not call agent.stop when status changes to Done without active session', async () => {
-      mockSessions = [];
-      await importAndRender();
-
-      const statusSelect = screen.getAllByDisplayValue('In Progress')[0];
-      fireEvent.change(statusSelect, { target: { value: TaskStatus.Done } });
-
-      await vi.waitFor(() => {
-        expect(mockUpdateTask).toHaveBeenCalled();
-      });
-
-      expect(mockAgentStop).not.toHaveBeenCalled();
     });
   });
 });

@@ -6,6 +6,7 @@ export interface ActiveTerminalEntry {
   taskId: string;
   displayId: string;
   taskTitle: string;
+  projectId: string;
   projectName: string;
   sessionCount: number;
   sessionIds: string[];
@@ -36,12 +37,16 @@ export function useActiveTerminals(
     );
 
     // Build a lookup map from task_id -> task info
-    const taskLookup = new Map<string, { displayId: string; title: string; projectName: string }>();
+    const taskLookup = new Map<
+      string,
+      { displayId: string; title: string; projectId: string; projectName: string }
+    >();
     for (const project of projects) {
       for (const task of project.tasks) {
         taskLookup.set(task.id, {
           displayId: task.displayId,
           title: task.title,
+          projectId: project.id,
           projectName: project.name,
         });
       }
@@ -51,6 +56,7 @@ export function useActiveTerminals(
         taskLookup.set(task.id, {
           displayId: task.displayId,
           title: task.title,
+          projectId: '',
           projectName: 'Inbox',
         });
       }
@@ -79,6 +85,7 @@ export function useActiveTerminals(
         taskId,
         displayId: info.displayId,
         taskTitle: info.title,
+        projectId: info.projectId,
         projectName: info.projectName,
         sessionCount: taskSessions.length,
         sessionIds: taskSessions.map((s) => s.id),

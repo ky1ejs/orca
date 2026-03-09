@@ -106,7 +106,9 @@ export function ProjectList() {
           {projects.map((project) => (
             <button
               key={project.id}
-              onClick={() => navigate({ view: 'project', id: project.id })}
+              onClick={() =>
+                navigate({ view: 'project', id: project.id, projectName: project.name })
+              }
               className="w-full text-left p-4 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 transition-colors"
             >
               <h3 className="text-white font-medium">{project.name}</h3>

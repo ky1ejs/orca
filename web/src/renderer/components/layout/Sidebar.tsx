@@ -179,7 +179,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                     key={task.id}
                     task={task}
                     isActive={current.view === 'task' && current.id === task.id}
-                    onClick={() => navigate({ view: 'task', id: task.id })}
+                    onClick={() =>
+                      navigate({
+                        view: 'task',
+                        id: task.id,
+                        taskName: task.title,
+                      })
+                    }
                   />
                 ))}
               </ul>
@@ -199,15 +205,20 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             {projects.map((project) => {
               const isExpanded = expandedProjects.has(project.id);
               const isActive = current.view === 'project' && current.id === project.id;
+              const isAncestor = current.view === 'task' && current.projectId === project.id;
 
               return (
                 <li key={project.id}>
                   <button
-                    onClick={() => navigate({ view: 'project', id: project.id })}
+                    onClick={() =>
+                      navigate({ view: 'project', id: project.id, projectName: project.name })
+                    }
                     className={`w-full flex items-center px-2 py-1.5 text-body-sm rounded transition-colors text-left ${
                       isActive
                         ? 'bg-gray-800 text-white'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        : isAncestor
+                          ? 'bg-gray-800 text-gray-400'
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`}
                   >
                     <span className="flex-1 truncate">{project.name}</span>
@@ -244,7 +255,15 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                           key={task.id}
                           task={task}
                           isActive={current.view === 'task' && current.id === task.id}
-                          onClick={() => navigate({ view: 'task', id: task.id })}
+                          onClick={() =>
+                            navigate({
+                              view: 'task',
+                              id: task.id,
+                              projectId: project.id,
+                              projectName: project.name,
+                              taskName: task.title,
+                            })
+                          }
                         />
                       ))}
                     </ul>

@@ -16,6 +16,7 @@ import { TerminalTabs } from '../terminal/TerminalTabs.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
 import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
+import { Breadcrumbs } from './Breadcrumbs.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
@@ -131,7 +132,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         action: () => {
           if (current.view === 'project' && current.id) {
             // Already on project view, the ProjectDetail will handle it
-            navigate({ view: 'project', id: current.id });
+            navigate({ view: 'project', id: current.id, projectName: current.projectName });
           }
         },
       },
@@ -255,6 +256,7 @@ export function AppShell({ onLogout }: AppShellProps) {
           </div>
         )}
         <main className="flex-1 overflow-y-auto">
+          <Breadcrumbs />
           <MainContent />
         </main>
         {current.view === 'task' && (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   useProject,
@@ -21,7 +21,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { data, fetching, error } = useProject(projectId);
   const { updateProject } = useUpdateProject();
   const { deleteProject } = useDeleteProject();
-  const { navigate, navigateBack } = useNavigation();
+  const { navigate, goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
@@ -71,19 +71,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   const handleDelete = async () => {
     await deleteProject(projectId);
-    navigateBack({ view: 'projects' });
+    goToParent();
   };
 
   return (
     <div className="p-6">
-      <button
-        onClick={() => navigateBack({ view: 'projects' })}
-        className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
-      >
-        <ArrowLeft className={`${iconSize.sm} mr-1`} />
-        Back to Projects
-      </button>
-
       {editing ? (
         <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
           <div className="space-y-3">
@@ -154,7 +146,16 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       <TaskTable
         projectId={projectId}
         tasks={project.tasks}
-        onTaskClick={(taskId) => navigate({ view: 'task', id: taskId })}
+        onTaskClick={(taskId) => {
+          const task = project.tasks.find((t) => t.id === taskId);
+          navigate({
+            view: 'task',
+            id: taskId,
+            projectId,
+            projectName: project.name,
+            taskName: task?.title,
+          });
+        }}
       />
     </div>
   );
