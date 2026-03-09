@@ -6,12 +6,10 @@
     "src/daemon/index.ts",
     "scripts/*.mjs",
     "electron.vite.config.ts",
-    "vitest.config.ts",
-    "codegen.ts",
     "src/**/*.test.{ts,tsx}",
     "src/renderer/types/*.d.ts",
     "src/renderer/graphql/*.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["electron"]
+  "ignoreDependencies": ["@graphql-typed-document-node/core", "tailwindcss"]
 }

@@ -5,16 +5,16 @@ import { getDb } from './client.js';
 import { terminalSession } from './schema.js';
 import { SessionStatus, ACTIVE_SESSION_STATUSES } from '../../shared/session-status.js';
 
-export type TerminalSession = InferSelectModel<typeof terminalSession>;
+type TerminalSession = InferSelectModel<typeof terminalSession>;
 
-export interface CreateSessionInput {
+interface CreateSessionInput {
   taskId?: string;
   pid?: number;
   status?: string;
   workingDirectory?: string;
 }
 
-export interface UpdateSessionInput {
+interface UpdateSessionInput {
   pid?: number;
   status?: string;
   stoppedAt?: string;
@@ -50,11 +50,6 @@ export function createSession(input: CreateSessionInput): TerminalSession {
   return getSession(id)!;
 }
 
-export function deleteSession(id: string): void {
-  const db = getDb();
-  db.delete(terminalSession).where(eq(terminalSession.id, id)).run();
-}
-
 export function updateSession(id: string, input: UpdateSessionInput): TerminalSession | undefined {
   const db = getDb();
   const updates: Partial<Record<string, unknown>> = {};
@@ -70,7 +65,7 @@ export function updateSession(id: string, input: UpdateSessionInput): TerminalSe
   return getSession(id);
 }
 
-export interface SweepResult {
+interface SweepResult {
   sweptIds: string[];
   total: number;
 }

@@ -9,16 +9,16 @@ import { getDb } from './db.js';
 import { terminalSession } from '../shared/db/schema.js';
 import { SessionStatus, ACTIVE_SESSION_STATUSES } from '../shared/session-status.js';
 
-export type TerminalSession = InferSelectModel<typeof terminalSession>;
+type TerminalSession = InferSelectModel<typeof terminalSession>;
 
-export interface CreateSessionInput {
+interface CreateSessionInput {
   taskId?: string;
   pid?: number;
   status?: string;
   workingDirectory?: string;
 }
 
-export interface UpdateSessionInput {
+interface UpdateSessionInput {
   pid?: number;
   status?: string;
   stoppedAt?: string;

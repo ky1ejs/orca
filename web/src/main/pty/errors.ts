@@ -6,5 +6,4 @@ export {
   ProcessCrashError,
   AuthNotConfiguredError,
   serializeError,
-  type SerializedAgentError,
 } from '../../shared/errors.js';

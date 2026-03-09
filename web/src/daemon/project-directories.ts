@@ -6,7 +6,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { getDb } from './db.js';
 import { projectDirectory } from '../shared/db/schema.js';
 
-export type ProjectDirectory = InferSelectModel<typeof projectDirectory>;
+type ProjectDirectory = InferSelectModel<typeof projectDirectory>;
 
 export function getProjectDirectory(projectId: string): ProjectDirectory | undefined {
   const db = getDb();

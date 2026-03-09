@@ -7,7 +7,7 @@ import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '../shared/db/schema.js';
 
-export type OrcaDb = BetterSQLite3Database<typeof schema>;
+type OrcaDb = BetterSQLite3Database<typeof schema>;
 
 let db: OrcaDb | null = null;
 let sqlite: Database.Database | null = null;

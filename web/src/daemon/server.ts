@@ -13,7 +13,7 @@ export interface ClientConnection {
   buffer: string;
 }
 
-export type RequestHandler = (
+type RequestHandler = (
   client: ClientConnection,
   method: string,
   params: unknown,
