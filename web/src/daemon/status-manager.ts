@@ -28,6 +28,13 @@ import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
  */
 const PERMISSION_RESUME_THRESHOLD = 50;
 
+/**
+ * Grace period (ms) after AwaitingPermission is set, during which we keep advancing the output
+ * baseline. The permission dialog text itself can exceed 50 bytes, so we absorb it before locking
+ * the baseline for resume detection.
+ */
+const PERMISSION_GRACE_MS = 2500;
+
 /** How recently (ms) a PTY must have produced output to be considered "active". */
 const ACTIVITY_TIMEOUT_MS = 1500;
 
@@ -36,12 +43,13 @@ interface MonitorState {
   inputDetector: InputDetector;
   lastStatus: string;
   lastActive: boolean;
-  hooksActive: boolean;
   stopDebounce: ReturnType<typeof setTimeout> | null;
   hookListener: ((event: HookEvent) => void) | null;
   workingDirectory: string;
   /** Output length when AwaitingPermission was set; used to detect permission granted */
   permissionOutputLen: number | null;
+  /** Timestamp when AwaitingPermission was set; used for grace period */
+  permissionSetAt: number | null;
 }
 
 interface DaemonStatusManagerOptions {
@@ -183,7 +191,11 @@ export class DaemonStatusManager {
 
     inputDetector.setOnChange((waiting) => {
       if (waiting) {
-        this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
+        // Don't downgrade AwaitingPermission to WaitingForInput
+        const session = getSession(sessionId);
+        if (session?.status !== SessionStatus.AwaitingPermission) {
+          this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
+        }
       } else {
         const session = getSession(sessionId);
         if (session && session.status === SessionStatus.WaitingForInput) {
@@ -202,11 +214,6 @@ export class DaemonStatusManager {
 
       const session = getSession(sessionId);
       if (!session || !isActiveSessionStatus(session.status)) return;
-
-      // First hook event disables InputDetector feeding
-      if (!monitor.hooksActive) {
-        monitor.hooksActive = true;
-      }
 
       const cancelDebounce = () => {
         if (monitor.stopDebounce) {
@@ -228,11 +235,14 @@ export class DaemonStatusManager {
         case 'PermissionRequest': {
           cancelDebounce();
           monitor.permissionOutputLen = this.manager.outputSize(sessionId);
+          monitor.permissionSetAt = Date.now();
           this.updateStatusAndNotify(sessionId, SessionStatus.AwaitingPermission);
           break;
         }
         case 'UserPromptSubmit': {
           cancelDebounce();
+          monitor.permissionOutputLen = null;
+          monitor.permissionSetAt = null;
           this.updateStatusAndNotify(sessionId, SessionStatus.Running);
           break;
         }
@@ -259,29 +269,37 @@ export class DaemonStatusManager {
       }
 
       const monitor = this.monitors.get(sessionId);
-      if (monitor && !monitor.hooksActive) {
-        // Only feed InputDetector if hooks haven't taken over
+
+      // Feed InputDetector when it can act — skip when AwaitingPermission (detector is guarded)
+      if (monitor && session.status !== SessionStatus.AwaitingPermission) {
         try {
           const output = this.manager.replay(sessionId);
           if (output) {
-            // Only check the tail of the output for prompt detection
             const tail = output.slice(-500);
             inputDetector.onOutput(tail);
           }
         } catch {
           // Session may no longer exist
         }
-      } else if (
+      }
+
+      // Claude doesn't fire a hook when permission is granted, so detect it
+      // by watching for new output (Claude resumed work after permission)
+      if (
         monitor &&
-        monitor.hooksActive &&
         session.status === SessionStatus.AwaitingPermission &&
-        monitor.permissionOutputLen !== null
+        monitor.permissionOutputLen !== null &&
+        monitor.permissionSetAt !== null
       ) {
-        // Claude doesn't fire a hook when permission is granted, so detect it
-        // by watching for new output (Claude resumed work after permission)
+        const elapsed = Date.now() - monitor.permissionSetAt;
         const currentSize = this.manager.outputSize(sessionId);
-        if (currentSize > monitor.permissionOutputLen + PERMISSION_RESUME_THRESHOLD) {
+        if (elapsed < PERMISSION_GRACE_MS) {
+          // Still in grace period — absorb dialog output by advancing the baseline
+          monitor.permissionOutputLen = currentSize;
+        } else if (currentSize > monitor.permissionOutputLen + PERMISSION_RESUME_THRESHOLD) {
+          // Grace period over and new output appeared — permission was granted
           monitor.permissionOutputLen = null;
+          monitor.permissionSetAt = null;
           this.updateStatusAndNotify(sessionId, SessionStatus.Running);
         }
       }
@@ -302,11 +320,11 @@ export class DaemonStatusManager {
       inputDetector,
       lastStatus,
       lastActive: false,
-      hooksActive: false,
       stopDebounce: null,
       hookListener,
       workingDirectory,
       permissionOutputLen: null,
+      permissionSetAt: null,
     });
   }
 
