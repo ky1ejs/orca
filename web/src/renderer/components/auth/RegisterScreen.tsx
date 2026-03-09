@@ -71,7 +71,7 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-surface-base text-gray-100">
+    <div className="flex h-screen items-center justify-center bg-surface text-fg">
       <div className="w-full max-w-sm px-6">
         <h1 className="text-heading-lg font-bold text-center mb-8">Orca</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -81,7 +81,7 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
             </div>
           )}
           <div>
-            <label htmlFor="name" className="block text-label-md font-medium text-gray-400 mb-1">
+            <label htmlFor="name" className="block text-label-md font-medium text-fg-muted mb-1">
               Name
             </label>
             <input
@@ -91,12 +91,12 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded border border-gray-700 bg-surface-primary px-3 py-2 text-body-sm text-gray-100 placeholder-gray-500 focus-ring"
+              className="w-full rounded border border-edge-subtle bg-surface-raised px-3 py-2 text-body-sm text-fg placeholder-fg-faint focus:border-edge-subtle focus:outline-none focus:ring-1 focus:ring-edge-subtle"
               placeholder="Your name"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block text-label-md font-medium text-gray-400 mb-1">
+            <label htmlFor="email" className="block text-label-md font-medium text-fg-muted mb-1">
               Email
             </label>
             <input
@@ -105,14 +105,14 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-gray-700 bg-surface-primary px-3 py-2 text-body-sm text-gray-100 placeholder-gray-500 focus-ring"
+              className="w-full rounded border border-edge-subtle bg-surface-raised px-3 py-2 text-body-sm text-fg placeholder-fg-faint focus:border-edge-subtle focus:outline-none focus:ring-1 focus:ring-edge-subtle"
               placeholder="you@example.com"
             />
           </div>
           <div>
             <label
               htmlFor="password"
-              className="block text-label-md font-medium text-gray-400 mb-1"
+              className="block text-label-md font-medium text-fg-muted mb-1"
             >
               Password
             </label>
@@ -123,14 +123,14 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded border border-gray-700 bg-surface-primary px-3 py-2 text-body-sm text-gray-100 placeholder-gray-500 focus-ring"
+              className="w-full rounded border border-edge-subtle bg-surface-raised px-3 py-2 text-body-sm text-fg placeholder-fg-faint focus:border-edge-subtle focus:outline-none focus:ring-1 focus:ring-edge-subtle"
               placeholder="Min. 8 characters"
             />
           </div>
           <div>
             <label
               htmlFor="inviteCode"
-              className="block text-label-md font-medium text-gray-400 mb-1"
+              className="block text-label-md font-medium text-fg-muted mb-1"
             >
               Invite Code
             </label>
@@ -140,21 +140,21 @@ export function RegisterScreen({ onRegister, onBack }: RegisterScreenProps) {
               required
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
-              className="w-full rounded border border-gray-700 bg-surface-primary px-3 py-2 text-body-sm text-gray-100 placeholder-gray-500 focus-ring"
+              className="w-full rounded border border-edge-subtle bg-surface-raised px-3 py-2 text-body-sm text-fg placeholder-fg-faint focus:border-edge-subtle focus:outline-none focus:ring-1 focus:ring-edge-subtle"
               placeholder="Enter your invite code"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded bg-accent px-4 py-2 text-label-md font-medium text-on-accent hover:bg-accent-hover focus-ring-offset disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded bg-accent px-4 py-2 text-label-md font-medium text-on-accent hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-edge-subtle focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-        <p className="mt-4 text-center text-body-sm text-gray-500">
+        <p className="mt-4 text-center text-body-sm text-fg-faint">
           Already have an account?{' '}
-          <button type="button" onClick={onBack} className="text-gray-300 hover:text-gray-200">
+          <button type="button" onClick={onBack} className="text-fg-muted hover:text-fg">
             Sign in
           </button>
         </p>

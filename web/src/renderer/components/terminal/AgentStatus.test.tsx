@@ -36,14 +36,14 @@ describe('AgentStatus', () => {
     render(<AgentStatus status={SessionStatus.Exited} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Exited');
-    expect(badge.className).toContain('bg-gray-700');
+    expect(badge.className).toContain('bg-surface-hover');
   });
 
   it('renders "Needs Permission" with orange styling and pulse', () => {
     render(<AgentStatus status={SessionStatus.AwaitingPermission} />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Needs Permission');
-    expect(badge.className).toContain('bg-orange-900');
+    expect(badge.className).toContain('bg-permission-muted');
     const dot = badge.querySelector('span');
     expect(dot?.className).toContain('animate-pulse');
   });
@@ -59,6 +59,6 @@ describe('AgentStatus', () => {
     render(<AgentStatus status="UNKNOWN" />);
     const badge = screen.getByTestId('agent-status-badge');
     expect(badge).toHaveTextContent('Exited');
-    expect(badge.className).toContain('bg-gray-700');
+    expect(badge.className).toContain('bg-surface-hover');
   });
 });

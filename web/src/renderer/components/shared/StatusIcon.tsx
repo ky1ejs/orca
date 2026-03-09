@@ -11,7 +11,7 @@ export function StatusIcon({ status, className = iconSize.sm }: StatusIconProps)
     case TaskStatus.Todo:
       return (
         <svg
-          className={`${className} text-gray-400`}
+          className={`${className} text-fg-muted`}
           viewBox="0 0 16 16"
           fill="none"
           aria-label="Status: Todo"

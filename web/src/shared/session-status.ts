@@ -36,11 +36,11 @@ export function isNeedsAttentionStatus(status: string): boolean {
 /** CSS classes for status indicator dots. */
 const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.Running]: 'bg-success',
-  [SessionStatus.Exited]: 'bg-gray-500',
+  [SessionStatus.Exited]: 'bg-fg-faint',
   [SessionStatus.Error]: 'bg-error',
   [SessionStatus.Starting]: 'bg-info animate-pulse',
   [SessionStatus.WaitingForInput]: 'bg-warning animate-pulse',
-  [SessionStatus.AwaitingPermission]: 'bg-warning animate-pulse',
+  [SessionStatus.AwaitingPermission]: 'bg-permission-dot animate-pulse',
 };
 
 /** CSS glow class applied when a session has recent PTY output activity. */

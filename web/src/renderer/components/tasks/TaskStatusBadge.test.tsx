@@ -12,8 +12,8 @@ describe('TaskStatusBadge', () => {
     render(<TaskStatusBadge status={TaskStatus.Todo} />);
     const badge = screen.getByTestId('task-status-badge');
     expect(badge).toHaveTextContent('Todo');
-    expect(badge.className).toContain('bg-gray-700');
-    expect(badge.className).toContain('text-gray-300');
+    expect(badge.className).toContain('bg-surface-hover');
+    expect(badge.className).toContain('text-fg-muted');
   });
 
   it('renders "In Progress" with blue styling', () => {

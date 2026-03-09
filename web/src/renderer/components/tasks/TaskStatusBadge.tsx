@@ -3,7 +3,7 @@ import { TaskStatus } from '../../graphql/__generated__/generated.js';
 const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
   [TaskStatus.Todo]: {
     label: 'Todo',
-    className: 'bg-gray-700 text-gray-300',
+    className: 'bg-surface-hover text-fg-muted',
   },
   [TaskStatus.InProgress]: {
     label: 'In Progress',

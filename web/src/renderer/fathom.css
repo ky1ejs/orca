@@ -5,6 +5,9 @@
  * Monochromatic palette with warm grays and semantic color.
  * Inspired by the orca: black, white, and purposeful contrast.
  *
+ * Adapts to light/dark mode via OS preference by default.
+ * Users can override via Settings > Appearance.
+ *
  * Usage:
  *   Colors   → bg-gray-950, text-gray-400, etc. (warm gray overrides)
  *   Surface  → bg-surface-base, bg-surface-primary, bg-surface-overlay
@@ -21,6 +24,191 @@
  *   Spacing  → standard Tailwind scale (p-4, gap-2, m-6, etc.)
  * =================================================================
  */
+
+/* -------------------------------------------------------------------
+ * Semantic Design Tokens — Light / Dark mode
+ *
+ * Dark mode is the default. Light mode overrides via prefers-color-scheme.
+ * Components use semantic classes (bg-surface, text-fg, border-edge, etc.)
+ * so the palette flips automatically with the OS setting.
+ * ------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --surface: #0e0d0c;
+  --surface-raised: #161514;
+  --surface-overlay: #262523;
+  --surface-inset: #262523;
+  --surface-hover: #37352f;
+  --surface-active: #504d47;
+
+  /* Foreground */
+  --fg: #f7f6f3;
+  --fg-muted: #908d85;
+  --fg-faint: #6e6b64;
+
+  /* Borders */
+  --edge: #262523;
+  --edge-subtle: #37352f;
+
+  /* Accent */
+  --accent: #f5f3f0;
+  --accent-hover: #e8e6e1;
+  --accent-active: #ccc9c3;
+  --on-accent: #161514;
+  --accent-muted: #262523;
+  --accent-muted-hover: #37352f;
+
+  /* Semantic colors — text (readable on their muted bg in both modes) */
+  --success-text: #4ade80;
+  --error-text: #f87171;
+  --warning-text: #fbbf24;
+  --info-text: #7dd3fc;
+
+  /* Semantic muted backgrounds */
+  --success-muted: #0f2a1a;
+  --error-muted: #2a0f0f;
+  --warning-muted: #2a1f0a;
+  --info-muted: #0f1a2a;
+
+  /* Permission (orange) */
+  --permission-text: #fb923c;
+  --permission-muted: #2a1a0a;
+  --permission-dot: #fb923c;
+
+  /* Priority muted backgrounds */
+  --priority-low-muted: #1a1918;
+  --priority-medium-muted: #2a1f0a;
+  --priority-high-muted: #2a1a0a;
+  --priority-urgent-muted: #2a0f0f;
+
+  /* Terminal */
+  --terminal-bg: #030712;
+  --terminal-fg: #e5e7eb;
+  --terminal-cursor: #e5e7eb;
+  --terminal-selection: #374151;
+}
+
+/* Force dark: no explicit :root.dark block needed — :root defaults are dark,
+ * and .dark on <html> prevents the light media query from applying via :not(.dark). */
+
+/* Light mode values — shared between media query and forced class.
+ * KEEP IN SYNC: these values are duplicated in the :root.light block below
+ * for the forced-light override. Update both when changing a token. */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    /* Surfaces */
+    --surface: #f7f6f3;
+    --surface-raised: #ffffff;
+    --surface-overlay: #ffffff;
+    --surface-inset: #e8e6e1;
+    --surface-hover: #e8e6e1;
+    --surface-active: #ccc9c3;
+
+    /* Foreground */
+    --fg: #0e0d0c;
+    --fg-muted: #504d47;
+    --fg-faint: #908d85;
+
+    /* Borders */
+    --edge: #ccc9c3;
+    --edge-subtle: #e8e6e1;
+
+    /* Accent */
+    --accent: #161514;
+    --accent-hover: #262523;
+    --accent-active: #37352f;
+    --on-accent: #f7f6f3;
+    --accent-muted: #e8e6e1;
+    --accent-muted-hover: #ccc9c3;
+
+    /* Semantic colors — darker text for light backgrounds */
+    --success-text: #15803d;
+    --error-text: #b91c1c;
+    --warning-text: #a16207;
+    --info-text: #1d4ed8;
+
+    /* Semantic muted backgrounds */
+    --success-muted: #dcfce7;
+    --error-muted: #fee2e2;
+    --warning-muted: #fef3c7;
+    --info-muted: #dbeafe;
+
+    /* Permission (orange) */
+    --permission-text: #c2410c;
+    --permission-muted: #ffedd5;
+    --permission-dot: #ea580c;
+
+    /* Priority muted backgrounds */
+    --priority-low-muted: #e8e6e1;
+    --priority-medium-muted: #fef3c7;
+    --priority-high-muted: #ffedd5;
+    --priority-urgent-muted: #fee2e2;
+
+    /* Terminal */
+    --terminal-bg: #f7f6f3;
+    --terminal-fg: #161514;
+    --terminal-cursor: #161514;
+    --terminal-selection: #ccc9c3;
+  }
+}
+
+/* Force light mode when .light class is on <html>.
+ * KEEP IN SYNC: duplicates the light values from the media query above. */
+:root.light {
+  /* Surfaces */
+  --surface: #f7f6f3;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-inset: #e8e6e1;
+  --surface-hover: #e8e6e1;
+  --surface-active: #ccc9c3;
+
+  /* Foreground */
+  --fg: #0e0d0c;
+  --fg-muted: #504d47;
+  --fg-faint: #908d85;
+
+  /* Borders */
+  --edge: #ccc9c3;
+  --edge-subtle: #e8e6e1;
+
+  /* Accent */
+  --accent: #161514;
+  --accent-hover: #262523;
+  --accent-active: #37352f;
+  --on-accent: #f7f6f3;
+  --accent-muted: #e8e6e1;
+  --accent-muted-hover: #ccc9c3;
+
+  /* Semantic colors — darker text for light backgrounds */
+  --success-text: #15803d;
+  --error-text: #b91c1c;
+  --warning-text: #a16207;
+  --info-text: #1d4ed8;
+
+  /* Semantic muted backgrounds */
+  --success-muted: #dcfce7;
+  --error-muted: #fee2e2;
+  --warning-muted: #fef3c7;
+  --info-muted: #dbeafe;
+
+  /* Permission (orange) */
+  --permission-text: #c2410c;
+  --permission-muted: #ffedd5;
+  --permission-dot: #ea580c;
+
+  /* Priority muted backgrounds */
+  --priority-low-muted: #e8e6e1;
+  --priority-medium-muted: #fef3c7;
+  --priority-high-muted: #ffedd5;
+  --priority-urgent-muted: #fee2e2;
+
+  /* Terminal */
+  --terminal-bg: #f7f6f3;
+  --terminal-fg: #161514;
+  --terminal-cursor: #161514;
+  --terminal-selection: #ccc9c3;
+}
 
 /* -------------------------------------------------------------------
  * Theme Overrides
@@ -72,23 +260,24 @@
    *
    * Primary actions use light-on-dark contrast. No color needed.
    * White buttons with dark text on dark backgrounds.
+   * References CSS custom properties so they flip with light/dark mode.
    * ----------------------------------------------------------- */
-  --color-accent: #f5f3f0;
-  --color-accent-hover: #e8e6e1;
-  --color-accent-active: #ccc9c3;
-  --color-on-accent: #161514;
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-on-accent: var(--on-accent);
 
   /* Subtle accent for secondary interactive elements */
-  --color-accent-muted: #262523;
-  --color-accent-muted-hover: #37352f;
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-muted-hover: var(--accent-muted-hover);
 
   /* -----------------------------------------------------------
    * Semantic Colors — Reserved for meaning
    *
    * Each semantic color has three variants:
-   *   -muted   → subtle background (badges, alerts)
-   *   (base)   → readable text on dark backgrounds
-   *   -strong  → borders, emphasis
+   *   -muted   → subtle background (badges, alerts) — switches with mode
+   *   (base)   → readable text — hardcoded, works on both light/dark muted bg
+   *   -strong  → borders, emphasis — hardcoded
    *
    * Also used for task status:
    *   Todo        → gray (neutral)
@@ -99,24 +288,29 @@
    * ----------------------------------------------------------- */
 
   /* Success — Done, confirmed, positive */
-  --color-success: #4ade80;
-  --color-success-muted: #0f2a1a;
+  --color-success: var(--success-text);
+  --color-success-muted: var(--success-muted);
   --color-success-strong: #166534;
 
   /* Error — Errors, destructive, danger */
-  --color-error: #f87171;
-  --color-error-muted: #2a0f0f;
+  --color-error: var(--error-text);
+  --color-error-muted: var(--error-muted);
   --color-error-strong: #7f1d1d;
 
   /* Warning — Caution, in review, attention */
-  --color-warning: #fbbf24;
-  --color-warning-muted: #2a1f0a;
+  --color-warning: var(--warning-text);
+  --color-warning-muted: var(--warning-muted);
   --color-warning-strong: #78350f;
 
   /* Info — Informational, in progress */
-  --color-info: #7dd3fc;
-  --color-info-muted: #0f1a2a;
+  --color-info: var(--info-text);
+  --color-info-muted: var(--info-muted);
   --color-info-strong: #1e3a5f;
+
+  /* Permission — Awaiting permission (orange) */
+  --color-permission: var(--permission-text);
+  --color-permission-muted: var(--permission-muted);
+  --color-permission-dot: var(--permission-dot);
 
   /* -----------------------------------------------------------
    * Priority Colors — Reserved for task priority levels
@@ -128,13 +322,13 @@
    *   Urgent → red-orange (immediate action)
    * ----------------------------------------------------------- */
   --color-priority-low: #aba8a1;
-  --color-priority-low-muted: #1a1918;
+  --color-priority-low-muted: var(--priority-low-muted);
   --color-priority-medium: #fbbf24;
-  --color-priority-medium-muted: #2a1f0a;
+  --color-priority-medium-muted: var(--priority-medium-muted);
   --color-priority-high: #fb923c;
-  --color-priority-high-muted: #2a1a0a;
+  --color-priority-high-muted: var(--priority-high-muted);
   --color-priority-urgent: #f87171;
-  --color-priority-urgent-muted: #2a0f0f;
+  --color-priority-urgent-muted: var(--priority-urgent-muted);
 
   /* -----------------------------------------------------------
    * Z-Index Scale — semantic layering
@@ -170,6 +364,27 @@
   --shadow-sm: 0 2px 4px oklch(0 0 0 / 25%);
   --shadow-dropdown: 0 4px 12px oklch(0 0 0 / 40%);
   --shadow-modal: 0 8px 24px oklch(0 0 0 / 50%);
+}
+
+/* -------------------------------------------------------------------
+ * Semantic Utility Classes — registered with Tailwind v4
+ *
+ * Maps CSS custom properties to Tailwind utility classes so you can
+ * write bg-surface, text-fg, border-edge, etc. in components.
+ * ------------------------------------------------------------------- */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-edge: var(--edge);
+  --color-edge-subtle: var(--edge-subtle);
+  --color-terminal-bg: var(--terminal-bg);
 }
 
 /* -------------------------------------------------------------------
@@ -249,35 +464,6 @@
   --size-icon-lg: 48px;
 
   /* -----------------------------------------------------------
-   * Surface / Elevation Colors — semantic background hierarchy
-   *
-   * Maps to the warm gray palette. Use these instead of raw
-   * gray values for backgrounds — prepares for future theming.
-   *
-   *   base      → app background (darkest)
-   *   primary   → sidebar, modals, cards
-   *   secondary → inputs, selected states
-   *   tertiary  → hover, active elements
-   *   overlay   → semi-transparent modal backdrop
-   * ----------------------------------------------------------- */
-  --color-surface-base: var(--color-gray-950);
-  --color-surface-primary: var(--color-gray-900);
-  --color-surface-secondary: var(--color-gray-800);
-  --color-surface-tertiary: var(--color-gray-700);
-  --color-surface-overlay: oklch(0 0 0 / 60%);
-
-  /* -----------------------------------------------------------
-   * Terminal Theme Colors
-   *
-   * Semantic tokens for xterm.js terminal theming. Components
-   * read these via getComputedStyle instead of hardcoding hex.
-   * ----------------------------------------------------------- */
-  --color-terminal-bg: #0e0d0c; /* gray-950 */
-  --color-terminal-fg: #ccc9c3; /* gray-200 */
-  --color-terminal-cursor: #ccc9c3; /* gray-200 */
-  --color-terminal-selection: #37352f; /* gray-700 */
-
-  /* -----------------------------------------------------------
    * Animation Tokens — entrance/exit for modals and dropdowns
    *
    *   fade-in   → opacity entrance
@@ -308,6 +494,29 @@
 
   --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* -------------------------------------------------------------------
+ * Prose (Tailwind Typography) — use semantic tokens
+ *
+ * This ensures markdown content follows our light/dark theme via CSS
+ * custom properties, rather than relying on `dark:prose-invert` which
+ * only responds to the media query and not class-based overrides.
+ * ------------------------------------------------------------------- */
+.prose {
+  --tw-prose-body: var(--fg);
+  --tw-prose-headings: var(--fg);
+  --tw-prose-links: var(--fg);
+  --tw-prose-bold: var(--fg);
+  --tw-prose-code: var(--fg);
+  --tw-prose-quotes: var(--fg-muted);
+  --tw-prose-counters: var(--fg-muted);
+  --tw-prose-bullets: var(--fg-faint);
+  --tw-prose-hr: var(--edge);
+  --tw-prose-th-borders: var(--edge);
+  --tw-prose-td-borders: var(--edge-subtle);
+  --tw-prose-pre-bg: var(--surface-inset);
+  --tw-prose-pre-code: var(--fg);
 }
 
 /* -------------------------------------------------------------------
@@ -458,6 +667,6 @@
     @apply focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500;
   }
   .focus-ring-offset {
-    @apply focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-surface-base;
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-surface;
   }
 }

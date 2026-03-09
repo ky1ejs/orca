@@ -15,9 +15,9 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       className="flex flex-col items-center justify-center py-16 px-6 text-center"
       data-testid="empty-state"
     >
-      {icon && <div className="mb-4 text-gray-600">{icon}</div>}
-      <h3 className="text-heading-sm font-medium text-gray-300 mb-2">{title}</h3>
-      <p className="text-body-sm text-gray-500 max-w-md mb-6">{description}</p>
+      {icon && <div className="mb-4 text-fg-faint">{icon}</div>}
+      <h3 className="text-heading-sm font-medium text-fg-muted mb-2">{title}</h3>
+      <p className="text-body-sm text-fg-faint max-w-md mb-6">{description}</p>
       {action && <div>{action}</div>}
     </div>
   );

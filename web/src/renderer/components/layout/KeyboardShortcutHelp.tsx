@@ -35,12 +35,12 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
       }}
       data-testid="shortcut-help-modal"
     >
-      <div className="w-full max-w-md rounded-lg border border-gray-700 bg-surface-primary shadow-modal animate-scale-in">
-        <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
-          <h2 className="text-heading-sm font-semibold text-white">Keyboard Shortcuts</h2>
+      <div className="w-full max-w-md rounded-lg border border-edge-subtle bg-surface-raised shadow-2xl animate-scale-in">
+        <div className="flex items-center justify-between border-b border-edge px-5 py-4">
+          <h2 className="text-heading-sm font-semibold text-fg">Keyboard Shortcuts</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-fg-muted hover:text-fg transition-colors"
             data-testid="close-shortcut-help"
           >
             <X className={iconSize.sm} />
@@ -52,15 +52,15 @@ export function KeyboardShortcutHelp({ shortcuts, isOpen, onClose }: KeyboardSho
               key={`${shortcut.key}-${shortcut.metaKey}-${shortcut.shiftKey}`}
               className="flex items-center justify-between"
             >
-              <span className="text-gray-300 text-body-sm">{shortcut.description}</span>
-              <kbd className="ml-4 shrink-0 rounded bg-gray-800 px-2 py-1 font-mono text-code-sm text-gray-300 border border-gray-700">
+              <span className="text-fg-muted text-body-sm">{shortcut.description}</span>
+              <kbd className="ml-4 shrink-0 rounded bg-surface-overlay px-2 py-1 font-mono text-code-sm text-fg-muted border border-edge-subtle">
                 {formatShortcut(shortcut)}
               </kbd>
             </div>
           ))}
         </div>
-        <div className="border-t border-gray-800 px-5 py-3">
-          <p className="text-label-sm text-gray-500">
+        <div className="border-t border-edge px-5 py-3">
+          <p className="text-label-sm text-fg-faint">
             Shortcuts are disabled when a terminal is focused.
           </p>
         </div>

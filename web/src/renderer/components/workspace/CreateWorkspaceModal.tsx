@@ -72,21 +72,21 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-surface-primary border border-gray-700 rounded-lg shadow-modal w-full max-w-md p-6 animate-scale-in"
+        className="bg-surface-raised border border-edge-subtle rounded-lg shadow-xl w-full max-w-md p-6 animate-scale-in"
       >
-        <h2 className="text-heading-sm font-semibold text-white mb-4">Create Workspace</h2>
+        <h2 className="text-heading-sm font-semibold text-fg mb-4">Create Workspace</h2>
 
-        <label className="block text-label-md text-gray-300 mb-1">Name</label>
+        <label className="block text-label-md text-fg-muted mb-1">Name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring mb-3"
+          className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded text-label-md text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle mb-3"
           placeholder="My Workspace"
           autoFocus
         />
 
-        <label className="block text-label-md text-gray-300 mb-1">Slug</label>
+        <label className="block text-label-md text-fg-muted mb-1">Slug</label>
         <input
           type="text"
           value={slug}
@@ -94,7 +94,7 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
             setSlugTouched(true);
             setSlug(e.target.value);
           }}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-label-md text-white placeholder-gray-500 focus-ring mb-4"
+          className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded text-label-md text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle mb-4"
           placeholder="my-workspace"
         />
 
@@ -104,7 +104,7 @@ export function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-label-md text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-label-md text-fg-muted hover:text-fg transition-colors"
           >
             Cancel
           </button>

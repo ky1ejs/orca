@@ -33,40 +33,40 @@ export function WorkspaceSwitcher() {
   };
 
   return (
-    <div className="relative px-2 py-2 border-b border-gray-800" ref={dropdownRef}>
+    <div className="relative px-2 py-2 border-b border-edge" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2 py-1.5 text-body-sm text-gray-300 hover:bg-gray-800 rounded transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1.5 text-body-sm text-fg-muted hover:bg-surface-hover rounded transition-colors"
         data-testid="workspace-switcher"
       >
         <span className="truncate font-medium">{currentWorkspace.name}</span>
         <ChevronDown
-          className={`${iconSize.sm} text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`${iconSize.sm} text-fg-faint transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute left-2 right-2 top-full mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown overflow-hidden animate-slide-up">
+        <div className="absolute left-2 right-2 top-full mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 overflow-hidden animate-slide-up">
           {workspaces.map((ws) => (
             <button
               key={ws.id}
               onClick={() => handleSwitch(ws.slug)}
               className={`w-full text-left px-3 py-2 text-body-sm transition-colors ${
                 ws.id === currentWorkspace.id
-                  ? 'bg-gray-700 text-gray-100'
-                  : 'text-gray-300 hover:bg-gray-700'
+                  ? 'bg-surface-hover text-fg'
+                  : 'text-fg-muted hover:bg-surface-hover'
               }`}
             >
               {ws.name}
             </button>
           ))}
-          <div className="border-t border-gray-700">
+          <div className="border-t border-edge-subtle">
             <button
               onClick={() => {
                 setIsOpen(false);
                 setShowCreateModal(true);
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-gray-400 hover:bg-gray-700 hover:text-gray-300 transition-colors flex items-center"
+              className="w-full text-left px-3 py-2 text-body-sm text-fg-muted hover:bg-surface-hover hover:text-fg-muted transition-colors flex items-center"
             >
               <Plus className={`${iconSize.sm} mr-1`} />
               Create Workspace

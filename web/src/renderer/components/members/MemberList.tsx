@@ -21,12 +21,12 @@ interface ConfirmDialogProps {
 function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
   return (
     <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-modal-backdrop animate-fade-in">
-      <div className="bg-surface-primary border border-gray-700 rounded-lg p-6 max-w-md mx-4 shadow-modal animate-scale-in">
-        <p className="text-gray-200 mb-4">{message}</p>
+      <div className="bg-surface-raised border border-edge-subtle rounded-lg p-6 max-w-md mx-4 shadow-modal animate-scale-in">
+        <p className="text-fg mb-4">{message}</p>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-label-md text-gray-400 hover:text-white transition-colors"
+            className="px-3 py-1.5 text-label-md text-fg-muted hover:text-fg transition-colors"
           >
             Cancel
           </button>
@@ -173,7 +173,7 @@ export function MemberList() {
 
   if (fetching && !workspace) {
     return (
-      <div className="p-8 text-gray-400">
+      <div className="p-8 text-fg-muted">
         <p className="text-body-sm">Loading members...</p>
       </div>
     );
@@ -183,8 +183,8 @@ export function MemberList() {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h2 className="text-heading-md font-semibold text-white mb-1">Members</h2>
-      <p className="text-body-sm text-gray-400 mb-6">
+      <h2 className="text-heading-md font-semibold text-fg mb-1">Members</h2>
+      <p className="text-body-sm text-fg-muted mb-6">
         {members.length} member{members.length !== 1 ? 's' : ''}
       </p>
 
@@ -210,13 +210,13 @@ export function MemberList() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white placeholder-gray-500 focus-ring"
+            className="flex-1 bg-surface-inset border border-edge-subtle rounded px-3 py-1.5 text-label-md text-fg placeholder-fg-faint focus:outline-none focus:border-edge-subtle"
             required
           />
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as WorkspaceRole)}
-            className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-label-md text-white focus-ring"
+            className="bg-surface-inset border border-edge-subtle rounded px-3 py-1.5 text-label-md text-fg focus:outline-none focus:border-edge-subtle"
           >
             <option value="MEMBER">Member</option>
             <option value="OWNER">Owner</option>
@@ -238,11 +238,11 @@ export function MemberList() {
           return (
             <div
               key={member.id}
-              className="flex items-center justify-between px-3 py-2 rounded hover:bg-gray-800/50"
+              className="flex items-center justify-between px-3 py-2 rounded hover:bg-surface-overlay/50"
             >
               <div className="flex-1 min-w-0">
-                <div className="text-body-sm text-white truncate">{member.user.name}</div>
-                <div className="text-label-sm text-gray-500 truncate">{member.user.email}</div>
+                <div className="text-body-sm text-fg truncate">{member.user.name}</div>
+                <div className="text-label-sm text-fg-faint truncate">{member.user.email}</div>
               </div>
               <div className="flex items-center gap-2 ml-4">
                 {isOwner && member.user.id !== currentUserId ? (
@@ -256,7 +256,7 @@ export function MemberList() {
                       )
                     }
                     disabled={isLastOwner}
-                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-label-sm text-white disabled:opacity-50"
+                    className="bg-surface-inset border border-edge-subtle rounded px-2 py-1 text-label-sm text-fg disabled:opacity-50"
                   >
                     <option value="OWNER">Owner</option>
                     <option value="MEMBER">Member</option>
@@ -266,7 +266,7 @@ export function MemberList() {
                     className={`text-label-sm px-2 py-0.5 rounded ${
                       member.role === 'OWNER'
                         ? 'bg-warning-muted text-warning'
-                        : 'bg-gray-800 text-gray-400'
+                        : 'bg-surface-inset text-fg-muted'
                     }`}
                   >
                     {member.role}
@@ -281,7 +281,7 @@ export function MemberList() {
                         member.user.id === currentUserId,
                       )
                     }
-                    className="text-label-sm text-gray-500 hover:text-error transition-colors"
+                    className="text-label-sm text-fg-faint hover:text-error transition-colors"
                   >
                     {member.user.id === currentUserId ? 'Leave' : 'Remove'}
                   </button>
@@ -294,7 +294,7 @@ export function MemberList() {
 
       {isOwner && invitations.length > 0 && (
         <>
-          <h3 className="text-label-md font-medium text-gray-400 mt-8 mb-3">Pending Invitations</h3>
+          <h3 className="text-label-md font-medium text-fg-muted mt-8 mb-3">Pending Invitations</h3>
           <div className="space-y-1">
             {invitations.map((inv) => {
               const expiresAt = new Date(inv.expiresAt);
@@ -307,17 +307,17 @@ export function MemberList() {
               return (
                 <div
                   key={inv.id}
-                  className="flex items-center justify-between px-3 py-2 rounded hover:bg-gray-800/50"
+                  className="flex items-center justify-between px-3 py-2 rounded hover:bg-surface-overlay/50"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-body-sm text-gray-300 truncate">{inv.email}</div>
-                    <div className="text-label-sm text-gray-500">
+                    <div className="text-body-sm text-fg-muted truncate">{inv.email}</div>
+                    <div className="text-label-sm text-fg-faint">
                       {inv.role} &middot; Expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                     </div>
                   </div>
                   <button
                     onClick={() => handleCancelInvitation(inv.id, inv.email)}
-                    className="text-label-sm text-gray-500 hover:text-error transition-colors ml-4"
+                    className="text-label-sm text-fg-faint hover:text-error transition-colors ml-4"
                   >
                     Cancel
                   </button>
