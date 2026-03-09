@@ -1,18 +1,20 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 
-type ViewType = 'projects' | 'project' | 'task' | 'members' | 'invitations' | 'settings';
+export type ViewType = 'projects' | 'project' | 'task' | 'members' | 'invitations' | 'settings';
 
-interface NavigationState {
+export interface NavigationState {
   view: ViewType;
   id?: string;
+  projectId?: string;
+  projectName?: string;
+  taskName?: string;
 }
 
 interface NavigationContextValue {
   current: NavigationState;
   navigate: (state: NavigationState) => void;
-  goBack: () => void;
-  navigateBack: (target: NavigationState) => void;
-  canGoBack: boolean;
+  goToParent: () => void;
+  canGoToParent: boolean;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -22,38 +24,35 @@ interface NavigationProviderProps {
 }
 
 export function NavigationProvider({ children }: NavigationProviderProps) {
-  const [stack, setStack] = useState<NavigationState[]>([{ view: 'projects' }]);
-
-  const current = stack[stack.length - 1];
+  const [current, setCurrent] = useState<NavigationState>({ view: 'projects' });
 
   const navigate = useCallback((state: NavigationState) => {
-    setStack((prev) => [...prev, state]);
+    setCurrent(state);
   }, []);
 
-  const goBack = useCallback(() => {
-    setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
-  }, []);
-
-  const navigateBack = useCallback((target: NavigationState) => {
-    setStack((prev) => {
-      for (let i = prev.length - 2; i >= 0; i--) {
-        if (prev[i].view === target.view && prev[i].id === target.id) {
-          return prev.slice(0, i + 1);
-        }
+  const goToParent = useCallback(() => {
+    setCurrent((prev) => {
+      switch (prev.view) {
+        case 'task':
+          return prev.projectId
+            ? { view: 'project' as const, id: prev.projectId, projectName: prev.projectName }
+            : { view: 'projects' as const };
+        case 'project':
+          return { view: 'projects' as const };
+        default:
+          return prev;
       }
-      return target.view === 'projects'
-        ? [{ view: 'projects' as const }]
-        : [{ view: 'projects' as const }, target];
     });
   }, []);
 
-  const canGoBack = stack.length > 1;
+  const canGoToParent = current.view === 'project' || current.view === 'task';
 
-  return (
-    <NavigationContext.Provider value={{ current, navigate, goBack, navigateBack, canGoBack }}>
-      {children}
-    </NavigationContext.Provider>
+  const value = useMemo(
+    () => ({ current, navigate, goToParent, canGoToParent }),
+    [current, navigate, goToParent, canGoToParent],
   );
+
+  return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
 }
 
 export function useNavigation(): NavigationContextValue {

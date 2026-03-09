@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  ArrowLeft,
   Pencil,
   Trash2,
   SquareTerminal,
@@ -55,7 +54,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { deleteTask } = useDeleteTask();
-  const { navigateBack } = useNavigation();
+  const { goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -152,11 +151,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleDelete = async () => {
     await deleteTask(taskId);
-    if (task.projectId) {
-      navigateBack({ view: 'project', id: task.projectId });
-    } else {
-      navigateBack({ view: 'projects' });
-    }
+    goToParent();
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
@@ -302,18 +297,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   return (
     <div className="p-6">
-      <button
-        onClick={() =>
-          task.projectId
-            ? navigateBack({ view: 'project', id: task.projectId })
-            : navigateBack({ view: 'projects' })
-        }
-        className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
-      >
-        <ArrowLeft className={`${iconSize.sm} mr-1`} />
-        Back to {task.project?.name ?? 'Projects'}
-      </button>
-
       {editing ? (
         <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
           <div className="space-y-3">

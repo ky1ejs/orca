@@ -52,7 +52,15 @@ export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsPr
           return (
             <li key={entry.taskId}>
               <button
-                onClick={() => navigate({ view: 'task', id: entry.taskId })}
+                onClick={() =>
+                  navigate({
+                    view: 'task',
+                    id: entry.taskId,
+                    projectId: entry.projectId,
+                    projectName: entry.projectName,
+                    taskName: entry.taskTitle,
+                  })
+                }
                 className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center gap-2 transition-colors ${
                   isActive
                     ? 'bg-gray-800 text-white'

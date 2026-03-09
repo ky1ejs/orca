@@ -2,7 +2,7 @@
 ---
 created: 2026-03-09
 author: Olly Boon (spec-writer skill)
-status: Draft
+status: Implemented
 pr:
 worktree: feat/structural-navigation
 ---

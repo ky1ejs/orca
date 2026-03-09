@@ -59,13 +59,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [taskTitle, createdProjectId, createTask]);
 
   const handleFinish = useCallback(() => {
-    if (createdTaskId) {
-      navigate({ view: 'task', id: createdTaskId });
+    if (createdTaskId && createdProjectId) {
+      navigate({
+        view: 'task',
+        id: createdTaskId,
+        projectId: createdProjectId,
+        projectName: projectName.trim(),
+        taskName: taskTitle.trim(),
+      });
     } else if (createdProjectId) {
-      navigate({ view: 'project', id: createdProjectId });
+      navigate({ view: 'project', id: createdProjectId, projectName: projectName.trim() });
     }
     onComplete();
-  }, [createdTaskId, createdProjectId, navigate, onComplete]);
+  }, [createdTaskId, createdProjectId, projectName, taskTitle, navigate, onComplete]);
 
   const stepIndicator = (
     <div className="flex items-center gap-2 mb-8" data-testid="onboarding-steps">
