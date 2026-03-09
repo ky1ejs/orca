@@ -18,6 +18,7 @@ import {
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
 import { ensureHooks, removeHooks } from '../shared/hooks/settings.js';
+import { logger } from './logger.js';
 import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 
 interface MonitorState {
@@ -81,7 +82,7 @@ export class DaemonStatusManager {
         try {
           ensureHooks(workingDirectory, hookPort);
         } catch (err) {
-          console.warn('[orca] Failed to ensure hooks:', err);
+          logger.warn(`Failed to ensure hooks: ${err}`);
         }
       }
 
@@ -131,7 +132,7 @@ export class DaemonStatusManager {
       try {
         removeHooks(workingDirectory);
       } catch (err) {
-        console.warn('[orca] Failed to remove hooks on stop:', err);
+        logger.warn(`Failed to remove hooks on stop: ${err}`);
       }
     }
   }
@@ -158,7 +159,7 @@ export class DaemonStatusManager {
       try {
         removeHooks(monitor.workingDirectory);
       } catch (err) {
-        console.warn('[orca] Failed to remove hooks on dispose:', err);
+        logger.warn(`Failed to remove hooks on dispose: ${err}`);
       }
       this.stopMonitoring(sessionId);
     }

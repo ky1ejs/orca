@@ -211,30 +211,32 @@ export class DaemonConnector {
     const backendUrl = process.env.BACKEND_URL || __BACKEND_URL__;
     const version = app.getVersion();
 
-    const child = spawn(
-      electronPath,
-      [
-        daemonScript,
-        '--db-path',
-        DAEMON_DB_PATH,
-        '--migrations',
-        migrationsFolder,
-        '--socket-path',
-        DAEMON_SOCKET_PATH,
-        '--backend-url',
-        backendUrl,
-        '--version',
-        version,
-      ],
-      {
-        detached: true,
-        stdio: 'ignore',
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-        },
+    const args = [
+      daemonScript,
+      '--db-path',
+      DAEMON_DB_PATH,
+      '--migrations',
+      migrationsFolder,
+      '--socket-path',
+      DAEMON_SOCKET_PATH,
+      '--backend-url',
+      backendUrl,
+      '--version',
+      version,
+    ];
+
+    if (process.env.ORCA_LOG_LEVEL) {
+      args.push('--log-level', process.env.ORCA_LOG_LEVEL);
+    }
+
+    const child = spawn(electronPath, args, {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
       },
-    );
+    });
 
     child.unref();
   }

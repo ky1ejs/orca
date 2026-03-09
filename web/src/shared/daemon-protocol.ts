@@ -182,6 +182,7 @@ export const DAEMON_SOCKET_PATH = join(ORCA_DIR, 'daemon.sock');
 export const DAEMON_PID_FILE = join(ORCA_DIR, 'daemon.pid');
 export const DAEMON_DB_PATH = join(ORCA_DIR, 'orca.db');
 export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
+export const MAIN_LOG_FILE = join(ORCA_DIR, 'main.log');
 
 /** Methods the daemon supports */
 export const DAEMON_METHODS = {

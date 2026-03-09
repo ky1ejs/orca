@@ -1,5 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { createLogger } from '../logger.js';
+import { DAEMON_LOG_FILE } from '../daemon-protocol.js';
+
+const logger = createLogger({ filePath: DAEMON_LOG_FILE, tag: 'hooks', stderr: true });
 
 const HOOK_EVENT_TYPES = ['Stop', 'PermissionRequest', 'UserPromptSubmit'] as const;
 const ORCA_HOOKS_MARKER = '/orca-hooks';
@@ -80,7 +84,7 @@ export function ensureHooks(workingDirectory: string, port: number): void {
       const raw = readFileSync(filePath, 'utf-8');
       settings = JSON.parse(raw) as SettingsFile;
     } catch {
-      console.warn(`[orca] Invalid JSON in ${filePath}, overwriting with Orca hooks only`);
+      logger.warn(`Invalid JSON in ${filePath}, overwriting with Orca hooks only`);
       settings = {};
     }
   }
@@ -146,6 +150,6 @@ export function removeHooks(workingDirectory: string): void {
 
     writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
   } catch (err) {
-    console.error('[orca] Failed to remove hooks:', err);
+    logger.error('Failed to remove hooks', err);
   }
 }

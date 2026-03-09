@@ -16,6 +16,15 @@ import type {
   PidSweepSessionsDiedEvent,
   SessionStatusChangedEvent,
 } from '../shared/daemon-protocol.js';
+import { logger } from './logger.js';
+import { exportDiagnostics } from './diagnostics.js';
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', reason);
+});
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
 
@@ -131,7 +140,7 @@ app.whenReady().then(async () => {
   try {
     app.dock?.setIcon(iconPath);
   } catch (err) {
-    console.warn('Failed to set dock icon:', err);
+    logger.warn(`Failed to set dock icon: ${err}`);
   }
 
   // Create and connect to daemon
@@ -146,9 +155,9 @@ app.whenReady().then(async () => {
 
   try {
     startupResult = await daemonConnector.ensureRunning();
-    console.log('Connected to PTY daemon');
+    logger.info('Connected to PTY daemon');
   } catch (err) {
-    console.error('Failed to connect to daemon:', err);
+    logger.error('Failed to connect to daemon', err);
     dialog.showErrorBox(
       'Daemon Error',
       'Failed to start the PTY daemon. Terminal sessions will not work.',
@@ -168,7 +177,7 @@ app.whenReady().then(async () => {
 
   // Handle reconnection
   daemonConnector.setOnReconnect(async () => {
-    console.log('Reconnected to PTY daemon');
+    logger.info('Reconnected to PTY daemon');
     setupDaemonEventForwarding(daemonClient!);
     await pushTokenToDaemon(daemonClient!);
     await resubscribeToActiveSessions(daemonClient!);
@@ -176,7 +185,7 @@ app.whenReady().then(async () => {
   });
 
   daemonConnector.setOnDisconnect(() => {
-    console.log('Disconnected from PTY daemon');
+    logger.info('Disconnected from PTY daemon');
     sendToAllWindows('daemon:disconnected');
   });
 
@@ -184,7 +193,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers(daemonClient);
 
   // App menu (before auto-updater so menu exists when first check fires)
-  initAppMenu({ onCheckForUpdates: checkForUpdates });
+  initAppMenu({ onCheckForUpdates: checkForUpdates, onExportDiagnostics: exportDiagnostics });
 
   // Auto-update — no more session termination warning!
   initAutoUpdater(setCheckForUpdatesState);
