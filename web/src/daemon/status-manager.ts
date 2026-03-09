@@ -3,11 +3,11 @@
  * Uses in-memory token (set by client via auth.setToken) instead of safeStorage.
  */
 import { existsSync } from 'node:fs';
-import type { DaemonPtyManager } from './pty-manager.js';
+import type { DaemonPtyManager, BroadcastFn } from './pty-manager.js';
 import { getDefaultShell, getLoginShellArgs } from '../shared/shell.js';
 import { findClaudePath } from '../shared/claude.js';
 import { createSession, getSession, updateSession } from './sessions.js';
-import { SessionStatus } from '../shared/session-status.js';
+import { SessionStatus, isActiveSessionStatus } from '../shared/session-status.js';
 import {
   ClaudeNotFoundError,
   InvalidWorkingDirectoryError,
@@ -16,16 +16,25 @@ import {
   type SerializedAgentError,
 } from '../shared/errors.js';
 import { InputDetector } from '../shared/input-detection.js';
+import type { HookServer, HookEvent } from '../shared/hooks/server.js';
+import { ensureHooks, removeHooks } from '../shared/hooks/settings.js';
+import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 
 interface MonitorState {
   interval: ReturnType<typeof setInterval>;
   inputDetector: InputDetector;
   lastStatus: string;
+  hooksActive: boolean;
+  stopDebounce: ReturnType<typeof setTimeout> | null;
+  hookListener: ((event: HookEvent) => void) | null;
+  workingDirectory: string;
 }
 
 interface DaemonStatusManagerOptions {
   backendUrl: string;
   getToken: () => string | null;
+  hookServer: HookServer | null;
+  broadcast: BroadcastFn;
 }
 
 export interface AgentLaunchOptions {
@@ -37,11 +46,15 @@ export class DaemonStatusManager {
   private monitors = new Map<string, MonitorState>();
   private backendUrl: string;
   private getToken: () => string | null;
+  private hookServer: HookServer | null;
+  private broadcast: BroadcastFn;
 
   constructor(manager: DaemonPtyManager, options: DaemonStatusManagerOptions) {
     this.manager = manager;
     this.backendUrl = options.backendUrl;
     this.getToken = options.getToken;
+    this.hookServer = options.hookServer;
+    this.broadcast = options.broadcast;
   }
 
   async launch(
@@ -62,6 +75,18 @@ export class DaemonStatusManager {
         workingDirectory,
       });
 
+      // Ensure Claude Code hooks are configured before spawning
+      const hookPort = this.hookServer?.getPort();
+      if (hookPort) {
+        try {
+          ensureHooks(workingDirectory, hookPort);
+        } catch (err) {
+          console.warn('[orca] Failed to ensure hooks:', err);
+        }
+      }
+
+      const env = { ORCA_SESSION_ID: session.id };
+
       try {
         if (options?.planMode) {
           const claudePath = findClaudePath();
@@ -73,10 +98,11 @@ export class DaemonStatusManager {
             claudePath,
             ['--permission-mode', 'plan'],
             workingDirectory,
+            env,
           );
         } else {
           const shell = getDefaultShell();
-          this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory);
+          this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory, env);
         }
       } catch (err) {
         if (err instanceof ClaudeNotFoundError) throw err;
@@ -86,7 +112,7 @@ export class DaemonStatusManager {
       // Update task to IN_PROGRESS
       await this.updateTaskStatus(taskId, 'IN_PROGRESS');
 
-      this.startMonitoring(session.id, taskId);
+      this.startMonitoring(session.id, taskId, workingDirectory);
 
       return { success: true, sessionId: session.id };
     } catch (err) {
@@ -95,8 +121,19 @@ export class DaemonStatusManager {
   }
 
   stop(sessionId: string): void {
+    const monitor = this.monitors.get(sessionId);
+    const workingDirectory = monitor?.workingDirectory;
+
     this.stopMonitoring(sessionId);
     this.manager.kill(sessionId);
+
+    if (workingDirectory) {
+      try {
+        removeHooks(workingDirectory);
+      } catch (err) {
+        console.warn('[orca] Failed to remove hooks on stop:', err);
+      }
+    }
   }
 
   async restart(
@@ -117,26 +154,79 @@ export class DaemonStatusManager {
   }
 
   dispose(): void {
-    for (const [sessionId] of this.monitors) {
+    for (const [sessionId, monitor] of this.monitors) {
+      try {
+        removeHooks(monitor.workingDirectory);
+      } catch (err) {
+        console.warn('[orca] Failed to remove hooks on dispose:', err);
+      }
       this.stopMonitoring(sessionId);
     }
   }
 
-  private startMonitoring(sessionId: string, taskId: string): void {
+  private startMonitoring(sessionId: string, taskId: string, workingDirectory: string): void {
     const inputDetector = new InputDetector();
 
     inputDetector.setOnChange((waiting) => {
       if (waiting) {
-        updateSession(sessionId, { status: SessionStatus.WaitingForInput });
+        this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
       } else {
         const session = getSession(sessionId);
         if (session && session.status === SessionStatus.WaitingForInput) {
-          updateSession(sessionId, { status: SessionStatus.Running });
+          this.updateStatusAndNotify(sessionId, SessionStatus.Running);
         }
       }
     });
 
     let lastStatus: string = SessionStatus.Starting;
+
+    const hookListener = (event: HookEvent) => {
+      if (event.sessionId !== sessionId) return;
+
+      const monitor = this.monitors.get(sessionId);
+      if (!monitor) return;
+
+      const session = getSession(sessionId);
+      if (!session || !isActiveSessionStatus(session.status)) return;
+
+      // First hook event disables InputDetector feeding
+      if (!monitor.hooksActive) {
+        monitor.hooksActive = true;
+      }
+
+      const cancelDebounce = () => {
+        if (monitor.stopDebounce) {
+          clearTimeout(monitor.stopDebounce);
+          monitor.stopDebounce = null;
+        }
+      };
+
+      switch (event.eventName) {
+        case 'Stop': {
+          // Debounce Stop events — a PermissionRequest or UserPromptSubmit may follow
+          cancelDebounce();
+          monitor.stopDebounce = setTimeout(() => {
+            monitor.stopDebounce = null;
+            this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
+          }, 200);
+          break;
+        }
+        case 'PermissionRequest': {
+          cancelDebounce();
+          this.updateStatusAndNotify(sessionId, SessionStatus.AwaitingPermission);
+          break;
+        }
+        case 'UserPromptSubmit': {
+          cancelDebounce();
+          this.updateStatusAndNotify(sessionId, SessionStatus.Running);
+          break;
+        }
+      }
+    };
+
+    if (this.hookServer) {
+      this.hookServer.on('hook', hookListener);
+    }
 
     const interval = setInterval(async () => {
       const session = getSession(sessionId);
@@ -153,29 +243,53 @@ export class DaemonStatusManager {
         lastStatus = session.status;
       }
 
-      // Feed output to input detector
-      try {
-        const output = this.manager.replay(sessionId);
-        if (output) {
-          // Only check the tail of the output for prompt detection
-          const tail = output.slice(-500);
-          inputDetector.onOutput(tail);
+      // Only feed InputDetector if hooks haven't taken over
+      const monitor = this.monitors.get(sessionId);
+      if (monitor && !monitor.hooksActive) {
+        try {
+          const output = this.manager.replay(sessionId);
+          if (output) {
+            // Only check the tail of the output for prompt detection
+            const tail = output.slice(-500);
+            inputDetector.onOutput(tail);
+          }
+        } catch {
+          // Session may no longer exist
         }
-      } catch {
-        // Session may no longer exist
       }
     }, 500);
 
-    this.monitors.set(sessionId, { interval, inputDetector, lastStatus });
+    this.monitors.set(sessionId, {
+      interval,
+      inputDetector,
+      lastStatus,
+      hooksActive: false,
+      stopDebounce: null,
+      hookListener,
+      workingDirectory,
+    });
   }
 
   private stopMonitoring(sessionId: string): void {
     const monitor = this.monitors.get(sessionId);
     if (monitor) {
       clearInterval(monitor.interval);
+      if (monitor.stopDebounce) {
+        clearTimeout(monitor.stopDebounce);
+      }
+      if (monitor.hookListener && this.hookServer) {
+        this.hookServer.removeListener('hook', monitor.hookListener);
+      }
       monitor.inputDetector.dispose();
       this.monitors.delete(sessionId);
     }
+  }
+
+  private updateStatusAndNotify(sessionId: string, status: SessionStatus): void {
+    const session = getSession(sessionId);
+    if (!session || !isActiveSessionStatus(session.status)) return;
+    updateSession(sessionId, { status });
+    this.broadcast(DAEMON_EVENTS.SESSION_STATUS_CHANGED, { sessionId, status });
   }
 
   private async updateTaskStatus(taskId: string, status: string): Promise<void> {

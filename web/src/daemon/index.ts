@@ -18,6 +18,7 @@ import { sweepStaleSessions } from './sessions.js';
 import { DaemonServer } from './server.js';
 import { DaemonPtyManager, type BroadcastFn } from './pty-manager.js';
 import { DaemonStatusManager } from './status-manager.js';
+import { HookServer } from '../shared/hooks/server.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { IdleManager } from './idle.js';
 import { createHandler } from './handlers.js';
@@ -121,11 +122,24 @@ async function main(): Promise<void> {
     }
   };
 
+  // Create and start hook server for Claude Code lifecycle events
+  const hookServer = new HookServer();
+  let hookServerPort: number | null = null;
+  try {
+    await hookServer.start();
+    hookServerPort = hookServer.getPort();
+    log(`Hook server started on port ${hookServerPort}`);
+  } catch (err) {
+    log(`WARNING: Failed to start hook server: ${err}`);
+  }
+
   // Create components
   const ptyManager = new DaemonPtyManager(broadcast);
   const statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl,
     getToken: () => authToken,
+    hookServer: hookServerPort ? hookServer : null,
+    broadcast,
   });
   const pidSweepManager = new DaemonPidSweepManager(broadcast);
 
@@ -138,6 +152,7 @@ async function main(): Promise<void> {
     idleManager.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
+    hookServer.stop().catch(() => {});
     ptyManager.killAll();
 
     server

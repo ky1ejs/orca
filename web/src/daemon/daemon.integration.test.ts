@@ -47,6 +47,8 @@ beforeEach(async () => {
   statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl: 'http://localhost:9999',
     getToken: () => null,
+    hookServer: null,
+    broadcast: (event, params) => broadcastFn(event, params),
   });
 
   pidSweepManager = new DaemonPidSweepManager((event, params) => {
