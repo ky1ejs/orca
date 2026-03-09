@@ -3,6 +3,7 @@ import {
   SessionStatus,
   type SessionStatus as SessionStatusType,
   getStatusDotClasses,
+  isNeedsAttentionStatus,
 } from '../../../shared/session-status.js';
 import { useNavigation } from '../../navigation/context.js';
 
@@ -27,10 +28,7 @@ export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsPr
 
   if (entries.length === 0) return null;
 
-  const needsAttentionCount = entries.filter(
-    (e) =>
-      e.status === SessionStatus.AwaitingPermission || e.status === SessionStatus.WaitingForInput,
-  ).length;
+  const needsAttentionCount = entries.filter((e) => isNeedsAttentionStatus(e.status)).length;
 
   return (
     <div className="border-b border-gray-800 p-2" data-testid="active-terminals">

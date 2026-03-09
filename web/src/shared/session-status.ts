@@ -23,6 +23,16 @@ export function isActiveSessionStatus(status: string): boolean {
   return (ACTIVE_SESSION_STATUSES as readonly string[]).includes(status);
 }
 
+/** Statuses that indicate the session is blocked and needs user attention. */
+const NEEDS_ATTENTION_STATUSES: readonly SessionStatus[] = [
+  SessionStatus.AwaitingPermission,
+  SessionStatus.WaitingForInput,
+];
+
+export function isNeedsAttentionStatus(status: string): boolean {
+  return (NEEDS_ATTENTION_STATUSES as readonly string[]).includes(status);
+}
+
 /** CSS classes for status indicator dots. */
 const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.Running]: 'bg-success',

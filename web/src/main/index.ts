@@ -19,6 +19,7 @@ import type {
 } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
 import { exportDiagnostics } from './diagnostics.js';
+import { DockBadgeManager } from './dock-badge.js';
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);
@@ -38,6 +39,7 @@ let mainWindow: BrowserWindow | null = null;
 let daemonClient: DaemonClient | null = null;
 let daemonConnector: DaemonConnector | null = null;
 let cleanupDaemonEvents: (() => void) | null = null;
+const dockBadge = new DockBadgeManager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -88,11 +90,13 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
 
   const unsub3 = client.subscribe(DAEMON_EVENTS.PID_SWEEP_SESSIONS_DIED, (params) => {
     const { sessionIds } = params as PidSweepSessionsDiedEvent;
+    dockBadge.handleSessionsDied(sessionIds);
     sendToAllWindows('pid-sweep:sessions-died', sessionIds);
   });
 
   const unsub4 = client.subscribe(DAEMON_EVENTS.SESSION_STATUS_CHANGED, (params) => {
     const { sessionId, status } = params as SessionStatusChangedEvent;
+    dockBadge.handleStatusChange(sessionId, status);
     sendToAllWindows('session:status-changed', { sessionId, status });
   });
 
@@ -133,6 +137,7 @@ async function resubscribeToActiveSessions(client: DaemonClient): Promise<void> 
       id: string;
       status: string;
     }>;
+    dockBadge.initFromSessions(sessions);
     const active = sessions.filter((s) => isActiveSessionStatus(s.status));
     await Promise.all(
       active.map((s) => client.request(DAEMON_METHODS.PTY_SUBSCRIBE, { sessionId: s.id })),
@@ -246,6 +251,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  dockBadge.clear();
   daemonConnector?.stopReconnection();
 
   if (isAutoUpdateRestart) {
