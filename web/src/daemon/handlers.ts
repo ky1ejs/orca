@@ -70,7 +70,7 @@ export function createHandler(deps: HandlerDeps) {
       // ── PTY ────────────────────────────────────────
       case DAEMON_METHODS.PTY_SPAWN: {
         const p = params as PtySpawnParams;
-        ptyManager.spawn(p.sessionId, p.command, p.args, p.cwd);
+        ptyManager.spawn(p.sessionId, p.command, p.args, p.cwd, p.env);
         // Auto-subscribe the caller to this session's output
         server.subscribeClient(client.id, p.sessionId);
         return { ok: true };

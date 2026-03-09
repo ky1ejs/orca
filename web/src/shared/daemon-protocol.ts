@@ -44,6 +44,7 @@ export interface PtySpawnParams {
   command: string;
   args: string[];
   cwd: string;
+  env?: Record<string, string>;
 }
 
 export interface PtyWriteParams {

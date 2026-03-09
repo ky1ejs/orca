@@ -8,13 +8,13 @@ import type { EnsureRunningResult } from './daemon/connector.js';
 import { readToken } from './pty/auth.js';
 import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
-import { HookServer } from './hooks/server.js';
 import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
 import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
   PtyDataEvent,
   PtyExitEvent,
   PidSweepSessionsDiedEvent,
+  SessionStatusChangedEvent,
 } from '../shared/daemon-protocol.js';
 
 const iconPath = path.join(__dirname, '../../resources/icon.icns');
@@ -27,7 +27,6 @@ if (process.env.NODE_ENV === 'development') {
 let mainWindow: BrowserWindow | null = null;
 let daemonClient: DaemonClient | null = null;
 let daemonConnector: DaemonConnector | null = null;
-let hookServer: HookServer | null = null;
 let cleanupDaemonEvents: (() => void) | null = null;
 
 function createWindow() {
@@ -82,10 +81,16 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
     sendToAllWindows('pid-sweep:sessions-died', sessionIds);
   });
 
+  const unsub4 = client.subscribe(DAEMON_EVENTS.SESSION_STATUS_CHANGED, (params) => {
+    const { sessionId, status } = params as SessionStatusChangedEvent;
+    sendToAllWindows('session:status-changed', { sessionId, status });
+  });
+
   cleanupDaemonEvents = () => {
     unsub1();
     unsub2();
     unsub3();
+    unsub4();
   };
 }
 
@@ -150,16 +155,6 @@ app.whenReady().then(async () => {
     );
   }
 
-  // Start hook server for Claude Code lifecycle events
-  hookServer = new HookServer();
-  try {
-    await hookServer.start();
-    console.log(`Hook server started on port ${hookServer.getPort()}`);
-  } catch (err) {
-    console.warn('Failed to start hook server:', err);
-    hookServer = null;
-  }
-
   // Forward daemon events to renderer
   setupDaemonEventForwarding(daemonClient);
 
@@ -186,7 +181,7 @@ app.whenReady().then(async () => {
   });
 
   // Register IPC handlers (proxy to daemon)
-  registerIpcHandlers(daemonClient, hookServer);
+  registerIpcHandlers(daemonClient);
 
   // App menu (before auto-updater so menu exists when first check fires)
   initAppMenu({ onCheckForUpdates: checkForUpdates });
@@ -236,7 +231,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   daemonConnector?.stopReconnection();
-  hookServer?.stop().catch(() => {});
 
   if (isAutoUpdateRestart) {
     // Update restart: just disconnect — daemon stays alive, sessions survive.

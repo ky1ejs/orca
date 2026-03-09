@@ -8,13 +8,12 @@ import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
 import { listSystemFonts } from '../config/list-fonts.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 import type { DaemonClient } from '../daemon/client.js';
-import type { HookServer } from '../hooks/server.js';
 import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 import type { AgentLaunchOptions } from '../../shared/daemon-protocol.js';
 
 let daemonClient: DaemonClient | null = null;
 
-export function registerIpcHandlers(client: DaemonClient, _hookServer: HookServer | null): void {
+export function registerIpcHandlers(client: DaemonClient): void {
   daemonClient = client;
 
   // ── Database handlers (proxy to daemon) ──────────────────────────────
