@@ -90,7 +90,7 @@ export function QuickCreateTask({ isOpen, onClose, projects }: QuickCreateTaskPr
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-surface-primary border border-gray-700 rounded-lg shadow-modal w-full max-w-lg p-4 animate-scale-in">
+      <div className="bg-surface-raised border border-edge rounded-lg shadow-modal w-full max-w-lg p-4 animate-scale-in">
         <input
           ref={inputRef}
           type="text"
@@ -99,14 +99,14 @@ export function QuickCreateTask({ isOpen, onClose, projects }: QuickCreateTaskPr
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={submitting}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring"
+          className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus-ring"
           autoFocus
         />
         <div className="mt-3 flex items-center gap-3">
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
+            className="flex-1 px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus-ring"
           >
             <option value="">No project (Inbox)</option>
             {projects.map((p) => (
@@ -118,13 +118,13 @@ export function QuickCreateTask({ isOpen, onClose, projects }: QuickCreateTaskPr
           <button
             onClick={handleSubmit}
             disabled={!title.trim() || submitting}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-gray-700 disabled:text-gray-500 text-on-accent text-label-md rounded-md transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-surface-active disabled:text-fg-faint text-on-accent text-label-md rounded-md transition-colors"
           >
             Create
           </button>
         </div>
         {error && <p className="text-error text-label-sm mt-2">{error}</p>}
-        <p className="text-gray-600 text-label-sm mt-2">Press Enter to create, Escape to close</p>
+        <p className="text-fg-faint text-label-sm mt-2">Press Enter to create, Escape to close</p>
       </div>
     </div>
   );
