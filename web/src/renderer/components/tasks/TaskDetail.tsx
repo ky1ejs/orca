@@ -43,7 +43,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { deleteTask } = useDeleteTask();
-  const { goBack, navigate } = useNavigation();
+  const { navigateBack } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -139,7 +139,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   const handleDelete = async () => {
     await deleteTask(taskId);
-    goBack();
+    navigateBack({ view: 'project', id: task.projectId });
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
@@ -286,20 +286,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   return (
     <div className="p-6">
       <button
-        onClick={goBack}
+        onClick={() => navigateBack({ view: 'project', id: task.projectId })}
         className="text-gray-400 hover:text-white text-label-md mb-4 inline-flex items-center transition-colors"
       >
-        &larr; Back
+        &larr; Back to {task.project.name}
       </button>
-
-      <div className="mb-2">
-        <button
-          onClick={() => navigate({ view: 'project', id: task.projectId })}
-          className="text-gray-300 hover:text-gray-200 text-label-md transition-colors"
-        >
-          {task.project.name} &rarr;
-        </button>
-      </div>
 
       {editing ? (
         <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">

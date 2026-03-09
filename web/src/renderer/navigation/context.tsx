@@ -11,6 +11,7 @@ interface NavigationContextValue {
   current: NavigationState;
   navigate: (state: NavigationState) => void;
   goBack: () => void;
+  navigateBack: (target: NavigationState) => void;
   canGoBack: boolean;
 }
 
@@ -33,10 +34,23 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
 
+  const navigateBack = useCallback((target: NavigationState) => {
+    setStack((prev) => {
+      for (let i = prev.length - 2; i >= 0; i--) {
+        if (prev[i].view === target.view && prev[i].id === target.id) {
+          return prev.slice(0, i + 1);
+        }
+      }
+      return target.view === 'projects'
+        ? [{ view: 'projects' as const }]
+        : [{ view: 'projects' as const }, target];
+    });
+  }, []);
+
   const canGoBack = stack.length > 1;
 
   return (
-    <NavigationContext.Provider value={{ current, navigate, goBack, canGoBack }}>
+    <NavigationContext.Provider value={{ current, navigate, goBack, navigateBack, canGoBack }}>
       {children}
     </NavigationContext.Provider>
   );

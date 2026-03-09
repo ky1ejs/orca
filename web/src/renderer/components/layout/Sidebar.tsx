@@ -143,6 +143,17 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <WorkspaceSwitcher />
       <ActiveTerminals entries={activeTerminals} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
+        <button
+          onClick={() => navigate({ view: 'projects' })}
+          className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors mb-1 ${
+            current.view === 'projects'
+              ? 'bg-gray-800 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`}
+          data-testid="sidebar-projects-btn"
+        >
+          Projects
+        </button>
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
