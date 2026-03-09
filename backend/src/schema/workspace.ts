@@ -148,7 +148,7 @@ export const workspaceResolvers = {
           return await context.prisma.$transaction(async (tx) => {
             // Update task displayIds to reflect the new slug
             const tasks = await tx.task.findMany({
-              where: { project: { workspaceId: args.id } },
+              where: { workspaceId: args.id },
               select: { id: true, sequenceNumber: true },
             });
 
@@ -235,6 +235,16 @@ export const workspaceResolvers = {
         where: { workspaceId: parent.id },
         include: { user: true },
         orderBy: { createdAt: 'asc' },
+      });
+    },
+    tasks: (parent, args, context) => {
+      const where: Record<string, unknown> = { workspaceId: parent.id };
+      if (args.unassociatedOnly) {
+        where.projectId = null;
+      }
+      return context.prisma.task.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
       });
     },
     labels: (parent, _args, context) => {

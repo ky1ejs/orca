@@ -14,6 +14,38 @@ import { ActiveTerminals } from './ActiveTerminals.js';
 import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
 import { SessionStatus } from '../../../shared/session-status.js';
 
+interface SidebarTask {
+  id: string;
+  displayId: string;
+  title: string;
+  status: string;
+}
+
+function SidebarTaskItem({
+  task,
+  isActive,
+  onClick,
+}: {
+  task: SidebarTask;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        onClick={onClick}
+        className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
+          isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+        }`}
+      >
+        <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
+        <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
+        <span className="truncate">{task.title}</span>
+      </button>
+    </li>
+  );
+}
+
 function collapsedBadgeColor(statuses: string[]): string {
   const set = new Set(statuses);
   if (set.has(SessionStatus.AwaitingPermission)) return 'bg-warning animate-pulse';
@@ -32,6 +64,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const { data, fetching } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const { navigate, current } = useNavigation();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [inboxExpanded, setInboxExpanded] = useState(false);
 
   useProjectSubscription(currentWorkspace?.id ?? '');
   useTaskSubscription(currentWorkspace?.id ?? '');
@@ -49,7 +82,8 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   };
 
   const projects = data?.workspace?.projects ?? [];
-  const activeTerminals = useActiveTerminals(projects);
+  const inboxTasks = data?.workspace?.tasks ?? [];
+  const activeTerminals = useActiveTerminals(projects, inboxTasks);
 
   if (collapsed) {
     return (
@@ -143,6 +177,35 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <WorkspaceSwitcher />
       <ActiveTerminals entries={activeTerminals} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
+        {inboxTasks.length > 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => setInboxExpanded((v) => !v)}
+              className="w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors text-gray-400 hover:bg-gray-800 hover:text-white flex items-center justify-between"
+              data-testid="sidebar-inbox-btn"
+            >
+              <span className="flex items-center gap-1">
+                <span className="text-label-sm">{inboxExpanded ? '\u25BC' : '\u25B6'}</span>
+                Inbox
+              </span>
+              <span className="text-label-xs text-gray-500 bg-gray-800 rounded-full px-1.5 py-0.5">
+                {inboxTasks.length}
+              </span>
+            </button>
+            {inboxExpanded && (
+              <ul className="ml-6 mt-0.5 space-y-0.5">
+                {inboxTasks.map((task) => (
+                  <SidebarTaskItem
+                    key={task.id}
+                    task={task}
+                    isActive={current.view === 'task' && current.id === task.id}
+                    onClick={() => navigate({ view: 'task', id: task.id })}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <button
           onClick={() => navigate({ view: 'projects' })}
           className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors mb-1 ${
@@ -188,25 +251,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
                   {isExpanded && project.tasks.length > 0 && (
                     <ul className="ml-6 mt-0.5 space-y-0.5">
-                      {project.tasks.map((task) => {
-                        const isTaskActive = current.view === 'task' && current.id === task.id;
-                        return (
-                          <li key={task.id}>
-                            <button
-                              onClick={() => navigate({ view: 'task', id: task.id })}
-                              className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
-                                isTaskActive
-                                  ? 'bg-gray-800 text-white'
-                                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                              }`}
-                            >
-                              <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
-                              <span className="text-gray-500 font-mono mr-1">{task.displayId}</span>
-                              <span className="truncate">{task.title}</span>
-                            </button>
-                          </li>
-                        );
-                      })}
+                      {project.tasks.map((task) => (
+                        <SidebarTaskItem
+                          key={task.id}
+                          task={task}
+                          isActive={current.view === 'task' && current.id === task.id}
+                          onClick={() => navigate({ view: 'task', id: task.id })}
+                        />
+                      ))}
                     </ul>
                   )}
                 </li>

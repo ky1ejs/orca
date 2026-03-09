@@ -113,8 +113,8 @@ model Task {
   priority         TaskPriority @default(NONE)
   sequenceNumber   Int
   displayId        String       @unique
-  projectId        String
-  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String?
+  project          Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   workspaceId      String
   workspace        Workspace    @relation(fields: [workspaceId], references: [id])
   assigneeId       String?

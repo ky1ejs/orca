@@ -105,9 +105,11 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               invalidateAllWorkspaceQueries(cache);
             },
             createTask(_result, _args, cache) {
-              const task = _result.createTask as { projectId: string } | undefined;
+              const task = _result.createTask as { projectId: string | null } | undefined;
               if (task) {
-                cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                if (task.projectId) {
+                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                }
                 cache.invalidate('Query', 'workspaces');
                 invalidateAllWorkspaceQueries(cache);
               }
@@ -154,9 +156,11 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               invalidateAllWorkspaceQueries(cache);
             },
             taskChanged(_result, _args, cache) {
-              const task = _result.taskChanged as { projectId: string } | undefined;
+              const task = _result.taskChanged as { projectId: string | null } | undefined;
               if (task) {
-                cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                if (task.projectId) {
+                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                }
                 cache.invalidate('Query', 'workspaces');
                 invalidateAllWorkspaceQueries(cache);
               }

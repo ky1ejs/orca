@@ -52,6 +52,22 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
         createdAt
         updatedAt
       }
+      tasks(unassociatedOnly: true) {
+        id
+        displayId
+        title
+        status
+        priority
+        assignee {
+          id
+          name
+        }
+        labels {
+          id
+          name
+          color
+        }
+      }
       createdAt
       updatedAt
     }
