@@ -34,7 +34,7 @@ export function NotificationBell() {
       >
         <Bell className={iconSize.sm} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-error text-white text-label-xs font-bold font-mono rounded-full h-3.5 min-w-3.5 px-0.5 flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 bg-error text-white text-label-xs font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
             {count}
           </span>
         )}
