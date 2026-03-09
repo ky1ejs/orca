@@ -38,28 +38,28 @@ export function LabelPicker({ workspaceId, selectedLabelIds, onChange }: LabelPi
     <div className="relative inline-block" ref={ref}>
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300 border border-gray-700 rounded transition-colors"
+        className="px-2 py-0.5 text-xs text-fg-muted hover:text-fg-muted border border-edge-subtle rounded transition-colors"
         data-testid="label-picker-toggle"
       >
         + Label
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown min-w-[180px] max-h-[240px] overflow-y-auto animate-slide-up">
+        <div className="absolute top-full left-0 mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 min-w-[180px] max-h-[240px] overflow-y-auto animate-slide-up">
           {labels.map((label) => {
             const isSelected = selectedLabelIds.includes(label.id);
             return (
               <button
                 key={label.id}
                 onClick={() => toggleLabel(label.id)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-gray-700 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-surface-hover transition-colors"
                 data-testid={`label-option-${label.id}`}
               >
                 <span
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: label.color }}
                 />
-                <span className="text-gray-200 flex-1 truncate">{label.name}</span>
-                {isSelected && <span className="text-blue-400 text-xs">&#10003;</span>}
+                <span className="text-fg flex-1 truncate">{label.name}</span>
+                {isSelected && <span className="text-accent text-xs">&#10003;</span>}
               </button>
             );
           })}

@@ -1,7 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
+import { getSetting } from './config/settings.js';
 import { DaemonClient } from './daemon/client.js';
 import { DaemonConnector } from './daemon/connector.js';
 import type { EnsureRunningResult } from './daemon/connector.js';
@@ -46,6 +47,12 @@ function createWindow() {
     width: 1200,
     height: 800,
     icon: iconPath,
+    backgroundColor: (() => {
+      const colorScheme = getSetting('appearance.colorScheme');
+      const isDark =
+        colorScheme === 'dark' || (colorScheme !== 'light' && nativeTheme.shouldUseDarkColors);
+      return isDark ? '#0e0d0c' : '#f7f6f3';
+    })(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,

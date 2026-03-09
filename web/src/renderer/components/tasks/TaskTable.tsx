@@ -202,24 +202,24 @@ function TaskTableGroup({
       <div
         role="row"
         aria-expanded={!isCollapsed}
-        className="group flex items-center h-9 px-3 bg-gray-900/50 cursor-pointer select-none"
+        className="group flex items-center h-9 px-3 bg-surface-raised/50 cursor-pointer select-none"
         onClick={onToggleCollapse}
       >
         <ChevronRight
-          className={`${iconSize.xs} text-gray-500 mr-2 transition-transform duration-150 ${
+          className={`${iconSize.xs} text-fg-faint mr-2 transition-transform duration-150 ${
             isCollapsed ? '' : 'rotate-90'
           }`}
         />
         <StatusIcon status={status} className={`${iconSize.sm} mr-2`} />
-        <span className="text-gray-300 text-body-sm font-medium">{STATUS_LABELS[status]}</span>
-        <span className="text-gray-500 text-code-sm font-mono ml-2">{tasks.length}</span>
+        <span className="text-fg-muted text-body-sm font-medium">{STATUS_LABELS[status]}</span>
+        <span className="text-fg-faint text-code-sm font-mono ml-2">{tasks.length}</span>
         <div className="flex-1" />
         <button
           onClick={(e) => {
             e.stopPropagation();
             onAddTask();
           }}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-300 text-body-sm transition-opacity"
+          className="opacity-0 group-hover:opacity-100 text-fg-faint hover:text-fg-muted text-body-sm transition-opacity"
           aria-label={`Add task to ${STATUS_LABELS[status]}`}
         >
           <Plus className={iconSize.sm} />
@@ -260,8 +260,8 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       aria-selected={isFocused}
       className={`flex items-center h-10 px-3 gap-2 cursor-pointer transition-colors duration-75 ${
         isFocused
-          ? 'bg-gray-800/30 border-l-2 border-gray-100'
-          : 'border-l-2 border-transparent hover:bg-gray-800/50'
+          ? 'bg-surface-overlay/30 border-l-2 border-fg'
+          : 'border-l-2 border-transparent hover:bg-surface-overlay/50'
       }`}
       onClick={onClick}
     >
@@ -272,10 +272,10 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
         <StatusIcon status={task.status} className={iconSize.sm} />
       </div>
       <div role="gridcell" className="flex-1 min-w-0 flex items-center gap-1.5">
-        <span className="text-gray-500 text-code-sm font-mono mr-1 flex-shrink-0">
+        <span className="text-fg-faint text-code-sm font-mono mr-1 flex-shrink-0">
           {task.displayId}
         </span>
-        <span className="text-gray-100 text-body-sm truncate">{task.title}</span>
+        <span className="text-fg text-body-sm truncate">{task.title}</span>
         {task.labels?.map((label) => (
           <span
             key={label.id}
@@ -287,13 +287,13 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
       </div>
       {task.assignee && (
         <div role="gridcell" className="flex-shrink-0 mr-2">
-          <span className="text-gray-400 text-label-sm" title={task.assignee.name}>
+          <span className="text-fg-muted text-label-sm" title={task.assignee.name}>
             {task.assignee.name}
           </span>
         </div>
       )}
       <div role="gridcell" className="flex-shrink-0">
-        <span className="text-gray-500 text-label-sm">{formatRelativeDate(task.updatedAt)}</span>
+        <span className="text-fg-faint text-label-sm">{formatRelativeDate(task.updatedAt)}</span>
       </div>
     </div>
   );

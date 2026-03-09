@@ -13,9 +13,14 @@ export interface TerminalSessionInfo {
 
 const POLL_INTERVAL = 2000;
 
+/** True when running inside Electron (window.orca is injected by preload). */
+function hasElectronApi(): boolean {
+  return typeof window !== 'undefined' && !!window.orca;
+}
+
 export function useTerminalSessions(taskId?: string) {
   const [sessions, setSessions] = useState<TerminalSessionInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasElectronApi());
   const mountedRef = useRef(true);
 
   const fetchSessions = useCallback(async () => {
@@ -35,6 +40,7 @@ export function useTerminalSessions(taskId?: string) {
   }, [fetchSessions]);
 
   useEffect(() => {
+    if (!hasElectronApi()) return;
     mountedRef.current = true;
     fetchSessions();
 

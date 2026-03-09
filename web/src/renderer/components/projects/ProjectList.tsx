@@ -51,7 +51,7 @@ export function ProjectList() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-heading-lg font-bold text-white">Projects</h1>
+        <h1 className="text-heading-lg font-bold text-fg">Projects</h1>
         <button
           onClick={() => setShowCreate(!showCreate)}
           className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-md transition-colors inline-flex items-center"
@@ -71,27 +71,27 @@ export function ProjectList() {
       </div>
 
       {showCreate && (
-        <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
+        <div className="mb-6 p-4 bg-surface-raised rounded-lg border border-edge">
           <div className="space-y-3">
             <input
               type="text"
               placeholder="Project name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle"
               autoFocus
             />
             <textarea
               placeholder="Description (optional)"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring resize-none"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle resize-none"
               rows={3}
             />
             <button
               onClick={handleCreate}
               disabled={!name.trim()}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-gray-700 disabled:text-gray-500 text-on-accent text-label-md rounded-md transition-colors"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-surface-hover disabled:text-fg-faint text-on-accent text-label-md rounded-md transition-colors"
             >
               Create Project
             </button>
@@ -109,15 +109,15 @@ export function ProjectList() {
               onClick={() =>
                 navigate({ view: 'project', id: project.id, projectName: project.name })
               }
-              className="w-full text-left p-4 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 transition-colors"
+              className="w-full text-left p-4 bg-surface-raised hover:bg-surface-hover rounded-lg border border-edge transition-colors"
             >
-              <h3 className="text-white font-medium">{project.name}</h3>
+              <h3 className="text-fg font-medium">{project.name}</h3>
               {project.description && (
-                <p className="text-gray-400 text-body-sm mt-1 line-clamp-2">
+                <p className="text-fg-muted text-body-sm mt-1 line-clamp-2">
                   {project.description}
                 </p>
               )}
-              <p className="text-gray-600 text-label-sm mt-2">
+              <p className="text-fg-faint text-label-sm mt-2">
                 {project.tasks.length} {project.tasks.length === 1 ? 'task' : 'tasks'}
               </p>
             </button>

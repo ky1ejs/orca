@@ -47,7 +47,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   if (!project) {
     return (
-      <div className="p-6 text-gray-400">
+      <div className="p-6 text-fg-muted">
         <p>Project not found.</p>
       </div>
     );
@@ -77,19 +77,19 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   return (
     <div className="p-6">
       {editing ? (
-        <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
+        <div className="mb-6 p-4 bg-surface-raised rounded-lg border border-edge">
           <div className="space-y-3">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
               autoFocus
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-body-sm focus-ring resize-none"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle resize-none"
               rows={3}
             />
             <input
@@ -97,7 +97,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               value={defaultDirectory}
               onChange={(e) => setDefaultDirectory(e.target.value)}
               placeholder="Default directory (e.g., /Users/you/projects/my-app)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 text-body-sm focus-ring font-mono"
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle font-mono"
             />
             <div className="flex gap-2">
               <button
@@ -108,7 +108,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors"
+                className="px-3 py-1.5 bg-surface-hover hover:bg-surface-hover text-fg text-label-md rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -118,11 +118,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       ) : (
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-heading-lg font-bold text-white">{project.name}</h1>
+            <h1 className="text-heading-lg font-bold text-fg">{project.name}</h1>
             <div className="flex gap-2">
               <button
                 onClick={startEditing}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-label-md rounded-md transition-colors inline-flex items-center"
+                className="px-3 py-1.5 bg-surface-hover hover:bg-surface-hover text-fg text-label-md rounded-md transition-colors inline-flex items-center"
               >
                 <Pencil className={`${iconSize.sm} mr-1`} />
                 Edit
@@ -136,9 +136,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </button>
             </div>
           </div>
-          {project.description && <p className="text-gray-400 mt-2">{project.description}</p>}
+          {project.description && <p className="text-fg-muted mt-2">{project.description}</p>}
           {project.defaultDirectory && (
-            <p className="text-gray-500 text-body-sm font-mono mt-2">{project.defaultDirectory}</p>
+            <p className="text-fg-faint text-body-sm font-mono mt-2">{project.defaultDirectory}</p>
           )}
         </div>
       )}

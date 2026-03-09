@@ -28,21 +28,21 @@ export function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-gray-400 hover:text-white transition-colors p-1 relative"
+        className="text-fg-muted hover:text-fg transition-colors p-1 relative"
         aria-label="Notifications"
         data-testid="notification-bell"
       >
         <Bell className={iconSize.sm} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-error text-white text-label-xs font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 bg-error text-fg text-label-xs font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
             {count}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 bg-surface-secondary border border-gray-700 rounded-md shadow-dropdown z-dropdown w-72 left-0 animate-slide-up">
-          <div className="px-3 py-2 border-b border-gray-700 text-label-sm font-medium text-gray-400 uppercase tracking-wide">
+        <div className="absolute top-full mt-2 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 w-72 left-0 animate-slide-up">
+          <div className="px-3 py-2 border-b border-edge-subtle text-label-sm font-medium text-fg-muted uppercase tracking-wide">
             Invitations
           </div>
           <InvitationList invitations={invitations} />

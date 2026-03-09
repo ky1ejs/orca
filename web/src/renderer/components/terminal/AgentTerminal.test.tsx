@@ -3,6 +3,21 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Mock matchMedia for color scheme listener
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: query === '(prefers-color-scheme: dark)',
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // Mock xterm.js
 const mockWrite = vi.fn();
 const mockOpen = vi.fn();
@@ -49,15 +64,14 @@ const mockPtyWrite = vi.fn();
 const mockPtyResize = vi.fn();
 
 beforeEach(() => {
-  (globalThis as unknown as { window: { orca: unknown } }).window = {
-    orca: {
-      pty: {
-        replay: mockReplay,
-        onData: mockPtyOnData,
-        onExit: mockPtyOnExit,
-        write: mockPtyWrite,
-        resize: mockPtyResize,
-      },
+  // Add orca to existing window (don't overwrite — preserves matchMedia mock)
+  (window as unknown as { orca: unknown }).orca = {
+    pty: {
+      replay: mockReplay,
+      onData: mockPtyOnData,
+      onExit: mockPtyOnExit,
+      write: mockPtyWrite,
+      resize: mockPtyResize,
     },
   };
   // Mock ResizeObserver
