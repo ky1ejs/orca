@@ -194,10 +194,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             )}
           </div>
         )}
-        <div className="px-2 py-2.5 flex items-center gap-2 text-fg-faint">
+        <button
+          onClick={() => navigate({ view: 'projects' })}
+          className="w-full px-2 py-2.5 flex items-center gap-2 text-fg-faint hover:text-fg-muted transition-colors"
+        >
           <Box className={iconSize.sm} />
           <span className="text-label-sm font-medium">Projects</span>
-        </div>
+        </button>
         {fetching && projects.length === 0 ? (
           <SidebarSkeleton />
         ) : projects.length === 0 ? (
