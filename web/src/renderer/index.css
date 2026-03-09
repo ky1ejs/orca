@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+@import './fathom.css';
 
 /* Geist Mono — loaded via Fontsource CDN (not on Google Fonts) */
 @font-face {
@@ -7,9 +9,9 @@
   font-display: swap;
   font-weight: 400;
   src:
-    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff2')
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@5.2.7/latin-400-normal.woff2')
       format('woff2'),
-    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff')
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@5.2.7/latin-400-normal.woff')
       format('woff');
 }
 
@@ -19,10 +21,8 @@
   font-display: swap;
   font-weight: 500;
   src:
-    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-500-normal.woff2')
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@5.2.7/latin-500-normal.woff2')
       format('woff2'),
-    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-500-normal.woff')
+    url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@5.2.7/latin-500-normal.woff')
       format('woff');
 }
-@import 'tailwindcss';
-@import './fathom.css';

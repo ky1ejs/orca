@@ -43,8 +43,14 @@ export function TerminalTabs({
               className={`inline-block h-2 w-2 rounded-full ${dotClass}`}
               data-testid={`status-dot-${session.id}`}
             />
-            <span className="font-mono text-code-xs">
-              {session.task_id ? `Task ${session.task_id.slice(0, 8)}` : session.id.slice(0, 8)}
+            <span>
+              {session.task_id ? (
+                <>
+                  Task <span className="font-mono text-code-xs">{session.task_id.slice(0, 8)}</span>
+                </>
+              ) : (
+                <span className="font-mono text-code-xs">{session.id.slice(0, 8)}</span>
+              )}
             </span>
             <span
               role="button"
