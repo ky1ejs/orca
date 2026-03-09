@@ -46,7 +46,9 @@ function SidebarTaskItem({
       <button
         onClick={onClick}
         className={`w-full text-left px-2 py-1 text-label-sm rounded flex items-center justify-between gap-1 transition-colors ${
-          isActive ? 'bg-surface-inset text-fg' : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+          isActive
+            ? 'bg-surface-inset text-fg'
+            : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
         }`}
       >
         <StatusIcon status={task.status} className="w-3 h-3 flex-shrink-0" />
