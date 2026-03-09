@@ -4,9 +4,14 @@ const isMac = process.platform === 'darwin';
 const isDev = process.env.NODE_ENV === 'development';
 
 let currentOnClick: (() => void) | null = null;
+let currentOnExportDiagnostics: (() => void) | null = null;
 
-export function initAppMenu(options: { onCheckForUpdates: () => void }): void {
+export function initAppMenu(options: {
+  onCheckForUpdates: () => void;
+  onExportDiagnostics: () => void;
+}): void {
   currentOnClick = options.onCheckForUpdates;
+  currentOnExportDiagnostics = options.onExportDiagnostics;
   buildMenu('Check for Updates...', true);
 }
 
@@ -77,6 +82,17 @@ function buildMenu(checkForUpdatesLabel: string, checkForUpdatesEnabled: boolean
         { role: 'minimize' },
         { role: 'zoom' },
         ...(isMac ? [{ role: 'close' as const }] : []),
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Export Diagnostic Logs...',
+          click: () => {
+            currentOnExportDiagnostics?.();
+          },
+        },
       ],
     },
   ];
