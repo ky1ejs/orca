@@ -15,6 +15,7 @@ import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
 import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
+import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
@@ -60,6 +61,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     suggestion: string;
   } | null>(null);
   const { sessions, refresh: refreshSessions } = useTerminalSessions(taskId);
+  const activeSessionIds = useSessionActivity();
   const {
     directory: projectDirectory,
     loading: dirLoading,
@@ -531,7 +533,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="flex items-center gap-3">
               <span className="text-gray-500 text-label-md">Terminal:</span>
               {renderAgentButton()}
-              {activeSession && <AgentStatus status={activeSession.status} />}
+              {activeSession && (
+                <AgentStatus
+                  status={activeSession.status}
+                  active={activeSessionIds.has(activeSession.id)}
+                />
+              )}
             </div>
 
             {agentError && (

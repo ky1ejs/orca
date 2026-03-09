@@ -165,6 +165,11 @@ export interface SessionStatusChangedEvent {
   status: string;
 }
 
+export interface SessionActivityChangedEvent {
+  sessionId: string;
+  active: boolean;
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────
 
 import { join } from 'node:path';
@@ -218,4 +223,5 @@ export const DAEMON_EVENTS = {
   PTY_EXIT: 'pty.exit',
   PID_SWEEP_SESSIONS_DIED: 'pid-sweep.sessions-died',
   SESSION_STATUS_CHANGED: 'session.statusChanged',
+  SESSION_ACTIVITY_CHANGED: 'session.activityChanged',
 } as const;

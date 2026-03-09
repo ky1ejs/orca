@@ -1,9 +1,10 @@
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
-import { type SessionStatus, statusDotClass } from '../../../shared/session-status.js';
+import { type SessionStatus, getStatusDotClasses } from '../../../shared/session-status.js';
 
 interface TerminalTabsProps {
   sessions: TerminalSessionInfo[];
   activeSessionId: string | null;
+  activeSessionIds?: Set<string>;
   onSelectSession: (sessionId: string) => void;
   onCloseSession: (sessionId: string) => void;
 }
@@ -11,6 +12,7 @@ interface TerminalTabsProps {
 export function TerminalTabs({
   sessions,
   activeSessionId,
+  activeSessionIds,
   onSelectSession,
   onCloseSession,
 }: TerminalTabsProps) {
@@ -21,7 +23,8 @@ export function TerminalTabs({
     >
       {sessions.map((session) => {
         const isActive = session.id === activeSessionId;
-        const dotClass = statusDotClass[session.status as SessionStatus] ?? 'bg-gray-500';
+        const hasActivity = activeSessionIds?.has(session.id) ?? false;
+        const dotClass = getStatusDotClasses(session.status as SessionStatus, hasActivity);
 
         return (
           <button

@@ -76,6 +76,7 @@ export interface OrcaAPI {
     onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
     onInterruptedSessions: (cb: (count: number) => void) => () => void;
     onSessionStatusChanged: (cb: (sessionId: string, status: string) => void) => () => void;
+    onSessionActivityChanged: (cb: (sessionId: string, active: boolean) => void) => () => void;
     onDaemonReconnected: (cb: () => void) => () => void;
     onDaemonDisconnected: (cb: () => void) => () => void;
     onProtocolUpdateRequired: (cb: (activeSessions: number) => void) => () => void;
@@ -168,6 +169,14 @@ const api: OrcaAPI = {
       ipcRenderer.on('session:status-changed', listener);
       return () => {
         ipcRenderer.removeListener('session:status-changed', listener);
+      };
+    },
+    onSessionActivityChanged: (cb) => {
+      const listener = (_event: unknown, data: { sessionId: string; active: boolean }) =>
+        cb(data.sessionId, data.active);
+      ipcRenderer.on('session:activity-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('session:activity-changed', listener);
       };
     },
     onDaemonReconnected: (cb) => {

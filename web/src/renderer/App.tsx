@@ -9,6 +9,7 @@ import { RegisterScreen } from './components/auth/RegisterScreen.js';
 import { setOnAuthError, clearCachedToken } from './graphql/client.js';
 import { ToastProvider } from './components/toast/ToastProvider.js';
 import { useDaemonLifecycle } from './hooks/useDaemonLifecycle.js';
+import { SessionActivityProvider } from './hooks/useSessionActivity.js';
 import { ProtocolUpdateDialog } from './components/toast/ProtocolUpdateDialog.js';
 
 type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired' | 'registering';
@@ -85,9 +86,11 @@ function App() {
       <PreferencesProvider>
         <WorkspaceProvider>
           <NavigationProvider>
-            <ToastProvider>
-              <AuthenticatedApp onLogout={handleLogout} />
-            </ToastProvider>
+            <SessionActivityProvider>
+              <ToastProvider>
+                <AuthenticatedApp onLogout={handleLogout} />
+              </ToastProvider>
+            </SessionActivityProvider>
           </NavigationProvider>
         </WorkspaceProvider>
       </PreferencesProvider>

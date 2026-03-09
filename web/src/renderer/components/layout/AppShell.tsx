@@ -16,6 +16,7 @@ import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
+import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 
 interface AppShellProps {
   onLogout: () => void;
@@ -53,6 +54,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const activeSessionIds = useSessionActivity();
 
   // Reset active session when navigating to a different task
   useEffect(() => {
@@ -259,6 +261,7 @@ export function AppShell({ onLogout }: AppShellProps) {
                 <TerminalTabs
                   sessions={sessions}
                   activeSessionId={activeSessionId}
+                  activeSessionIds={activeSessionIds}
                   onSelectSession={setActiveSessionId}
                   onCloseSession={handleCloseSession}
                 />

@@ -28,10 +28,14 @@ import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
  */
 const PERMISSION_RESUME_THRESHOLD = 50;
 
+/** How recently (ms) a PTY must have produced output to be considered "active". */
+const ACTIVITY_TIMEOUT_MS = 1500;
+
 interface MonitorState {
   interval: ReturnType<typeof setInterval>;
   inputDetector: InputDetector;
   lastStatus: string;
+  lastActive: boolean;
   hooksActive: boolean;
   stopDebounce: ReturnType<typeof setTimeout> | null;
   hookListener: ((event: HookEvent) => void) | null;
@@ -281,12 +285,23 @@ export class DaemonStatusManager {
           this.updateStatusAndNotify(sessionId, SessionStatus.Running);
         }
       }
+
+      // Check PTY output activity
+      if (monitor) {
+        const lastData = this.manager.getLastDataAt(sessionId);
+        const active = lastData !== undefined && Date.now() - lastData < ACTIVITY_TIMEOUT_MS;
+        if (active !== monitor.lastActive) {
+          monitor.lastActive = active;
+          this.broadcast(DAEMON_EVENTS.SESSION_ACTIVITY_CHANGED, { sessionId, active });
+        }
+      }
     }, 500);
 
     this.monitors.set(sessionId, {
       interval,
       inputDetector,
       lastStatus,
+      lastActive: false,
       hooksActive: false,
       stopDebounce: null,
       hookListener,
