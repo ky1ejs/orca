@@ -218,9 +218,15 @@ export const workspaceResolvers = {
     },
   } satisfies Pick<MutationResolvers, 'createWorkspace' | 'updateWorkspace' | 'deleteWorkspace'>,
   Workspace: {
+    initiatives: (parent, _args, context) => {
+      return context.prisma.initiative.findMany({
+        where: { workspaceId: parent.id, archivedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
     projects: (parent, _args, context) => {
       return context.prisma.project.findMany({
-        where: { workspaceId: parent.id },
+        where: { workspaceId: parent.id, archivedAt: null },
         orderBy: { createdAt: 'desc' },
       });
     },
@@ -238,7 +244,7 @@ export const workspaceResolvers = {
       });
     },
     tasks: (parent, args, context) => {
-      const where: Record<string, unknown> = { workspaceId: parent.id };
+      const where: Record<string, unknown> = { workspaceId: parent.id, archivedAt: null };
       if (args.unassociatedOnly) {
         where.projectId = null;
       }

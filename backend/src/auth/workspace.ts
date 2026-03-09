@@ -1,5 +1,12 @@
 import { GraphQLError } from 'graphql';
-import type { PrismaClient, Workspace, Project, Task, WorkspaceRole } from '@prisma/client';
+import type {
+  PrismaClient,
+  Workspace,
+  Initiative,
+  Project,
+  Task,
+  WorkspaceRole,
+} from '@prisma/client';
 
 /**
  * Verifies that the given workspace exists, is not soft-deleted,
@@ -84,6 +91,40 @@ export async function requireWorkspaceOwner(
   }
 
   return result;
+}
+
+/**
+ * Checks membership for an initiative's workspace.
+ */
+export async function requireInitiativeAccess(
+  prisma: PrismaClient,
+  initiativeId: string,
+  userId: string,
+): Promise<{ initiative: Initiative & { workspace: Workspace }; role: WorkspaceRole }> {
+  const initiative = await prisma.initiative.findUnique({
+    where: { id: initiativeId },
+    include: { workspace: true },
+  });
+
+  if (!initiative || !initiative.workspace || initiative.workspace.deletedAt) {
+    throw new GraphQLError('Initiative not found', {
+      extensions: { code: 'NOT_FOUND' },
+    });
+  }
+
+  const membership = await prisma.workspaceMembership.findUnique({
+    where: {
+      workspaceId_userId: { workspaceId: initiative.workspaceId, userId },
+    },
+  });
+
+  if (!membership) {
+    throw new GraphQLError('Initiative not found', {
+      extensions: { code: 'NOT_FOUND' },
+    });
+  }
+
+  return { initiative, role: membership.role };
 }
 
 /**

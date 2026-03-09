@@ -28,11 +28,46 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
       name
       slug
       role
+      initiatives {
+        id
+        name
+        description
+        projects {
+          id
+          name
+          description
+          defaultDirectory
+          initiativeId
+          tasks {
+            id
+            displayId
+            title
+            status
+            priority
+            assignee {
+              id
+              name
+            }
+            labels {
+              id
+              name
+              color
+            }
+          }
+          archivedAt
+          createdAt
+          updatedAt
+        }
+        archivedAt
+        createdAt
+        updatedAt
+      }
       projects {
         id
         name
         description
         defaultDirectory
+        initiativeId
         tasks {
           id
           displayId
@@ -49,6 +84,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
             color
           }
         }
+        archivedAt
         createdAt
         updatedAt
       }
@@ -126,6 +162,48 @@ export const PendingInvitationsQueryDocument = /* GraphQL */ `
   }
 `;
 
+export const InitiativeQueryDocument = /* GraphQL */ `
+  query Initiative($id: ID!) {
+    initiative(id: $id) {
+      id
+      name
+      description
+      workspaceId
+      projects {
+        id
+        name
+        description
+        defaultDirectory
+        initiativeId
+        tasks {
+          id
+          displayId
+          title
+          status
+          priority
+          assignee {
+            id
+            name
+          }
+          labels {
+            id
+            name
+            color
+          }
+          createdAt
+          updatedAt
+        }
+        archivedAt
+        createdAt
+        updatedAt
+      }
+      archivedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const ProjectQueryDocument = /* GraphQL */ `
   query Project($id: ID!) {
     project(id: $id) {
@@ -134,6 +212,11 @@ export const ProjectQueryDocument = /* GraphQL */ `
       description
       defaultDirectory
       workspaceId
+      initiativeId
+      initiative {
+        id
+        name
+      }
       tasks {
         id
         displayId
@@ -152,6 +235,7 @@ export const ProjectQueryDocument = /* GraphQL */ `
         createdAt
         updatedAt
       }
+      archivedAt
       createdAt
       updatedAt
     }
@@ -183,6 +267,7 @@ export const TaskQueryDocument = /* GraphQL */ `
         name
         color
       }
+      archivedAt
       createdAt
       updatedAt
     }

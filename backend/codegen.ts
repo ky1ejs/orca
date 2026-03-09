@@ -12,6 +12,7 @@ const config: CodegenConfig = {
         },
         mappers: {
           Workspace: '@prisma/client#Workspace as WorkspaceModel',
+          Initiative: '@prisma/client#Initiative as InitiativeModel',
           Project: '@prisma/client#Project as ProjectModel',
           Task: '@prisma/client#Task as TaskModel',
           Label: '@prisma/client#Label as LabelModel',

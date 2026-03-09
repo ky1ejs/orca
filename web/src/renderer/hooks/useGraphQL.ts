@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'react';
 import {
   MeDocument,
   WorkspaceDocument,
+  InitiativeDocument,
   ProjectDocument,
   TaskDocument,
   WorkspaceMembersDocument,
@@ -11,12 +12,15 @@ import {
   CreateWorkspaceDocument,
   UpdateWorkspaceDocument,
   DeleteWorkspaceDocument,
+  CreateInitiativeDocument,
+  UpdateInitiativeDocument,
+  ArchiveInitiativeDocument,
   CreateProjectDocument,
   UpdateProjectDocument,
-  DeleteProjectDocument,
+  ArchiveProjectDocument,
   CreateTaskDocument,
   UpdateTaskDocument,
-  DeleteTaskDocument,
+  ArchiveTaskDocument,
   AddMemberDocument,
   RemoveMemberDocument,
   UpdateMemberRoleDocument,
@@ -26,12 +30,15 @@ import {
   CreateLabelDocument,
   UpdateLabelDocument,
   DeleteLabelDocument,
+  InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
   CreateWorkspaceInput,
   UpdateWorkspaceInput,
+  CreateInitiativeInput,
+  UpdateInitiativeInput,
   CreateProjectInput,
   UpdateProjectInput,
   CreateTaskInput,
@@ -54,6 +61,15 @@ export function useWorkspaceBySlug(slug: string) {
     query: WorkspaceDocument,
     variables: { slug },
     pause: !slug,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useInitiative(id: string) {
+  const [result, reexecute] = useQuery({
+    query: InitiativeDocument,
+    variables: { id },
+    pause: !id,
   });
   return { ...result, refetch: reexecute };
 }
@@ -131,6 +147,30 @@ export function useDeleteWorkspace() {
   return { ...result, deleteWorkspace };
 }
 
+export function useCreateInitiative() {
+  const [result, executeMutation] = useMutation(CreateInitiativeDocument);
+  const createInitiative = useCallback(
+    (input: CreateInitiativeInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, createInitiative };
+}
+
+export function useUpdateInitiative() {
+  const [result, executeMutation] = useMutation(UpdateInitiativeDocument);
+  const updateInitiative = useCallback(
+    (id: string, input: UpdateInitiativeInput) => executeMutation({ id, input }),
+    [executeMutation],
+  );
+  return { ...result, updateInitiative };
+}
+
+export function useArchiveInitiative() {
+  const [result, executeMutation] = useMutation(ArchiveInitiativeDocument);
+  const archiveInitiative = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, archiveInitiative };
+}
+
 export function useCreateProject() {
   const [result, executeMutation] = useMutation(CreateProjectDocument);
   const createProject = useCallback(
@@ -149,10 +189,10 @@ export function useUpdateProject() {
   return { ...result, updateProject };
 }
 
-export function useDeleteProject() {
-  const [result, executeMutation] = useMutation(DeleteProjectDocument);
-  const deleteProject = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
-  return { ...result, deleteProject };
+export function useArchiveProject() {
+  const [result, executeMutation] = useMutation(ArchiveProjectDocument);
+  const archiveProject = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, archiveProject };
 }
 
 export function useCreateTask() {
@@ -173,10 +213,10 @@ export function useUpdateTask() {
   return { ...result, updateTask };
 }
 
-export function useDeleteTask() {
-  const [result, executeMutation] = useMutation(DeleteTaskDocument);
-  const deleteTask = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
-  return { ...result, deleteTask };
+export function useArchiveTask() {
+  const [result, executeMutation] = useMutation(ArchiveTaskDocument);
+  const archiveTask = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, archiveTask };
 }
 
 export function useAddMember() {
@@ -249,6 +289,14 @@ export function useDeleteLabel() {
 }
 
 // Subscription hooks — Graphcache handles cache updates automatically
+
+export function useInitiativeSubscription(workspaceId: string) {
+  useSubscription({
+    query: InitiativeChangedDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
+}
 
 export function useProjectSubscription(workspaceId: string) {
   useSubscription({

@@ -323,7 +323,7 @@ describe('task resolvers', () => {
       ).rejects.toThrow('Cannot move task to a project in a different workspace');
     });
 
-    it('deleteTask deletes and returns true', async () => {
+    it('archiveTask sets archivedAt and publishes', async () => {
       const ctx = createMockContext();
       const task = {
         id: '1',
@@ -331,15 +331,21 @@ describe('task resolvers', () => {
         projectId: 'p1',
         workspaceId: 'ws1',
       };
+      const archivedTask = { ...task, archivedAt: new Date() };
       ctx.prisma.task.findUnique.mockResolvedValue(task);
-      ctx.prisma.task.delete.mockResolvedValue({});
+      ctx.prisma.task.update.mockResolvedValue(archivedTask);
 
-      const result = await taskResolvers.Mutation.deleteTask(
+      const result = await taskResolvers.Mutation.archiveTask(
         {} as never,
         { id: '1' },
         ctx as never,
       );
-      expect(result).toBe(true);
+      expect(result).toEqual(archivedTask);
+      expect(ctx.prisma.task.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { archivedAt: expect.any(Date) },
+      });
+      expect(ctx.pubsub.publish).toHaveBeenCalledWith('taskChanged', archivedTask);
     });
 
     it('createTask with assigneeId validates workspace membership', async () => {

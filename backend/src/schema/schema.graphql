@@ -42,6 +42,7 @@ type Workspace {
   role: WorkspaceRole!
   members: [WorkspaceMember!]!
   invitations: [WorkspaceInvitation!]!
+  initiatives: [Initiative!]!
   projects: [Project!]!
   tasks(unassociatedOnly: Boolean): [Task!]!
   labels: [Label!]!
@@ -64,6 +65,18 @@ enum TaskPriority {
   URGENT
 }
 
+type Initiative {
+  id: ID!
+  name: String!
+  description: String
+  workspaceId: ID!
+  workspace: Workspace!
+  projects: [Project!]!
+  archivedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
 type Project {
   id: ID!
   name: String!
@@ -71,7 +84,10 @@ type Project {
   defaultDirectory: String
   workspaceId: ID!
   workspace: Workspace!
+  initiativeId: ID
+  initiative: Initiative
   tasks: [Task!]!
+  archivedAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -96,6 +112,7 @@ type Task {
   project: Project
   assignee: User
   labels: [Label!]!
+  archivedAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -117,17 +134,30 @@ input UpdateWorkspaceInput {
   slug: String
 }
 
+input CreateInitiativeInput {
+  name: String!
+  description: String
+  workspaceId: ID!
+}
+
+input UpdateInitiativeInput {
+  name: String
+  description: String
+}
+
 input CreateProjectInput {
   name: String!
   description: String
   defaultDirectory: String
   workspaceId: ID!
+  initiativeId: ID
 }
 
 input UpdateProjectInput {
   name: String
   description: String
   defaultDirectory: String
+  initiativeId: ID
 }
 
 input CreateTaskInput {
@@ -190,6 +220,7 @@ type Query {
   me: User!
   workspace(slug: String!): Workspace
   workspaces: [Workspace!]!
+  initiative(id: ID!): Initiative
   project(id: ID!): Project
   task(id: ID!): Task
   labels(workspaceId: ID!): [Label!]!
@@ -202,12 +233,15 @@ type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
   updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
   deleteWorkspace(id: ID!): Boolean!
+  createInitiative(input: CreateInitiativeInput!): Initiative!
+  updateInitiative(id: ID!, input: UpdateInitiativeInput!): Initiative!
+  archiveInitiative(id: ID!): Initiative!
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
-  deleteProject(id: ID!): Boolean!
+  archiveProject(id: ID!): Project!
   createTask(input: CreateTaskInput!): Task!
   updateTask(id: ID!, input: UpdateTaskInput!): Task!
-  deleteTask(id: ID!): Boolean!
+  archiveTask(id: ID!): Task!
   addMember(input: AddMemberInput!): AddMemberResult!
   removeMember(workspaceId: ID!, userId: ID!): Boolean!
   updateMemberRole(input: UpdateMemberRoleInput!): WorkspaceMember!
@@ -220,6 +254,7 @@ type Mutation {
 }
 
 type Subscription {
+  initiativeChanged(workspaceId: ID!): Initiative!
   projectChanged(workspaceId: ID!): Project!
   taskChanged(workspaceId: ID!): Task!
 }

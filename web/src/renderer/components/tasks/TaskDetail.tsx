@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Pencil,
-  Trash2,
+  Archive,
   SquareTerminal,
   RotateCcw,
   FolderOpen,
@@ -13,7 +13,7 @@ import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-st
 import {
   useTask,
   useUpdateTask,
-  useDeleteTask,
+  useArchiveTask,
   useTaskSubscription,
   useWorkspaceBySlug,
   useWorkspaceMembers,
@@ -53,7 +53,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
-  const { deleteTask } = useDeleteTask();
+  const { archiveTask } = useArchiveTask();
   const { goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
@@ -149,8 +149,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setEditing(false);
   };
 
-  const handleDelete = async () => {
-    await deleteTask(taskId);
+  const handleArchive = async () => {
+    await archiveTask(taskId);
     goToParent();
   };
 
@@ -388,11 +388,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 Edit
               </button>
               <button
-                onClick={handleDelete}
+                onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Trash2 className={`${iconSize.sm} mr-1`} />
-                Delete
+                <Archive className={`${iconSize.sm} mr-1`} />
+                Archive
               </button>
             </div>
           </div>
