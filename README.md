@@ -11,7 +11,7 @@ Orca brings project management to agent orchestration into one tool.
 **Orca's approach:** Treat agent sessions as first-class objects tied to tasks. Every session has a status, a terminal, and a place in your project hierarchy.
 
 **Other problems Orca solves:**
-- Knowing when an agent is waiting for your input vs. actively working
+- Knowing when an agent is waiting for your input vs. actively working (with app icon badge indicator)
 - No tool-hopping when queuing new ideas/tasks you come across while developing
 - Remove the need to report progress to your team or even tell Claude to do it (every terminal session has the ticket context injected into it)
 
