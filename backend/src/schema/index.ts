@@ -12,6 +12,7 @@ import { labelResolvers } from './label.js';
 import { DateTimeScalar } from './scalars.js';
 import { taskResolvers } from './task.js';
 import { workspaceResolvers } from './workspace.js';
+import { pullRequestFieldResolvers } from './pull-request.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -46,7 +47,10 @@ const resolvers: Resolvers = {
   Workspace: workspaceResolvers.Workspace,
   Initiative: initiativeResolvers.Initiative,
   Project: projectResolvers.Project,
-  Task: taskResolvers.Task,
+  Task: {
+    ...taskResolvers.Task,
+    ...pullRequestFieldResolvers,
+  },
   AddMemberResult: {
     __resolveType: (obj) => {
       if ('member' in obj) return 'MemberAdded';

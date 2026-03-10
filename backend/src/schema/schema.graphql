@@ -101,6 +101,34 @@ type Label {
   updatedAt: DateTime!
 }
 
+enum PullRequestStatus {
+  OPEN
+  MERGED
+  CLOSED
+}
+
+enum ReviewStatus {
+  NONE
+  APPROVED
+  CHANGES_REQUESTED
+  COMMENTED
+}
+
+type PullRequest {
+  id: ID!
+  number: Int!
+  title: String!
+  url: String!
+  status: PullRequestStatus!
+  reviewStatus: ReviewStatus!
+  repository: String!
+  headBranch: String!
+  author: String!
+  draft: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
 type Task {
   id: ID!
   displayId: String!
@@ -112,6 +140,8 @@ type Task {
   project: Project
   assignee: User
   labels: [Label!]!
+  pullRequests: [PullRequest!]!
+  pullRequestCount: Int!
   archivedAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
