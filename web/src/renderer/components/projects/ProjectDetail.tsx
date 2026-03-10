@@ -7,6 +7,7 @@ import {
   useArchiveProject,
   useProjectSubscription,
   useTaskSubscription,
+  useWorkspaceBySlug,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -23,10 +24,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { archiveProject } = useArchiveProject();
   const { navigate, goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
+  const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [defaultDirectory, setDefaultDirectory] = useState('');
+  const [initiativeId, setInitiativeId] = useState('');
 
   useProjectSubscription(currentWorkspace?.id ?? '');
   useTaskSubscription(currentWorkspace?.id ?? '');
@@ -53,10 +56,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     );
   }
 
+  const initiatives = workspaceData?.workspace?.initiatives ?? [];
+
   const startEditing = () => {
     setName(project.name);
     setDescription(project.description ?? '');
     setDefaultDirectory(project.defaultDirectory ?? '');
+    setInitiativeId(project.initiativeId ?? '');
     setEditing(true);
   };
 
@@ -65,6 +71,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: name.trim() || undefined,
       description: description.trim() || undefined,
       defaultDirectory: defaultDirectory.trim() || null,
+      initiativeId: initiativeId || null,
     });
     setEditing(false);
   };
@@ -99,6 +106,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               placeholder="Default directory (e.g., /Users/you/projects/my-app)"
               className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle font-mono"
             />
+            <select
+              value={initiativeId}
+              onChange={(e) => setInitiativeId(e.target.value)}
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
+            >
+              <option value="">No initiative</option>
+              {initiatives.map((initiative) => (
+                <option key={initiative.id} value={initiative.id}>
+                  {initiative.name}
+                </option>
+              ))}
+            </select>
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -139,6 +158,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           {project.description && <p className="text-fg-muted mt-2">{project.description}</p>}
           {project.defaultDirectory && (
             <p className="text-fg-faint text-body-sm font-mono mt-2">{project.defaultDirectory}</p>
+          )}
+          {project.initiative && (
+            <p className="text-fg-faint text-body-sm mt-2">Initiative: {project.initiative.name}</p>
           )}
         </div>
       )}

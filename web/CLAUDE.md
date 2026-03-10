@@ -20,23 +20,23 @@ bun run setup
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `bun run dev` | Setup + build daemon + start electron-vite dev server |
-| `bun run build` | Setup + electron-vite build + build daemon |
-| `bun run build:mac` | Build + package macOS app (dmg, zip) |
-| `bun run build:daemon` | Build daemon bundle (`out/daemon/index.js`) |
-| `bun run lint` | ESLint check |
-| `bun run lint:fix` | ESLint auto-fix |
-| `bun run format` | Prettier format |
-| `bun run format:check` | Prettier check |
-| `bun run typecheck` | Codegen + TypeScript check (`tsc --noEmit`) |
-| `bun run test` | Setup + run tests via Electron's Node (`vitest run`) |
-| `bun run knip` | Dead code detection |
-| `bun run validate` | All checks: lint + format:check + knip + typecheck + test + build |
-| `bun run codegen` | Generate GraphQL types from backend schema |
-| `bun run drizzle:generate` | Generate Drizzle migrations |
-| `bun run setup` | Codegen + rebuild native modules |
+| Command                    | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `bun run dev`              | Setup + build daemon + start electron-vite dev server             |
+| `bun run build`            | Setup + electron-vite build + build daemon                        |
+| `bun run build:mac`        | Build + package macOS app (dmg, zip)                              |
+| `bun run build:daemon`     | Build daemon bundle (`out/daemon/index.js`)                       |
+| `bun run lint`             | ESLint check                                                      |
+| `bun run lint:fix`         | ESLint auto-fix                                                   |
+| `bun run format`           | Prettier format                                                   |
+| `bun run format:check`     | Prettier check                                                    |
+| `bun run typecheck`        | Codegen + TypeScript check (`tsc --noEmit`)                       |
+| `bun run test`             | Setup + run tests via Electron's Node (`vitest run`)              |
+| `bun run knip`             | Dead code detection                                               |
+| `bun run validate`         | All checks: lint + format:check + knip + typecheck + test + build |
+| `bun run codegen`          | Generate GraphQL types from backend schema                        |
+| `bun run drizzle:generate` | Generate Drizzle migrations                                       |
+| `bun run setup`            | Codegen + rebuild native modules                                  |
 
 ## Code Generation
 
@@ -123,12 +123,12 @@ The daemon survives Electron restarts (e.g., during app updates). On normal quit
 
 ## Key Files
 
-| File | Purpose |
-|---|---|
-| `electron.vite.config.ts` | Build config for main/preload/renderer |
-| `electron-builder.yml` | App packaging config |
-| `drizzle.config.ts` | Drizzle ORM migration config |
-| `vitest.config.ts` | Test runner config |
-| `codegen.ts` | GraphQL codegen config |
-| `scripts/rebuild-native.mjs` | Rebuild native modules for Electron |
-| `scripts/build-daemon.mjs` | Build daemon bundle with esbuild |
+| File                         | Purpose                                |
+| ---------------------------- | -------------------------------------- |
+| `electron.vite.config.ts`    | Build config for main/preload/renderer |
+| `electron-builder.yml`       | App packaging config                   |
+| `drizzle.config.ts`          | Drizzle ORM migration config           |
+| `vitest.config.ts`           | Test runner config                     |
+| `codegen.ts`                 | GraphQL codegen config                 |
+| `scripts/rebuild-native.mjs` | Rebuild native modules for Electron    |
+| `scripts/build-daemon.mjs`   | Build daemon bundle with esbuild       |
