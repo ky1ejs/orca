@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Download } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { isActiveSessionStatus } from '../../../shared/session-status.js';
@@ -12,7 +12,7 @@ import { TaskDetail } from '../tasks/TaskDetail.js';
 import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
 import { useWorkspaceBySlug } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
-import { useTerminalSessions } from '../../hooks/useTerminalSessions.js';
+import { useTerminalSessions, type TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
@@ -21,13 +21,17 @@ import { EmptyTerminalArea } from './EmptyState.js';
 import { Breadcrumbs } from './Breadcrumbs.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
-import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 
 interface AppShellProps {
   onLogout: () => void;
 }
 
-function MainContent() {
+interface MainContentProps {
+  sessions: TerminalSessionInfo[];
+  refreshSessions: () => void;
+}
+
+function MainContent({ sessions, refreshSessions }: MainContentProps) {
   const { current } = useNavigation();
 
   switch (current.view) {
@@ -40,7 +44,11 @@ function MainContent() {
     case 'project':
       return current.id ? <ProjectDetail projectId={current.id} /> : <InitiativeList />;
     case 'task':
-      return current.id ? <TaskDetail taskId={current.id} /> : <InitiativeList />;
+      return current.id ? (
+        <TaskDetail taskId={current.id} sessions={sessions} refreshSessions={refreshSessions} />
+      ) : (
+        <InitiativeList />
+      );
     case 'settings':
     case 'members':
       return <WorkspaceSettings />;
@@ -48,6 +56,19 @@ function MainContent() {
       return <InitiativeList />;
   }
 }
+
+/** Memoized terminal container — prevents parent re-renders from triggering ResizeObserver */
+const TerminalContainer = memo(function TerminalContainer({
+  activeSessionId,
+}: {
+  activeSessionId: string;
+}) {
+  return (
+    <div className="flex-1 overflow-hidden">
+      <AgentTerminal key={activeSessionId} sessionId={activeSessionId} />
+    </div>
+  );
+});
 
 export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate } = useNavigation();
@@ -63,7 +84,10 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-  const activeSessionIds = useSessionActivity();
+
+  // Ref for sessions used in shortcut actions — avoids recreating shortcuts on every session change
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
 
   // Reset active session when navigating to a different task
   useEffect(() => {
@@ -117,7 +141,8 @@ export function AppShell({ onLogout }: AppShellProps) {
     setOnboardingDismissed(true);
   }, []);
 
-  // Keyboard shortcut definitions
+  // Keyboard shortcut definitions — use refs for values that change frequently
+  // so the shortcuts array doesn't need to be recreated
   const shortcuts: ShortcutDefinition[] = useMemo(
     () => [
       {
@@ -184,8 +209,9 @@ export function AppShell({ onLogout }: AppShellProps) {
         label: `Tab ${i + 1}`,
         description: `Switch to terminal tab ${i + 1}`,
         action: () => {
-          if (sessions.length > i) {
-            setActiveSessionId(sessions[i].id);
+          const currentSessions = sessionsRef.current;
+          if (currentSessions.length > i) {
+            setActiveSessionId(currentSessions[i].id);
           }
         },
       })),
@@ -215,7 +241,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         },
       },
     ],
-    [current, navigate, activeSessionId, handleCloseSession, sessions],
+    [current, navigate, activeSessionId, handleCloseSession],
   );
 
   useKeyboardShortcuts({ shortcuts });
@@ -263,7 +289,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         )}
         <main className="flex-1 overflow-y-auto">
           <Breadcrumbs />
-          <MainContent />
+          <MainContent sessions={sessions} refreshSessions={refresh} />
         </main>
         {current.view === 'task' && (
           <div className="h-80 shrink-0 border-t border-edge flex flex-col">
@@ -272,15 +298,10 @@ export function AppShell({ onLogout }: AppShellProps) {
                 <TerminalTabs
                   sessions={sessions}
                   activeSessionId={activeSessionId}
-                  activeSessionIds={activeSessionIds}
                   onSelectSession={setActiveSessionId}
                   onCloseSession={handleCloseSession}
                 />
-                <div className="flex-1 overflow-hidden">
-                  {activeSessionId && (
-                    <AgentTerminal key={activeSessionId} sessionId={activeSessionId} />
-                  )}
-                </div>
+                {activeSessionId && <TerminalContainer activeSessionId={activeSessionId} />}
               </>
             ) : (
               <EmptyTerminalArea />

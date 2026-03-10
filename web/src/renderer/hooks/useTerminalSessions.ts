@@ -18,6 +18,11 @@ function hasElectronApi(): boolean {
   return typeof window !== 'undefined' && !!window.orca;
 }
 
+/** Fingerprint for structural equality — only fields that change during a session lifetime. */
+function sessionsFingerprint(sessions: TerminalSessionInfo[]): string {
+  return sessions.map((s) => `${s.id}:${s.status}`).join(',');
+}
+
 export function useTerminalSessions(taskId?: string) {
   const [sessions, setSessions] = useState<TerminalSessionInfo[]>([]);
   const [loading, setLoading] = useState(hasElectronApi());
@@ -31,7 +36,10 @@ export function useTerminalSessions(taskId?: string) {
     const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
     if (!mountedRef.current) return;
     const filtered = taskId ? all.filter((s) => s.task_id === taskId) : all;
-    setSessions(filtered);
+    setSessions((prev) => {
+      if (sessionsFingerprint(prev) === sessionsFingerprint(filtered)) return prev;
+      return filtered;
+    });
     setLoading(false);
   }, [taskId]);
 
@@ -56,7 +64,11 @@ export function useTerminalSessions(taskId?: string) {
     if (!window.orca?.lifecycle) return;
     const unsubscribe = window.orca.lifecycle.onSessionStatusChanged(
       (sessionId: string, status: string) => {
-        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, status } : s)));
+        setSessions((prev) => {
+          const found = prev.some((s) => s.id === sessionId && s.status !== status);
+          if (!found) return prev;
+          return prev.map((s) => (s.id === sessionId ? { ...s, status } : s));
+        });
       },
     );
     return unsubscribe;

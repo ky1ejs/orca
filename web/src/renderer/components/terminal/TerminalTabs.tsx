@@ -1,23 +1,25 @@
+import { memo } from 'react';
 import { X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { type SessionStatus, getStatusDotClasses } from '../../../shared/session-status.js';
+import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 
 interface TerminalTabsProps {
   sessions: TerminalSessionInfo[];
   activeSessionId: string | null;
-  activeSessionIds?: Set<string>;
   onSelectSession: (sessionId: string) => void;
   onCloseSession: (sessionId: string) => void;
 }
 
-export function TerminalTabs({
+export const TerminalTabs = memo(function TerminalTabs({
   sessions,
   activeSessionId,
-  activeSessionIds,
   onSelectSession,
   onCloseSession,
 }: TerminalTabsProps) {
+  const activeSessionIds = useSessionActivity();
+
   return (
     <div
       className="flex overflow-x-auto flex-nowrap border-b border-edge bg-surface-raised"
@@ -68,4 +70,4 @@ export function TerminalTabs({
       })}
     </div>
   );
-}
+});
