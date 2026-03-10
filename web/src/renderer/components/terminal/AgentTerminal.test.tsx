@@ -18,6 +18,16 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// Mock requestAnimationFrame to invoke callbacks synchronously
+vi.stubGlobal(
+  'requestAnimationFrame',
+  vi.fn((cb: FrameRequestCallback) => {
+    cb(0);
+    return 0;
+  }),
+);
+vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
 // Mock xterm.js
 const mockWrite = vi.fn();
 const mockOpen = vi.fn();
@@ -40,9 +50,10 @@ vi.mock('@xterm/xterm', () => ({
   })),
 }));
 
+const mockFit = vi.fn();
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(() => ({
-    fit: vi.fn(),
+    fit: mockFit,
   })),
 }));
 
@@ -104,6 +115,12 @@ describe('AgentTerminal', () => {
     expect(mockReplay).toHaveBeenCalledWith('test-session');
   });
 
+  it('resizes PTY after fit on mount', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockFit).toHaveBeenCalled();
+    expect(mockPtyResize).toHaveBeenCalledWith('test-session', 80, 24);
+  });
+
   it('subscribes to onData for live output', () => {
     render(<AgentTerminal sessionId="test-session" />);
     expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
@@ -151,5 +168,11 @@ describe('AgentTerminal', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" />);
     unmount();
     expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it('cancels rAF on unmount', () => {
+    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    unmount();
+    expect(cancelAnimationFrame).toHaveBeenCalled();
   });
 });

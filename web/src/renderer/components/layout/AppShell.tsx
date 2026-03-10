@@ -266,7 +266,7 @@ export function AppShell({ onLogout }: AppShellProps) {
           <MainContent />
         </main>
         {current.view === 'task' && (
-          <div className="h-80 border-t border-edge flex flex-col">
+          <div className="h-80 shrink-0 border-t border-edge flex flex-col">
             {hasActiveSessions ? (
               <>
                 <TerminalTabs
@@ -277,7 +277,9 @@ export function AppShell({ onLogout }: AppShellProps) {
                   onCloseSession={handleCloseSession}
                 />
                 <div className="flex-1 overflow-hidden">
-                  {activeSessionId && <AgentTerminal sessionId={activeSessionId} />}
+                  {activeSessionId && (
+                    <AgentTerminal key={activeSessionId} sessionId={activeSessionId} />
+                  )}
                 </div>
               </>
             ) : (
