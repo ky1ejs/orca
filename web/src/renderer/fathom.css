@@ -151,17 +151,17 @@
     --priority-urgent-muted: #fee2e2;
 
     /* Terminal */
-    --terminal-bg: #f7f6f3;
-    --terminal-fg: #161514;
-    --terminal-cursor: #161514;
-    --terminal-selection: #ccc9c3;
+    --terminal-bg: #f5f5f4;
+    --terminal-fg: #161616;
+    --terminal-cursor: #161616;
+    --terminal-selection: #c9c9c7;
 
     /* Terminal ANSI palette overrides — swap black/white so ANSI "black"
        backgrounds blend with the light terminal surface instead of showing
        as literal black. */
-    --terminal-ansi-black: #f7f6f3;
+    --terminal-ansi-black: #f5f5f4;
     --terminal-ansi-bright-black: #9ca3af;
-    --terminal-ansi-white: #161514;
+    --terminal-ansi-white: #161616;
     --terminal-ansi-bright-white: #000000;
   }
 }
@@ -218,15 +218,15 @@
   --priority-urgent-muted: #fee2e2;
 
   /* Terminal */
-  --terminal-bg: #f7f6f3;
-  --terminal-fg: #161514;
-  --terminal-cursor: #161514;
-  --terminal-selection: #ccc9c3;
+  --terminal-bg: #f5f5f4;
+  --terminal-fg: #161616;
+  --terminal-cursor: #161616;
+  --terminal-selection: #c9c9c7;
 
   /* Terminal ANSI palette overrides */
-  --terminal-ansi-black: #f7f6f3;
+  --terminal-ansi-black: #f5f5f4;
   --terminal-ansi-bright-black: #9ca3af;
-  --terminal-ansi-white: #161514;
+  --terminal-ansi-white: #161616;
   --terminal-ansi-bright-white: #000000;
 }
 
