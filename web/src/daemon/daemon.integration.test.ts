@@ -195,10 +195,17 @@ describe('daemon integration', () => {
       if (p.sessionId === session.id) exited = true;
     });
 
+    // Use a targeted shell command instead of `/usr/bin/env` (which dumps ALL
+    // env vars). On CI the full env is huge, and the ORCA_* vars—appended last
+    // by the object spread—end up at the tail of the output. A PTY data-vs-exit
+    // race can then truncate those final chunks before they reach the client.
     await client.request(DAEMON_METHODS.PTY_SPAWN, {
       sessionId: session.id,
-      command: '/usr/bin/env',
-      args: [],
+      command: '/bin/sh',
+      args: [
+        '-c',
+        'echo "ORCA_SESSION_ID=$ORCA_SESSION_ID"; echo "ORCA_TASK_ID=$ORCA_TASK_ID"; echo "ORCA_TASK_UUID=$ORCA_TASK_UUID"; echo "ORCA_TASK_TITLE=$ORCA_TASK_TITLE"; echo "ELECTRON_RUN_AS_NODE=${ELECTRON_RUN_AS_NODE:-NOT_SET}"',
+      ],
       cwd: tempDir,
       env: {
         ORCA_SESSION_ID: 'test-session-123',
@@ -215,8 +222,8 @@ describe('daemon integration', () => {
     expect(output).toContain('ORCA_TASK_ID=TASK-42');
     expect(output).toContain('ORCA_TASK_UUID=uuid-abc');
     expect(output).toContain('ORCA_TASK_TITLE=Test Task');
-    // ELECTRON_RUN_AS_NODE should be filtered out as its own env var
-    expect(output).not.toMatch(/^ELECTRON_RUN_AS_NODE=/m);
+    // ELECTRON_RUN_AS_NODE should be filtered out — not inherited by the PTY
+    expect(output).toContain('ELECTRON_RUN_AS_NODE=NOT_SET');
   });
 
   it('subscription filtering — only subscribed client receives data', async () => {
