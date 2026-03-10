@@ -5,7 +5,7 @@
 import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
-import { appendOutput, replayOutput, clearOutput, getOutputSize } from './output-buffer.js';
+import { appendOutput, replayOutput, clearOutput, getVisibleOutputSize } from './output-buffer.js';
 import { processKittyKeyboard } from './kitty-keyboard.js';
 
 interface PtyProcess {
@@ -97,8 +97,8 @@ export class DaemonPtyManager {
     return replayOutput(sessionId);
   }
 
-  outputSize(sessionId: string): number {
-    return getOutputSize(sessionId);
+  visibleOutputSize(sessionId: string): number {
+    return getVisibleOutputSize(sessionId);
   }
 
   clear(sessionId: string): void {

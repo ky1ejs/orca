@@ -24,11 +24,12 @@ import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
 
 /**
- * Minimum additional output bytes before we consider Claude to have resumed after a permission
- * grant. Permission dialog echoes and acknowledgements are typically 10-30 bytes; this threshold
- * ensures we only transition once actual work output appears.
+ * Minimum additional *visible* characters before we consider Claude to have resumed after a
+ * permission grant or Stop hook. ANSI escape sequences are stripped before measuring, so this
+ * threshold is not triggered by cursor positioning, color codes, or status-bar updates that
+ * Claude Code's TUI emits while idle. Set to 150 to absorb spinner / timer visible chars.
  */
-const PERMISSION_RESUME_THRESHOLD = 50;
+const PERMISSION_RESUME_THRESHOLD = 150;
 
 /**
  * Grace period (ms) after AwaitingPermission is set, during which we keep advancing the output
@@ -269,7 +270,7 @@ export class DaemonStatusManager {
             const current = getSession(sessionId);
             if (current?.status === SessionStatus.AwaitingPermission) return;
             monitor.hookSetWaiting = true;
-            monitor.hookWaitingOutputLen = this.manager.outputSize(sessionId);
+            monitor.hookWaitingOutputLen = this.manager.visibleOutputSize(sessionId);
             monitor.hookWaitingSetAt = Date.now();
             this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
           }, 200);
@@ -280,7 +281,7 @@ export class DaemonStatusManager {
           monitor.hookSetWaiting = false;
           monitor.hookWaitingOutputLen = null;
           monitor.hookWaitingSetAt = null;
-          monitor.permissionOutputLen = this.manager.outputSize(sessionId);
+          monitor.permissionOutputLen = this.manager.visibleOutputSize(sessionId);
           monitor.permissionSetAt = Date.now();
           this.updateStatusAndNotify(sessionId, SessionStatus.AwaitingPermission);
           break;
@@ -345,7 +346,7 @@ export class DaemonStatusManager {
         monitor.permissionSetAt !== null
       ) {
         const elapsed = Date.now() - monitor.permissionSetAt;
-        const currentSize = this.manager.outputSize(sessionId);
+        const currentSize = this.manager.visibleOutputSize(sessionId);
         if (elapsed < PERMISSION_GRACE_MS) {
           // Still in grace period — absorb dialog output by advancing the baseline
           monitor.permissionOutputLen = currentSize;
@@ -369,7 +370,7 @@ export class DaemonStatusManager {
         monitor.hookWaitingSetAt !== null
       ) {
         const elapsed = Date.now() - monitor.hookWaitingSetAt;
-        const currentSize = this.manager.outputSize(sessionId);
+        const currentSize = this.manager.visibleOutputSize(sessionId);
         if (elapsed < PERMISSION_GRACE_MS) {
           // Still in grace period — absorb idle prompt output by advancing the baseline
           monitor.hookWaitingOutputLen = currentSize;
