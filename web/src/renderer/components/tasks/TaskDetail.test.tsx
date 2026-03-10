@@ -80,13 +80,7 @@ vi.mock('../../hooks/useProjectDirectory.js', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useTerminalSessions.js', () => ({
-  useTerminalSessions: () => ({
-    sessions: mockSessions,
-    loading: false,
-    refresh: mockRefreshSessions,
-  }),
-}));
+// No longer mock useTerminalSessions — sessions are now passed as props
 
 vi.mock('../../hooks/useSessionActivity.js', () => ({
   useSessionActivity: () => new Set<string>(),
@@ -144,7 +138,9 @@ afterEach(cleanup);
 // Dynamic import to pick up the mocks
 async function importAndRender(taskId = 'task-1') {
   const { TaskDetail } = await import('./TaskDetail.js');
-  return render(<TaskDetail taskId={taskId} />);
+  return render(
+    <TaskDetail taskId={taskId} sessions={mockSessions} refreshSessions={mockRefreshSessions} />,
+  );
 }
 
 describe('TaskDetail', () => {

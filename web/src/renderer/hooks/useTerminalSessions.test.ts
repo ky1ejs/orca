@@ -113,6 +113,61 @@ describe('useTerminalSessions', () => {
     expect(getSessions).toHaveBeenCalledTimes(2);
   });
 
+  it('does not update state when poll returns identical data', async () => {
+    const getSessions = vi.fn().mockResolvedValue(mockSessions);
+    (
+      window as unknown as { orca: { db: { getSessions: typeof getSessions } } }
+    ).orca.db.getSessions = getSessions;
+
+    const { result } = renderHook(() => useTerminalSessions());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Capture the reference after initial load
+    const firstRef = result.current.sessions;
+    expect(firstRef).toHaveLength(2);
+
+    // Poll returns identical data (same ids, same statuses)
+    getSessions.mockResolvedValue([...mockSessions]);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    // Should be the same reference (no state update)
+    expect(result.current.sessions).toBe(firstRef);
+  });
+
+  it('does not update state when IPC status matches current status', async () => {
+    let statusChangedCallback: ((sessionId: string, status: string) => void) | null = null;
+    (
+      window as unknown as {
+        orca: { lifecycle: { onSessionStatusChanged: ReturnType<typeof vi.fn> } };
+      }
+    ).orca.lifecycle.onSessionStatusChanged = vi.fn((cb: typeof statusChangedCallback) => {
+      statusChangedCallback = cb;
+      return () => {};
+    });
+
+    const { result } = renderHook(() => useTerminalSessions());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const firstRef = result.current.sessions;
+
+    // Send the same status that already exists
+    act(() => {
+      statusChangedCallback!('session-1', SessionStatus.Running);
+    });
+
+    // Should be the same reference (no state update)
+    expect(result.current.sessions).toBe(firstRef);
+  });
+
   it('updates session status via IPC listener', async () => {
     let statusChangedCallback: ((sessionId: string, status: string) => void) | null = null;
     (

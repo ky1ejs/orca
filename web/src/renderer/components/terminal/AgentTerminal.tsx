@@ -65,37 +65,40 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Defer fit + PTY resize + replay until after browser layout is stable
-    const rafId = requestAnimationFrame(() => {
-      try {
-        fitAddon.fit();
-        window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
-      } catch {
-        // Container may have been removed
-      }
-      window.orca.pty.replay(sessionId).then((output) => {
-        if (output) terminal.write(output);
-      });
-    });
-
-    // Subscribe to live output
+    // Subscribe to live output + keyboard input immediately (no dimension dependency)
     const unsubData = window.orca.pty.onData(sessionId, (data) => {
       terminal.write(data);
     });
 
-    // Send user keyboard input to PTY
     const onDataDisposable = terminal.onData((data) => {
       window.orca.pty.write(sessionId, data);
     });
 
-    // Handle PTY exit
     const unsubExit = window.orca.pty.onExit(sessionId, (exitCode) => {
       terminal.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
     });
 
-    // Resize observer
+    // Use ResizeObserver for both initial fit+replay and subsequent resizes.
+    // The first callback fires after the browser has completed layout, guaranteeing
+    // correct container dimensions — unlike rAF which can fire before flex layout stabilizes.
+    let initialFitDone = false;
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
     const resizeObserver = new ResizeObserver(() => {
+      if (!initialFitDone) {
+        // First callback: fit immediately (no debounce), resize PTY, then replay
+        initialFitDone = true;
+        try {
+          fitAddon.fit();
+          window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+        } catch {
+          // Container may have been removed
+        }
+        window.orca.pty.replay(sessionId).then((output) => {
+          if (output) terminal.write(output);
+        });
+        return;
+      }
+      // Subsequent callbacks: debounce for resize stability
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         try {
@@ -123,7 +126,6 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     return () => {
-      cancelAnimationFrame(rafId);
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);

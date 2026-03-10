@@ -18,16 +18,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock requestAnimationFrame to invoke callbacks synchronously
-vi.stubGlobal(
-  'requestAnimationFrame',
-  vi.fn((cb: FrameRequestCallback) => {
-    cb(0);
-    return 0;
-  }),
-);
-vi.stubGlobal('cancelAnimationFrame', vi.fn());
-
 // Mock xterm.js
 const mockWrite = vi.fn();
 const mockOpen = vi.fn();
@@ -76,6 +66,9 @@ const mockPtyOnExit = vi.fn().mockReturnValue(vi.fn());
 const mockPtyWrite = vi.fn();
 const mockPtyResize = vi.fn();
 
+// Capture the ResizeObserver callback so we can invoke it in tests
+let resizeObserverCallback: ResizeObserverCallback | null = null;
+
 beforeEach(() => {
   // Add orca to existing window (don't overwrite — preserves matchMedia mock)
   (window as unknown as { orca: unknown }).orca = {
@@ -87,19 +80,28 @@ beforeEach(() => {
       resize: mockPtyResize,
     },
   };
-  // Mock ResizeObserver
+  // Mock ResizeObserver — capture the callback to simulate layout completion
+  resizeObserverCallback = null;
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = vi
     .fn()
-    .mockImplementation(() => ({
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    .mockImplementation((cb: ResizeObserverCallback) => {
+      resizeObserverCallback = cb;
+      return {
+        observe: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    });
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+
+/** Simulate the first ResizeObserver callback (initial layout completion). */
+function triggerInitialResize() {
+  resizeObserverCallback?.([], {} as ResizeObserver);
+}
 
 // Dynamic import after mocks
 const { AgentTerminal } = await import('./AgentTerminal.js');
@@ -110,19 +112,26 @@ describe('AgentTerminal', () => {
     expect(getByTestId('agent-terminal')).toBeInTheDocument();
   });
 
-  it('calls replay on mount', async () => {
+  it('calls replay after ResizeObserver fires (not rAF)', async () => {
     render(<AgentTerminal sessionId="test-session" />);
+    // Before ResizeObserver fires, replay should not have been called
+    expect(mockReplay).not.toHaveBeenCalled();
+
+    // Simulate layout completion
+    triggerInitialResize();
     expect(mockReplay).toHaveBeenCalledWith('test-session');
   });
 
-  it('resizes PTY after fit on mount', () => {
+  it('resizes PTY after fit on initial ResizeObserver callback', () => {
     render(<AgentTerminal sessionId="test-session" />);
+    triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockPtyResize).toHaveBeenCalledWith('test-session', 80, 24);
   });
 
-  it('subscribes to onData for live output', () => {
+  it('subscribes to onData for live output immediately (before resize)', () => {
     render(<AgentTerminal sessionId="test-session" />);
+    // onData should be subscribed before ResizeObserver fires
     expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
   });
 
@@ -170,9 +179,12 @@ describe('AgentTerminal', () => {
     expect(mockDispose).toHaveBeenCalled();
   });
 
-  it('cancels rAF on unmount', () => {
+  it('disconnects ResizeObserver on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    const observer = (globalThis as unknown as { ResizeObserver: ReturnType<typeof vi.fn> })
+      .ResizeObserver;
+    const instance = observer.mock.results[0].value;
     unmount();
-    expect(cancelAnimationFrame).toHaveBeenCalled();
+    expect(instance.disconnect).toHaveBeenCalled();
   });
 });

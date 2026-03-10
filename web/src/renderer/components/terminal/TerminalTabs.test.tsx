@@ -2,9 +2,16 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { TerminalTabs } from './TerminalTabs.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { SessionStatus } from '../../../shared/session-status.js';
+
+// Mock useSessionActivity — TerminalTabs now owns this hook
+vi.mock('../../hooks/useSessionActivity.js', () => ({
+  useSessionActivity: () => new Set<string>(),
+}));
+
+// Dynamic import after mocks
+const { TerminalTabs } = await import('./TerminalTabs.js');
 
 afterEach(cleanup);
 
