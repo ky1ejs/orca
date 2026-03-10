@@ -21,6 +21,18 @@ const MEMBERSHIP_OWNER = {
   updatedAt: new Date(),
 };
 
+const INSTALLATION = {
+  id: 'inst1',
+  installationId: 123,
+  accountLogin: 'test-org',
+  accountType: 'Organization',
+  workspaceId: 'ws1',
+  repositories: ['org/repo-a', 'org/repo-b', 'org/repo-c'],
+  observedRepositories: ['org/repo-a'],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
 function createMockContext(role: 'OWNER' | 'MEMBER' = 'OWNER') {
   const membership = { ...MEMBERSHIP_OWNER, role };
   const prisma = {
@@ -33,6 +45,8 @@ function createMockContext(role: 'OWNER' | 'MEMBER' = 'OWNER') {
     gitHubInstallation: {
       upsert: vi.fn(),
       deleteMany: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(INSTALLATION),
+      update: vi.fn().mockResolvedValue(INSTALLATION),
     },
   };
   return {
@@ -127,6 +141,63 @@ describe('github installation resolvers', () => {
           ctx as never,
         ),
       ).rejects.toThrow('Workspace not found');
+    });
+  });
+
+  describe('Mutation.updateObservedRepositories', () => {
+    it('updates observed repos with valid subset', async () => {
+      const ctx = createMockContext('OWNER');
+      const updated = { ...INSTALLATION, observedRepositories: ['org/repo-a', 'org/repo-b'] };
+      ctx.prisma.gitHubInstallation.update.mockResolvedValue(updated);
+
+      const result = await githubInstallationResolvers.Mutation.updateObservedRepositories(
+        {} as never,
+        { workspaceId: 'ws1', repositories: ['org/repo-a', 'org/repo-b'] },
+        ctx as never,
+      );
+
+      expect(result).toEqual(updated);
+      expect(ctx.prisma.gitHubInstallation.update).toHaveBeenCalledWith({
+        where: { id: 'inst1' },
+        data: { observedRepositories: ['org/repo-a', 'org/repo-b'] },
+      });
+    });
+
+    it('rejects repos not in the installation', async () => {
+      const ctx = createMockContext('OWNER');
+
+      await expect(
+        githubInstallationResolvers.Mutation.updateObservedRepositories(
+          {} as never,
+          { workspaceId: 'ws1', repositories: ['org/repo-a', 'org/not-installed'] },
+          ctx as never,
+        ),
+      ).rejects.toThrow('Repositories not available in this installation: org/not-installed');
+    });
+
+    it('rejects non-owner', async () => {
+      const ctx = createMockContext('MEMBER');
+
+      await expect(
+        githubInstallationResolvers.Mutation.updateObservedRepositories(
+          {} as never,
+          { workspaceId: 'ws1', repositories: ['org/repo-a'] },
+          ctx as never,
+        ),
+      ).rejects.toThrow('Workspace not found');
+    });
+
+    it('throws when no installation exists', async () => {
+      const ctx = createMockContext('OWNER');
+      ctx.prisma.gitHubInstallation.findFirst.mockResolvedValue(null);
+
+      await expect(
+        githubInstallationResolvers.Mutation.updateObservedRepositories(
+          {} as never,
+          { workspaceId: 'ws1', repositories: ['org/repo-a'] },
+          ctx as never,
+        ),
+      ).rejects.toThrow('No GitHub installation found for this workspace');
     });
   });
 });

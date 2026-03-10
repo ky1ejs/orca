@@ -255,6 +255,7 @@ export const CompleteGitHubInstallationDocument = /* GraphQL */ `
       accountLogin
       accountType
       repositories
+      observedRepositories
       createdAt
     }
   }
@@ -263,6 +264,15 @@ export const CompleteGitHubInstallationDocument = /* GraphQL */ `
 export const RemoveGitHubInstallationDocument = /* GraphQL */ `
   mutation RemoveGitHubInstallation($workspaceId: ID!) {
     removeGitHubInstallation(workspaceId: $workspaceId)
+  }
+`;
+
+export const UpdateObservedRepositoriesDocument = /* GraphQL */ `
+  mutation UpdateObservedRepositories($workspaceId: ID!, $repositories: [String!]!) {
+    updateObservedRepositories(workspaceId: $workspaceId, repositories: $repositories) {
+      id
+      observedRepositories
+    }
   }
 `;
 

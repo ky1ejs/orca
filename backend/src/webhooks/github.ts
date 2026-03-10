@@ -8,6 +8,7 @@ import {
   handleReviewSubmitted,
   handleInstallationCreated,
   handleInstallationDeleted,
+  handleInstallationRepositoriesChanged,
 } from './github-events.js';
 
 export async function handleGitHubWebhook(request: Request): Promise<Response> {
@@ -60,6 +61,10 @@ export async function handleGitHubWebhook(request: Request): Promise<Response> {
       break;
     case 'installation.deleted':
       await handleInstallationDeleted(payload, prisma);
+      break;
+    case 'installation_repositories.added':
+    case 'installation_repositories.removed':
+      await handleInstallationRepositoriesChanged(payload, prisma);
       break;
   }
 

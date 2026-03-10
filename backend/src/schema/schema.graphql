@@ -41,6 +41,7 @@ type GitHubInstallation {
   accountLogin: String!
   accountType: String!
   repositories: [String!]!
+  observedRepositories: [String!]!
   createdAt: DateTime!
 }
 
@@ -303,6 +304,7 @@ type Mutation {
   declineInvitation(id: ID!): Boolean!
   completeGitHubInstallation(workspaceId: ID!, installationId: Int!): GitHubInstallation!
   removeGitHubInstallation(workspaceId: ID!): Boolean!
+  updateObservedRepositories(workspaceId: ID!, repositories: [String!]!): GitHubInstallation!
   updateWorkspaceSettings(
     workspaceId: ID!
     input: UpdateWorkspaceSettingsInput!

@@ -5,6 +5,7 @@ import {
   useGitHubAppInstallUrl,
   useCompleteGitHubInstallation,
   useRemoveGitHubInstallation,
+  useUpdateObservedRepositories,
   useUpdateWorkspaceSettings,
 } from '../../hooks/useGraphQL.js';
 
@@ -44,6 +45,7 @@ function GitHubConnectionSection({
         accountLogin: string;
         accountType: string;
         repositories: string[];
+        observedRepositories: string[];
       }
     | null
     | undefined;
@@ -52,6 +54,7 @@ function GitHubConnectionSection({
   const { data: urlData } = useGitHubAppInstallUrl(installation ? '' : workspaceId);
   const { completeGitHubInstallation, fetching: completing } = useCompleteGitHubInstallation();
   const { removeGitHubInstallation, fetching: removing } = useRemoveGitHubInstallation();
+  const { updateObservedRepositories } = useUpdateObservedRepositories();
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [manualInstallationId, setManualInstallationId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +108,20 @@ function GitHubConnectionSection({
     setConfirmDisconnect(false);
   }, [workspaceId, removeGitHubInstallation]);
 
+  const handleToggleRepo = useCallback(
+    async (repo: string, checked: boolean) => {
+      if (!installation) return;
+      const current = installation.observedRepositories;
+      const updated = checked ? [...current, repo] : current.filter((r) => r !== repo);
+      setError(null);
+      const result = await updateObservedRepositories(workspaceId, updated);
+      if (result.error) {
+        setError(result.error.graphQLErrors?.[0]?.message ?? result.error.message);
+      }
+    },
+    [workspaceId, installation, updateObservedRepositories],
+  );
+
   const isConfigured = !!urlData?.githubAppInstallUrl;
 
   return (
@@ -151,16 +168,31 @@ function GitHubConnectionSection({
             </div>
             {installation.repositories.length > 0 && (
               <div>
-                <p className="text-label-sm text-fg-muted mb-2">Repositories</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {installation.repositories.map((repo) => (
-                    <span
-                      key={repo}
-                      className="px-2 py-0.5 text-label-sm text-fg-muted bg-surface-raised border border-edge-subtle rounded"
-                    >
-                      {repo}
-                    </span>
-                  ))}
+                <p className="text-label-sm text-fg-muted mb-2">Observed repositories</p>
+                {installation.observedRepositories.length === 0 && (
+                  <p className="text-body-sm text-fg-faint mb-2">
+                    Select repositories to enable PR automation.
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {installation.repositories.map((repo) => {
+                    const observed = installation.observedRepositories.includes(repo);
+                    return (
+                      <label
+                        key={repo}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-surface-raised cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={observed}
+                          onChange={(e) => handleToggleRepo(repo, e.target.checked)}
+                          disabled={!isOwner}
+                          className="accent-accent h-3.5 w-3.5"
+                        />
+                        <span className="text-label-sm text-fg">{repo}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -36,6 +36,13 @@ interface InstallationPayload {
   repositories?: Array<{ full_name: string }>;
 }
 
+interface InstallationRepositoriesPayload {
+  action: 'added' | 'removed';
+  installation: { id: number };
+  repositories_added: Array<{ full_name: string }>;
+  repositories_removed: Array<{ full_name: string }>;
+}
+
 async function resolveTasksByDisplayIds(
   prisma: PrismaClient,
   workspaceId: string,
@@ -55,13 +62,23 @@ async function resolveTasksByDisplayIds(
   });
 }
 
-async function getWorkspaceFromInstallation(prisma: PrismaClient, installationId: number) {
-  const installation = await prisma.gitHubInstallation.findUnique({
+export async function getWorkspacesFromInstallation(
+  prisma: PrismaClient,
+  installationId: number,
+  repositoryFullName: string,
+) {
+  const installations = await prisma.gitHubInstallation.findMany({
     where: { installationId },
-    select: { workspaceId: true, workspace: { select: { slug: true } } },
+    select: {
+      workspaceId: true,
+      observedRepositories: true,
+      workspace: { select: { slug: true } },
+    },
   });
-  if (!installation) return null;
-  return { workspaceId: installation.workspaceId, slug: installation.workspace.slug };
+
+  return installations
+    .filter((inst) => inst.observedRepositories.includes(repositoryFullName))
+    .map((inst) => ({ workspaceId: inst.workspaceId, slug: inst.workspace.slug }));
 }
 
 export async function handlePullRequestOpenedOrEdited(
@@ -72,52 +89,58 @@ export async function handlePullRequestOpenedOrEdited(
   const installationId = payload.installation?.id;
   if (!installationId) return;
 
-  const result = await getWorkspaceFromInstallation(prisma, installationId);
-  if (!result) return;
-  const { workspaceId, slug } = result;
+  const workspaces = await getWorkspacesFromInstallation(
+    prisma,
+    installationId,
+    payload.repository.full_name,
+  );
+  if (workspaces.length === 0) return;
 
   const pr = payload.pull_request;
-  const searchText = `${pr.title} ${pr.head.ref}`;
-  const tasks = await resolveTasksByDisplayIds(prisma, workspaceId, slug, searchText);
-  if (tasks.length === 0) return;
 
-  const settings = await getWorkspaceSettings(prisma, workspaceId);
+  for (const { workspaceId, slug } of workspaces) {
+    const searchText = `${pr.title} ${pr.head.ref}`;
+    const tasks = await resolveTasksByDisplayIds(prisma, workspaceId, slug, searchText);
+    if (tasks.length === 0) continue;
 
-  for (const task of tasks) {
-    await prisma.pullRequest.upsert({
-      where: { githubId: pr.id },
-      create: {
-        githubId: pr.id,
-        number: pr.number,
-        title: pr.title,
-        url: pr.html_url,
-        status: PullRequestStatus.OPEN,
-        repository: payload.repository.full_name,
-        headBranch: pr.head.ref,
-        author: pr.user.login,
-        draft: pr.draft,
-        taskId: task.id,
-        workspaceId,
-      },
-      update: {
-        title: pr.title,
-        headBranch: pr.head.ref,
-        draft: pr.draft,
-        taskId: task.id,
-      },
-    });
+    const settings = await getWorkspaceSettings(prisma, workspaceId);
 
-    if (
-      settings.autoInReviewOnPrOpen &&
-      !pr.draft &&
-      task.status !== TaskStatus.IN_REVIEW &&
-      task.status !== TaskStatus.DONE
-    ) {
-      const updated = await prisma.task.update({
-        where: { id: task.id },
-        data: { status: TaskStatus.IN_REVIEW },
+    for (const task of tasks) {
+      await prisma.pullRequest.upsert({
+        where: { githubId: pr.id },
+        create: {
+          githubId: pr.id,
+          number: pr.number,
+          title: pr.title,
+          url: pr.html_url,
+          status: PullRequestStatus.OPEN,
+          repository: payload.repository.full_name,
+          headBranch: pr.head.ref,
+          author: pr.user.login,
+          draft: pr.draft,
+          taskId: task.id,
+          workspaceId,
+        },
+        update: {
+          title: pr.title,
+          headBranch: pr.head.ref,
+          draft: pr.draft,
+          taskId: task.id,
+        },
       });
-      pubsub.publish('taskChanged', updated);
+
+      if (
+        settings.autoInReviewOnPrOpen &&
+        !pr.draft &&
+        task.status !== TaskStatus.IN_REVIEW &&
+        task.status !== TaskStatus.DONE
+      ) {
+        const updated = await prisma.task.update({
+          where: { id: task.id },
+          data: { status: TaskStatus.IN_REVIEW },
+        });
+        pubsub.publish('taskChanged', updated);
+      }
     }
   }
 }
@@ -210,20 +233,14 @@ export async function handleInstallationCreated(
   payload: InstallationPayload,
   prisma: PrismaClient,
 ) {
-  // Installation creation requires a workspace ID mapping.
-  // This is handled by the "completeGitHubInstallation" mutation (deferred to follow-up).
-  // For now, if we receive this event and the installation already exists, update it.
-  const existing = await prisma.gitHubInstallation.findUnique({
-    where: { installationId: payload.installation.id },
-  });
-  if (!existing) return;
+  const repos = payload.repositories?.map((r) => r.full_name) ?? [];
 
-  await prisma.gitHubInstallation.update({
+  await prisma.gitHubInstallation.updateMany({
     where: { installationId: payload.installation.id },
     data: {
       accountLogin: payload.installation.account.login,
       accountType: payload.installation.account.type,
-      repositories: payload.repositories?.map((r) => r.full_name) ?? [],
+      repositories: repos,
     },
   });
 }
@@ -235,4 +252,32 @@ export async function handleInstallationDeleted(
   await prisma.gitHubInstallation.deleteMany({
     where: { installationId: payload.installation.id },
   });
+}
+
+export async function handleInstallationRepositoriesChanged(
+  payload: InstallationRepositoriesPayload,
+  prisma: PrismaClient,
+) {
+  const installations = await prisma.gitHubInstallation.findMany({
+    where: { installationId: payload.installation.id },
+  });
+
+  for (const installation of installations) {
+    let repos = [...installation.repositories];
+    let observed = [...installation.observedRepositories];
+
+    if (payload.action === 'added') {
+      const newRepos = payload.repositories_added.map((r) => r.full_name);
+      repos = [...new Set([...repos, ...newRepos])];
+    } else if (payload.action === 'removed') {
+      const removedRepos = new Set(payload.repositories_removed.map((r) => r.full_name));
+      repos = repos.filter((r) => !removedRepos.has(r));
+      observed = observed.filter((r) => !removedRepos.has(r));
+    }
+
+    await prisma.gitHubInstallation.update({
+      where: { id: installation.id },
+      data: { repositories: repos, observedRepositories: observed },
+    });
+  }
 }

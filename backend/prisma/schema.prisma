@@ -204,16 +204,19 @@ model PullRequest {
 }
 
 model GitHubInstallation {
-  id             String    @id @default(cuid())
-  installationId Int       @unique
-  accountLogin   String
-  accountType    String
-  workspaceId    String
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  repositories   String[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  installationId       Int
+  accountLogin         String
+  accountType          String
+  workspaceId          String
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  repositories         String[]
+  observedRepositories String[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
+  @@unique([installationId, workspaceId])
+  @@index([installationId])
   @@index([workspaceId])
 }
 

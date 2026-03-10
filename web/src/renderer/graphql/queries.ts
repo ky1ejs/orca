@@ -303,6 +303,7 @@ export const WorkspaceIntegrationsQueryDocument = /* GraphQL */ `
         accountLogin
         accountType
         repositories
+        observedRepositories
         createdAt
       }
       settings {
