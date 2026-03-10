@@ -62,6 +62,14 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
     data: { labels: [{ id: 'l1', name: 'Bug', color: '#FF0000', workspaceId: 'ws-1' }] },
     fetching: false,
   }),
+  useLinkPullRequest: () => ({
+    linkPullRequest: vi.fn(),
+    fetching: false,
+  }),
+  useUnlinkPullRequest: () => ({
+    unlinkPullRequest: vi.fn(),
+    fetching: false,
+  }),
 }));
 
 vi.mock('../../navigation/context.js', () => ({

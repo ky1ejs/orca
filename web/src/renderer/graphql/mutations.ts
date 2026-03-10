@@ -307,3 +307,27 @@ export const DeleteLabelDocument = /* GraphQL */ `
     deleteLabel(id: $id)
   }
 `;
+
+export const LinkPullRequestDocument = /* GraphQL */ `
+  mutation LinkPullRequest($input: LinkPullRequestInput!) {
+    linkPullRequest(input: $input) {
+      id
+      number
+      title
+      url
+      status
+      reviewStatus
+      repository
+      headBranch
+      author
+      draft
+      createdAt
+    }
+  }
+`;
+
+export const UnlinkPullRequestDocument = /* GraphQL */ `
+  mutation UnlinkPullRequest($id: ID!) {
+    unlinkPullRequest(id: $id)
+  }
+`;
