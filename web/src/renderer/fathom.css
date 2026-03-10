@@ -2,14 +2,14 @@
  * =================================================================
  * Fathom — Orca's Design System
  *
- * Monochromatic palette with warm grays and semantic color.
+ * Monochromatic palette with neutral grays and semantic color.
  * Inspired by the orca: black, white, and purposeful contrast.
  *
  * Adapts to light/dark mode via OS preference by default.
  * Users can override via Settings > Appearance.
  *
  * Usage:
- *   Colors   → bg-gray-950, text-gray-400, etc. (warm gray overrides)
+ *   Colors   → bg-gray-950, text-gray-400, etc. (neutral gray overrides)
  *   Surface  → bg-surface-base, bg-surface-primary, bg-surface-overlay
  *   Accent   → bg-accent, text-on-accent, hover:bg-accent-hover
  *   Semantic → bg-success-muted, text-error, border-warning, etc.
@@ -34,29 +34,29 @@
  * ------------------------------------------------------------------- */
 :root {
   /* Surfaces */
-  --surface: #0e0d0c;
-  --surface-raised: #161514;
-  --surface-overlay: #262523;
-  --surface-inset: #262523;
-  --surface-hover: #37352f;
-  --surface-active: #504d47;
+  --surface: #0e0e0e;
+  --surface-raised: #161616;
+  --surface-overlay: #252525;
+  --surface-inset: #252525;
+  --surface-hover: #363635;
+  --surface-active: #4f4f4d;
 
   /* Foreground */
-  --fg: #f7f6f3;
-  --fg-muted: #908d85;
-  --fg-faint: #6e6b64;
+  --fg: #f5f5f4;
+  --fg-muted: #8d8d8b;
+  --fg-faint: #6c6c6a;
 
   /* Borders */
-  --edge: #262523;
-  --edge-subtle: #37352f;
+  --edge: #252525;
+  --edge-subtle: #363635;
 
   /* Accent */
-  --accent: #f5f3f0;
-  --accent-hover: #e8e6e1;
-  --accent-active: #ccc9c3;
-  --on-accent: #161514;
-  --accent-muted: #262523;
-  --accent-muted-hover: #37352f;
+  --accent: #f3f3f2;
+  --accent-hover: #e6e6e4;
+  --accent-active: #c9c9c7;
+  --on-accent: #161616;
+  --accent-muted: #252525;
+  --accent-muted-hover: #363635;
 
   /* Semantic colors — text (readable on their muted bg in both modes) */
   --success-text: #4ade80;
@@ -65,21 +65,21 @@
   --info-text: #7dd3fc;
 
   /* Semantic muted backgrounds */
-  --success-muted: #0f2a1a;
-  --error-muted: #2a0f0f;
-  --warning-muted: #2a1f0a;
-  --info-muted: #0f1a2a;
+  --success-muted: #0e2819;
+  --error-muted: #280f0f;
+  --warning-muted: #281e0b;
+  --info-muted: #0f192a;
 
   /* Permission (orange) */
   --permission-text: #fb923c;
-  --permission-muted: #2a1a0a;
+  --permission-muted: #28190b;
   --permission-dot: #fb923c;
 
   /* Priority muted backgrounds */
-  --priority-low-muted: #1a1918;
-  --priority-medium-muted: #2a1f0a;
-  --priority-high-muted: #2a1a0a;
-  --priority-urgent-muted: #2a0f0f;
+  --priority-low-muted: #191919;
+  --priority-medium-muted: #281e0b;
+  --priority-high-muted: #28190b;
+  --priority-urgent-muted: #280f0f;
 
   /* Terminal */
   --terminal-bg: #030712;
@@ -97,29 +97,29 @@
 @media (prefers-color-scheme: light) {
   :root:not(.dark) {
     /* Surfaces */
-    --surface: #f7f6f3;
+    --surface: #f5f5f4;
     --surface-raised: #ffffff;
     --surface-overlay: #ffffff;
-    --surface-inset: #e8e6e1;
-    --surface-hover: #e8e6e1;
-    --surface-active: #ccc9c3;
+    --surface-inset: #e6e6e4;
+    --surface-hover: #e6e6e4;
+    --surface-active: #c9c9c7;
 
     /* Foreground */
-    --fg: #0e0d0c;
-    --fg-muted: #504d47;
-    --fg-faint: #908d85;
+    --fg: #0e0e0e;
+    --fg-muted: #4f4f4d;
+    --fg-faint: #8d8d8b;
 
     /* Borders */
-    --edge: #ccc9c3;
-    --edge-subtle: #e8e6e1;
+    --edge: #c9c9c7;
+    --edge-subtle: #e6e6e4;
 
     /* Accent */
-    --accent: #161514;
-    --accent-hover: #262523;
-    --accent-active: #37352f;
-    --on-accent: #f7f6f3;
-    --accent-muted: #e8e6e1;
-    --accent-muted-hover: #ccc9c3;
+    --accent: #161616;
+    --accent-hover: #252525;
+    --accent-active: #363635;
+    --on-accent: #f5f5f4;
+    --accent-muted: #e6e6e4;
+    --accent-muted-hover: #c9c9c7;
 
     /* Semantic colors — darker text for light backgrounds */
     --success-text: #15803d;
@@ -139,16 +139,16 @@
     --permission-dot: #ea580c;
 
     /* Priority muted backgrounds */
-    --priority-low-muted: #e8e6e1;
+    --priority-low-muted: #e6e6e4;
     --priority-medium-muted: #fef3c7;
     --priority-high-muted: #ffedd5;
     --priority-urgent-muted: #fee2e2;
 
     /* Terminal */
-    --terminal-bg: #f7f6f3;
-    --terminal-fg: #161514;
-    --terminal-cursor: #161514;
-    --terminal-selection: #ccc9c3;
+    --terminal-bg: #f5f5f4;
+    --terminal-fg: #161616;
+    --terminal-cursor: #161616;
+    --terminal-selection: #c9c9c7;
   }
 }
 
@@ -156,29 +156,29 @@
  * KEEP IN SYNC: duplicates the light values from the media query above. */
 :root.light {
   /* Surfaces */
-  --surface: #f7f6f3;
+  --surface: #f5f5f4;
   --surface-raised: #ffffff;
   --surface-overlay: #ffffff;
-  --surface-inset: #e8e6e1;
-  --surface-hover: #e8e6e1;
-  --surface-active: #ccc9c3;
+  --surface-inset: #e6e6e4;
+  --surface-hover: #e6e6e4;
+  --surface-active: #c9c9c7;
 
   /* Foreground */
-  --fg: #0e0d0c;
-  --fg-muted: #504d47;
-  --fg-faint: #908d85;
+  --fg: #0e0e0e;
+  --fg-muted: #4f4f4d;
+  --fg-faint: #8d8d8b;
 
   /* Borders */
-  --edge: #ccc9c3;
-  --edge-subtle: #e8e6e1;
+  --edge: #c9c9c7;
+  --edge-subtle: #e6e6e4;
 
   /* Accent */
-  --accent: #161514;
-  --accent-hover: #262523;
-  --accent-active: #37352f;
-  --on-accent: #f7f6f3;
-  --accent-muted: #e8e6e1;
-  --accent-muted-hover: #ccc9c3;
+  --accent: #161616;
+  --accent-hover: #252525;
+  --accent-active: #363635;
+  --on-accent: #f5f5f4;
+  --accent-muted: #e6e6e4;
+  --accent-muted-hover: #c9c9c7;
 
   /* Semantic colors — darker text for light backgrounds */
   --success-text: #15803d;
@@ -198,23 +198,23 @@
   --permission-dot: #ea580c;
 
   /* Priority muted backgrounds */
-  --priority-low-muted: #e8e6e1;
+  --priority-low-muted: #e6e6e4;
   --priority-medium-muted: #fef3c7;
   --priority-high-muted: #ffedd5;
   --priority-urgent-muted: #fee2e2;
 
   /* Terminal */
-  --terminal-bg: #f7f6f3;
-  --terminal-fg: #161514;
-  --terminal-cursor: #161514;
-  --terminal-selection: #ccc9c3;
+  --terminal-bg: #f5f5f4;
+  --terminal-fg: #161616;
+  --terminal-cursor: #161616;
+  --terminal-selection: #c9c9c7;
 }
 
 /* -------------------------------------------------------------------
  * Theme Overrides
  *
  * Replaces Tailwind defaults for font, radius, and the gray palette.
- * Grays have a subtle warm undertone throughout.
+ * Grays are near-true neutral with minimal undertone.
  * ------------------------------------------------------------------- */
 @theme {
   /* Font Family */
@@ -237,23 +237,23 @@
   --radius-full: 9999px;
 
   /* -----------------------------------------------------------
-   * Warm Gray Palette
+   * Neutral Gray Palette
    *
-   * Replaces Tailwind's cool-tinted grays with a warm neutral
-   * scale. Every existing bg-gray-*, text-gray-*, border-gray-*
-   * class automatically picks up these values.
+   * Replaces Tailwind's cool-tinted grays with a near-true
+   * neutral scale. Every existing bg-gray-*, text-gray-*,
+   * border-gray-* class automatically picks up these values.
    * ----------------------------------------------------------- */
-  --color-gray-50: #f7f6f3;
-  --color-gray-100: #e8e6e1;
-  --color-gray-200: #ccc9c3;
-  --color-gray-300: #aba8a1;
-  --color-gray-400: #908d85;
-  --color-gray-500: #6e6b64;
-  --color-gray-600: #504d47;
-  --color-gray-700: #37352f;
-  --color-gray-800: #262523;
-  --color-gray-900: #161514;
-  --color-gray-950: #0e0d0c;
+  --color-gray-50: #f5f5f4;
+  --color-gray-100: #e6e6e4;
+  --color-gray-200: #c9c9c7;
+  --color-gray-300: #a9a9a7;
+  --color-gray-400: #8d8d8b;
+  --color-gray-500: #6c6c6a;
+  --color-gray-600: #4f4f4d;
+  --color-gray-700: #363635;
+  --color-gray-800: #252525;
+  --color-gray-900: #161616;
+  --color-gray-950: #0e0e0e;
 
   /* -----------------------------------------------------------
    * Accent — Monochromatic
@@ -321,7 +321,7 @@
    *   High   → orange (elevated urgency)
    *   Urgent → red-orange (immediate action)
    * ----------------------------------------------------------- */
-  --color-priority-low: #aba8a1;
+  --color-priority-low: #a9a9a7;
   --color-priority-low-muted: var(--priority-low-muted);
   --color-priority-medium: #fbbf24;
   --color-priority-medium-muted: var(--priority-medium-muted);
