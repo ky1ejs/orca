@@ -5,23 +5,29 @@ Orca is a work management tool for orchestrating AI agents (starting with Claude
 ## Workflow
 
 ### Worktrees
+
 You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
 ### Run simplifier
+
 When you've finished a coding pass, use the `/simplify` skill to refactor and simplify your code. This will help keep the codebase clean and maintainable.
 
 ### Commands
+
 - Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
 - Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down.
 - Avoid using `git -C` which also leads to permissions requests. Always `cd` into the correct directory first, then run git commands.
 
 ### Keep documentation up to date
+
 When making changes, always check for documentation that may need updating (e.g., README files, CLAUDE.md, inline docs, code comments). Update any documentation that is affected by your changes.
 
 ### End with a PR
+
 When you've verified that all criteria of the plan have been completed and all tests are passing, create a pull request and share the link so the developer can review it.
 
 ### Validation
+
 Run the validation/testing steps as per the instructions in the relevant CLAUDE.md files to ensure your changes work as expected.
 
 ## Architecture

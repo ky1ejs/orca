@@ -1,8 +1,18 @@
 import { Tray, BrowserWindow, nativeImage } from 'electron';
-import { isActiveSessionStatus, isNeedsAttentionStatus } from '../shared/session-status.js';
+import { isActiveSessionStatus, SessionStatus } from '../shared/session-status.js';
 
 const DEBOUNCE_MS = 100;
 const IDLE_TIMEOUT_MS = 20_000;
+
+/** Tray-specific attention check: broader than the shared isNeedsAttentionStatus (dock badge). */
+const TRAY_ATTENTION_STATUSES: readonly string[] = [
+  SessionStatus.WaitingForInput,
+  SessionStatus.AwaitingPermission,
+];
+
+function isTrayAttentionStatus(status: string): boolean {
+  return TRAY_ATTENTION_STATUSES.includes(status);
+}
 
 interface TrackedSession {
   status: string;
@@ -116,7 +126,7 @@ export class TrayManager {
     let attention = 0;
 
     for (const session of this.sessions.values()) {
-      if (isNeedsAttentionStatus(session.status)) {
+      if (isTrayAttentionStatus(session.status)) {
         attention++;
       } else if (session.idle) {
         idle++;
