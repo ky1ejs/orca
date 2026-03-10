@@ -12,7 +12,7 @@ import { labelResolvers } from './label.js';
 import { DateTimeScalar } from './scalars.js';
 import { taskResolvers } from './task.js';
 import { workspaceResolvers } from './workspace.js';
-import { pullRequestFieldResolvers } from './pull-request.js';
+import { pullRequestFieldResolvers, pullRequestMutationResolvers } from './pull-request.js';
 import { workspaceSettingsResolvers } from './workspace-settings.js';
 import { githubInstallationResolvers } from './github-installation.js';
 
@@ -43,6 +43,7 @@ const resolvers: Resolvers = {
     ...membershipResolvers.Mutation,
     ...workspaceSettingsResolvers.Mutation,
     ...githubInstallationResolvers.Mutation,
+    ...pullRequestMutationResolvers,
   },
   Subscription: {
     ...initiativeResolvers.Subscription,

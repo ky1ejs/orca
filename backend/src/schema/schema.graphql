@@ -244,6 +244,11 @@ input UpdateWorkspaceSettingsInput {
   autoInReviewOnPrOpen: Boolean
 }
 
+input LinkPullRequestInput {
+  taskId: ID!
+  url: String!
+}
+
 input AddMemberInput {
   workspaceId: ID!
   email: String!
@@ -310,6 +315,8 @@ type Mutation {
   createLabel(input: CreateLabelInput!): Label!
   updateLabel(id: ID!, input: UpdateLabelInput!): Label!
   deleteLabel(id: ID!): Boolean!
+  linkPullRequest(input: LinkPullRequestInput!): PullRequest!
+  unlinkPullRequest(id: ID!): Boolean!
 }
 
 type Subscription {

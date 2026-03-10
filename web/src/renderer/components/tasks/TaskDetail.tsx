@@ -54,7 +54,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 ];
 
 export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProps) {
-  const { data, fetching, error } = useTask(taskId);
+  const { data, fetching, error, refetch } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { archiveTask } = useArchiveTask();
   const { goToParent } = useNavigation();
@@ -582,7 +582,11 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
               </div>
             )}
 
-            <PullRequestList pullRequests={task.pullRequests ?? []} />
+            <PullRequestList
+              pullRequests={task.pullRequests ?? []}
+              taskId={taskId}
+              onMutate={() => refetch({ requestPolicy: 'network-only' })}
+            />
 
             {task.description && (
               <div>

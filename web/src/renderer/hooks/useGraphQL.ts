@@ -35,11 +35,14 @@ import {
   CompleteGitHubInstallationDocument,
   RemoveGitHubInstallationDocument,
   UpdateWorkspaceSettingsDocument,
+  LinkPullRequestDocument,
+  UnlinkPullRequestDocument,
   InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
+  LinkPullRequestInput,
   UpdateWorkspaceSettingsInput,
   CreateWorkspaceInput,
   UpdateWorkspaceInput,
@@ -341,6 +344,21 @@ export function useUpdateWorkspaceSettings() {
     [executeMutation],
   );
   return { ...result, updateWorkspaceSettings };
+}
+
+export function useLinkPullRequest() {
+  const [result, executeMutation] = useMutation(LinkPullRequestDocument);
+  const linkPullRequest = useCallback(
+    (input: LinkPullRequestInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, linkPullRequest };
+}
+
+export function useUnlinkPullRequest() {
+  const [result, executeMutation] = useMutation(UnlinkPullRequestDocument);
+  const unlinkPullRequest = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, unlinkPullRequest };
 }
 
 // Subscription hooks — Graphcache handles cache updates automatically

@@ -52,10 +52,8 @@ export async function getInstallationDetails(
   return response.json();
 }
 
-export async function getInstallationRepositories(installationId: number): Promise<string[]> {
+export async function getInstallationAccessToken(installationId: number): Promise<string> {
   const jwt = await createAppJwt();
-
-  // Get installation access token
   const tokenResponse = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
@@ -69,8 +67,12 @@ export async function getInstallationRepositories(installationId: number): Promi
   }
 
   const { token } = (await tokenResponse.json()) as { token: string };
+  return token;
+}
 
-  // Get repositories
+export async function getInstallationRepositories(installationId: number): Promise<string[]> {
+  const token = await getInstallationAccessToken(installationId);
+
   const reposResponse = await fetch('https://api.github.com/installation/repositories', {
     headers: githubHeaders(token),
   });
@@ -84,4 +86,43 @@ export async function getInstallationRepositories(installationId: number): Promi
   };
 
   return data.repositories.map((r) => r.full_name);
+}
+
+interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  html_url: string;
+  state: 'open' | 'closed';
+  draft: boolean;
+  merged: boolean;
+  head: { ref: string };
+  user: { login: string };
+}
+
+export async function fetchPullRequest(
+  owner: string,
+  repo: string,
+  number: number,
+  token?: string,
+): Promise<GitHubPullRequest> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${number}`;
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Pull request not found');
+    }
+    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
 }
