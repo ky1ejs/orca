@@ -6,6 +6,7 @@ import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
 import { appendOutput, replayOutput, clearOutput, getOutputSize } from './output-buffer.js';
+import { processKittyKeyboard } from './kitty-keyboard.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -47,12 +48,14 @@ export class DaemonPtyManager {
     shell.onData((data: string) => {
       if (this.disposed) return;
       this.lastDataAt.set(sessionId, Date.now());
+      const { output, response } = processKittyKeyboard(data);
+      if (response) shell.write(response);
       try {
-        appendOutput(sessionId, data);
+        appendOutput(sessionId, output);
       } catch {
         // DB may be closed during shutdown
       }
-      this.broadcast('pty.data', { sessionId, data });
+      this.broadcast('pty.data', { sessionId, data: output });
     });
 
     shell.onExit(({ exitCode }: { exitCode: number }) => {
