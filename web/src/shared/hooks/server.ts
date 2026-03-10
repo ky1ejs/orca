@@ -111,11 +111,13 @@ export class HookServer extends EventEmitter<HookServerEvents> {
         typeof body !== 'object' ||
         body === null ||
         !('hook_event_name' in body) ||
+        // eslint-disable-next-line no-restricted-syntax -- narrowing untyped JSON body
         typeof (body as Record<string, unknown>).hook_event_name !== 'string'
       ) {
         return;
       }
 
+      // eslint-disable-next-line no-restricted-syntax -- narrowing untyped JSON body
       const eventName = (body as Record<string, unknown>).hook_event_name as string;
       if (!VALID_EVENT_NAMES.has(eventName as HookEventName)) {
         return;

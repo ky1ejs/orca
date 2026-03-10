@@ -31,6 +31,15 @@ export default [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'TSTypeReference[typeName.name="Record"] > TSTypeParameterInstantiation > TSUnknownKeyword',
+          message:
+            'Avoid Record<string, unknown>. Use a concrete type (e.g., Prisma input types, InferInsertModel, or a specific interface).',
+        },
+      ],
     },
   },
   {
@@ -56,11 +65,26 @@ export default [
       ],
       'react/react-in-jsx-scope': 'off',
       ...reactHooks.configs.recommended.rules,
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'TSTypeReference[typeName.name="Record"] > TSTypeParameterInstantiation > TSUnknownKeyword',
+          message:
+            'Avoid Record<string, unknown>. Use a concrete type (e.g., Prisma input types, InferInsertModel, or a specific interface).',
+        },
+      ],
     },
     settings: {
       react: {
         version: 'detect',
       },
+    },
+  },
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 ];
