@@ -24,12 +24,15 @@ async function createAppJwt(): Promise<string> {
     .sign(key);
 }
 
-function githubHeaders(token: string): Record<string, string> {
-  return {
-    Authorization: `Bearer ${token}`,
+function githubHeaders(token?: string): Record<string, string> {
+  const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
   };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 interface GitHubInstallationDetails {
@@ -107,15 +110,7 @@ export async function fetchPullRequest(
   token?: string,
 ): Promise<GitHubPullRequest> {
   const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${number}`;
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, { headers: githubHeaders(token) });
 
   if (!response.ok) {
     if (response.status === 404) {

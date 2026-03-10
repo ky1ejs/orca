@@ -34,6 +34,12 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
   const { linkPullRequest, fetching: linking } = useLinkPullRequest();
   const { unlinkPullRequest, fetching: unlinking } = useUnlinkPullRequest();
 
+  const handleCancel = () => {
+    setShowForm(false);
+    setUrl('');
+    setLinkError(null);
+  };
+
   const handleLink = async () => {
     if (!url.trim()) return;
     setLinkError(null);
@@ -42,13 +48,16 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
       setLinkError(result.error.graphQLErrors[0]?.message ?? result.error.message);
       return;
     }
-    setUrl('');
-    setShowForm(false);
+    handleCancel();
     onMutate?.();
   };
 
   const handleUnlink = async (id: string) => {
-    await unlinkPullRequest(id);
+    const result = await unlinkPullRequest(id);
+    if (result.error) {
+      setLinkError(result.error.graphQLErrors[0]?.message ?? result.error.message);
+      return;
+    }
     onMutate?.();
   };
 
@@ -111,11 +120,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLink();
-                if (e.key === 'Escape') {
-                  setShowForm(false);
-                  setUrl('');
-                  setLinkError(null);
-                }
+                if (e.key === 'Escape') handleCancel();
               }}
               placeholder="https://github.com/owner/repo/pull/123"
               className="flex-1 px-3 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm placeholder-fg-faint focus:outline-none focus:border-accent"
@@ -130,11 +135,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
               Link
             </button>
             <button
-              onClick={() => {
-                setShowForm(false);
-                setUrl('');
-                setLinkError(null);
-              }}
+              onClick={handleCancel}
               className="px-3 py-1.5 bg-surface-hover hover:bg-surface-overlay text-fg text-label-md rounded-md transition-colors"
             >
               Cancel

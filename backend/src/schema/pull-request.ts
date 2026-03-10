@@ -60,32 +60,22 @@ export const pullRequestMutationResolvers = {
         ? PullRequestStatus.CLOSED
         : PullRequestStatus.OPEN;
 
+    const prData = {
+      title: pr.title,
+      url: pr.html_url,
+      status,
+      repository: `${owner}/${repo}`,
+      headBranch: pr.head.ref,
+      author: pr.user.login,
+      draft: pr.draft,
+      taskId,
+      workspaceId: task.workspaceId,
+    };
+
     return context.prisma.pullRequest.upsert({
       where: { githubId: pr.id },
-      create: {
-        githubId: pr.id,
-        number: pr.number,
-        title: pr.title,
-        url: pr.html_url,
-        status,
-        repository: `${owner}/${repo}`,
-        headBranch: pr.head.ref,
-        author: pr.user.login,
-        draft: pr.draft,
-        taskId,
-        workspaceId: task.workspaceId,
-      },
-      update: {
-        title: pr.title,
-        url: pr.html_url,
-        status,
-        repository: `${owner}/${repo}`,
-        headBranch: pr.head.ref,
-        author: pr.user.login,
-        draft: pr.draft,
-        taskId,
-        workspaceId: task.workspaceId,
-      },
+      create: { githubId: pr.id, number: pr.number, ...prData },
+      update: prData,
     });
   },
   unlinkPullRequest: async (_parent, args, context) => {
