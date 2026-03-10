@@ -92,6 +92,7 @@ export class DaemonStatusManager {
     workingDirectory: string,
     options?: AgentLaunchOptions,
     metadata?: TaskMetadata,
+    colorScheme?: 'light' | 'dark',
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
@@ -117,6 +118,12 @@ export class DaemonStatusManager {
       }
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
+      // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
+      if (colorScheme === 'light') {
+        env.COLORFGBG = '0;15'; // dark fg on light bg
+      } else {
+        env.COLORFGBG = '15;0'; // light fg on dark bg
+      }
       if (metadata) {
         env.ORCA_TASK_ID = metadata.displayId;
         env.ORCA_TASK_UUID = taskId;
@@ -183,11 +190,12 @@ export class DaemonStatusManager {
     workingDirectory: string,
     options?: AgentLaunchOptions,
     metadata?: TaskMetadata,
+    colorScheme?: 'light' | 'dark',
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
-    return this.launch(taskId, workingDirectory, options, metadata);
+    return this.launch(taskId, workingDirectory, options, metadata, colorScheme);
   }
 
   getStatus(sessionId: string): string | null {

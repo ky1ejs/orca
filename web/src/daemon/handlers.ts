@@ -125,6 +125,7 @@ export function createHandler(deps: HandlerDeps) {
           p.workingDirectory,
           p.options,
           p.metadata,
+          p.colorScheme,
         );
         if (result.success) {
           // Auto-subscribe the caller
@@ -147,6 +148,7 @@ export function createHandler(deps: HandlerDeps) {
           p.workingDirectory,
           p.options,
           p.metadata,
+          p.colorScheme,
         );
         if (result.success) {
           server.subscribeClient(client.id, result.sessionId);
