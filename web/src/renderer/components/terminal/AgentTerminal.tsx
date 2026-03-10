@@ -7,11 +7,19 @@ import '@xterm/xterm/css/xterm.css';
 
 function readTerminalTheme() {
   const s = getComputedStyle(document.documentElement);
+  const v = (prop: string) => s.getPropertyValue(prop).trim();
   return {
-    background: s.getPropertyValue('--color-terminal-bg').trim() || '#0e0d0c',
-    foreground: s.getPropertyValue('--color-terminal-fg').trim() || '#ccc9c3',
-    cursor: s.getPropertyValue('--color-terminal-cursor').trim() || '#ccc9c3',
-    selectionBackground: s.getPropertyValue('--color-terminal-selection').trim() || '#37352f',
+    background: v('--color-terminal-bg') || '#030712',
+    foreground: v('--color-terminal-fg') || '#e5e7eb',
+    cursor: v('--color-terminal-cursor') || '#e5e7eb',
+    selectionBackground: v('--color-terminal-selection') || '#374151',
+    // ANSI palette overrides — ensures "black" bg (used by Claude Code for
+    // user messages) and "bright black" (dim/muted text like the status line)
+    // adapt to the current color scheme instead of staying literal black/gray.
+    black: v('--color-terminal-ansi-black') || '#000000',
+    brightBlack: v('--color-terminal-ansi-bright-black') || '#6b7280',
+    white: v('--color-terminal-ansi-white') || '#e5e7eb',
+    brightWhite: v('--color-terminal-ansi-bright-white') || '#ffffff',
   };
 }
 
