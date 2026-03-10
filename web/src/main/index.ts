@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
@@ -68,6 +68,16 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Open links in the default browser instead of inside Electron
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault();
+    shell.openExternal(url);
+  });
 
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
