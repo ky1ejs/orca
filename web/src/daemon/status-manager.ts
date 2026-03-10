@@ -18,7 +18,6 @@ import {
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
 import { ensureOrcaSettings, removeOrcaSettings } from '../shared/hooks/settings.js';
-import { writeTaskContext, removeTaskContext } from '../shared/hooks/task-context.js';
 import { logger } from './logger.js';
 import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
@@ -117,15 +116,6 @@ export class DaemonStatusManager {
         }
       }
 
-      // Write task context file
-      if (metadata) {
-        try {
-          writeTaskContext(workingDirectory, metadata);
-        } catch (err) {
-          logger.warn(`Failed to write task context: ${err}`);
-        }
-      }
-
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       if (metadata) {
         env.ORCA_TASK_ID = metadata.displayId;
@@ -181,7 +171,6 @@ export class DaemonStatusManager {
     if (workingDirectory) {
       try {
         removeOrcaSettings(workingDirectory);
-        removeTaskContext(workingDirectory);
       } catch (err) {
         logger.warn(`Failed to clean up on stop: ${err}`);
       }
@@ -210,7 +199,6 @@ export class DaemonStatusManager {
     for (const [sessionId, monitor] of this.monitors) {
       try {
         removeOrcaSettings(monitor.workingDirectory);
-        removeTaskContext(monitor.workingDirectory);
       } catch (err) {
         logger.warn(`Failed to clean up on dispose: ${err}`);
       }
