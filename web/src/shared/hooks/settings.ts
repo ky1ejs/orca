@@ -59,6 +59,19 @@ function writeSettingsFile(workingDirectory: string, settings: SettingsFile): vo
   writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 }
 
+// ── Shared constants ────────────────────────────────────────────────
+
+const ORCA_ENV_VARS = [
+  'ORCA_SESSION_ID',
+  'ORCA_TASK_ID',
+  'ORCA_TASK_UUID',
+  'ORCA_TASK_TITLE',
+  'ORCA_PROJECT_NAME',
+  'ORCA_WORKSPACE_SLUG',
+  'ORCA_TASK_DESCRIPTION',
+  'ORCA_SERVER_URL',
+];
+
 // ── Hook helpers ────────────────────────────────────────────────────
 
 function buildHookEntry(port: number): HookEntry {
@@ -68,7 +81,7 @@ function buildHookEntry(port: number): HookEntry {
     headers: {
       'X-Orca-Session-Id': '$ORCA_SESSION_ID',
     },
-    allowedEnvVars: ['ORCA_SESSION_ID'],
+    allowedEnvVars: ORCA_ENV_VARS,
   };
 }
 
@@ -139,7 +152,7 @@ function applyMcpConfig(settings: SettingsFile, port: number): void {
     headers: {
       'X-Orca-Session-Id': '$ORCA_SESSION_ID',
     },
-    allowedEnvVars: ['ORCA_SESSION_ID'],
+    allowedEnvVars: ORCA_ENV_VARS,
   };
 }
 

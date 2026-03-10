@@ -62,7 +62,16 @@ describe('ensureHooks', () => {
       expect(entry.type).toBe('http');
       expect(entry.url).toBe('http://127.0.0.1:4242/orca-hooks');
       expect(entry.headers).toEqual({ 'X-Orca-Session-Id': '$ORCA_SESSION_ID' });
-      expect(entry.allowedEnvVars).toEqual(['ORCA_SESSION_ID']);
+      expect(entry.allowedEnvVars).toEqual([
+        'ORCA_SESSION_ID',
+        'ORCA_TASK_ID',
+        'ORCA_TASK_UUID',
+        'ORCA_TASK_TITLE',
+        'ORCA_PROJECT_NAME',
+        'ORCA_WORKSPACE_SLUG',
+        'ORCA_TASK_DESCRIPTION',
+        'ORCA_SERVER_URL',
+      ]);
     }
   });
 
@@ -352,7 +361,16 @@ describe('ensureMcpConfig', () => {
     expect(settings.mcpServers.orca).toEqual({
       url: 'http://127.0.0.1:4242/mcp',
       headers: { 'X-Orca-Session-Id': '$ORCA_SESSION_ID' },
-      allowedEnvVars: ['ORCA_SESSION_ID'],
+      allowedEnvVars: [
+        'ORCA_SESSION_ID',
+        'ORCA_TASK_ID',
+        'ORCA_TASK_UUID',
+        'ORCA_TASK_TITLE',
+        'ORCA_PROJECT_NAME',
+        'ORCA_WORKSPACE_SLUG',
+        'ORCA_TASK_DESCRIPTION',
+        'ORCA_SERVER_URL',
+      ],
     });
   });
 

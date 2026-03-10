@@ -179,6 +179,46 @@ describe('daemon integration', () => {
     expect(output).toContain('hello world');
   });
 
+  it('env vars are injected into PTY when spawned with env', async () => {
+    const session = createSession({ status: SessionStatus.Starting });
+
+    const dataChunks: string[] = [];
+    let exited = false;
+
+    client.subscribe('pty.data', (params) => {
+      const p = params as { sessionId: string; data: string };
+      if (p.sessionId === session.id) dataChunks.push(p.data);
+    });
+
+    client.subscribe('pty.exit', (params) => {
+      const p = params as { sessionId: string };
+      if (p.sessionId === session.id) exited = true;
+    });
+
+    await client.request(DAEMON_METHODS.PTY_SPAWN, {
+      sessionId: session.id,
+      command: '/usr/bin/env',
+      args: [],
+      cwd: tempDir,
+      env: {
+        ORCA_SESSION_ID: 'test-session-123',
+        ORCA_TASK_ID: 'TASK-42',
+        ORCA_TASK_UUID: 'uuid-abc',
+        ORCA_TASK_TITLE: 'Test Task',
+      },
+    });
+
+    await waitFor(() => exited, 5000);
+
+    const output = dataChunks.join('');
+    expect(output).toContain('ORCA_SESSION_ID=test-session-123');
+    expect(output).toContain('ORCA_TASK_ID=TASK-42');
+    expect(output).toContain('ORCA_TASK_UUID=uuid-abc');
+    expect(output).toContain('ORCA_TASK_TITLE=Test Task');
+    // ELECTRON_RUN_AS_NODE should be filtered out as its own env var
+    expect(output).not.toMatch(/^ELECTRON_RUN_AS_NODE=/m);
+  });
+
   it('subscription filtering — only subscribed client receives data', async () => {
     const session = createSession({ status: SessionStatus.Starting });
 

@@ -190,7 +190,7 @@ import { homedir } from 'node:os';
  * A mismatch forces a daemon restart even if sessions are active.
  * Non-breaking changes (new optional fields, new methods) don't need a bump.
  */
-export const DAEMON_PROTOCOL_VERSION = 1;
+export const DAEMON_PROTOCOL_VERSION = 2;
 
 export const ORCA_DIR = join(homedir(), '.orca');
 export const DAEMON_SOCKET_PATH = join(ORCA_DIR, 'daemon.sock');
