@@ -1,5 +1,5 @@
 import { GraphQLError } from 'graphql';
-import type { Project } from '@prisma/client';
+import type { Project, Prisma } from '@prisma/client';
 import type {
   ProjectResolvers,
   QueryResolvers,
@@ -66,7 +66,7 @@ export const projectResolvers = {
         args.id,
         context.userId,
       );
-      const data: Record<string, unknown> = {};
+      const data: Prisma.ProjectUncheckedUpdateInput = {};
       if (args.input.name != null) data.name = args.input.name;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.defaultDirectory !== undefined)

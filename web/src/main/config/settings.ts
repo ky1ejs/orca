@@ -2,6 +2,7 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
+// eslint-disable-next-line no-restricted-syntax -- settings store is intentionally schemaless
 type Settings = Record<string, unknown>;
 
 let settingsPath: string | null = null;

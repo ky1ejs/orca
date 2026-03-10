@@ -37,7 +37,9 @@ async function graphqlRequest(
   backendUrl: string,
   token: string,
   query: string,
+  // eslint-disable-next-line no-restricted-syntax -- GraphQL variables are untyped at this boundary
   variables: Record<string, unknown>,
+  // eslint-disable-next-line no-restricted-syntax -- raw GraphQL JSON response
 ): Promise<{ data?: Record<string, unknown>; errors?: unknown[] }> {
   const res = await fetch(`${backendUrl}/graphql`, {
     method: 'POST',
@@ -47,6 +49,7 @@ async function graphqlRequest(
     },
     body: JSON.stringify({ query, variables }),
   });
+  // eslint-disable-next-line no-restricted-syntax -- raw GraphQL JSON response
   return (await res.json()) as { data?: Record<string, unknown>; errors?: unknown[] };
 }
 

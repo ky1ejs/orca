@@ -97,6 +97,7 @@ async function main(): Promise<void> {
   let idleManager: IdleManager;
 
   const broadcast: BroadcastFn = (event, params) => {
+    // eslint-disable-next-line no-restricted-syntax -- daemon protocol params are untyped at this boundary
     const p = params as Record<string, unknown>;
     const sessionId = (p?.sessionId as string) ?? null;
 

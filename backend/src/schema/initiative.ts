@@ -1,4 +1,4 @@
-import type { Initiative } from '@prisma/client';
+import type { Initiative, Prisma } from '@prisma/client';
 import type {
   InitiativeResolvers,
   QueryResolvers,
@@ -30,7 +30,7 @@ export const initiativeResolvers = {
     },
     updateInitiative: async (_parent, args, context) => {
       await requireInitiativeAccess(context.prisma, args.id, context.userId);
-      const data: Record<string, unknown> = {};
+      const data: Prisma.InitiativeUncheckedUpdateInput = {};
       if (args.input.name != null) data.name = args.input.name;
       if (args.input.description !== undefined) data.description = args.input.description;
       const initiative = await context.prisma.initiative.update({

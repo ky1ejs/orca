@@ -1,9 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
+import type { pubsub } from './pubsub.js';
 
-export interface PubSubLike {
-  publish(topic: string, payload: unknown): void;
-  subscribe(topic: string): AsyncIterable<unknown>;
-}
+export type PubSubLike = typeof pubsub;
 
 export interface ServerContext {
   prisma: PrismaClient;

@@ -23,6 +23,21 @@ export default [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'TSTypeReference[typeName.name="Record"] > TSTypeParameterInstantiation > TSUnknownKeyword',
+          message:
+            'Avoid Record<string, unknown>. Use a concrete type (e.g., Prisma.XxxUncheckedUpdateInput, Prisma.XxxWhereInput).',
+        },
+      ],
+    },
+  },
+  {
+    files: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 ];

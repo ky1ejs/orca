@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import type { Prisma } from '@prisma/client';
 import type { QueryResolvers, MutationResolvers } from '../__generated__/graphql.js';
 import { requireWorkspaceAccess } from '../auth/workspace.js';
 
@@ -56,7 +57,7 @@ export const labelResolvers = {
 
       await requireWorkspaceAccess(context.prisma, label.workspaceId, context.userId);
 
-      const data: Record<string, unknown> = {};
+      const data: Prisma.LabelUncheckedUpdateInput = {};
       if (args.input.name != null) {
         const name = args.input.name.trim();
         if (!name) {

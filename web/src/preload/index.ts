@@ -52,6 +52,7 @@ export interface OrcaAPI {
   settings: {
     get: (key: string) => Promise<unknown>;
     set: (key: string, value: unknown) => Promise<void>;
+    // eslint-disable-next-line no-restricted-syntax -- settings store is intentionally schemaless
     getAll: () => Promise<Record<string, unknown>>;
   };
   fonts: {

@@ -1,5 +1,5 @@
 import { eq, desc, sql, and, inArray, isNotNull } from 'drizzle-orm';
-import type { InferSelectModel } from 'drizzle-orm';
+import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { getDb } from './client.js';
 import { terminalSession } from './schema.js';
@@ -52,7 +52,7 @@ export function createSession(input: CreateSessionInput): TerminalSession {
 
 export function updateSession(id: string, input: UpdateSessionInput): TerminalSession | undefined {
   const db = getDb();
-  const updates: Partial<Record<string, unknown>> = {};
+  const updates: Partial<InferInsertModel<typeof terminalSession>> = {};
 
   if (input.pid !== undefined) updates.pid = input.pid;
   if (input.status !== undefined) updates.status = input.status;
