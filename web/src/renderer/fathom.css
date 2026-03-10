@@ -160,7 +160,7 @@
        backgrounds blend with the light terminal surface instead of showing
        as literal black. */
     --terminal-ansi-black: #f5f5f4;
-    --terminal-ansi-bright-black: #9ca3af;
+    --terminal-ansi-bright-black: #6c6c6a;
     --terminal-ansi-white: #161616;
     --terminal-ansi-bright-white: #000000;
   }
@@ -225,7 +225,7 @@
 
   /* Terminal ANSI palette overrides */
   --terminal-ansi-black: #f5f5f4;
-  --terminal-ansi-bright-black: #9ca3af;
+  --terminal-ansi-bright-black: #6c6c6a;
   --terminal-ansi-white: #161616;
   --terminal-ansi-bright-white: #000000;
 }
