@@ -33,6 +33,7 @@ jobs:
           docker run -d --name orca-api \
             --network host \
             -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+            -e DIRECT_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
             -e JWT_SECRET=ci-test-secret \
             orca-api-ci
 
