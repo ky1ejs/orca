@@ -141,7 +141,6 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
               Cancel
             </button>
           </div>
-          {linkError && <p className="text-error text-label-sm mt-1">{linkError}</p>}
         </div>
       ) : (
         <button
@@ -152,6 +151,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
           Link Pull Request
         </button>
       )}
+      {linkError && <p className="text-error text-label-sm mt-1">{linkError}</p>}
     </div>
   );
 }
