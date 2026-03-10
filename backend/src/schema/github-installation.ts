@@ -30,17 +30,26 @@ export const githubInstallationResolvers = {
         // Non-critical — repos can be fetched later
       }
 
-      const data = {
-        accountLogin: details.account.login,
-        accountType: details.account.type,
-        repositories,
-        workspaceId: args.workspaceId,
-      };
-
       return context.prisma.gitHubInstallation.upsert({
-        where: { installationId: args.installationId },
-        create: { installationId: args.installationId, ...data },
-        update: data,
+        where: {
+          installationId_workspaceId: {
+            installationId: args.installationId,
+            workspaceId: args.workspaceId,
+          },
+        },
+        create: {
+          installationId: args.installationId,
+          accountLogin: details.account.login,
+          accountType: details.account.type,
+          repositories,
+          observedRepositories: [],
+          workspaceId: args.workspaceId,
+        },
+        update: {
+          accountLogin: details.account.login,
+          accountType: details.account.type,
+          repositories,
+        },
       });
     },
     removeGitHubInstallation: async (_parent, args, context) => {
@@ -52,5 +61,34 @@ export const githubInstallationResolvers = {
 
       return true;
     },
-  } satisfies Pick<MutationResolvers, 'completeGitHubInstallation' | 'removeGitHubInstallation'>,
+    updateObservedRepositories: async (_parent, args, context) => {
+      await requireWorkspaceOwner(context.prisma, args.workspaceId, context.userId);
+
+      const installation = await context.prisma.gitHubInstallation.findFirst({
+        where: { workspaceId: args.workspaceId },
+      });
+
+      if (!installation) {
+        throw new GraphQLError('No GitHub installation found for this workspace', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+
+      const invalid = args.repositories.filter((r) => !installation.repositories.includes(r));
+      if (invalid.length > 0) {
+        throw new GraphQLError(
+          `Repositories not available in this installation: ${invalid.join(', ')}`,
+          { extensions: { code: 'BAD_USER_INPUT' } },
+        );
+      }
+
+      return context.prisma.gitHubInstallation.update({
+        where: { id: installation.id },
+        data: { observedRepositories: args.repositories },
+      });
+    },
+  } satisfies Pick<
+    MutationResolvers,
+    'completeGitHubInstallation' | 'removeGitHubInstallation' | 'updateObservedRepositories'
+  >,
 };

@@ -148,6 +148,9 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
             removeGitHubInstallation(_result, _args, cache) {
               invalidateAllWorkspaceQueries(cache);
             },
+            updateObservedRepositories(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
             updateWorkspaceSettings(_result, _args, cache) {
               invalidateAllWorkspaceQueries(cache);
             },

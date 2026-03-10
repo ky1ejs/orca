@@ -4,13 +4,21 @@ import {
   handlePullRequestClosed,
   handlePullRequestReopened,
   handleReviewSubmitted,
+  handleInstallationRepositoriesChanged,
+  getWorkspacesFromInstallation,
 } from './github-events.js';
 
 // Mock prisma
 function createMockPrisma(overrides: Record<string, unknown> = {}) {
   return {
     gitHubInstallation: {
-      findUnique: vi.fn().mockResolvedValue({ workspaceId: 'ws-1', workspace: { slug: 'orca' } }),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          workspaceId: 'ws-1',
+          observedRepositories: ['org/repo'],
+          workspace: { slug: 'orca' },
+        },
+      ]),
       update: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -67,6 +75,44 @@ function createPrPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe('getWorkspacesFromInstallation', () => {
+  it('returns workspaces that observe the repo', async () => {
+    const prisma = createMockPrisma();
+    const result = await getWorkspacesFromInstallation(prisma, 123, 'org/repo');
+    expect(result).toEqual([{ workspaceId: 'ws-1', slug: 'orca' }]);
+  });
+
+  it('filters out workspaces that do not observe the repo', async () => {
+    const prisma = createMockPrisma();
+    const result = await getWorkspacesFromInstallation(prisma, 123, 'org/other-repo');
+    expect(result).toEqual([]);
+  });
+
+  it('returns multiple workspaces when both observe the repo', async () => {
+    const prisma = createMockPrisma({
+      gitHubInstallation: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            workspaceId: 'ws-1',
+            observedRepositories: ['org/repo'],
+            workspace: { slug: 'orca' },
+          },
+          {
+            workspaceId: 'ws-2',
+            observedRepositories: ['org/repo', 'org/other'],
+            workspace: { slug: 'acme' },
+          },
+        ]),
+      },
+    });
+    const result = await getWorkspacesFromInstallation(prisma, 123, 'org/repo');
+    expect(result).toEqual([
+      { workspaceId: 'ws-1', slug: 'orca' },
+      { workspaceId: 'ws-2', slug: 'acme' },
+    ]);
+  });
+});
+
 describe('handlePullRequestOpenedOrEdited', () => {
   let prisma: ReturnType<typeof createMockPrisma>;
   let pubsub: ReturnType<typeof createMockPubsub>;
@@ -102,6 +148,28 @@ describe('handlePullRequestOpenedOrEdited', () => {
       prisma,
       pubsub,
     );
+    expect(prisma.pullRequest.upsert).not.toHaveBeenCalled();
+  });
+
+  it('skips when repo is not observed', async () => {
+    prisma = createMockPrisma({
+      gitHubInstallation: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            workspaceId: 'ws-1',
+            observedRepositories: ['org/other-repo'],
+            workspace: { slug: 'orca' },
+          },
+        ]),
+      },
+    });
+
+    await handlePullRequestOpenedOrEdited(
+      createPrPayload() as Parameters<typeof handlePullRequestOpenedOrEdited>[0],
+      prisma,
+      pubsub,
+    );
+
     expect(prisma.pullRequest.upsert).not.toHaveBeenCalled();
   });
 
@@ -244,5 +312,73 @@ describe('handleReviewSubmitted', () => {
     expect(prisma.pullRequest.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { reviewStatus: 'APPROVED' } }),
     );
+  });
+});
+
+describe('handleInstallationRepositoriesChanged', () => {
+  it('adds new repos to repositories list', async () => {
+    const installation = {
+      id: 'inst-1',
+      installationId: 123,
+      repositories: ['org/repo-a'],
+      observedRepositories: ['org/repo-a'],
+    };
+    const prisma = createMockPrisma({
+      gitHubInstallation: {
+        findMany: vi.fn().mockResolvedValue([installation]),
+        update: vi.fn(),
+      },
+    });
+
+    await handleInstallationRepositoriesChanged(
+      {
+        action: 'added',
+        installation: { id: 123 },
+        repositories_added: [{ full_name: 'org/repo-b' }],
+        repositories_removed: [],
+      },
+      prisma,
+    );
+
+    expect(prisma.gitHubInstallation.update).toHaveBeenCalledWith({
+      where: { id: 'inst-1' },
+      data: {
+        repositories: ['org/repo-a', 'org/repo-b'],
+        observedRepositories: ['org/repo-a'],
+      },
+    });
+  });
+
+  it('removes repos and prunes observed list', async () => {
+    const installation = {
+      id: 'inst-1',
+      installationId: 123,
+      repositories: ['org/repo-a', 'org/repo-b'],
+      observedRepositories: ['org/repo-a', 'org/repo-b'],
+    };
+    const prisma = createMockPrisma({
+      gitHubInstallation: {
+        findMany: vi.fn().mockResolvedValue([installation]),
+        update: vi.fn(),
+      },
+    });
+
+    await handleInstallationRepositoriesChanged(
+      {
+        action: 'removed',
+        installation: { id: 123 },
+        repositories_added: [],
+        repositories_removed: [{ full_name: 'org/repo-b' }],
+      },
+      prisma,
+    );
+
+    expect(prisma.gitHubInstallation.update).toHaveBeenCalledWith({
+      where: { id: 'inst-1' },
+      data: {
+        repositories: ['org/repo-a'],
+        observedRepositories: ['org/repo-a'],
+      },
+    });
   });
 });

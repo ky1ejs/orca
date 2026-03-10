@@ -34,6 +34,7 @@ import {
   GitHubAppInstallUrlDocument,
   CompleteGitHubInstallationDocument,
   RemoveGitHubInstallationDocument,
+  UpdateObservedRepositoriesDocument,
   UpdateWorkspaceSettingsDocument,
   LinkPullRequestDocument,
   UnlinkPullRequestDocument,
@@ -334,6 +335,15 @@ export function useRemoveGitHubInstallation() {
     [executeMutation],
   );
   return { ...result, removeGitHubInstallation };
+}
+
+export function useUpdateObservedRepositories() {
+  const [result, executeMutation] = useMutation(UpdateObservedRepositoriesDocument);
+  const updateObservedRepositories = useCallback(
+    (workspaceId: string, repositories: string[]) => executeMutation({ workspaceId, repositories }),
+    [executeMutation],
+  );
+  return { ...result, updateObservedRepositories };
 }
 
 export function useUpdateWorkspaceSettings() {
