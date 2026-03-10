@@ -92,6 +92,11 @@ export interface OrcaAPI {
     onProtocolUpdateRequired: (cb: (activeSessions: number) => void) => () => void;
     forceRestartDaemon: () => Promise<void>;
   };
+  github: {
+    onInstallationCallback: (
+      cb: (data: { installationId: number; workspaceId: string }) => void,
+    ) => () => void;
+  };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
     onUpdateError: (cb: (message: string) => void) => () => void;
@@ -211,6 +216,16 @@ const api: OrcaAPI = {
       };
     },
     forceRestartDaemon: () => ipcRenderer.invoke('daemon:force-restart'),
+  },
+  github: {
+    onInstallationCallback: (cb) => {
+      const listener = (_event: unknown, data: { installationId: number; workspaceId: string }) =>
+        cb(data);
+      ipcRenderer.on('github:installation-callback', listener);
+      return () => {
+        ipcRenderer.removeListener('github:installation-callback', listener);
+      };
+    },
   },
   updates: {
     onUpdateReady: (cb) => {

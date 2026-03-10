@@ -37,6 +37,29 @@ if (process.env.NODE_ENV === 'development') {
   app.setPath('userData', `${defaultUserData} Dev`);
 }
 
+// Register orca:// custom protocol for deep linking (e.g. GitHub OAuth callback)
+app.setAsDefaultProtocolClient('orca');
+
+// Handle orca:// URLs on macOS (app already running)
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'github' && parsed.pathname === '/callback') {
+      const installationId = parsed.searchParams.get('installation_id');
+      const workspaceId = parsed.searchParams.get('workspaceId');
+      if (installationId && workspaceId) {
+        sendToAllWindows(IPC_CHANNELS.GITHUB_INSTALLATION_CALLBACK, {
+          installationId: Number(installationId),
+          workspaceId,
+        });
+      }
+    }
+  } catch {
+    logger.warn(`Failed to parse deep link URL: ${url}`);
+  }
+});
+
 let mainWindow: BrowserWindow | null = null;
 let daemonClient: DaemonClient | null = null;
 let daemonConnector: DaemonConnector | null = null;

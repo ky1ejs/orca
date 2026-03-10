@@ -142,6 +142,15 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               cache.invalidate({ __typename: 'Label', id: args.id as string });
               invalidateAllWorkspaceQueries(cache);
             },
+            completeGitHubInstallation(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
+            removeGitHubInstallation(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
+            updateWorkspaceSettings(_result, _args, cache) {
+              invalidateAllWorkspaceQueries(cache);
+            },
             acceptInvitation(_result, _args, cache) {
               cache.invalidate('Query', 'workspaces');
               cache.invalidate('Query', 'pendingInvitations');

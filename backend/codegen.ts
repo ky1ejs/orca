@@ -17,6 +17,8 @@ const config: CodegenConfig = {
           Task: '@prisma/client#Task as TaskModel',
           Label: '@prisma/client#Label as LabelModel',
           PullRequest: '@prisma/client#PullRequest as PullRequestModel',
+          GitHubInstallation: '@prisma/client#GitHubInstallation as GitHubInstallationModel',
+          WorkspaceSettings: '@prisma/client#WorkspaceSettings as WorkspaceSettingsModel',
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
         },
