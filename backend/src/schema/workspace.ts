@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import type { Prisma } from '@prisma/client';
 import type {
   WorkspaceResolvers,
   QueryResolvers,
@@ -137,7 +138,7 @@ export const workspaceResolvers = {
     updateWorkspace: async (_parent, args, context) => {
       await requireWorkspaceOwner(context.prisma, args.id, context.userId);
 
-      const data: Record<string, unknown> = {};
+      const data: Prisma.WorkspaceUncheckedUpdateInput = {};
       if (args.input.name != null) data.name = args.input.name;
 
       if (args.input.slug != null) {
@@ -244,7 +245,7 @@ export const workspaceResolvers = {
       });
     },
     tasks: (parent, args, context) => {
-      const where: Record<string, unknown> = { workspaceId: parent.id, archivedAt: null };
+      const where: Prisma.TaskWhereInput = { workspaceId: parent.id, archivedAt: null };
       if (args.unassociatedOnly) {
         where.projectId = null;
       }

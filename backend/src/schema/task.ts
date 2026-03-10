@@ -1,5 +1,5 @@
 import { GraphQLError } from 'graphql';
-import type { Task } from '@prisma/client';
+import type { Task, Prisma } from '@prisma/client';
 import type {
   TaskResolvers,
   QueryResolvers,
@@ -98,7 +98,7 @@ export const taskResolvers = {
         args.id,
         context.userId,
       );
-      const data: Record<string, unknown> = {};
+      const data: Prisma.TaskUncheckedUpdateInput = {};
       if (args.input.title != null) data.title = args.input.title;
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
