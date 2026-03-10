@@ -6,7 +6,22 @@ Orca is a work management tool for orchestrating AI agents (starting with Claude
 
 ### Worktrees
 
-You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill. You must check if the ORCA_TASK_ID environment variable is set and if so you must put its value inside the branch name with a short summart of what the work is.
+You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
+
+### Task Context (Orca-managed sessions)
+
+When launched by Orca, the following environment variables are set:
+
+- `ORCA_TASK_ID` — Task display ID (e.g. `ORCA-42`)
+- `ORCA_TASK_TITLE` — Task title
+- `ORCA_PROJECT_NAME` — Project name (may be empty)
+- `ORCA_TASK_DESCRIPTION` — Task description (max 1000 chars, may be empty)
+
+When `ORCA_TASK_ID` is set, follow these conventions:
+
+- **Branch name**: `feat/$ORCA_TASK_ID-short-description` (e.g. `feat/ORCA-42-add-user-auth`)
+- **PR title**: `$ORCA_TASK_ID: Short description`
+- **Commit messages**: Reference `$ORCA_TASK_ID` where relevant
 
 ### Run simplifier
 
@@ -93,6 +108,6 @@ These features require Electron's main process and cannot run in a plain browser
 
 ## PR Workflow
 
-- Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`, `fix/pty-cleanup`)
+- Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`). When `ORCA_TASK_ID` is set, include it: `feat/ORCA-42-short-description`
 - All PRs target `main`
 - CI must pass (lint, format, knip, typecheck, test)
