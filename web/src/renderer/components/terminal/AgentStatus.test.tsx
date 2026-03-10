@@ -22,14 +22,13 @@ describe('AgentStatus', () => {
     expect(badge.className).toContain('bg-success-muted');
   });
 
-  it('renders "Waiting for Input" with yellow styling and pulse', () => {
+  it('renders "Idle" with muted styling and no pulse', () => {
     render(<AgentStatus status={SessionStatus.WaitingForInput} />);
     const badge = screen.getByTestId('agent-status-badge');
-    expect(badge).toHaveTextContent('Waiting for Input');
-    expect(badge.className).toContain('bg-warning-muted');
-    // Pulse is on the dot span inside the badge
+    expect(badge).toHaveTextContent('Idle');
+    expect(badge.className).toContain('bg-surface-hover');
     const dot = badge.querySelector('span');
-    expect(dot?.className).toContain('animate-pulse');
+    expect(dot?.className).not.toContain('animate-pulse');
   });
 
   it('renders "Exited" with gray styling', () => {

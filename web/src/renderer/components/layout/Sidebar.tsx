@@ -64,7 +64,6 @@ function SidebarTaskItem({
 function collapsedBadgeColor(statuses: string[]): string {
   const set = new Set(statuses);
   if (set.has(SessionStatus.AwaitingPermission)) return 'bg-permission-dot animate-pulse';
-  if (set.has(SessionStatus.WaitingForInput)) return 'bg-permission-dot animate-pulse';
   return 'bg-info-strong';
 }
 
