@@ -4,6 +4,14 @@ export interface AgentLaunchOptions {
   planMode?: boolean;
 }
 
+export interface TaskMetadata {
+  displayId: string;
+  title: string;
+  description: string | null;
+  projectName: string | null;
+  workspaceSlug: string;
+}
+
 export interface AgentLaunchResult {
   success: boolean;
   sessionId?: string;
@@ -44,6 +52,7 @@ export interface OrcaAPI {
   settings: {
     get: (key: string) => Promise<unknown>;
     set: (key: string, value: unknown) => Promise<void>;
+    // eslint-disable-next-line no-restricted-syntax -- settings store is intentionally schemaless
     getAll: () => Promise<Record<string, unknown>>;
   };
   fonts: {
@@ -62,6 +71,7 @@ export interface OrcaAPI {
       taskId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
     ) => Promise<AgentLaunchResult>;
     stop: (sessionId: string) => Promise<void>;
     restart: (
@@ -69,6 +79,7 @@ export interface OrcaAPI {
       sessionId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
+      metadata?: TaskMetadata,
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
@@ -81,6 +92,11 @@ export interface OrcaAPI {
     onDaemonDisconnected: (cb: () => void) => () => void;
     onProtocolUpdateRequired: (cb: (activeSessions: number) => void) => () => void;
     forceRestartDaemon: () => Promise<void>;
+  };
+  github: {
+    onInstallationCallback: (
+      cb: (data: { installationId: number; workspaceId: string }) => void,
+    ) => () => void;
   };
   updates: {
     onUpdateReady: (cb: (version: string) => void) => () => void;
@@ -141,11 +157,11 @@ const api: OrcaAPI = {
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
   },
   agent: {
-    launch: (taskId, workingDirectory, options) =>
-      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options),
+    launch: (taskId, workingDirectory, options, metadata) =>
+      ipcRenderer.invoke('agent:launch', taskId, workingDirectory, options, metadata),
     stop: (sessionId) => ipcRenderer.invoke('agent:stop', sessionId),
-    restart: (taskId, sessionId, workingDirectory, options) =>
-      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options),
+    restart: (taskId, sessionId, workingDirectory, options, metadata) =>
+      ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options, metadata),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
   lifecycle: {
@@ -201,6 +217,16 @@ const api: OrcaAPI = {
       };
     },
     forceRestartDaemon: () => ipcRenderer.invoke('daemon:force-restart'),
+  },
+  github: {
+    onInstallationCallback: (cb) => {
+      const listener = (_event: unknown, data: { installationId: number; workspaceId: string }) =>
+        cb(data);
+      ipcRenderer.on('github:installation-callback', listener);
+      return () => {
+        ipcRenderer.removeListener('github:installation-callback', listener);
+      };
+    },
   },
   updates: {
     onUpdateReady: (cb) => {

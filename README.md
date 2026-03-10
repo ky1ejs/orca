@@ -6,7 +6,7 @@
 
 ## What is Orca?
 
-Orca brings project management to agent orchestration into one tool.
+Orca brings project management and agent orchestration into one tool.
 
 ## Why is Orca?
 

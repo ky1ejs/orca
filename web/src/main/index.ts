@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/handlers.js';
 import { IPC_CHANNELS } from './ipc/channels.js';
@@ -21,6 +21,7 @@ import type {
 import { logger } from './logger.js';
 import { exportDiagnostics } from './diagnostics.js';
 import { DockBadgeManager } from './dock-badge.js';
+import { TrayManager } from './tray-manager.js';
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);
@@ -36,11 +37,36 @@ if (process.env.NODE_ENV === 'development') {
   app.setPath('userData', `${defaultUserData} Dev`);
 }
 
+// Register orca:// custom protocol for deep linking (e.g. GitHub OAuth callback)
+app.setAsDefaultProtocolClient('orca');
+
+// Handle orca:// URLs on macOS (app already running)
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'github' && parsed.pathname === '/callback') {
+      const installationId = parsed.searchParams.get('installation_id');
+      const workspaceId = parsed.searchParams.get('workspaceId');
+      if (installationId && workspaceId) {
+        sendToAllWindows(IPC_CHANNELS.GITHUB_INSTALLATION_CALLBACK, {
+          installationId: Number(installationId),
+          workspaceId,
+        });
+      }
+    }
+  } catch {
+    logger.warn(`Failed to parse deep link URL: ${url}`);
+  }
+});
+
 let mainWindow: BrowserWindow | null = null;
 let daemonClient: DaemonClient | null = null;
 let daemonConnector: DaemonConnector | null = null;
 let cleanupDaemonEvents: (() => void) | null = null;
 const dockBadge = new DockBadgeManager();
+const trayIconPath = path.join(__dirname, '../../resources/orcaTemplate.png');
+const trayManager = new TrayManager(trayIconPath, () => createWindow());
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -65,6 +91,16 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Open links in the default browser instead of inside Electron
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault();
+    shell.openExternal(url);
+  });
 
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
@@ -92,23 +128,29 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
 
   const unsub2 = client.subscribe(DAEMON_EVENTS.PTY_EXIT, (params) => {
     const { sessionId, exitCode } = params as PtyExitEvent;
+    const exitStatus = exitCode === 0 ? 'EXITED' : 'ERROR';
+    dockBadge.handleStatusChange(sessionId, exitStatus);
+    trayManager.handleStatusChange(sessionId, exitStatus);
     sendToAllWindows(`pty:exit:${sessionId}`, exitCode);
   });
 
   const unsub3 = client.subscribe(DAEMON_EVENTS.PID_SWEEP_SESSIONS_DIED, (params) => {
     const { sessionIds } = params as PidSweepSessionsDiedEvent;
     dockBadge.handleSessionsDied(sessionIds);
+    trayManager.handleSessionsDied(sessionIds);
     sendToAllWindows('pid-sweep:sessions-died', sessionIds);
   });
 
   const unsub4 = client.subscribe(DAEMON_EVENTS.SESSION_STATUS_CHANGED, (params) => {
     const { sessionId, status } = params as SessionStatusChangedEvent;
     dockBadge.handleStatusChange(sessionId, status);
+    trayManager.handleStatusChange(sessionId, status);
     sendToAllWindows('session:status-changed', { sessionId, status });
   });
 
   const unsub5 = client.subscribe(DAEMON_EVENTS.SESSION_ACTIVITY_CHANGED, (params) => {
     const { sessionId, active } = params as SessionActivityChangedEvent;
+    trayManager.handleActivityChange(sessionId, active);
     sendToAllWindows('session:activity-changed', { sessionId, active });
   });
 
@@ -145,6 +187,7 @@ async function resubscribeToActiveSessions(client: DaemonClient): Promise<void> 
       status: string;
     }>;
     dockBadge.initFromSessions(sessions);
+    trayManager.initFromSessions(sessions);
     const active = sessions.filter((s) => isActiveSessionStatus(s.status));
     await Promise.all(
       active.map((s) => client.request(DAEMON_METHODS.PTY_SUBSCRIBE, { sessionId: s.id })),
@@ -205,6 +248,8 @@ app.whenReady().then(async () => {
 
   daemonConnector.setOnDisconnect(() => {
     logger.info('Disconnected from PTY daemon');
+    dockBadge.clear();
+    trayManager.clear();
     sendToAllWindows('daemon:disconnected');
   });
 
@@ -259,6 +304,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   dockBadge.clear();
+  trayManager.clear();
   daemonConnector?.stopReconnection();
 
   if (isAutoUpdateRestart) {

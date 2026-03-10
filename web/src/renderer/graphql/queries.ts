@@ -28,11 +28,47 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
       name
       slug
       role
+      initiatives {
+        id
+        name
+        description
+        projects {
+          id
+          name
+          description
+          defaultDirectory
+          initiativeId
+          tasks {
+            id
+            displayId
+            title
+            status
+            priority
+            assignee {
+              id
+              name
+            }
+            labels {
+              id
+              name
+              color
+            }
+            pullRequestCount
+          }
+          archivedAt
+          createdAt
+          updatedAt
+        }
+        archivedAt
+        createdAt
+        updatedAt
+      }
       projects {
         id
         name
         description
         defaultDirectory
+        initiativeId
         tasks {
           id
           displayId
@@ -48,7 +84,9 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
             name
             color
           }
+          pullRequestCount
         }
+        archivedAt
         createdAt
         updatedAt
       }
@@ -67,6 +105,7 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
           name
           color
         }
+        pullRequestCount
       }
       createdAt
       updatedAt
@@ -126,6 +165,49 @@ export const PendingInvitationsQueryDocument = /* GraphQL */ `
   }
 `;
 
+export const InitiativeQueryDocument = /* GraphQL */ `
+  query Initiative($id: ID!) {
+    initiative(id: $id) {
+      id
+      name
+      description
+      workspaceId
+      projects {
+        id
+        name
+        description
+        defaultDirectory
+        initiativeId
+        tasks {
+          id
+          displayId
+          title
+          status
+          priority
+          assignee {
+            id
+            name
+          }
+          labels {
+            id
+            name
+            color
+          }
+          pullRequestCount
+          createdAt
+          updatedAt
+        }
+        archivedAt
+        createdAt
+        updatedAt
+      }
+      archivedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const ProjectQueryDocument = /* GraphQL */ `
   query Project($id: ID!) {
     project(id: $id) {
@@ -134,6 +216,11 @@ export const ProjectQueryDocument = /* GraphQL */ `
       description
       defaultDirectory
       workspaceId
+      initiativeId
+      initiative {
+        id
+        name
+      }
       tasks {
         id
         displayId
@@ -149,9 +236,11 @@ export const ProjectQueryDocument = /* GraphQL */ `
           name
           color
         }
+        pullRequestCount
         createdAt
         updatedAt
       }
+      archivedAt
       createdAt
       updatedAt
     }
@@ -183,9 +272,51 @@ export const TaskQueryDocument = /* GraphQL */ `
         name
         color
       }
+      pullRequests {
+        id
+        number
+        title
+        url
+        status
+        reviewStatus
+        repository
+        headBranch
+        author
+        draft
+        createdAt
+      }
+      archivedAt
       createdAt
       updatedAt
     }
+  }
+`;
+
+export const WorkspaceIntegrationsQueryDocument = /* GraphQL */ `
+  query WorkspaceIntegrations($slug: String!) {
+    workspace(slug: $slug) {
+      id
+      role
+      githubInstallation {
+        id
+        installationId
+        accountLogin
+        accountType
+        repositories
+        createdAt
+      }
+      settings {
+        id
+        autoCloseOnMerge
+        autoInReviewOnPrOpen
+      }
+    }
+  }
+`;
+
+export const GitHubAppInstallUrlQueryDocument = /* GraphQL */ `
+  query GitHubAppInstallUrl($workspaceId: ID!) {
+    githubAppInstallUrl(workspaceId: $workspaceId)
   }
 `;
 

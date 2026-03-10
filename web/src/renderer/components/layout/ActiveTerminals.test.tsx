@@ -50,11 +50,12 @@ describe('ActiveTerminals', () => {
     expect(screen.getByText('Needs Permission')).toBeInTheDocument();
   });
 
-  it('shows "Waiting" label for WAITING_FOR_INPUT status', () => {
+  it('shows project name for idle (WAITING_FOR_INPUT) status — no attention label', () => {
     const entries = [makeEntry({ status: SessionStatus.WaitingForInput })];
     render(<ActiveTerminals entries={entries} />);
 
-    expect(screen.getByText('Waiting')).toBeInTheDocument();
+    expect(screen.getByText('My Project')).toBeInTheDocument();
+    expect(screen.queryByText('Waiting')).not.toBeInTheDocument();
   });
 
   it('shows project name for RUNNING status (no attention label)', () => {
@@ -66,7 +67,7 @@ describe('ActiveTerminals', () => {
     expect(screen.queryByText('Waiting')).not.toBeInTheDocument();
   });
 
-  it('shows attention count badge in header', () => {
+  it('shows attention count badge only for permission-blocked sessions', () => {
     const entries = [
       makeEntry({
         taskId: 'task-1',
@@ -81,7 +82,8 @@ describe('ActiveTerminals', () => {
     ];
     render(<ActiveTerminals entries={entries} />);
 
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Only the permission session counts — idle does not
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 
   it('does not show attention badge when all running', () => {

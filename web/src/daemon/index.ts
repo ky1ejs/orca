@@ -97,6 +97,7 @@ async function main(): Promise<void> {
   let idleManager: IdleManager;
 
   const broadcast: BroadcastFn = (event, params) => {
+    // eslint-disable-next-line no-restricted-syntax -- daemon protocol params are untyped at this boundary
     const p = params as Record<string, unknown>;
     const sessionId = (p?.sessionId as string) ?? null;
 
@@ -111,8 +112,13 @@ async function main(): Promise<void> {
     }
   };
 
-  // Create and start hook server for Claude Code lifecycle events
-  const hookServer = new HookServer();
+  // Create and start hook server for Claude Code lifecycle events + MCP
+  const hookServer = new HookServer({
+    mcpDeps: {
+      backendUrl,
+      getToken: () => authToken,
+    },
+  });
   let hookServerPort: number | null = null;
   try {
     await hookServer.start();

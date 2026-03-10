@@ -24,10 +24,7 @@ export function isActiveSessionStatus(status: string): boolean {
 }
 
 /** Statuses that indicate the session is blocked and needs user attention. */
-const NEEDS_ATTENTION_STATUSES: readonly SessionStatus[] = [
-  SessionStatus.AwaitingPermission,
-  SessionStatus.WaitingForInput,
-];
+const NEEDS_ATTENTION_STATUSES: readonly SessionStatus[] = [SessionStatus.AwaitingPermission];
 
 export function isNeedsAttentionStatus(status: string): boolean {
   return (NEEDS_ATTENTION_STATUSES as readonly string[]).includes(status);
@@ -39,7 +36,7 @@ const statusDotClass: Record<SessionStatus, string> = {
   [SessionStatus.Exited]: 'bg-fg-faint',
   [SessionStatus.Error]: 'bg-error',
   [SessionStatus.Starting]: 'bg-info animate-pulse',
-  [SessionStatus.WaitingForInput]: 'bg-warning animate-pulse',
+  [SessionStatus.WaitingForInput]: 'bg-fg-muted',
   [SessionStatus.AwaitingPermission]: 'bg-permission-dot animate-pulse',
 };
 
@@ -47,7 +44,7 @@ const statusDotClass: Record<SessionStatus, string> = {
 const statusGlowClass: Record<SessionStatus, string> = {
   [SessionStatus.Running]: 'glow-success',
   [SessionStatus.Starting]: 'glow-info',
-  [SessionStatus.WaitingForInput]: 'glow-warning',
+  [SessionStatus.WaitingForInput]: '',
   [SessionStatus.AwaitingPermission]: 'glow-orange',
   [SessionStatus.Exited]: '',
   [SessionStatus.Error]: '',

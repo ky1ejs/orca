@@ -18,12 +18,23 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// Mock requestAnimationFrame to invoke callbacks synchronously
+vi.stubGlobal(
+  'requestAnimationFrame',
+  vi.fn((cb: FrameRequestCallback) => {
+    cb(0);
+    return 0;
+  }),
+);
+vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
 // Mock xterm.js
 const mockWrite = vi.fn();
 const mockOpen = vi.fn();
 const mockDispose = vi.fn();
 const mockLoadAddon = vi.fn();
 const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
+const mockAttachCustomKeyEventHandler = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -32,15 +43,17 @@ vi.mock('@xterm/xterm', () => ({
     dispose: mockDispose,
     loadAddon: mockLoadAddon,
     onData: mockOnData,
+    attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     options: {},
     cols: 80,
     rows: 24,
   })),
 }));
 
+const mockFit = vi.fn();
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(() => ({
-    fit: vi.fn(),
+    fit: mockFit,
   })),
 }));
 
@@ -102,6 +115,12 @@ describe('AgentTerminal', () => {
     expect(mockReplay).toHaveBeenCalledWith('test-session');
   });
 
+  it('resizes PTY after fit on mount', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockFit).toHaveBeenCalled();
+    expect(mockPtyResize).toHaveBeenCalledWith('test-session', 80, 24);
+  });
+
   it('subscribes to onData for live output', () => {
     render(<AgentTerminal sessionId="test-session" />);
     expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
@@ -122,9 +141,38 @@ describe('AgentTerminal', () => {
     expect(mockPtyWrite).toHaveBeenCalledWith('test-session', 'hello');
   });
 
+  it('intercepts Shift+Enter to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockAttachCustomKeyEventHandler).toHaveBeenCalled();
+
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    // Shift+Enter keydown should send CSI u and return false
+    const shiftEnter = { type: 'keydown', key: 'Enter', shiftKey: true };
+    expect(handler(shiftEnter)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[13;2u');
+
+    mockPtyWrite.mockClear();
+
+    // Plain Enter should return true (default handling)
+    const plainEnter = { type: 'keydown', key: 'Enter', shiftKey: false };
+    expect(handler(plainEnter)).toBe(true);
+    expect(mockPtyWrite).not.toHaveBeenCalled();
+
+    // Other keys should return true
+    const otherKey = { type: 'keydown', key: 'a', shiftKey: false };
+    expect(handler(otherKey)).toBe(true);
+  });
+
   it('disposes terminal on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" />);
     unmount();
     expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it('cancels rAF on unmount', () => {
+    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    unmount();
+    expect(cancelAnimationFrame).toHaveBeenCalled();
   });
 });

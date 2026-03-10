@@ -12,10 +12,6 @@ const attentionLabel: Partial<Record<SessionStatusType, { text: string; classNam
     text: 'Needs Permission',
     className: 'bg-warning-muted text-warning',
   },
-  [SessionStatus.WaitingForInput]: {
-    text: 'Waiting',
-    className: 'bg-warning-muted text-warning',
-  },
 };
 
 interface ActiveTerminalsProps {

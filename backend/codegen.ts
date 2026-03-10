@@ -7,17 +7,26 @@ const config: CodegenConfig = {
       plugins: ['typescript', 'typescript-resolvers'],
       config: {
         contextType: '../context.js#ServerContext',
+        scalars: {
+          DateTime: 'Date',
+        },
         mappers: {
           Workspace: '@prisma/client#Workspace as WorkspaceModel',
+          Initiative: '@prisma/client#Initiative as InitiativeModel',
           Project: '@prisma/client#Project as ProjectModel',
           Task: '@prisma/client#Task as TaskModel',
           Label: '@prisma/client#Label as LabelModel',
+          PullRequest: '@prisma/client#PullRequest as PullRequestModel',
+          GitHubInstallation: '@prisma/client#GitHubInstallation as GitHubInstallationModel',
+          WorkspaceSettings: '@prisma/client#WorkspaceSettings as WorkspaceSettingsModel',
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
         },
         enumValues: {
           WorkspaceRole: '@prisma/client#WorkspaceRole',
           TaskStatus: '@prisma/client#TaskStatus',
+          PullRequestStatus: '@prisma/client#PullRequestStatus',
+          ReviewStatus: '@prisma/client#ReviewStatus',
         },
         useIndexSignature: true,
       },

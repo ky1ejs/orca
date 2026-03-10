@@ -51,7 +51,7 @@ export function Breadcrumbs() {
         <button
           onClick={goToParent}
           aria-label="Go to parent"
-          className="text-gray-400 hover:text-white transition-colors py-0.5"
+          className="text-fg-faint hover:text-fg transition-colors py-0.5"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -81,7 +81,7 @@ export function Breadcrumbs() {
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="w-3 h-3 text-gray-700"
+                  className="w-3 h-3 text-fg-faint"
                   aria-hidden="true"
                 >
                   <path d="m9 18 6-6-6-6" />
@@ -90,12 +90,12 @@ export function Breadcrumbs() {
               {segment.onClick && !isLast ? (
                 <button
                   onClick={segment.onClick}
-                  className="text-gray-400 hover:text-white transition-colors cursor-pointer py-0.5 px-1 -mx-1 rounded"
+                  className="text-fg-muted hover:text-fg transition-colors cursor-pointer py-0.5 px-1 -mx-1 rounded"
                 >
                   {segment.label}
                 </button>
               ) : (
-                <span className="text-gray-100" aria-current="page">
+                <span className="text-fg" aria-current="page">
                   {segment.label}
                 </span>
               )}

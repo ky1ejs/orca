@@ -28,6 +28,42 @@ export const DeleteWorkspaceDocument = /* GraphQL */ `
   }
 `;
 
+export const CreateInitiativeDocument = /* GraphQL */ `
+  mutation CreateInitiative($input: CreateInitiativeInput!) {
+    createInitiative(input: $input) {
+      id
+      name
+      description
+      workspaceId
+      archivedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const UpdateInitiativeDocument = /* GraphQL */ `
+  mutation UpdateInitiative($id: ID!, $input: UpdateInitiativeInput!) {
+    updateInitiative(id: $id, input: $input) {
+      id
+      name
+      description
+      archivedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const ArchiveInitiativeDocument = /* GraphQL */ `
+  mutation ArchiveInitiative($id: ID!) {
+    archiveInitiative(id: $id) {
+      id
+      archivedAt
+    }
+  }
+`;
+
 export const CreateProjectDocument = /* GraphQL */ `
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
@@ -36,12 +72,14 @@ export const CreateProjectDocument = /* GraphQL */ `
       description
       defaultDirectory
       workspaceId
+      initiativeId
       tasks {
         id
         displayId
         title
         status
       }
+      archivedAt
       createdAt
       updatedAt
     }
@@ -55,15 +93,20 @@ export const UpdateProjectDocument = /* GraphQL */ `
       name
       description
       defaultDirectory
+      initiativeId
+      archivedAt
       createdAt
       updatedAt
     }
   }
 `;
 
-export const DeleteProjectDocument = /* GraphQL */ `
-  mutation DeleteProject($id: ID!) {
-    deleteProject(id: $id)
+export const ArchiveProjectDocument = /* GraphQL */ `
+  mutation ArchiveProject($id: ID!) {
+    archiveProject(id: $id) {
+      id
+      archivedAt
+    }
   }
 `;
 
@@ -125,9 +168,12 @@ export const UpdateTaskDocument = /* GraphQL */ `
   }
 `;
 
-export const DeleteTaskDocument = /* GraphQL */ `
-  mutation DeleteTask($id: ID!) {
-    deleteTask(id: $id)
+export const ArchiveTaskDocument = /* GraphQL */ `
+  mutation ArchiveTask($id: ID!) {
+    archiveTask(id: $id) {
+      id
+      archivedAt
+    }
   }
 `;
 
@@ -198,6 +244,35 @@ export const AcceptInvitationDocument = /* GraphQL */ `
 export const DeclineInvitationDocument = /* GraphQL */ `
   mutation DeclineInvitation($id: ID!) {
     declineInvitation(id: $id)
+  }
+`;
+
+export const CompleteGitHubInstallationDocument = /* GraphQL */ `
+  mutation CompleteGitHubInstallation($workspaceId: ID!, $installationId: Int!) {
+    completeGitHubInstallation(workspaceId: $workspaceId, installationId: $installationId) {
+      id
+      installationId
+      accountLogin
+      accountType
+      repositories
+      createdAt
+    }
+  }
+`;
+
+export const RemoveGitHubInstallationDocument = /* GraphQL */ `
+  mutation RemoveGitHubInstallation($workspaceId: ID!) {
+    removeGitHubInstallation(workspaceId: $workspaceId)
+  }
+`;
+
+export const UpdateWorkspaceSettingsDocument = /* GraphQL */ `
+  mutation UpdateWorkspaceSettings($workspaceId: ID!, $input: UpdateWorkspaceSettingsInput!) {
+    updateWorkspaceSettings(workspaceId: $workspaceId, input: $input) {
+      id
+      autoCloseOnMerge
+      autoInReviewOnPrOpen
+    }
   }
 `;
 

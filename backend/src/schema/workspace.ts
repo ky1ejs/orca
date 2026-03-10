@@ -1,10 +1,12 @@
 import { GraphQLError } from 'graphql';
+import type { Prisma } from '@prisma/client';
 import type {
   WorkspaceResolvers,
   QueryResolvers,
   MutationResolvers,
 } from '../__generated__/graphql.js';
 import { requireWorkspaceAccessBySlug, requireWorkspaceOwner } from '../auth/workspace.js';
+import { getWorkspaceSettings } from '../webhooks/workspace-settings.js';
 
 const MAX_WORKSPACES_PER_USER = 10;
 
@@ -137,7 +139,7 @@ export const workspaceResolvers = {
     updateWorkspace: async (_parent, args, context) => {
       await requireWorkspaceOwner(context.prisma, args.id, context.userId);
 
-      const data: Record<string, unknown> = {};
+      const data: Prisma.WorkspaceUncheckedUpdateInput = {};
       if (args.input.name != null) data.name = args.input.name;
 
       if (args.input.slug != null) {
@@ -218,9 +220,15 @@ export const workspaceResolvers = {
     },
   } satisfies Pick<MutationResolvers, 'createWorkspace' | 'updateWorkspace' | 'deleteWorkspace'>,
   Workspace: {
+    initiatives: (parent, _args, context) => {
+      return context.prisma.initiative.findMany({
+        where: { workspaceId: parent.id, archivedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
     projects: (parent, _args, context) => {
       return context.prisma.project.findMany({
-        where: { workspaceId: parent.id },
+        where: { workspaceId: parent.id, archivedAt: null },
         orderBy: { createdAt: 'desc' },
       });
     },
@@ -238,7 +246,7 @@ export const workspaceResolvers = {
       });
     },
     tasks: (parent, args, context) => {
-      const where: Record<string, unknown> = { workspaceId: parent.id };
+      const where: Prisma.TaskWhereInput = { workspaceId: parent.id, archivedAt: null };
       if (args.unassociatedOnly) {
         where.projectId = null;
       }
@@ -252,6 +260,12 @@ export const workspaceResolvers = {
         where: { workspaceId: parent.id },
         orderBy: { name: 'asc' },
       });
+    },
+    settings: (parent, _args, context) => {
+      return getWorkspaceSettings(context.prisma, parent.id);
+    },
+    githubInstallation: (parent, _args, context) => {
+      return context.prisma.gitHubInstallation.findFirst({ where: { workspaceId: parent.id } });
     },
     invitations: async (parent, _args, context) => {
       // Only OWNERs can see invitations

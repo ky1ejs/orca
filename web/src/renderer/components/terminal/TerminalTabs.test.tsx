@@ -134,7 +134,7 @@ describe('TerminalTabs', () => {
     expect(dot.className).toContain('bg-info');
   });
 
-  it('shows pulse animation for WAITING_FOR_INPUT status', () => {
+  it('shows muted dot without pulse for idle (WAITING_FOR_INPUT) status', () => {
     const sessions = makeSessions([{ status: SessionStatus.WaitingForInput }]);
     render(
       <TerminalTabs
@@ -146,7 +146,7 @@ describe('TerminalTabs', () => {
     );
 
     const dot = screen.getByTestId('status-dot-sess-1');
-    expect(dot.className).toContain('animate-pulse');
-    expect(dot.className).toContain('bg-warning');
+    expect(dot.className).not.toContain('animate-pulse');
+    expect(dot.className).toContain('bg-fg-muted');
   });
 });

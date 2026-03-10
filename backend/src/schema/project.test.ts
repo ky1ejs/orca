@@ -20,6 +20,13 @@ const MEMBERSHIP = {
   updatedAt: new Date(),
 };
 
+const INITIATIVE = {
+  id: 'init1',
+  name: 'Test Initiative',
+  workspaceId: 'ws1',
+  workspace: WORKSPACE,
+};
+
 function createMockContext() {
   return {
     prisma: {
@@ -28,10 +35,12 @@ function createMockContext() {
         findUnique: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
-        delete: vi.fn(),
       },
       task: {
         findMany: vi.fn(),
+      },
+      initiative: {
+        findUnique: vi.fn().mockResolvedValue(INITIATIVE),
       },
       workspace: {
         findUnique: vi.fn().mockResolvedValue(WORKSPACE),
@@ -99,9 +108,37 @@ describe('project resolvers', () => {
           description: undefined,
           defaultDirectory: null,
           workspaceId: 'ws1',
+          initiativeId: null,
         },
       });
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('projectChanged', project);
+    });
+
+    it('createProject with initiativeId validates initiative belongs to workspace', async () => {
+      const ctx = createMockContext();
+      const project = {
+        id: '1',
+        name: 'New Project',
+        workspaceId: 'ws1',
+        initiativeId: 'init1',
+      };
+      ctx.prisma.project.create.mockResolvedValue(project);
+
+      const result = await projectResolvers.Mutation.createProject(
+        {} as never,
+        { input: { name: 'New Project', workspaceId: 'ws1', initiativeId: 'init1' } },
+        ctx as never,
+      );
+      expect(result).toEqual(project);
+      expect(ctx.prisma.project.create).toHaveBeenCalledWith({
+        data: {
+          name: 'New Project',
+          description: undefined,
+          defaultDirectory: null,
+          workspaceId: 'ws1',
+          initiativeId: 'init1',
+        },
+      });
     });
 
     it('updateProject updates and publishes', async () => {
@@ -119,30 +156,38 @@ describe('project resolvers', () => {
       expect(ctx.pubsub.publish).toHaveBeenCalledWith('projectChanged', project);
     });
 
-    it('deleteProject deletes and returns true', async () => {
+    it('archiveProject sets archivedAt and publishes', async () => {
       const ctx = createMockContext();
       const project = { id: '1', name: 'Test', workspaceId: 'ws1', workspace: WORKSPACE };
+      const archivedProject = { ...project, archivedAt: new Date() };
       ctx.prisma.project.findUnique.mockResolvedValue(project);
-      ctx.prisma.project.delete.mockResolvedValue({});
+      ctx.prisma.project.update.mockResolvedValue(archivedProject);
 
-      const result = await projectResolvers.Mutation.deleteProject(
+      const result = await projectResolvers.Mutation.archiveProject(
         {} as never,
         { id: '1' },
         ctx as never,
       );
-      expect(result).toBe(true);
+      expect(result).toEqual(archivedProject);
+      expect(ctx.prisma.project.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { archivedAt: expect.any(Date) },
+      });
+      expect(ctx.pubsub.publish).toHaveBeenCalledWith('projectChanged', archivedProject);
     });
   });
 
   describe('Project', () => {
-    it('tasks resolves project tasks', async () => {
+    it('tasks resolves non-archived project tasks', async () => {
       const ctx = createMockContext();
       const tasks = [{ id: '1', title: 'Task 1' }];
       ctx.prisma.task.findMany.mockResolvedValue(tasks);
 
       const result = await projectResolvers.Project.tasks({ id: 'p1' } as never, {}, ctx as never);
       expect(result).toEqual(tasks);
-      expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({ where: { projectId: 'p1' } });
+      expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1', archivedAt: null },
+      });
     });
 
     it('workspace resolves parent workspace', async () => {
@@ -157,6 +202,32 @@ describe('project resolvers', () => {
       expect(ctx.prisma.workspace.findUniqueOrThrow).toHaveBeenCalledWith({
         where: { id: 'ws1' },
       });
+    });
+
+    it('initiative resolves parent initiative', async () => {
+      const ctx = createMockContext();
+
+      const result = await projectResolvers.Project.initiative!(
+        { initiativeId: 'init1' } as never,
+        {},
+        ctx as never,
+      );
+      expect(result).toEqual(INITIATIVE);
+      expect(ctx.prisma.initiative.findUnique).toHaveBeenCalledWith({
+        where: { id: 'init1' },
+      });
+    });
+
+    it('initiative resolves null when no initiativeId', async () => {
+      const ctx = createMockContext();
+
+      const result = await projectResolvers.Project.initiative!(
+        { initiativeId: null } as never,
+        {},
+        ctx as never,
+      );
+      expect(result).toBeNull();
+      expect(ctx.prisma.initiative.findUnique).not.toHaveBeenCalled();
     });
   });
 });

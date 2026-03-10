@@ -4,6 +4,8 @@ import { iconSize } from '../../tokens/icon-size.js';
 import { isActiveSessionStatus } from '../../../shared/session-status.js';
 import { Sidebar } from './Sidebar.js';
 import { useNavigation } from '../../navigation/context.js';
+import { InitiativeList } from '../initiatives/InitiativeList.js';
+import { InitiativeDetail } from '../initiatives/InitiativeDetail.js';
 import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
@@ -29,17 +31,21 @@ function MainContent() {
   const { current } = useNavigation();
 
   switch (current.view) {
+    case 'initiatives':
+      return <InitiativeList />;
+    case 'initiative':
+      return current.id ? <InitiativeDetail initiativeId={current.id} /> : <InitiativeList />;
     case 'projects':
       return <ProjectList />;
     case 'project':
-      return current.id ? <ProjectDetail projectId={current.id} /> : <ProjectList />;
+      return current.id ? <ProjectDetail projectId={current.id} /> : <InitiativeList />;
     case 'task':
-      return current.id ? <TaskDetail taskId={current.id} /> : <ProjectList />;
+      return current.id ? <TaskDetail taskId={current.id} /> : <InitiativeList />;
     case 'settings':
     case 'members':
       return <WorkspaceSettings />;
     default:
-      return <ProjectList />;
+      return <InitiativeList />;
   }
 }
 
@@ -260,7 +266,7 @@ export function AppShell({ onLogout }: AppShellProps) {
           <MainContent />
         </main>
         {current.view === 'task' && (
-          <div className="h-80 border-t border-edge flex flex-col">
+          <div className="h-80 shrink-0 border-t border-edge flex flex-col">
             {hasActiveSessions ? (
               <>
                 <TerminalTabs
@@ -271,7 +277,9 @@ export function AppShell({ onLogout }: AppShellProps) {
                   onCloseSession={handleCloseSession}
                 />
                 <div className="flex-1 overflow-hidden">
-                  {activeSessionId && <AgentTerminal sessionId={activeSessionId} />}
+                  {activeSessionId && (
+                    <AgentTerminal key={activeSessionId} sessionId={activeSessionId} />
+                  )}
                 </div>
               </>
             ) : (

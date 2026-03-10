@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Pencil,
-  Trash2,
+  Archive,
   SquareTerminal,
   RotateCcw,
   FolderOpen,
@@ -13,7 +13,7 @@ import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-st
 import {
   useTask,
   useUpdateTask,
-  useDeleteTask,
+  useArchiveTask,
   useTaskSubscription,
   useWorkspaceBySlug,
   useWorkspaceMembers,
@@ -30,6 +30,7 @@ import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
+import { PullRequestList } from './PullRequestList.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -53,7 +54,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 export function TaskDetail({ taskId }: TaskDetailProps) {
   const { data, fetching, error } = useTask(taskId);
   const { updateTask } = useUpdateTask();
-  const { deleteTask } = useDeleteTask();
+  const { archiveTask } = useArchiveTask();
   const { goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
@@ -149,8 +150,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setEditing(false);
   };
 
-  const handleDelete = async () => {
-    await deleteTask(taskId);
+  const handleArchive = async () => {
+    await archiveTask(taskId);
     goToParent();
   };
 
@@ -161,6 +162,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     await updateTask(taskId, { status: newStatus });
   };
+
+  const buildMetadata = () => ({
+    displayId: task.displayId,
+    title: task.title,
+    description: task.description ?? null,
+    projectName: task.project?.name ?? null,
+    workspaceSlug: currentWorkspace?.slug ?? '',
+  });
 
   const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
     if (!projectDirectory) {
@@ -173,7 +182,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.launch(taskId, projectDirectory, options);
+    const result = await window.orca.agent.launch(
+      taskId,
+      projectDirectory,
+      options,
+      buildMetadata(),
+    );
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -193,7 +207,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     }
     setLaunching(true);
     setAgentError(null);
-    const result = await window.orca.agent.restart(taskId, errorSession.id, projectDirectory);
+    const result = await window.orca.agent.restart(
+      taskId,
+      errorSession.id,
+      projectDirectory,
+      undefined,
+      buildMetadata(),
+    );
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
@@ -369,11 +389,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 Edit
               </button>
               <button
-                onClick={handleDelete}
+                onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Trash2 className={`${iconSize.sm} mr-1`} />
-                Delete
+                <Archive className={`${iconSize.sm} mr-1`} />
+                Archive
               </button>
             </div>
           </div>
@@ -560,6 +580,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 </div>
               </div>
             )}
+
+            <PullRequestList pullRequests={task.pullRequests ?? []} />
 
             {task.description && (
               <div>

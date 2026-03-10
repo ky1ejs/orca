@@ -1,3 +1,5 @@
+scalar DateTime
+
 type User {
   id: ID!
   email: String!
@@ -20,7 +22,7 @@ type WorkspaceMember {
   id: ID!
   user: User!
   role: WorkspaceRole!
-  createdAt: String!
+  createdAt: DateTime!
 }
 
 type WorkspaceInvitation {
@@ -29,8 +31,23 @@ type WorkspaceInvitation {
   role: WorkspaceRole!
   workspace: Workspace!
   invitedBy: User!
-  expiresAt: String!
-  createdAt: String!
+  expiresAt: DateTime!
+  createdAt: DateTime!
+}
+
+type GitHubInstallation {
+  id: ID!
+  installationId: Int!
+  accountLogin: String!
+  accountType: String!
+  repositories: [String!]!
+  createdAt: DateTime!
+}
+
+type WorkspaceSettings {
+  id: ID!
+  autoCloseOnMerge: Boolean!
+  autoInReviewOnPrOpen: Boolean!
 }
 
 type Workspace {
@@ -40,11 +57,14 @@ type Workspace {
   role: WorkspaceRole!
   members: [WorkspaceMember!]!
   invitations: [WorkspaceInvitation!]!
+  initiatives: [Initiative!]!
   projects: [Project!]!
   tasks(unassociatedOnly: Boolean): [Task!]!
   labels: [Label!]!
-  createdAt: String!
-  updatedAt: String!
+  githubInstallation: GitHubInstallation
+  settings: WorkspaceSettings!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 enum TaskStatus {
@@ -62,6 +82,18 @@ enum TaskPriority {
   URGENT
 }
 
+type Initiative {
+  id: ID!
+  name: String!
+  description: String
+  workspaceId: ID!
+  workspace: Workspace!
+  projects: [Project!]!
+  archivedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
 type Project {
   id: ID!
   name: String!
@@ -69,9 +101,12 @@ type Project {
   defaultDirectory: String
   workspaceId: ID!
   workspace: Workspace!
+  initiativeId: ID
+  initiative: Initiative
   tasks: [Task!]!
-  createdAt: String!
-  updatedAt: String!
+  archivedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type Label {
@@ -79,8 +114,36 @@ type Label {
   name: String!
   color: String!
   workspaceId: ID!
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum PullRequestStatus {
+  OPEN
+  MERGED
+  CLOSED
+}
+
+enum ReviewStatus {
+  NONE
+  APPROVED
+  CHANGES_REQUESTED
+  COMMENTED
+}
+
+type PullRequest {
+  id: ID!
+  number: Int!
+  title: String!
+  url: String!
+  status: PullRequestStatus!
+  reviewStatus: ReviewStatus!
+  repository: String!
+  headBranch: String!
+  author: String!
+  draft: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type Task {
@@ -94,8 +157,11 @@ type Task {
   project: Project
   assignee: User
   labels: [Label!]!
-  createdAt: String!
-  updatedAt: String!
+  pullRequests: [PullRequest!]!
+  pullRequestCount: Int!
+  archivedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input RegisterInput {
@@ -115,17 +181,30 @@ input UpdateWorkspaceInput {
   slug: String
 }
 
+input CreateInitiativeInput {
+  name: String!
+  description: String
+  workspaceId: ID!
+}
+
+input UpdateInitiativeInput {
+  name: String
+  description: String
+}
+
 input CreateProjectInput {
   name: String!
   description: String
   defaultDirectory: String
   workspaceId: ID!
+  initiativeId: ID
 }
 
 input UpdateProjectInput {
   name: String
   description: String
   defaultDirectory: String
+  initiativeId: ID
 }
 
 input CreateTaskInput {
@@ -160,6 +239,11 @@ input UpdateLabelInput {
   color: String
 }
 
+input UpdateWorkspaceSettingsInput {
+  autoCloseOnMerge: Boolean
+  autoInReviewOnPrOpen: Boolean
+}
+
 input AddMemberInput {
   workspaceId: ID!
   email: String!
@@ -188,9 +272,11 @@ type Query {
   me: User!
   workspace(slug: String!): Workspace
   workspaces: [Workspace!]!
+  initiative(id: ID!): Initiative
   project(id: ID!): Project
   task(id: ID!): Task
   labels(workspaceId: ID!): [Label!]!
+  githubAppInstallUrl(workspaceId: ID!): String!
   pendingInvitations: [WorkspaceInvitation!]!
 }
 
@@ -200,24 +286,34 @@ type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
   updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
   deleteWorkspace(id: ID!): Boolean!
+  createInitiative(input: CreateInitiativeInput!): Initiative!
+  updateInitiative(id: ID!, input: UpdateInitiativeInput!): Initiative!
+  archiveInitiative(id: ID!): Initiative!
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
-  deleteProject(id: ID!): Boolean!
+  archiveProject(id: ID!): Project!
   createTask(input: CreateTaskInput!): Task!
   updateTask(id: ID!, input: UpdateTaskInput!): Task!
-  deleteTask(id: ID!): Boolean!
+  archiveTask(id: ID!): Task!
   addMember(input: AddMemberInput!): AddMemberResult!
   removeMember(workspaceId: ID!, userId: ID!): Boolean!
   updateMemberRole(input: UpdateMemberRoleInput!): WorkspaceMember!
   cancelInvitation(id: ID!): Boolean!
   acceptInvitation(id: ID!): Workspace!
   declineInvitation(id: ID!): Boolean!
+  completeGitHubInstallation(workspaceId: ID!, installationId: Int!): GitHubInstallation!
+  removeGitHubInstallation(workspaceId: ID!): Boolean!
+  updateWorkspaceSettings(
+    workspaceId: ID!
+    input: UpdateWorkspaceSettingsInput!
+  ): WorkspaceSettings!
   createLabel(input: CreateLabelInput!): Label!
   updateLabel(id: ID!, input: UpdateLabelInput!): Label!
   deleteLabel(id: ID!): Boolean!
 }
 
 type Subscription {
+  initiativeChanged(workspaceId: ID!): Initiative!
   projectChanged(workspaceId: ID!): Project!
   taskChanged(workspaceId: ID!): Task!
 }

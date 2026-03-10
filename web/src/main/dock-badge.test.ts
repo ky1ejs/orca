@@ -31,13 +31,18 @@ describe('DockBadgeManager', () => {
 
   it('counts multiple sessions needing attention', () => {
     manager.handleStatusChange('s1', 'AWAITING_PERMISSION');
-    manager.handleStatusChange('s2', 'WAITING_FOR_INPUT');
+    manager.handleStatusChange('s2', 'AWAITING_PERMISSION');
     expect(mockSetBadge).toHaveBeenLastCalledWith('2');
+  });
+
+  it('does not count idle sessions as needing attention', () => {
+    manager.handleStatusChange('s1', 'WAITING_FOR_INPUT');
+    expect(mockSetBadge).not.toHaveBeenCalled();
   });
 
   it('decrements when a session dies', () => {
     manager.handleStatusChange('s1', 'AWAITING_PERMISSION');
-    manager.handleStatusChange('s2', 'WAITING_FOR_INPUT');
+    manager.handleStatusChange('s2', 'AWAITING_PERMISSION');
     mockSetBadge.mockClear();
 
     manager.handleSessionsDied(['s1']);
@@ -60,7 +65,7 @@ describe('DockBadgeManager', () => {
       { id: 's4', status: 'EXITED' },
       { id: 's5', status: 'ERROR' },
     ]);
-    expect(mockSetBadge).toHaveBeenCalledWith('2');
+    expect(mockSetBadge).toHaveBeenCalledWith('1');
   });
 
   it('prunes sessions that move to terminal status', () => {

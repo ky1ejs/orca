@@ -7,6 +7,7 @@ import { PriorityIcon } from '../shared/PriorityIcon.js';
 import { formatRelativeDate } from '../../utils/formatRelativeDate.js';
 import { TaskTableInlineCreate } from './TaskTableInlineCreate.js';
 import { EmptyTaskList } from '../layout/EmptyState.js';
+import { PullRequestIndicator } from './PullRequestIndicator.js';
 
 interface TaskSummary {
   id: string;
@@ -16,6 +17,7 @@ interface TaskSummary {
   priority: TaskPriority;
   assignee?: { id: string; name: string } | null;
   labels: { id: string; name: string; color: string }[];
+  pullRequestCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -285,6 +287,11 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
           />
         ))}
       </div>
+      {task.pullRequestCount != null && task.pullRequestCount > 0 && (
+        <div role="gridcell" className="flex-shrink-0">
+          <PullRequestIndicator count={task.pullRequestCount} />
+        </div>
+      )}
       {task.assignee && (
         <div role="gridcell" className="flex-shrink-0 mr-2">
           <span className="text-fg-muted text-label-sm" title={task.assignee.name}>

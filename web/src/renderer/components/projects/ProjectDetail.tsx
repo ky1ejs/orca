@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Archive } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   useProject,
   useUpdateProject,
-  useDeleteProject,
+  useArchiveProject,
   useProjectSubscription,
   useTaskSubscription,
+  useWorkspaceBySlug,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -20,13 +21,15 @@ interface ProjectDetailProps {
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { data, fetching, error } = useProject(projectId);
   const { updateProject } = useUpdateProject();
-  const { deleteProject } = useDeleteProject();
+  const { archiveProject } = useArchiveProject();
   const { navigate, goToParent } = useNavigation();
   const { currentWorkspace } = useWorkspace();
+  const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [defaultDirectory, setDefaultDirectory] = useState('');
+  const [initiativeId, setInitiativeId] = useState('');
 
   useProjectSubscription(currentWorkspace?.id ?? '');
   useTaskSubscription(currentWorkspace?.id ?? '');
@@ -53,10 +56,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     );
   }
 
+  const initiatives = workspaceData?.workspace?.initiatives ?? [];
+
   const startEditing = () => {
     setName(project.name);
     setDescription(project.description ?? '');
     setDefaultDirectory(project.defaultDirectory ?? '');
+    setInitiativeId(project.initiativeId ?? '');
     setEditing(true);
   };
 
@@ -65,12 +71,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: name.trim() || undefined,
       description: description.trim() || undefined,
       defaultDirectory: defaultDirectory.trim() || null,
+      initiativeId: initiativeId || null,
     });
     setEditing(false);
   };
 
-  const handleDelete = async () => {
-    await deleteProject(projectId);
+  const handleArchive = async () => {
+    await archiveProject(projectId);
     goToParent();
   };
 
@@ -99,6 +106,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               placeholder="Default directory (e.g., /Users/you/projects/my-app)"
               className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-edge-subtle font-mono"
             />
+            <select
+              value={initiativeId}
+              onChange={(e) => setInitiativeId(e.target.value)}
+              className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-edge-subtle"
+            >
+              <option value="">No initiative</option>
+              {initiatives.map((initiative) => (
+                <option key={initiative.id} value={initiative.id}>
+                  {initiative.name}
+                </option>
+              ))}
+            </select>
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -128,17 +147,20 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 Edit
               </button>
               <button
-                onClick={handleDelete}
+                onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Trash2 className={`${iconSize.sm} mr-1`} />
-                Delete
+                <Archive className={`${iconSize.sm} mr-1`} />
+                Archive
               </button>
             </div>
           </div>
           {project.description && <p className="text-fg-muted mt-2">{project.description}</p>}
           {project.defaultDirectory && (
             <p className="text-fg-faint text-body-sm font-mono mt-2">{project.defaultDirectory}</p>
+          )}
+          {project.initiative && (
+            <p className="text-fg-faint text-body-sm mt-2">Initiative: {project.initiative.name}</p>
           )}
         </div>
       )}
