@@ -43,7 +43,6 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
-    fitAddon.fit();
 
     // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
     // plain \r so Claude Code can distinguish it and insert a newline.
@@ -58,9 +57,17 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Replay existing output
-    window.orca.pty.replay(sessionId).then((output) => {
-      if (output) terminal.write(output);
+    // Defer fit + PTY resize + replay until after browser layout is stable
+    const rafId = requestAnimationFrame(() => {
+      try {
+        fitAddon.fit();
+        window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+      } catch {
+        // Container may have been removed
+      }
+      window.orca.pty.replay(sessionId).then((output) => {
+        if (output) terminal.write(output);
+      });
     });
 
     // Subscribe to live output
@@ -108,6 +115,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     return () => {
+      cancelAnimationFrame(rafId);
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
@@ -131,6 +139,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       if (fitAddon) {
         try {
           fitAddon.fit();
+          window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
         } catch {
           // Container may have been removed
         }
