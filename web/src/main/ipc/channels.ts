@@ -25,4 +25,5 @@ export const IPC_CHANNELS = {
   FONTS_LIST: 'fonts:list',
   UPDATE_INSTALL: 'update:install',
   UPDATE_ERROR: 'update:error',
+  GITHUB_INSTALLATION_CALLBACK: 'github:installation-callback',
 } as const;

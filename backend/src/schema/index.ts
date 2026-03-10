@@ -13,6 +13,8 @@ import { DateTimeScalar } from './scalars.js';
 import { taskResolvers } from './task.js';
 import { workspaceResolvers } from './workspace.js';
 import { pullRequestFieldResolvers } from './pull-request.js';
+import { workspaceSettingsResolvers } from './workspace-settings.js';
+import { githubInstallationResolvers } from './github-installation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +30,7 @@ const resolvers: Resolvers = {
     ...projectResolvers.Query,
     ...taskResolvers.Query,
     ...labelResolvers.Query,
+    ...githubInstallationResolvers.Query,
     ...membershipResolvers.Query,
   },
   Mutation: {
@@ -38,6 +41,8 @@ const resolvers: Resolvers = {
     ...taskResolvers.Mutation,
     ...labelResolvers.Mutation,
     ...membershipResolvers.Mutation,
+    ...workspaceSettingsResolvers.Mutation,
+    ...githubInstallationResolvers.Mutation,
   },
   Subscription: {
     ...initiativeResolvers.Subscription,

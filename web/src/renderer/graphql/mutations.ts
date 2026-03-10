@@ -247,6 +247,35 @@ export const DeclineInvitationDocument = /* GraphQL */ `
   }
 `;
 
+export const CompleteGitHubInstallationDocument = /* GraphQL */ `
+  mutation CompleteGitHubInstallation($workspaceId: ID!, $installationId: Int!) {
+    completeGitHubInstallation(workspaceId: $workspaceId, installationId: $installationId) {
+      id
+      installationId
+      accountLogin
+      accountType
+      repositories
+      createdAt
+    }
+  }
+`;
+
+export const RemoveGitHubInstallationDocument = /* GraphQL */ `
+  mutation RemoveGitHubInstallation($workspaceId: ID!) {
+    removeGitHubInstallation(workspaceId: $workspaceId)
+  }
+`;
+
+export const UpdateWorkspaceSettingsDocument = /* GraphQL */ `
+  mutation UpdateWorkspaceSettings($workspaceId: ID!, $input: UpdateWorkspaceSettingsInput!) {
+    updateWorkspaceSettings(workspaceId: $workspaceId, input: $input) {
+      id
+      autoCloseOnMerge
+      autoInReviewOnPrOpen
+    }
+  }
+`;
+
 export const CreateLabelDocument = /* GraphQL */ `
   mutation CreateLabel($input: CreateLabelInput!) {
     createLabel(input: $input) {

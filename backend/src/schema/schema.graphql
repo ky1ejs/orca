@@ -35,6 +35,21 @@ type WorkspaceInvitation {
   createdAt: DateTime!
 }
 
+type GitHubInstallation {
+  id: ID!
+  installationId: Int!
+  accountLogin: String!
+  accountType: String!
+  repositories: [String!]!
+  createdAt: DateTime!
+}
+
+type WorkspaceSettings {
+  id: ID!
+  autoCloseOnMerge: Boolean!
+  autoInReviewOnPrOpen: Boolean!
+}
+
 type Workspace {
   id: ID!
   name: String!
@@ -46,6 +61,8 @@ type Workspace {
   projects: [Project!]!
   tasks(unassociatedOnly: Boolean): [Task!]!
   labels: [Label!]!
+  githubInstallation: GitHubInstallation
+  settings: WorkspaceSettings!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -222,6 +239,11 @@ input UpdateLabelInput {
   color: String
 }
 
+input UpdateWorkspaceSettingsInput {
+  autoCloseOnMerge: Boolean
+  autoInReviewOnPrOpen: Boolean
+}
+
 input AddMemberInput {
   workspaceId: ID!
   email: String!
@@ -254,6 +276,7 @@ type Query {
   project(id: ID!): Project
   task(id: ID!): Task
   labels(workspaceId: ID!): [Label!]!
+  githubAppInstallUrl(workspaceId: ID!): String!
   pendingInvitations: [WorkspaceInvitation!]!
 }
 
@@ -278,6 +301,12 @@ type Mutation {
   cancelInvitation(id: ID!): Boolean!
   acceptInvitation(id: ID!): Workspace!
   declineInvitation(id: ID!): Boolean!
+  completeGitHubInstallation(workspaceId: ID!, installationId: Int!): GitHubInstallation!
+  removeGitHubInstallation(workspaceId: ID!): Boolean!
+  updateWorkspaceSettings(
+    workspaceId: ID!
+    input: UpdateWorkspaceSettingsInput!
+  ): WorkspaceSettings!
   createLabel(input: CreateLabelInput!): Label!
   updateLabel(id: ID!, input: UpdateLabelInput!): Label!
   deleteLabel(id: ID!): Boolean!

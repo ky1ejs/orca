@@ -30,11 +30,17 @@ import {
   CreateLabelDocument,
   UpdateLabelDocument,
   DeleteLabelDocument,
+  WorkspaceIntegrationsDocument,
+  GitHubAppInstallUrlDocument,
+  CompleteGitHubInstallationDocument,
+  RemoveGitHubInstallationDocument,
+  UpdateWorkspaceSettingsDocument,
   InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
+  UpdateWorkspaceSettingsInput,
   CreateWorkspaceInput,
   UpdateWorkspaceInput,
   CreateInitiativeInput,
@@ -286,6 +292,55 @@ export function useDeleteLabel() {
   const [result, executeMutation] = useMutation(DeleteLabelDocument);
   const deleteLabel = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, deleteLabel };
+}
+
+// Integrations hooks
+
+export function useWorkspaceIntegrations(slug: string) {
+  const [result, reexecute] = useQuery({
+    query: WorkspaceIntegrationsDocument,
+    variables: { slug },
+    pause: !slug,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useGitHubAppInstallUrl(workspaceId: string) {
+  const [result, reexecute] = useQuery({
+    query: GitHubAppInstallUrlDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useCompleteGitHubInstallation() {
+  const [result, executeMutation] = useMutation(CompleteGitHubInstallationDocument);
+  const completeGitHubInstallation = useCallback(
+    (workspaceId: string, installationId: number) =>
+      executeMutation({ workspaceId, installationId }),
+    [executeMutation],
+  );
+  return { ...result, completeGitHubInstallation };
+}
+
+export function useRemoveGitHubInstallation() {
+  const [result, executeMutation] = useMutation(RemoveGitHubInstallationDocument);
+  const removeGitHubInstallation = useCallback(
+    (workspaceId: string) => executeMutation({ workspaceId }),
+    [executeMutation],
+  );
+  return { ...result, removeGitHubInstallation };
+}
+
+export function useUpdateWorkspaceSettings() {
+  const [result, executeMutation] = useMutation(UpdateWorkspaceSettingsDocument);
+  const updateWorkspaceSettings = useCallback(
+    (workspaceId: string, input: UpdateWorkspaceSettingsInput) =>
+      executeMutation({ workspaceId, input }),
+    [executeMutation],
+  );
+  return { ...result, updateWorkspaceSettings };
 }
 
 // Subscription hooks — Graphcache handles cache updates automatically

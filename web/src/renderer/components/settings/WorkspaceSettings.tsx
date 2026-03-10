@@ -6,8 +6,9 @@ import { MemberList } from '../members/MemberList.js';
 import { TerminalSettings } from './TerminalSettings.js';
 import { LabelManager } from '../labels/LabelManager.js';
 import { AppearanceSettings } from './AppearanceSettings.js';
+import { IntegrationsSettings } from './IntegrationsSettings.js';
 
-type Tab = 'general' | 'members' | 'labels' | 'terminal' | 'appearance';
+type Tab = 'general' | 'members' | 'labels' | 'integrations' | 'terminal' | 'appearance';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -79,6 +80,7 @@ export function WorkspaceSettings() {
     { key: 'general', label: 'General' },
     { key: 'members', label: 'Members' },
     { key: 'labels', label: 'Labels' },
+    { key: 'integrations', label: 'Integrations' },
     { key: 'terminal', label: 'Terminal' },
     { key: 'appearance', label: 'Appearance' },
   ];
@@ -178,6 +180,8 @@ export function WorkspaceSettings() {
       {activeTab === 'members' && <MemberList />}
 
       {activeTab === 'labels' && <LabelManager />}
+
+      {activeTab === 'integrations' && <IntegrationsSettings />}
 
       {activeTab === 'terminal' && <TerminalSettings />}
 

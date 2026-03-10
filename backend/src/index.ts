@@ -5,6 +5,7 @@ import { prisma } from './db/client.js';
 import { pubsub } from './pubsub.js';
 import { verifyJwt } from './auth/jwt.js';
 import { handleGitHubWebhook } from './webhooks/github.js';
+import { handleGitHubCallback } from './webhooks/github-callback.js';
 import type { ServerContext } from './context.js';
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
@@ -69,6 +70,9 @@ const server = Bun.serve({
     }
     if (url.pathname === '/webhooks/github' && request.method === 'POST') {
       return handleGitHubWebhook(request);
+    }
+    if (url.pathname === '/github/callback' && request.method === 'GET') {
+      return handleGitHubCallback(request);
     }
     return yoga.fetch(request);
   },

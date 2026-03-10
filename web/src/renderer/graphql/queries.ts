@@ -292,6 +292,34 @@ export const TaskQueryDocument = /* GraphQL */ `
   }
 `;
 
+export const WorkspaceIntegrationsQueryDocument = /* GraphQL */ `
+  query WorkspaceIntegrations($slug: String!) {
+    workspace(slug: $slug) {
+      id
+      role
+      githubInstallation {
+        id
+        installationId
+        accountLogin
+        accountType
+        repositories
+        createdAt
+      }
+      settings {
+        id
+        autoCloseOnMerge
+        autoInReviewOnPrOpen
+      }
+    }
+  }
+`;
+
+export const GitHubAppInstallUrlQueryDocument = /* GraphQL */ `
+  query GitHubAppInstallUrl($workspaceId: ID!) {
+    githubAppInstallUrl(workspaceId: $workspaceId)
+  }
+`;
+
 export const LabelsQueryDocument = /* GraphQL */ `
   query Labels($workspaceId: ID!) {
     labels(workspaceId: $workspaceId) {

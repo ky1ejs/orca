@@ -6,6 +6,7 @@ import type {
   MutationResolvers,
 } from '../__generated__/graphql.js';
 import { requireWorkspaceAccessBySlug, requireWorkspaceOwner } from '../auth/workspace.js';
+import { getWorkspaceSettings } from '../webhooks/workspace-settings.js';
 
 const MAX_WORKSPACES_PER_USER = 10;
 
@@ -259,6 +260,12 @@ export const workspaceResolvers = {
         where: { workspaceId: parent.id },
         orderBy: { name: 'asc' },
       });
+    },
+    settings: (parent, _args, context) => {
+      return getWorkspaceSettings(context.prisma, parent.id);
+    },
+    githubInstallation: (parent, _args, context) => {
+      return context.prisma.gitHubInstallation.findFirst({ where: { workspaceId: parent.id } });
     },
     invitations: async (parent, _args, context) => {
       // Only OWNERs can see invitations

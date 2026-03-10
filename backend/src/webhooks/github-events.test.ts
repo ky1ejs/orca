@@ -28,6 +28,10 @@ function createMockPrisma(overrides: Record<string, unknown> = {}) {
       count: vi.fn().mockResolvedValue(0),
     },
     workspaceSettings: {
+      findUnique: vi.fn().mockResolvedValue({
+        autoCloseOnMerge: true,
+        autoInReviewOnPrOpen: false,
+      }),
       upsert: vi.fn().mockResolvedValue({
         autoCloseOnMerge: true,
         autoInReviewOnPrOpen: false,
@@ -102,10 +106,12 @@ describe('handlePullRequestOpenedOrEdited', () => {
   });
 
   it('auto-transitions to IN_REVIEW when enabled and not draft', async () => {
-    prisma.workspaceSettings.upsert = vi.fn().mockResolvedValue({
+    const autoReviewSettings = {
       autoCloseOnMerge: true,
       autoInReviewOnPrOpen: true,
-    });
+    };
+    prisma.workspaceSettings.findUnique = vi.fn().mockResolvedValue(autoReviewSettings);
+    prisma.workspaceSettings.upsert = vi.fn().mockResolvedValue(autoReviewSettings);
 
     await handlePullRequestOpenedOrEdited(
       createPrPayload() as Parameters<typeof handlePullRequestOpenedOrEdited>[0],
@@ -122,10 +128,12 @@ describe('handlePullRequestOpenedOrEdited', () => {
   });
 
   it('does not auto-transition for draft PRs', async () => {
-    prisma.workspaceSettings.upsert = vi.fn().mockResolvedValue({
+    const autoReviewSettings = {
       autoCloseOnMerge: true,
       autoInReviewOnPrOpen: true,
-    });
+    };
+    prisma.workspaceSettings.findUnique = vi.fn().mockResolvedValue(autoReviewSettings);
+    prisma.workspaceSettings.upsert = vi.fn().mockResolvedValue(autoReviewSettings);
 
     await handlePullRequestOpenedOrEdited(
       createPrPayload({
