@@ -87,11 +87,23 @@
   --terminal-cursor: #e5e7eb;
   --terminal-selection: #374151;
 
-  /* Terminal ANSI palette overrides (only colors that need theme adaptation) */
+  /* Terminal ANSI palette overrides (explicit values for consistency) */
   --terminal-ansi-black: #000000;
   --terminal-ansi-bright-black: #6b7280;
   --terminal-ansi-white: #e5e7eb;
   --terminal-ansi-bright-white: #ffffff;
+  --terminal-ansi-red: #ef4444;
+  --terminal-ansi-bright-red: #f87171;
+  --terminal-ansi-green: #22c55e;
+  --terminal-ansi-bright-green: #4ade80;
+  --terminal-ansi-yellow: #eab308;
+  --terminal-ansi-bright-yellow: #facc15;
+  --terminal-ansi-blue: #3b82f6;
+  --terminal-ansi-bright-blue: #60a5fa;
+  --terminal-ansi-magenta: #a855f7;
+  --terminal-ansi-bright-magenta: #c084fc;
+  --terminal-ansi-cyan: #06b6d4;
+  --terminal-ansi-bright-cyan: #22d3ee;
 }
 
 /* Force dark: no explicit :root.dark block needed — :root defaults are dark,
@@ -158,11 +170,25 @@
 
     /* Terminal ANSI palette overrides — swap black/white so ANSI "black"
        backgrounds blend with the light terminal surface instead of showing
-       as literal black. */
+       as literal black. Chromatic colors use dark, saturated values that
+       pass WCAG AA (>=4.5:1) on the light terminal background (#f5f5f4).
+       Bright variants are darker than regular on light backgrounds. */
     --terminal-ansi-black: #f5f5f4;
     --terminal-ansi-bright-black: #6c6c6a;
     --terminal-ansi-white: #161616;
     --terminal-ansi-bright-white: #000000;
+    --terminal-ansi-red: #b91c1c;
+    --terminal-ansi-bright-red: #b91c1c;
+    --terminal-ansi-green: #15803d;
+    --terminal-ansi-bright-green: #166534;
+    --terminal-ansi-yellow: #a16207;
+    --terminal-ansi-bright-yellow: #854d0e;
+    --terminal-ansi-blue: #2563eb;
+    --terminal-ansi-bright-blue: #1d4ed8;
+    --terminal-ansi-magenta: #9333ea;
+    --terminal-ansi-bright-magenta: #7e22ce;
+    --terminal-ansi-cyan: #0e7490;
+    --terminal-ansi-bright-cyan: #155e75;
   }
 }
 
@@ -228,6 +254,18 @@
   --terminal-ansi-bright-black: #6c6c6a;
   --terminal-ansi-white: #161616;
   --terminal-ansi-bright-white: #000000;
+  --terminal-ansi-red: #b91c1c;
+  --terminal-ansi-bright-red: #b91c1c;
+  --terminal-ansi-green: #15803d;
+  --terminal-ansi-bright-green: #166534;
+  --terminal-ansi-yellow: #a16207;
+  --terminal-ansi-bright-yellow: #854d0e;
+  --terminal-ansi-blue: #2563eb;
+  --terminal-ansi-bright-blue: #1d4ed8;
+  --terminal-ansi-magenta: #9333ea;
+  --terminal-ansi-bright-magenta: #7e22ce;
+  --terminal-ansi-cyan: #0e7490;
+  --terminal-ansi-bright-cyan: #155e75;
 }
 
 /* -------------------------------------------------------------------
@@ -412,6 +450,18 @@
   --color-terminal-ansi-bright-black: var(--terminal-ansi-bright-black);
   --color-terminal-ansi-white: var(--terminal-ansi-white);
   --color-terminal-ansi-bright-white: var(--terminal-ansi-bright-white);
+  --color-terminal-ansi-red: var(--terminal-ansi-red);
+  --color-terminal-ansi-bright-red: var(--terminal-ansi-bright-red);
+  --color-terminal-ansi-green: var(--terminal-ansi-green);
+  --color-terminal-ansi-bright-green: var(--terminal-ansi-bright-green);
+  --color-terminal-ansi-yellow: var(--terminal-ansi-yellow);
+  --color-terminal-ansi-bright-yellow: var(--terminal-ansi-bright-yellow);
+  --color-terminal-ansi-blue: var(--terminal-ansi-blue);
+  --color-terminal-ansi-bright-blue: var(--terminal-ansi-bright-blue);
+  --color-terminal-ansi-magenta: var(--terminal-ansi-magenta);
+  --color-terminal-ansi-bright-magenta: var(--terminal-ansi-bright-magenta);
+  --color-terminal-ansi-cyan: var(--terminal-ansi-cyan);
+  --color-terminal-ansi-bright-cyan: var(--terminal-ansi-bright-cyan);
 }
 
 /* -------------------------------------------------------------------

@@ -13,13 +13,24 @@ function readTerminalTheme() {
     foreground: v('--color-terminal-fg') || '#e5e7eb',
     cursor: v('--color-terminal-cursor') || '#e5e7eb',
     selectionBackground: v('--color-terminal-selection') || '#374151',
-    // ANSI palette overrides — ensures "black" bg (used by Claude Code for
-    // user messages) and "bright black" (dim/muted text like the status line)
-    // adapt to the current color scheme instead of staying literal black/gray.
+    // ANSI palette overrides — all 16 colors adapt to the current color scheme.
+    // Fallbacks are dark-mode defaults (Tailwind 500/400 shades).
     black: v('--color-terminal-ansi-black') || '#000000',
     brightBlack: v('--color-terminal-ansi-bright-black') || '#6b7280',
     white: v('--color-terminal-ansi-white') || '#e5e7eb',
     brightWhite: v('--color-terminal-ansi-bright-white') || '#ffffff',
+    red: v('--color-terminal-ansi-red') || '#ef4444',
+    brightRed: v('--color-terminal-ansi-bright-red') || '#f87171',
+    green: v('--color-terminal-ansi-green') || '#22c55e',
+    brightGreen: v('--color-terminal-ansi-bright-green') || '#4ade80',
+    yellow: v('--color-terminal-ansi-yellow') || '#eab308',
+    brightYellow: v('--color-terminal-ansi-bright-yellow') || '#facc15',
+    blue: v('--color-terminal-ansi-blue') || '#3b82f6',
+    brightBlue: v('--color-terminal-ansi-bright-blue') || '#60a5fa',
+    magenta: v('--color-terminal-ansi-magenta') || '#a855f7',
+    brightMagenta: v('--color-terminal-ansi-bright-magenta') || '#c084fc',
+    cyan: v('--color-terminal-ansi-cyan') || '#06b6d4',
+    brightCyan: v('--color-terminal-ansi-bright-cyan') || '#22d3ee',
   };
 }
 
