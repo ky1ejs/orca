@@ -135,6 +135,7 @@ export class DaemonStatusManager {
         env.ORCA_TASK_DESCRIPTION = (metadata.description ?? '').slice(0, 1000);
         env.ORCA_SERVER_URL = this.backendUrl;
       }
+      logger.debug(`Session ${session.id}: injecting env [${Object.keys(env).join(', ')}]`);
 
       try {
         if (options?.planMode) {

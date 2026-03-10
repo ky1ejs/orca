@@ -20,12 +20,13 @@ export class PtyManager {
     cwd: string,
     env?: Record<string, string>,
   ): void {
+    const { ELECTRON_RUN_AS_NODE: _, ...cleanEnv } = process.env;
     const shell = pty.spawn(command, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd,
-      ...(env && { env: { ...process.env, ...env } }),
+      env: { ...cleanEnv, ...env },
     });
 
     this.processes.set(sessionId, { pty: shell, sessionId });
