@@ -95,6 +95,7 @@ export interface AgentLaunchParams {
   workingDirectory: string;
   options?: AgentLaunchOptions;
   metadata?: TaskMetadata;
+  colorScheme?: 'light' | 'dark';
 }
 
 export interface AgentStopParams {
@@ -107,6 +108,7 @@ export interface AgentRestartParams {
   workingDirectory: string;
   options?: AgentLaunchOptions;
   metadata?: TaskMetadata;
+  colorScheme?: 'light' | 'dark';
 }
 
 export interface AgentStatusParams {

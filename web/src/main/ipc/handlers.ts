@@ -5,6 +5,7 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels.js';
 import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
+import { resolveColorScheme } from '../config/theme.js';
 import { listSystemFonts } from '../config/list-fonts.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 import type { DaemonClient } from '../daemon/client.js';
@@ -132,6 +133,7 @@ export function registerIpcHandlers(client: DaemonClient): void {
         workingDirectory,
         options,
         metadata,
+        colorScheme: resolveColorScheme(),
       });
     },
   );
@@ -156,6 +158,7 @@ export function registerIpcHandlers(client: DaemonClient): void {
         workingDirectory,
         options,
         metadata,
+        colorScheme: resolveColorScheme(),
       });
     },
   );
