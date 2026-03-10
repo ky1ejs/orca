@@ -180,7 +180,7 @@ model Label {
 
 model PullRequest {
   id           String            @id @default(cuid())
-  githubId     Int               @unique
+  githubId     BigInt            @unique
   number       Int
   title        String
   url          String
