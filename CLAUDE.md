@@ -6,7 +6,7 @@ Orca is a work management tool for orchestrating AI agents (starting with Claude
 
 ### Worktrees
 
-You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
+You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill. You must check if the ORCA_TASK_ID environment variable is set and if so you must put its value inside the branch name with a short summart of what the work is.
 
 ### Run simplifier
 
