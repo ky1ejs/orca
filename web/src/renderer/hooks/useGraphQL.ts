@@ -32,6 +32,7 @@ import {
   DeleteLabelDocument,
   WorkspaceIntegrationsDocument,
   GitHubAppInstallUrlDocument,
+  GitHubOAuthUrlDocument,
   CompleteGitHubInstallationDocument,
   RemoveGitHubInstallationDocument,
   UpdateObservedRepositoriesDocument,
@@ -314,6 +315,16 @@ export function useGitHubAppInstallUrl(workspaceId: string) {
     query: GitHubAppInstallUrlDocument,
     variables: { workspaceId },
     pause: !workspaceId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useGitHubOAuthUrl(workspaceId: string) {
+  const [result, reexecute] = useQuery({
+    query: GitHubOAuthUrlDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+    requestPolicy: 'network-only',
   });
   return { ...result, refetch: reexecute };
 }

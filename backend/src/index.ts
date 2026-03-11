@@ -6,6 +6,7 @@ import { pubsub } from './pubsub.js';
 import { verifyJwt } from './auth/jwt.js';
 import { handleGitHubWebhook } from './webhooks/github.js';
 import { handleGitHubCallback } from './webhooks/github-callback.js';
+import { handleGitHubOAuthCallback } from './webhooks/github-oauth.js';
 import type { ServerContext } from './context.js';
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
@@ -73,6 +74,9 @@ const server = Bun.serve({
     }
     if (url.pathname === '/github/callback' && request.method === 'GET') {
       return handleGitHubCallback(request);
+    }
+    if (url.pathname === '/github/oauth/callback' && request.method === 'GET') {
+      return handleGitHubOAuthCallback(request);
     }
     return yoga.fetch(request);
   },

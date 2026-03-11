@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 import type { QueryResolvers, MutationResolvers } from '../__generated__/graphql.js';
 import { requireWorkspaceAccess, requireWorkspaceOwner } from '../auth/workspace.js';
 import { getInstallationDetails, getInstallationRepositories } from '../webhooks/github-api.js';
+import { createOAuthState } from '../auth/oauth-state.js';
 
 export const githubInstallationResolvers = {
   Query: {
@@ -17,7 +18,20 @@ export const githubInstallationResolvers = {
 
       return `https://github.com/apps/${slug}/installations/new?state=${args.workspaceId}`;
     },
-  } satisfies Pick<QueryResolvers, 'githubAppInstallUrl'>,
+    githubOAuthUrl: async (_parent, args, context) => {
+      await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
+
+      const clientId = process.env.GITHUB_APP_CLIENT_ID;
+      if (!clientId) {
+        throw new GraphQLError('GitHub OAuth is not configured', {
+          extensions: { code: 'BAD_REQUEST' },
+        });
+      }
+
+      const state = await createOAuthState(args.workspaceId);
+      return `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}`;
+    },
+  } satisfies Pick<QueryResolvers, 'githubAppInstallUrl' | 'githubOAuthUrl'>,
   Mutation: {
     completeGitHubInstallation: async (_parent, args, context) => {
       await requireWorkspaceOwner(context.prisma, args.workspaceId, context.userId);
