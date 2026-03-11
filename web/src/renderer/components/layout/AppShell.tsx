@@ -10,11 +10,12 @@ import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
 import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
-import { useWorkspaceBySlug } from '../../hooks/useGraphQL.js';
+import { useWorkspaceBySlug, useTask } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useTerminalSessions, type TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
+import { TerminalPRStatusBar } from '../terminal/TerminalPRStatusBar.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
 import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
@@ -77,6 +78,7 @@ export function AppShell({ onLogout }: AppShellProps) {
     currentWorkspace?.slug ?? '',
   );
   const taskId = current.view === 'task' ? current.id : undefined;
+  const { data: taskData, refetch: refetchTask } = useTask(taskId ?? '');
   const { sessions, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -291,8 +293,13 @@ export function AppShell({ onLogout }: AppShellProps) {
           <Breadcrumbs />
           <MainContent sessions={sessions} refreshSessions={refresh} />
         </main>
-        {current.view === 'task' && (
+        {current.view === 'task' && taskId && (
           <div className="h-80 shrink-0 border-t border-edge flex flex-col">
+            <TerminalPRStatusBar
+              pullRequests={taskData?.task?.pullRequests ?? []}
+              taskId={taskId}
+              onMutate={() => refetchTask({ requestPolicy: 'network-only' })}
+            />
             {hasActiveSessions ? (
               <>
                 <TerminalTabs

@@ -27,6 +27,7 @@ const config: CodegenConfig = {
           TaskStatus: '@prisma/client#TaskStatus',
           PullRequestStatus: '@prisma/client#PullRequestStatus',
           ReviewStatus: '@prisma/client#ReviewStatus',
+          CheckStatus: '@prisma/client#CheckStatus',
         },
         useIndexSignature: true,
       },

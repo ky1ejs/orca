@@ -68,6 +68,18 @@ export const TaskChangedDocument = /* GraphQL */ `
         name
         color
       }
+      pullRequests {
+        id
+        number
+        title
+        url
+        status
+        reviewStatus
+        checkStatus
+        repository
+        draft
+      }
+      pullRequestCount
       archivedAt
       createdAt
       updatedAt

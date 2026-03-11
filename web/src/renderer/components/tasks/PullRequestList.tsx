@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { GitPullRequest, ExternalLink, Check, X, Plus, Link, Loader2 } from 'lucide-react';
+import { ExternalLink, X, Plus, Link, Loader2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import {
-  PullRequestStatus,
-  ReviewStatus,
-  type TaskQuery,
-} from '../../graphql/__generated__/generated.js';
+import { type TaskQuery } from '../../graphql/__generated__/generated.js';
+import { CIStatusBadge } from './CIStatusBadge.js';
 import { PullRequestBadge } from './PullRequestBadge.js';
-import { useLinkPullRequest, useUnlinkPullRequest } from '../../hooks/useGraphQL.js';
+import { PullRequestIcon } from './PullRequestIcon.js';
+import { ReviewIndicator } from './ReviewIndicator.js';
+import { useUnlinkPullRequest } from '../../hooks/useGraphQL.js';
+import { useLinkPrForm } from '../../hooks/useLinkPrForm.js';
 
 type PullRequestItem = NonNullable<TaskQuery['task']>['pullRequests'][number];
 
@@ -17,45 +17,16 @@ interface PullRequestListProps {
   onMutate?: () => void;
 }
 
-function ReviewIndicator({ status }: { status: ReviewStatus }) {
-  if (status === ReviewStatus.Approved) {
-    return <Check className={`${iconSize.sm} text-success`} aria-label="Approved" />;
-  }
-  if (status === ReviewStatus.ChangesRequested) {
-    return <X className={`${iconSize.sm} text-error`} aria-label="Changes requested" />;
-  }
-  return null;
-}
-
 export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestListProps) {
-  const [showForm, setShowForm] = useState(false);
-  const [url, setUrl] = useState('');
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const { linkPullRequest, fetching: linking } = useLinkPullRequest();
+  const { showForm, setShowForm, url, setUrl, linkError, linking, handleCancel, handleLink } =
+    useLinkPrForm({ taskId, onSuccess: onMutate });
   const { unlinkPullRequest, fetching: unlinking } = useUnlinkPullRequest();
-
-  const handleCancel = () => {
-    setShowForm(false);
-    setUrl('');
-    setLinkError(null);
-  };
-
-  const handleLink = async () => {
-    if (!url.trim()) return;
-    setLinkError(null);
-    const result = await linkPullRequest({ taskId, url: url.trim() });
-    if (result.error) {
-      setLinkError(result.error.graphQLErrors[0]?.message ?? result.error.message);
-      return;
-    }
-    handleCancel();
-    onMutate?.();
-  };
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
 
   const handleUnlink = async (id: string) => {
     const result = await unlinkPullRequest(id);
     if (result.error) {
-      setLinkError(result.error.graphQLErrors[0]?.message ?? result.error.message);
+      setUnlinkError(result.error.graphQLErrors[0]?.message ?? result.error.message);
       return;
     }
     onMutate?.();
@@ -71,15 +42,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
               key={pr.id}
               className="group flex items-center gap-2 px-3 py-2 bg-surface-raised rounded-md border border-edge"
             >
-              <GitPullRequest
-                className={`${iconSize.sm} flex-shrink-0 ${
-                  pr.status === PullRequestStatus.Merged
-                    ? 'text-accent'
-                    : pr.status === PullRequestStatus.Closed
-                      ? 'text-fg-muted'
-                      : 'text-success'
-                }`}
-              />
+              <PullRequestIcon status={pr.status} className={iconSize.sm} />
               <a
                 href={pr.url}
                 target="_blank"
@@ -92,6 +55,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
               </a>
               <div className="flex-1" />
               <ReviewIndicator status={pr.reviewStatus} />
+              <CIStatusBadge status={pr.checkStatus} />
               <PullRequestBadge status={pr.status} draft={pr.draft} />
               <span className="text-fg-faint text-label-sm flex-shrink-0">{pr.repository}</span>
               <span className="text-fg-muted text-label-sm flex-shrink-0">{pr.author}</span>
@@ -114,10 +78,7 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
             <input
               type="text"
               value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                setLinkError(null);
-              }}
+              onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLink();
                 if (e.key === 'Escape') handleCancel();
@@ -151,7 +112,9 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
           Link Pull Request
         </button>
       )}
-      {linkError && <p className="text-error text-label-sm mt-1">{linkError}</p>}
+      {(linkError || unlinkError) && (
+        <p className="text-error text-label-sm mt-1">{linkError ?? unlinkError}</p>
+      )}
     </div>
   );
 }

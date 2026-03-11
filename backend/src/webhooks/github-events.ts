@@ -1,6 +1,7 @@
 import { PullRequestStatus, ReviewStatus, TaskStatus, type PrismaClient } from '@prisma/client';
 import type { PubSubLike } from '../context.js';
 import { extractDisplayIds } from './display-id-parser.js';
+import { fetchCombinedCheckStatus, getInstallationAccessToken } from './github-api.js';
 import { getWorkspaceSettings } from './workspace-settings.js';
 
 interface PullRequestPayload {
@@ -13,8 +14,22 @@ interface PullRequestPayload {
     state: string;
     merged: boolean;
     draft: boolean;
-    head: { ref: string };
+    head: { ref: string; sha: string };
     user: { login: string };
+  };
+  repository: { full_name: string };
+  installation?: { id: number };
+}
+
+interface CheckEventPayload {
+  action: string;
+  check_run?: {
+    head_sha: string;
+    pull_requests: Array<{ number: number }>;
+  };
+  check_suite?: {
+    head_sha: string;
+    pull_requests: Array<{ number: number }>;
   };
   repository: { full_name: string };
   installation?: { id: number };
@@ -116,6 +131,7 @@ export async function handlePullRequestOpenedOrEdited(
           status: PullRequestStatus.OPEN,
           repository: payload.repository.full_name,
           headBranch: pr.head.ref,
+          headSha: pr.head.sha,
           author: pr.user.login,
           draft: pr.draft,
           taskId: task.id,
@@ -124,6 +140,7 @@ export async function handlePullRequestOpenedOrEdited(
         update: {
           title: pr.title,
           headBranch: pr.head.ref,
+          headSha: pr.head.sha,
           draft: pr.draft,
           taskId: task.id,
         },
@@ -226,6 +243,86 @@ export async function handleReviewSubmitted(payload: ReviewPayload, prisma: Pris
       where: { githubId: payload.pull_request.id },
       data: { reviewStatus },
     });
+  }
+}
+
+export async function handlePullRequestSynchronize(
+  payload: PullRequestPayload,
+  prisma: PrismaClient,
+  pubsub: PubSubLike,
+) {
+  const pr = payload.pull_request;
+  const prRecord = await prisma.pullRequest.findUnique({ where: { githubId: pr.id } });
+  if (!prRecord) return;
+
+  await prisma.pullRequest.update({
+    where: { githubId: pr.id },
+    data: { headSha: pr.head.sha, checkStatus: null },
+  });
+
+  const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
+  if (task) {
+    pubsub.publish('taskChanged', task);
+  }
+}
+
+export async function handleCheckEvent(
+  payload: CheckEventPayload,
+  prisma: PrismaClient,
+  pubsub: PubSubLike,
+) {
+  const installationId = payload.installation?.id;
+  if (!installationId) return;
+
+  const inner = payload.check_run ?? payload.check_suite;
+  if (!inner) return;
+
+  let token: string | undefined;
+  try {
+    token = await getInstallationAccessToken(installationId);
+  } catch {
+    // Fall back to unauthenticated access
+  }
+
+  const repository = payload.repository.full_name;
+  const prNumbers = inner.pull_requests.map((p) => p.number);
+  const prSelect = { id: true, repository: true, headSha: true, taskId: true } as const;
+
+  let prs = await prisma.pullRequest.findMany({
+    where: { repository, number: { in: prNumbers } },
+    select: prSelect,
+  });
+
+  // Fallback: match by headSha
+  if (prs.length === 0) {
+    prs = await prisma.pullRequest.findMany({
+      where: { repository, headSha: inner.head_sha },
+      select: prSelect,
+    });
+  }
+
+  if (prs.length === 0) return;
+
+  // Fetch check status for all PRs in parallel
+  const prsWithSha = prs.filter((pr) => pr.headSha);
+  const results = await Promise.all(
+    prsWithSha.map(async (pr) => {
+      const [owner, repo] = pr.repository.split('/');
+      const checkStatus = await fetchCombinedCheckStatus(owner, repo, pr.headSha!, token);
+      return { id: pr.id, taskId: pr.taskId, checkStatus };
+    }),
+  );
+
+  await Promise.all(
+    results.map((r) =>
+      prisma.pullRequest.update({ where: { id: r.id }, data: { checkStatus: r.checkStatus } }),
+    ),
+  );
+
+  const taskIds = new Set(results.map((r) => r.taskId));
+  for (const taskId of taskIds) {
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    if (task) pubsub.publish('taskChanged', task);
   }
 }
 

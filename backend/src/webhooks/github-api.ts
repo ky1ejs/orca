@@ -1,3 +1,4 @@
+import { type CheckStatus } from '@prisma/client';
 import { SignJWT, importPKCS8 } from 'jose';
 
 function getAppConfig() {
@@ -99,8 +100,52 @@ interface GitHubPullRequest {
   state: 'open' | 'closed';
   draft: boolean;
   merged: boolean;
-  head: { ref: string };
+  head: { ref: string; sha: string };
   user: { login: string };
+}
+
+export async function fetchCombinedCheckStatus(
+  owner: string,
+  repo: string,
+  ref: string,
+  token?: string,
+): Promise<CheckStatus | null> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/commits/${ref}/check-runs`;
+  const response = await fetch(url, { headers: githubHeaders(token) });
+
+  if (!response.ok) return null;
+
+  const data = (await response.json()) as {
+    total_count: number;
+    check_runs: Array<{
+      status: string;
+      conclusion: string | null;
+    }>;
+  };
+
+  if (data.total_count === 0) return null;
+
+  let hasQueued = false;
+  let hasInProgress = false;
+  const conclusions = new Set<string | null>();
+
+  for (const run of data.check_runs) {
+    if (run.status === 'queued') hasQueued = true;
+    else if (run.status === 'in_progress') hasInProgress = true;
+    else conclusions.add(run.conclusion);
+  }
+
+  // Failures take priority even if other runs are still pending
+  if (conclusions.has('failure') || conclusions.has('startup_failure')) return 'FAILURE';
+  if (conclusions.has('timed_out')) return 'TIMED_OUT';
+  if (conclusions.has('action_required')) return 'ACTION_REQUIRED';
+  if (hasInProgress) return 'IN_PROGRESS';
+  if (hasQueued) return 'PENDING';
+  if (conclusions.has('cancelled')) return 'CANCELLED';
+  if (conclusions.has('success') || conclusions.has('skipped') || conclusions.has('neutral'))
+    return 'SUCCESS';
+
+  return 'NEUTRAL';
 }
 
 export async function fetchPullRequest(
