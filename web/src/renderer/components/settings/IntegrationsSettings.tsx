@@ -3,6 +3,7 @@ import { useWorkspace } from '../../workspace/context.js';
 import {
   useWorkspaceIntegrations,
   useGitHubAppInstallUrl,
+  useGitHubOAuthUrl,
   useCompleteGitHubInstallation,
   useRemoveGitHubInstallation,
   useUpdateObservedRepositories,
@@ -52,6 +53,7 @@ function GitHubConnectionSection({
   isOwner: boolean;
 }) {
   const { data: urlData } = useGitHubAppInstallUrl(installation ? '' : workspaceId);
+  const { data: oauthUrlData } = useGitHubOAuthUrl(installation ? '' : workspaceId);
   const { completeGitHubInstallation, fetching: completing } = useCompleteGitHubInstallation();
   const { removeGitHubInstallation, fetching: removing } = useRemoveGitHubInstallation();
   const { updateObservedRepositories } = useUpdateObservedRepositories();
@@ -83,6 +85,13 @@ function GitHubConnectionSection({
       }
     }
   }, [urlData]);
+
+  const handleUseExisting = useCallback(() => {
+    const url = oauthUrlData?.githubOAuthUrl;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }, [oauthUrlData]);
 
   const handleManualComplete = useCallback(async () => {
     const id = Number(manualInstallationId.trim());
@@ -204,12 +213,22 @@ function GitHubConnectionSection({
               automation.
             </p>
             {isOwner && isConfigured && (
-              <button
-                onClick={handleConnect}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded transition-colors"
-              >
-                Connect GitHub
-              </button>
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={handleConnect}
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded transition-colors"
+                >
+                  Connect GitHub
+                </button>
+                {oauthUrlData?.githubOAuthUrl && (
+                  <button
+                    onClick={handleUseExisting}
+                    className="px-4 py-2 text-label-md text-fg-muted border border-edge-subtle hover:bg-surface-raised rounded transition-colors"
+                  >
+                    Use existing installation
+                  </button>
+                )}
+              </div>
             )}
             {isOwner && !isConfigured && (
               <p className="text-body-sm text-fg-faint">

@@ -322,6 +322,12 @@ export const GitHubAppInstallUrlQueryDocument = /* GraphQL */ `
   }
 `;
 
+export const GitHubOAuthUrlQueryDocument = /* GraphQL */ `
+  query GitHubOAuthUrl($workspaceId: ID!) {
+    githubOAuthUrl(workspaceId: $workspaceId)
+  }
+`;
+
 export const LabelsQueryDocument = /* GraphQL */ `
   query Labels($workspaceId: ID!) {
     labels(workspaceId: $workspaceId) {

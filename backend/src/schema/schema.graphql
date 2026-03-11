@@ -295,6 +295,7 @@ type Query {
   task(id: ID!): Task
   labels(workspaceId: ID!): [Label!]!
   githubAppInstallUrl(workspaceId: ID!): String!
+  githubOAuthUrl(workspaceId: ID!): String!
   pendingInvitations: [WorkspaceInvitation!]!
 }
 
