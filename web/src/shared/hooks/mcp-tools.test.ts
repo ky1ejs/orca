@@ -106,22 +106,6 @@ describe('MCP tools', () => {
         labels: [],
       };
 
-      // Set up a mock backend
-      const backendServer = createServer((req, res) => {
-        let body = '';
-        req.on('data', (chunk) => (body += chunk));
-        req.on('end', () => {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ data: { task: mockTask } }));
-        });
-      });
-      await new Promise<void>((resolve) => {
-        backendServer.listen(0, '127.0.0.1', () => resolve());
-      });
-      const backendAddr = backendServer.address();
-      const backendPort = typeof backendAddr === 'object' && backendAddr ? backendAddr.port : 0;
-      deps.backendUrl = `http://127.0.0.1:${backendPort}`;
-
       mockGetSession.mockReturnValue({
         id: 'sess-1',
         task_id: 'task-uuid',
@@ -133,14 +117,12 @@ describe('MCP tools', () => {
         created_at: new Date().toISOString(),
       });
 
-      const result = await callTool('get_current_task', { sessionId: 'sess-1' });
-      expect(result.isError).toBeUndefined();
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.displayId).toBe('ORCA-42');
-      expect(parsed.title).toBe('Test task');
-
-      await new Promise<void>((resolve, reject) => {
-        backendServer.close((err) => (err ? reject(err) : resolve()));
+      await withMockBackend({ task: mockTask }, async () => {
+        const result = await callTool('get_current_task', { sessionId: 'sess-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-42');
+        expect(parsed.title).toBe('Test task');
       });
     });
   });
@@ -158,24 +140,6 @@ describe('MCP tools', () => {
     });
 
     it('sends mutation to backend and returns success', async () => {
-      let receivedBody: string = '';
-
-      const backendServer = createServer((req, res) => {
-        let body = '';
-        req.on('data', (chunk) => (body += chunk));
-        req.on('end', () => {
-          receivedBody = body;
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ data: { updateTask: { id: 'task-uuid', status: 'DONE' } } }));
-        });
-      });
-      await new Promise<void>((resolve) => {
-        backendServer.listen(0, '127.0.0.1', () => resolve());
-      });
-      const backendAddr = backendServer.address();
-      const backendPort = typeof backendAddr === 'object' && backendAddr ? backendAddr.port : 0;
-      deps.backendUrl = `http://127.0.0.1:${backendPort}`;
-
       mockGetSession.mockReturnValue({
         id: 'sess-1',
         task_id: 'task-uuid',
@@ -187,20 +151,274 @@ describe('MCP tools', () => {
         created_at: new Date().toISOString(),
       });
 
-      const result = await callTool('update_task_status', {
-        sessionId: 'sess-1',
-        status: 'DONE',
+      await withMockBackend(
+        { updateTask: { id: 'task-uuid', status: 'DONE' } },
+        async (received) => {
+          const result = await callTool('update_task_status', {
+            sessionId: 'sess-1',
+            status: 'DONE',
+          });
+
+          expect(result.isError).toBeUndefined();
+          expect(result.content[0].text).toContain('Task status updated to DONE');
+
+          const parsed = JSON.parse(received.body());
+          expect(parsed.variables.id).toBe('task-uuid');
+          expect(parsed.variables.input.status).toBe('DONE');
+        },
+      );
+    });
+  });
+
+  // Helper to start a mock backend that returns a canned response.
+  // Pass `{ raw: ... }` to return an arbitrary JSON response (e.g. GraphQL errors).
+  async function withMockBackend(
+    response: Record<string, unknown> | { raw: unknown },
+    fn: (received: { body: () => string }) => Promise<void>,
+  ): Promise<void> {
+    const jsonResponse = 'raw' in response ? response.raw : { data: response };
+    let receivedBody = '';
+    const backendServer = createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => {
+        receivedBody = body;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(jsonResponse));
       });
+    });
+    await new Promise<void>((resolve) => {
+      backendServer.listen(0, '127.0.0.1', () => resolve());
+    });
+    const backendAddr = backendServer.address();
+    const backendPort = typeof backendAddr === 'object' && backendAddr ? backendAddr.port : 0;
+    deps.backendUrl = `http://127.0.0.1:${backendPort}`;
 
-      expect(result.isError).toBeUndefined();
-      expect(result.content[0].text).toContain('Task status updated to DONE');
-
-      const parsed = JSON.parse(receivedBody);
-      expect(parsed.variables.id).toBe('task-uuid');
-      expect(parsed.variables.input.status).toBe('DONE');
-
+    try {
+      await fn({ body: () => receivedBody });
+    } finally {
       await new Promise<void>((resolve, reject) => {
         backendServer.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
+  }
+
+  describe('list_workspaces', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_workspaces', {});
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns workspaces from backend', async () => {
+      const mockWorkspaces = [
+        { id: 'ws-1', name: 'My Workspace', slug: 'my-workspace' },
+        { id: 'ws-2', name: 'Other Workspace', slug: 'other' },
+      ];
+
+      await withMockBackend({ workspaces: mockWorkspaces }, async () => {
+        const result = await callTool('list_workspaces', {});
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+        expect(parsed[0].slug).toBe('my-workspace');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend({ raw: { errors: [{ message: 'Unauthorized' }] } }, async () => {
+        const result = await callTool('list_workspaces', {});
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Failed to list workspaces');
+      });
+    });
+  });
+
+  describe('list_initiatives', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_initiatives', { workspaceSlug: 'my-ws' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns initiatives from backend', async () => {
+      const mockInitiatives = [{ id: 'init-1', name: 'Phase 1', description: 'First phase' }];
+
+      await withMockBackend({ workspace: { initiatives: mockInitiatives } }, async () => {
+        const result = await callTool('list_initiatives', { workspaceSlug: 'my-ws' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(1);
+        expect(parsed[0].name).toBe('Phase 1');
+      });
+    });
+  });
+
+  describe('list_projects', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_projects', { workspaceSlug: 'my-ws' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns projects from backend', async () => {
+      const mockProjects = [
+        { id: 'proj-1', name: 'Backend', description: null, initiativeId: 'init-1' },
+      ];
+
+      await withMockBackend({ workspace: { projects: mockProjects } }, async () => {
+        const result = await callTool('list_projects', { workspaceSlug: 'my-ws' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(1);
+        expect(parsed[0].name).toBe('Backend');
+        expect(parsed[0].initiativeId).toBe('init-1');
+      });
+    });
+  });
+
+  describe('create_initiative', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('create_initiative', {
+        workspaceId: 'ws-1',
+        name: 'New Initiative',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('creates initiative and returns result', async () => {
+      const created = { id: 'init-new', name: 'New Initiative', description: 'A desc' };
+
+      await withMockBackend({ createInitiative: created }, async (received) => {
+        const result = await callTool('create_initiative', {
+          workspaceId: 'ws-1',
+          name: 'New Initiative',
+          description: 'A desc',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('init-new');
+        expect(parsed.name).toBe('New Initiative');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.input.workspaceId).toBe('ws-1');
+        expect(sentVars.input.name).toBe('New Initiative');
+        expect(sentVars.input.description).toBe('A desc');
+      });
+    });
+  });
+
+  describe('create_project', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('create_project', {
+        workspaceId: 'ws-1',
+        name: 'New Project',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('creates project with initiativeId and returns result', async () => {
+      const created = {
+        id: 'proj-new',
+        name: 'New Project',
+        description: null,
+        initiativeId: 'init-1',
+      };
+
+      await withMockBackend({ createProject: created }, async (received) => {
+        const result = await callTool('create_project', {
+          workspaceId: 'ws-1',
+          name: 'New Project',
+          initiativeId: 'init-1',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('proj-new');
+        expect(parsed.initiativeId).toBe('init-1');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.input.workspaceId).toBe('ws-1');
+        expect(sentVars.input.initiativeId).toBe('init-1');
+      });
+    });
+  });
+
+  describe('create_task', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('create_task', {
+        workspaceId: 'ws-1',
+        title: 'New Task',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('creates task with optional fields and returns result', async () => {
+      const created = {
+        id: 'task-new',
+        displayId: 'ORCA-99',
+        title: 'New Task',
+        description: 'Do the thing',
+        status: 'TODO',
+        priority: 'HIGH',
+        projectId: 'proj-1',
+      };
+
+      await withMockBackend({ createTask: created }, async (received) => {
+        const result = await callTool('create_task', {
+          workspaceId: 'ws-1',
+          title: 'New Task',
+          description: 'Do the thing',
+          status: 'TODO',
+          priority: 'HIGH',
+          projectId: 'proj-1',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-99');
+        expect(parsed.title).toBe('New Task');
+        expect(parsed.priority).toBe('HIGH');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.input.workspaceId).toBe('ws-1');
+        expect(sentVars.input.title).toBe('New Task');
+        expect(sentVars.input.status).toBe('TODO');
+        expect(sentVars.input.priority).toBe('HIGH');
+        expect(sentVars.input.projectId).toBe('proj-1');
+      });
+    });
+
+    it('creates task with only required fields', async () => {
+      const created = {
+        id: 'task-min',
+        displayId: 'ORCA-100',
+        title: 'Minimal Task',
+        description: null,
+        status: 'TODO',
+        priority: 'NONE',
+        projectId: null,
+      };
+
+      await withMockBackend({ createTask: created }, async (received) => {
+        const result = await callTool('create_task', {
+          workspaceId: 'ws-1',
+          title: 'Minimal Task',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-100');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.input.workspaceId).toBe('ws-1');
+        expect(sentVars.input.title).toBe('Minimal Task');
       });
     });
   });
