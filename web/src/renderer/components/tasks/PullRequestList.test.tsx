@@ -25,6 +25,7 @@ const MOCK_PR = {
   url: 'https://github.com/acme/repo/pull/42',
   status: PullRequestStatus.Open,
   reviewStatus: ReviewStatus.None,
+  checkStatus: null,
   repository: 'acme/repo',
   headBranch: 'fix/the-thing',
   author: 'octocat',

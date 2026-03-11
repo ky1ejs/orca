@@ -125,6 +125,17 @@ enum PullRequestStatus {
   CLOSED
 }
 
+enum CheckStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILURE
+  NEUTRAL
+  CANCELLED
+  TIMED_OUT
+  ACTION_REQUIRED
+}
+
 enum ReviewStatus {
   NONE
   APPROVED
@@ -143,6 +154,7 @@ type PullRequest {
   headBranch: String!
   author: String!
   draft: Boolean!
+  checkStatus: CheckStatus
   createdAt: DateTime!
   updatedAt: DateTime!
 }

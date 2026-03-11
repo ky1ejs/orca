@@ -36,6 +36,17 @@ enum TaskPriority {
   URGENT
 }
 
+enum CheckStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILURE
+  NEUTRAL
+  CANCELLED
+  TIMED_OUT
+  ACTION_REQUIRED
+}
+
 enum WorkspaceRole {
   OWNER
   MEMBER
@@ -191,6 +202,8 @@ model PullRequest {
   headBranch   String
   author       String
   draft        Boolean           @default(false)
+  checkStatus  CheckStatus?
+  headSha      String?
   taskId       String
   task         Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
   workspaceId  String

@@ -5,7 +5,9 @@ import {
   handlePullRequestOpenedOrEdited,
   handlePullRequestClosed,
   handlePullRequestReopened,
+  handlePullRequestSynchronize,
   handleReviewSubmitted,
+  handleCheckEvent,
   handleInstallationCreated,
   handleInstallationDeleted,
   handleInstallationRepositoriesChanged,
@@ -53,8 +55,16 @@ export async function handleGitHubWebhook(request: Request): Promise<Response> {
     case 'pull_request.reopened':
       await handlePullRequestReopened(payload, prisma, pubsub);
       break;
+    case 'pull_request.synchronize':
+      await handlePullRequestSynchronize(payload, prisma, pubsub);
+      break;
     case 'pull_request_review.submitted':
       await handleReviewSubmitted(payload, prisma);
+      break;
+    case 'check_run.created':
+    case 'check_run.completed':
+    case 'check_suite.completed':
+      await handleCheckEvent(payload, prisma, pubsub);
       break;
     case 'installation.created':
       await handleInstallationCreated(payload, prisma);

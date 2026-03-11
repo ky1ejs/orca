@@ -2,7 +2,11 @@ import { PullRequestStatus } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 import type { MutationResolvers, TaskResolvers } from '../__generated__/graphql.js';
 import { requireTaskAccess } from '../auth/workspace.js';
-import { fetchPullRequest, getInstallationAccessToken } from '../webhooks/github-api.js';
+import {
+  fetchCombinedCheckStatus,
+  fetchPullRequest,
+  getInstallationAccessToken,
+} from '../webhooks/github-api.js';
 
 export const pullRequestFieldResolvers = {
   pullRequests: (parent, _args, context) => {
@@ -60,14 +64,24 @@ export const pullRequestMutationResolvers = {
         ? PullRequestStatus.CLOSED
         : PullRequestStatus.OPEN;
 
+    // Fetch CI check status for the PR's head SHA
+    let checkStatus = null;
+    try {
+      checkStatus = await fetchCombinedCheckStatus(owner, repo, pr.head.sha, token);
+    } catch {
+      // Non-critical — proceed without check status
+    }
+
     const prData = {
       title: pr.title,
       url: pr.html_url,
       status,
       repository: `${owner}/${repo}`,
       headBranch: pr.head.ref,
+      headSha: pr.head.sha,
       author: pr.user.login,
       draft: pr.draft,
+      checkStatus,
       taskId,
       workspaceId: task.workspaceId,
     };

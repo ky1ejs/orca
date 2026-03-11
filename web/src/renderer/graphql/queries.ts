@@ -279,6 +279,7 @@ export const TaskQueryDocument = /* GraphQL */ `
         url
         status
         reviewStatus
+        checkStatus
         repository
         headBranch
         author
