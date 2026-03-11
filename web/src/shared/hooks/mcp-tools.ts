@@ -12,24 +12,30 @@ interface ToolError {
   isError: true;
 }
 
+function toolError(text: string): ToolError {
+  return { content: [{ type: 'text', text }], isError: true };
+}
+
+function toolSuccess(text: string) {
+  return { content: [{ type: 'text' as const, text }] };
+}
+
+function resolveToken(getToken: () => string | null): string | ToolError {
+  const token = getToken();
+  if (!token) return toolError('Not authenticated with Orca backend.');
+  return token;
+}
+
 function resolveSession(
   sessionId: string,
   getToken: () => string | null,
 ): { taskId: string; token: string } | ToolError {
   const session = getSession(sessionId);
   if (!session || !session.task_id) {
-    return {
-      content: [{ type: 'text', text: 'No task is associated with this session.' }],
-      isError: true,
-    };
+    return toolError('No task is associated with this session.');
   }
-  const token = getToken();
-  if (!token) {
-    return {
-      content: [{ type: 'text', text: 'Not authenticated with Orca backend.' }],
-      isError: true,
-    };
-  }
+  const token = resolveToken(getToken);
+  if (typeof token !== 'string') return token;
   return { taskId: session.task_id, token };
 }
 
@@ -93,25 +99,14 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
         });
 
         if (json.errors || !json.data?.task) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Failed to fetch task: ${JSON.stringify(json.errors ?? 'task not found')}`,
-              },
-            ],
-            isError: true,
-          };
+          return toolError(
+            `Failed to fetch task: ${JSON.stringify(json.errors ?? 'task not found')}`,
+          );
         }
 
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(json.data.task, null, 2) }],
-        };
+        return toolSuccess(JSON.stringify(json.data.task, null, 2));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `Failed to reach Orca backend: ${err}` }],
-          isError: true,
-        };
+        return toolError(`Failed to reach Orca backend: ${err}`);
       }
     },
   );
@@ -147,25 +142,246 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
         });
 
         if (json.errors) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Failed to update task: ${JSON.stringify(json.errors)}`,
-              },
-            ],
-            isError: true,
-          };
+          return toolError(`Failed to update task: ${JSON.stringify(json.errors)}`);
         }
 
-        return {
-          content: [{ type: 'text' as const, text: `Task status updated to ${status}.` }],
-        };
+        return toolSuccess(`Task status updated to ${status}.`);
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `Failed to reach Orca backend: ${err}` }],
-          isError: true,
-        };
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  // ── Discovery tools ──────────────────────────────────────────────────
+
+  server.registerTool(
+    'list_workspaces',
+    {
+      description: 'List all workspaces the current user belongs to.',
+      inputSchema: {},
+    },
+    async () => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const query = `
+        query { workspaces { id name slug } }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, query, {});
+
+        if (json.errors || !json.data?.workspaces) {
+          return toolError(
+            `Failed to list workspaces: ${JSON.stringify(json.errors ?? 'no data')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(json.data.workspaces, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'list_initiatives',
+    {
+      description: 'List initiatives in a workspace.',
+      inputSchema: {
+        workspaceSlug: z.string().describe('The workspace slug'),
+      },
+    },
+    async ({ workspaceSlug }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const query = `
+        query Workspace($slug: String!) {
+          workspace(slug: $slug) {
+            initiatives { id name description }
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, query, { slug: workspaceSlug });
+
+        const workspace = json.data?.workspace as { initiatives: unknown[] } | null | undefined;
+        if (json.errors || !workspace) {
+          return toolError(
+            `Failed to list initiatives: ${JSON.stringify(json.errors ?? 'workspace not found')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(workspace.initiatives, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'list_projects',
+    {
+      description: 'List projects in a workspace.',
+      inputSchema: {
+        workspaceSlug: z.string().describe('The workspace slug'),
+      },
+    },
+    async ({ workspaceSlug }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const query = `
+        query Workspace($slug: String!) {
+          workspace(slug: $slug) {
+            projects { id name description initiativeId }
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, query, { slug: workspaceSlug });
+
+        const workspace = json.data?.workspace as { projects: unknown[] } | null | undefined;
+        if (json.errors || !workspace) {
+          return toolError(
+            `Failed to list projects: ${JSON.stringify(json.errors ?? 'workspace not found')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(workspace.projects, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  // ── Creation tools ──────────────────────────────────────────────────
+
+  server.registerTool(
+    'create_initiative',
+    {
+      description: 'Create a new initiative in a workspace.',
+      inputSchema: {
+        workspaceId: z.string().describe('The workspace ID'),
+        name: z.string().describe('Initiative name'),
+        description: z.string().optional().describe('Initiative description'),
+      },
+    },
+    async ({ workspaceId, name, description }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation CreateInitiative($input: CreateInitiativeInput!) {
+          createInitiative(input: $input) {
+            id name description
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          input: { workspaceId, name, description },
+        });
+
+        if (json.errors || !json.data?.createInitiative) {
+          return toolError(
+            `Failed to create initiative: ${JSON.stringify(json.errors ?? 'no data')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(json.data.createInitiative, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'create_project',
+    {
+      description: 'Create a new project in a workspace.',
+      inputSchema: {
+        workspaceId: z.string().describe('The workspace ID'),
+        name: z.string().describe('Project name'),
+        description: z.string().optional().describe('Project description'),
+        initiativeId: z.string().optional().describe('Initiative ID to associate with'),
+      },
+    },
+    async ({ workspaceId, name, description, initiativeId }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation CreateProject($input: CreateProjectInput!) {
+          createProject(input: $input) {
+            id name description initiativeId
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          input: { workspaceId, name, description, initiativeId },
+        });
+
+        if (json.errors || !json.data?.createProject) {
+          return toolError(`Failed to create project: ${JSON.stringify(json.errors ?? 'no data')}`);
+        }
+
+        return toolSuccess(JSON.stringify(json.data.createProject, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'create_task',
+    {
+      description: 'Create a new task in a workspace.',
+      inputSchema: {
+        workspaceId: z.string().describe('The workspace ID'),
+        title: z.string().describe('Task title'),
+        description: z.string().optional().describe('Task description'),
+        status: z
+          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
+          .optional()
+          .describe('Task status'),
+        priority: z
+          .enum(['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+          .optional()
+          .describe('Task priority'),
+        projectId: z.string().optional().describe('Project ID to associate with'),
+      },
+    },
+    async ({ workspaceId, title, description, status, priority, projectId }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation CreateTask($input: CreateTaskInput!) {
+          createTask(input: $input) {
+            id displayId title description status priority projectId
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          input: { workspaceId, title, description, status, priority, projectId },
+        });
+
+        if (json.errors || !json.data?.createTask) {
+          return toolError(`Failed to create task: ${JSON.stringify(json.errors ?? 'no data')}`);
+        }
+
+        return toolSuccess(JSON.stringify(json.data.createTask, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
       }
     },
   );
