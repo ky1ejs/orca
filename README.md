@@ -21,10 +21,10 @@ Orca aims to solve this problem in one common interface so you can see where bes
 
 ### Orca's approach
 
-**Local and backend agents are first class member of the tool**
+**Local and backend agents are first class member of the tool**<br>
 Orca treats agent sessions as first-class objects tied to tasks and offer a integrated terminal experience for managing local agents. Every session has a status, a terminal, and a place in your project hierarchy.
 
-**Automate the admin of project management**
+**Automate the admin of project management**<br>
 Orca injects context into both local and background agents sessions so that agents can: 
 - report progress
 - create relationships and add to context in the wider work
