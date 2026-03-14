@@ -22,6 +22,7 @@ import { EmptyTerminalArea } from './EmptyState.js';
 import { Breadcrumbs } from './Breadcrumbs.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
+import { CommandPalette } from '../command-palette/CommandPalette.js';
 
 interface AppShellProps {
   onLogout: () => void;
@@ -84,6 +85,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
 
@@ -226,6 +228,15 @@ export function AppShell({ onLogout }: AppShellProps) {
         },
       },
       {
+        key: 'k',
+        metaKey: true,
+        label: 'Command Palette',
+        description: 'Open command palette',
+        action: () => {
+          setShowCommandPalette(true);
+        },
+      },
+      {
         key: '/',
         metaKey: true,
         label: 'Help',
@@ -264,6 +275,12 @@ export function AppShell({ onLogout }: AppShellProps) {
           shortcuts={displayShortcuts}
           isOpen={showShortcutHelp}
           onClose={() => setShowShortcutHelp(false)}
+        />
+        <CommandPalette
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          onShowQuickCreate={() => setShowQuickCreate(true)}
+          onShowShortcutHelp={() => setShowShortcutHelp(true)}
         />
       </div>
     );
@@ -325,6 +342,12 @@ export function AppShell({ onLogout }: AppShellProps) {
         isOpen={showQuickCreate}
         onClose={() => setShowQuickCreate(false)}
         projects={projects}
+      />
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onShowQuickCreate={() => setShowQuickCreate(true)}
+        onShowShortcutHelp={() => setShowShortcutHelp(true)}
       />
     </div>
   );
