@@ -58,6 +58,17 @@ interface InstallationRepositoriesPayload {
   repositories_removed: Array<{ full_name: string }>;
 }
 
+async function publishTaskChanged(
+  prisma: PrismaClient,
+  pubsub: PubSubLike,
+  taskId: string,
+): Promise<void> {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (task) {
+    pubsub.publish('taskChanged', task);
+  }
+}
+
 async function resolveTasksByDisplayIds(
   prisma: PrismaClient,
   workspaceId: string,
@@ -157,6 +168,8 @@ export async function handlePullRequestOpenedOrEdited(
           data: { status: TaskStatus.IN_REVIEW },
         });
         pubsub.publish('taskChanged', updated);
+      } else {
+        pubsub.publish('taskChanged', task);
       }
     }
   }
@@ -191,10 +204,13 @@ export async function handlePullRequestClosed(
             data: { status: TaskStatus.DONE },
           });
           pubsub.publish('taskChanged', updated);
+          return;
         }
       }
     }
   }
+
+  await publishTaskChanged(prisma, pubsub, prRecord.taskId);
 }
 
 export async function handlePullRequestReopened(
@@ -211,20 +227,29 @@ export async function handlePullRequestReopened(
     data: { status: PullRequestStatus.OPEN },
   });
 
-  const settings = await getWorkspaceSettings(prisma, prRecord.workspaceId);
-  if (settings.autoCloseOnMerge) {
-    const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
-    if (task && task.status === TaskStatus.DONE) {
+  const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
+  if (!task) return;
+
+  if (task.status === TaskStatus.DONE) {
+    const settings = await getWorkspaceSettings(prisma, prRecord.workspaceId);
+    if (settings.autoCloseOnMerge) {
       const updated = await prisma.task.update({
         where: { id: prRecord.taskId },
         data: { status: TaskStatus.IN_REVIEW },
       });
       pubsub.publish('taskChanged', updated);
+      return;
     }
   }
+
+  pubsub.publish('taskChanged', task);
 }
 
-export async function handleReviewSubmitted(payload: ReviewPayload, prisma: PrismaClient) {
+export async function handleReviewSubmitted(
+  payload: ReviewPayload,
+  prisma: PrismaClient,
+  pubsub: PubSubLike,
+) {
   const prRecord = await prisma.pullRequest.findUnique({
     where: { githubId: payload.pull_request.id },
   });
@@ -243,6 +268,8 @@ export async function handleReviewSubmitted(payload: ReviewPayload, prisma: Pris
       where: { githubId: payload.pull_request.id },
       data: { reviewStatus },
     });
+
+    await publishTaskChanged(prisma, pubsub, prRecord.taskId);
   }
 }
 
@@ -260,10 +287,7 @@ export async function handlePullRequestSynchronize(
     data: { headSha: pr.head.sha, checkStatus: null },
   });
 
-  const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
-  if (task) {
-    pubsub.publish('taskChanged', task);
-  }
+  await publishTaskChanged(prisma, pubsub, prRecord.taskId);
 }
 
 export async function handleCheckEvent(
@@ -321,8 +345,7 @@ export async function handleCheckEvent(
 
   const taskIds = new Set(results.map((r) => r.taskId));
   for (const taskId of taskIds) {
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (task) pubsub.publish('taskChanged', task);
+    await publishTaskChanged(prisma, pubsub, taskId);
   }
 }
 
