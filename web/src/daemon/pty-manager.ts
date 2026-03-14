@@ -5,7 +5,7 @@
 import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
-import { appendOutput, replayOutput, clearOutput, getVisibleOutputSize } from './output-buffer.js';
+import { RingBuffer } from '../shared/ring-buffer.js';
 import { processKittyKeyboard } from './kitty-keyboard.js';
 
 interface PtyProcess {
@@ -17,6 +17,7 @@ export type BroadcastFn = (event: string, params: unknown) => void;
 
 export class DaemonPtyManager {
   private processes = new Map<string, PtyProcess>();
+  private buffers = new Map<string, RingBuffer>();
   private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
@@ -42,6 +43,7 @@ export class DaemonPtyManager {
     });
 
     this.processes.set(sessionId, { pty: shell, sessionId });
+    this.buffers.set(sessionId, new RingBuffer());
 
     updateSession(sessionId, { pid: shell.pid, status: SessionStatus.Running });
 
@@ -50,11 +52,7 @@ export class DaemonPtyManager {
       this.lastDataAt.set(sessionId, Date.now());
       const { output, response } = processKittyKeyboard(data);
       if (response) shell.write(response);
-      try {
-        appendOutput(sessionId, output);
-      } catch {
-        // DB may be closed during shutdown
-      }
+      this.buffers.get(sessionId)?.append(output);
       this.broadcast('pty.data', { sessionId, data: output });
     });
 
@@ -89,20 +87,25 @@ export class DaemonPtyManager {
     if (proc) {
       proc.pty.kill();
       this.processes.delete(sessionId);
+      this.buffers.delete(sessionId);
       this.lastDataAt.delete(sessionId);
     }
   }
 
   replay(sessionId: string): string {
-    return replayOutput(sessionId);
+    return this.buffers.get(sessionId)?.replay() ?? '';
+  }
+
+  tail(sessionId: string, n: number): string {
+    return this.buffers.get(sessionId)?.tail(n) ?? '';
   }
 
   visibleOutputSize(sessionId: string): number {
-    return getVisibleOutputSize(sessionId);
+    return this.buffers.get(sessionId)?.visibleSize ?? 0;
   }
 
   clear(sessionId: string): void {
-    clearOutput(sessionId);
+    this.buffers.get(sessionId)?.clear();
   }
 
   get activeCount(): number {
@@ -115,6 +118,7 @@ export class DaemonPtyManager {
       proc.pty.kill('SIGTERM');
     }
     this.processes.clear();
+    this.buffers.clear();
     this.lastDataAt.clear();
   }
 
