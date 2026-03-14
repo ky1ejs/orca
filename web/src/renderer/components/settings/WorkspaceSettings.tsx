@@ -7,8 +7,9 @@ import { TerminalSettings } from './TerminalSettings.js';
 import { LabelManager } from '../labels/LabelManager.js';
 import { AppearanceSettings } from './AppearanceSettings.js';
 import { IntegrationsSettings } from './IntegrationsSettings.js';
+import { DaemonSettings } from './DaemonSettings.js';
 
-type Tab = 'general' | 'members' | 'labels' | 'integrations' | 'terminal' | 'appearance';
+type Tab = 'general' | 'members' | 'labels' | 'integrations' | 'terminal' | 'appearance' | 'daemon';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -83,6 +84,7 @@ export function WorkspaceSettings() {
     { key: 'integrations', label: 'Integrations' },
     { key: 'terminal', label: 'Terminal' },
     { key: 'appearance', label: 'Appearance' },
+    { key: 'daemon', label: 'Daemon' },
   ];
 
   return (
@@ -186,6 +188,8 @@ export function WorkspaceSettings() {
       {activeTab === 'terminal' && <TerminalSettings />}
 
       {activeTab === 'appearance' && <AppearanceSettings />}
+
+      {activeTab === 'daemon' && <DaemonSettings />}
     </div>
   );
 }
