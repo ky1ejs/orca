@@ -59,7 +59,7 @@ export async function handleGitHubWebhook(request: Request): Promise<Response> {
       await handlePullRequestSynchronize(payload, prisma, pubsub);
       break;
     case 'pull_request_review.submitted':
-      await handleReviewSubmitted(payload, prisma);
+      await handleReviewSubmitted(payload, prisma, pubsub);
       break;
     case 'check_run.created':
     case 'check_run.completed':

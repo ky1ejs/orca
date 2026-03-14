@@ -138,6 +138,10 @@ describe('handlePullRequestOpenedOrEdited', () => {
         }),
       }),
     );
+    expect(pubsub.publish).toHaveBeenCalledWith('taskChanged', {
+      id: 'task-1',
+      status: 'IN_PROGRESS',
+    });
   });
 
   it('skips when no installation', async () => {
@@ -212,6 +216,10 @@ describe('handlePullRequestOpenedOrEdited', () => {
     );
 
     expect(prisma.task.update).not.toHaveBeenCalled();
+    expect(pubsub.publish).toHaveBeenCalledWith('taskChanged', {
+      id: 'task-1',
+      status: 'IN_PROGRESS',
+    });
   });
 });
 
@@ -256,6 +264,10 @@ describe('handlePullRequestClosed', () => {
       expect.objectContaining({ data: { status: 'CLOSED' } }),
     );
     expect(prisma.task.update).not.toHaveBeenCalled();
+    expect(pubsub.publish).toHaveBeenCalledWith(
+      'taskChanged',
+      expect.objectContaining({ id: 'task-1' }),
+    );
   });
 
   it('does not auto-close when other PRs are still open', async () => {
@@ -271,6 +283,10 @@ describe('handlePullRequestClosed', () => {
     );
 
     expect(prisma.task.update).not.toHaveBeenCalled();
+    expect(pubsub.publish).toHaveBeenCalledWith(
+      'taskChanged',
+      expect.objectContaining({ id: 'task-1' }),
+    );
   });
 });
 
@@ -292,12 +308,31 @@ describe('handlePullRequestReopened', () => {
     expect(prisma.task.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'IN_REVIEW' } }),
     );
+    expect(pubsub.publish).toHaveBeenCalledWith('taskChanged', expect.anything());
+  });
+
+  it('publishes taskChanged even when task is not DONE', async () => {
+    const prisma = createMockPrisma();
+    const pubsub = createMockPubsub();
+
+    await handlePullRequestReopened(
+      createPrPayload({ action: 'reopened' }) as Parameters<typeof handlePullRequestReopened>[0],
+      prisma,
+      pubsub,
+    );
+
+    expect(prisma.task.update).not.toHaveBeenCalled();
+    expect(pubsub.publish).toHaveBeenCalledWith('taskChanged', {
+      id: 'task-1',
+      status: 'IN_PROGRESS',
+    });
   });
 });
 
 describe('handleReviewSubmitted', () => {
-  it('updates review status', async () => {
+  it('updates review status and publishes taskChanged', async () => {
     const prisma = createMockPrisma();
+    const pubsub = createMockPubsub();
 
     await handleReviewSubmitted(
       {
@@ -307,11 +342,35 @@ describe('handleReviewSubmitted', () => {
         installation: { id: 123 },
       } as Parameters<typeof handleReviewSubmitted>[0],
       prisma,
+      pubsub,
     );
 
     expect(prisma.pullRequest.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { reviewStatus: 'APPROVED' } }),
     );
+    expect(pubsub.publish).toHaveBeenCalledWith(
+      'taskChanged',
+      expect.objectContaining({ id: 'task-1' }),
+    );
+  });
+
+  it('does not publish when review state is unknown', async () => {
+    const prisma = createMockPrisma();
+    const pubsub = createMockPubsub();
+
+    await handleReviewSubmitted(
+      {
+        action: 'submitted',
+        review: { state: 'dismissed' },
+        pull_request: { id: 100 },
+        installation: { id: 123 },
+      } as Parameters<typeof handleReviewSubmitted>[0],
+      prisma,
+      pubsub,
+    );
+
+    expect(prisma.pullRequest.update).not.toHaveBeenCalled();
+    expect(pubsub.publish).not.toHaveBeenCalled();
   });
 });
 
