@@ -200,6 +200,8 @@ export const DAEMON_PID_FILE = join(ORCA_DIR, 'daemon.pid');
 export const DAEMON_DB_PATH = join(ORCA_DIR, 'orca.db');
 export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
 export const MAIN_LOG_FILE = join(ORCA_DIR, 'main.log');
+export const DAEMON_HOOK_PORT = 19819;
+export const DAEMON_HOOK_PORT_FILE = join(ORCA_DIR, 'hook-port');
 
 /** Methods the daemon supports */
 export const DAEMON_METHODS = {

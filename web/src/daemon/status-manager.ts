@@ -17,7 +17,7 @@ import {
 } from '../shared/errors.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
-import { ensureOrcaSettings, removeOrcaSettings } from '../shared/hooks/settings.js';
+import { ensureHooks } from '../shared/hooks/settings.js';
 import { logger } from './logger.js';
 import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
@@ -64,6 +64,7 @@ interface DaemonStatusManagerOptions {
   backendUrl: string;
   getToken: () => string | null;
   hookServer: HookServer | null;
+  hookPort: number | null;
   broadcast: BroadcastFn;
 }
 
@@ -77,6 +78,7 @@ export class DaemonStatusManager {
   private backendUrl: string;
   private getToken: () => string | null;
   private hookServer: HookServer | null;
+  private hookPort: number | null;
   private broadcast: BroadcastFn;
 
   constructor(manager: DaemonPtyManager, options: DaemonStatusManagerOptions) {
@@ -84,6 +86,7 @@ export class DaemonStatusManager {
     this.backendUrl = options.backendUrl;
     this.getToken = options.getToken;
     this.hookServer = options.hookServer;
+    this.hookPort = options.hookPort;
     this.broadcast = options.broadcast;
   }
 
@@ -107,13 +110,12 @@ export class DaemonStatusManager {
         workingDirectory,
       });
 
-      // Ensure Claude Code hooks and MCP config are configured before spawning
-      const hookPort = this.hookServer?.getPort();
-      if (hookPort) {
+      // Ensure Claude Code hooks are configured before spawning (MCP is global)
+      if (this.hookPort) {
         try {
-          ensureOrcaSettings(workingDirectory, hookPort);
+          ensureHooks(workingDirectory, this.hookPort);
         } catch (err) {
-          logger.warn(`Failed to ensure Orca settings: ${err}`);
+          logger.warn(`Failed to ensure hooks: ${err}`);
         }
       }
 
@@ -169,19 +171,8 @@ export class DaemonStatusManager {
   }
 
   stop(sessionId: string): void {
-    const monitor = this.monitors.get(sessionId);
-    const workingDirectory = monitor?.workingDirectory;
-
     this.stopMonitoring(sessionId);
     this.manager.kill(sessionId);
-
-    if (workingDirectory) {
-      try {
-        removeOrcaSettings(workingDirectory);
-      } catch (err) {
-        logger.warn(`Failed to clean up on stop: ${err}`);
-      }
-    }
   }
 
   async restart(
@@ -204,12 +195,7 @@ export class DaemonStatusManager {
   }
 
   dispose(): void {
-    for (const [sessionId, monitor] of this.monitors) {
-      try {
-        removeOrcaSettings(monitor.workingDirectory);
-      } catch (err) {
-        logger.warn(`Failed to clean up on dispose: ${err}`);
-      }
+    for (const sessionId of this.monitors.keys()) {
       this.stopMonitoring(sessionId);
     }
   }

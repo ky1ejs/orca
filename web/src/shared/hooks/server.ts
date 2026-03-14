@@ -16,6 +16,7 @@ interface HookServerEvents {
 
 interface HookServerOptions {
   mcpDeps?: McpToolsDeps;
+  preferredPort?: number;
 }
 
 const VALID_EVENT_NAMES = new Set<HookEventName>(['Stop', 'PermissionRequest', 'UserPromptSubmit']);
@@ -24,10 +25,12 @@ export class HookServer extends EventEmitter<HookServerEvents> {
   private server: Server | null = null;
   private port: number | null = null;
   private mcpDeps: McpToolsDeps | null;
+  private preferredPort: number | undefined;
 
   constructor(options?: HookServerOptions) {
     super();
     this.mcpDeps = options?.mcpDeps ?? null;
+    this.preferredPort = options?.preferredPort;
   }
 
   async start(): Promise<void> {
@@ -35,16 +38,31 @@ export class HookServer extends EventEmitter<HookServerEvents> {
 
     const server = createServer((req, res) => this.handleRequest(req, res));
 
-    await new Promise<void>((resolve, reject) => {
-      server.on('error', reject);
-      server.listen(0, '127.0.0.1', () => {
-        const addr = server.address();
-        if (addr && typeof addr === 'object') {
-          this.port = addr.port;
-        }
-        resolve();
+    const listenOnPort = (port: number): Promise<void> =>
+      new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', () => {
+          const addr = server.address();
+          if (addr && typeof addr === 'object') {
+            this.port = addr.port;
+          }
+          resolve();
+        });
       });
-    });
+
+    if (this.preferredPort) {
+      try {
+        await listenOnPort(this.preferredPort);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'code' in err && err.code === 'EADDRINUSE') {
+          await listenOnPort(0);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      await listenOnPort(0);
+    }
 
     this.server = server;
   }

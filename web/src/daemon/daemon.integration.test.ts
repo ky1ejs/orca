@@ -48,6 +48,7 @@ beforeEach(async () => {
     backendUrl: 'http://localhost:9999',
     getToken: () => null,
     hookServer: null,
+    hookPort: null,
     broadcast: (event, params) => broadcastFn(event, params),
   });
 

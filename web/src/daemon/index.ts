@@ -23,7 +23,14 @@ import { HookServer } from '../shared/hooks/server.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { IdleManager } from './idle.js';
 import { createHandler } from './handlers.js';
-import { DAEMON_SOCKET_PATH, DAEMON_PID_FILE, DAEMON_DB_PATH } from '../shared/daemon-protocol.js';
+import {
+  DAEMON_SOCKET_PATH,
+  DAEMON_PID_FILE,
+  DAEMON_DB_PATH,
+  DAEMON_HOOK_PORT,
+  DAEMON_HOOK_PORT_FILE,
+} from '../shared/daemon-protocol.js';
+import { ensureGlobalMcpConfig, removeGlobalMcpConfig } from '../shared/hooks/settings.js';
 import { logger } from './logger.js';
 
 // ── Parse args ──────────────────────────────────────────────────────────
@@ -118,12 +125,22 @@ async function main(): Promise<void> {
       backendUrl,
       getToken: () => authToken,
     },
+    preferredPort: DAEMON_HOOK_PORT,
   });
   let hookServerPort: number | null = null;
   try {
     await hookServer.start();
-    hookServerPort = hookServer.getPort();
-    logger.info(`Hook server started on port ${hookServerPort}`);
+    const port = hookServer.getPort();
+    hookServerPort = port;
+    logger.info(`Hook server started on port ${port}`);
+
+    if (port) {
+      // Write port file so other tools can discover the hook server
+      writeFileSync(DAEMON_HOOK_PORT_FILE, String(port));
+
+      // Register MCP globally so all Claude sessions discover Orca while daemon runs
+      ensureGlobalMcpConfig(port);
+    }
   } catch (err) {
     logger.warn(`Failed to start hook server: ${err}`);
   }
@@ -134,6 +151,7 @@ async function main(): Promise<void> {
     backendUrl,
     getToken: () => authToken,
     hookServer: hookServerPort ? hookServer : null,
+    hookPort: hookServerPort,
     broadcast,
   });
   const pidSweepManager = new DaemonPidSweepManager(broadcast);
@@ -147,6 +165,7 @@ async function main(): Promise<void> {
     idleManager.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
+    removeGlobalMcpConfig();
     hookServer.stop().catch(() => {});
     ptyManager.killAll();
 
@@ -161,6 +180,11 @@ async function main(): Promise<void> {
         }
         try {
           unlinkSync(DAEMON_PID_FILE);
+        } catch {
+          // May already be gone
+        }
+        try {
+          unlinkSync(DAEMON_HOOK_PORT_FILE);
         } catch {
           // May already be gone
         }
