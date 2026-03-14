@@ -322,14 +322,9 @@ export class DaemonStatusManager {
         session.status !== SessionStatus.AwaitingPermission &&
         !monitor.hookSetWaiting
       ) {
-        try {
-          const output = this.manager.replay(sessionId);
-          if (output) {
-            const tail = output.slice(-500);
-            inputDetector.onOutput(tail);
-          }
-        } catch {
-          // Session may no longer exist
+        const tail = this.manager.tail(sessionId, 500);
+        if (tail) {
+          inputDetector.onOutput(tail);
         }
       }
 

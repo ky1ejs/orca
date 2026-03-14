@@ -17,11 +17,6 @@ export function getDb(): OrcaDb {
   return db;
 }
 
-export function getRawDb(): Database.Database {
-  if (!sqlite) throw new Error('Database not initialized. Call initDaemonDb() first.');
-  return sqlite;
-}
-
 export function initDaemonDb(dbPath: string, migrationsFolder: string): OrcaDb {
   sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
