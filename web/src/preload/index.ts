@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { DaemonStatusResult } from '../shared/daemon-protocol.js';
 
 export interface AgentLaunchOptions {
   planMode?: boolean;
@@ -65,6 +66,9 @@ export interface OrcaAPI {
       directory: string,
     ) => Promise<{ project_id: string; directory: string }>;
     delete: (projectId: string) => Promise<void>;
+  };
+  daemon: {
+    getStatus: () => Promise<DaemonStatusResult>;
   };
   agent: {
     launch: (
@@ -155,6 +159,9 @@ const api: OrcaAPI = {
     get: (projectId) => ipcRenderer.invoke('projectDir:get', projectId),
     set: (projectId, directory) => ipcRenderer.invoke('projectDir:set', projectId, directory),
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
+  },
+  daemon: {
+    getStatus: () => ipcRenderer.invoke('daemon:status'),
   },
   agent: {
     launch: (taskId, workingDirectory, options, metadata) =>

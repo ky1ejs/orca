@@ -91,6 +91,11 @@ export function registerIpcHandlers(client: DaemonClient): void {
     await client.request(DAEMON_METHODS.AUTH_SET_TOKEN, { token: '' });
   });
 
+  // ── Daemon handlers (proxy to daemon) ──────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.DAEMON_STATUS, () => {
+    return client.request(DAEMON_METHODS.DAEMON_STATUS);
+  });
+
   // ── PTY handlers (proxy to daemon) ──────────────────────────────────
   ipcMain.handle(
     IPC_CHANNELS.PTY_SPAWN,
