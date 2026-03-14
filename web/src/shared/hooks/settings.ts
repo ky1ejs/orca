@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { homedir } from 'node:os';
 import { createLogger } from '../logger.js';
 import { DAEMON_LOG_FILE } from '../daemon-protocol.js';
 
@@ -34,12 +35,7 @@ interface SettingsFile {
 
 // ── Shared file helpers ─────────────────────────────────────────────
 
-function settingsPath(workingDirectory: string): string {
-  return path.join(workingDirectory, '.claude', 'settings.local.json');
-}
-
-function readSettingsFile(workingDirectory: string): SettingsFile {
-  const filePath = settingsPath(workingDirectory);
+function readJsonSettings(filePath: string): SettingsFile {
   if (!existsSync(filePath)) return {};
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as SettingsFile;
@@ -49,14 +45,17 @@ function readSettingsFile(workingDirectory: string): SettingsFile {
   }
 }
 
-function writeSettingsFile(workingDirectory: string, settings: SettingsFile): void {
-  const filePath = settingsPath(workingDirectory);
+function writeJsonSettings(filePath: string, settings: SettingsFile): void {
   if (Object.keys(settings).length === 0) {
     if (existsSync(filePath)) unlinkSync(filePath);
     return;
   }
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+}
+
+function localSettingsPath(workingDirectory: string): string {
+  return path.join(workingDirectory, '.claude', 'settings.local.json');
 }
 
 // ── Shared constants ────────────────────────────────────────────────
@@ -187,32 +186,32 @@ function stripMcpConfig(settings: SettingsFile): void {
   }
 }
 
+// ── Path constants ──────────────────────────────────────────────────
+
+const GLOBAL_SETTINGS_PATH = path.join(homedir(), '.claude', 'settings.json');
+
 // ── Public API ──────────────────────────────────────────────────────
 
 export function ensureHooks(workingDirectory: string, port: number): void {
-  const settings = readSettingsFile(workingDirectory);
+  const filePath = localSettingsPath(workingDirectory);
+  const settings = readJsonSettings(filePath);
   applyHooks(settings, port);
-  writeSettingsFile(workingDirectory, settings);
+  writeJsonSettings(filePath, settings);
 }
 
 export function ensureMcpConfig(workingDirectory: string, port: number): void {
-  const settings = readSettingsFile(workingDirectory);
+  const filePath = localSettingsPath(workingDirectory);
+  const settings = readJsonSettings(filePath);
   applyMcpConfig(settings, port);
-  writeSettingsFile(workingDirectory, settings);
-}
-
-export function ensureOrcaSettings(workingDirectory: string, port: number): void {
-  const settings = readSettingsFile(workingDirectory);
-  applyHooks(settings, port);
-  applyMcpConfig(settings, port);
-  writeSettingsFile(workingDirectory, settings);
+  writeJsonSettings(filePath, settings);
 }
 
 export function removeHooks(workingDirectory: string): void {
   try {
-    const settings = readSettingsFile(workingDirectory);
+    const filePath = localSettingsPath(workingDirectory);
+    const settings = readJsonSettings(filePath);
     stripHooks(settings);
-    writeSettingsFile(workingDirectory, settings);
+    writeJsonSettings(filePath, settings);
   } catch (err) {
     logger.error('Failed to remove hooks', err);
   }
@@ -220,21 +219,27 @@ export function removeHooks(workingDirectory: string): void {
 
 export function removeMcpConfig(workingDirectory: string): void {
   try {
-    const settings = readSettingsFile(workingDirectory);
+    const filePath = localSettingsPath(workingDirectory);
+    const settings = readJsonSettings(filePath);
     stripMcpConfig(settings);
-    writeSettingsFile(workingDirectory, settings);
+    writeJsonSettings(filePath, settings);
   } catch (err) {
     logger.error('Failed to remove MCP config', err);
   }
 }
 
-export function removeOrcaSettings(workingDirectory: string): void {
+export function ensureGlobalMcpConfig(port: number): void {
+  const settings = readJsonSettings(GLOBAL_SETTINGS_PATH);
+  applyMcpConfig(settings, port);
+  writeJsonSettings(GLOBAL_SETTINGS_PATH, settings);
+}
+
+export function removeGlobalMcpConfig(): void {
   try {
-    const settings = readSettingsFile(workingDirectory);
-    stripHooks(settings);
+    const settings = readJsonSettings(GLOBAL_SETTINGS_PATH);
     stripMcpConfig(settings);
-    writeSettingsFile(workingDirectory, settings);
+    writeJsonSettings(GLOBAL_SETTINGS_PATH, settings);
   } catch (err) {
-    logger.error('Failed to remove Orca settings', err);
+    logger.error('Failed to remove global MCP config', err);
   }
 }
