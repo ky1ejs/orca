@@ -31,6 +31,7 @@ import {
   DAEMON_HOOK_PORT_FILE,
 } from '../shared/daemon-protocol.js';
 import { ensureGlobalMcpConfig, removeGlobalMcpConfig } from '../shared/hooks/settings.js';
+import { OutputPersistence } from './output-persistence.js';
 import { logger } from './logger.js';
 
 // ── Parse args ──────────────────────────────────────────────────────────
@@ -147,6 +148,14 @@ async function main(): Promise<void> {
 
   // Create components
   const ptyManager = new DaemonPtyManager(broadcast);
+
+  // Output persistence — flush dirty ring buffers to SQLite periodically
+  const outputPersistence = new OutputPersistence(ptyManager);
+  outputPersistence.loadAll();
+  ptyManager.setOnData((id) => outputPersistence.markDirty(id));
+  ptyManager.setOnExit((id) => outputPersistence.flushSession(id));
+  outputPersistence.start();
+
   const statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl,
     getToken: () => authToken,
@@ -163,6 +172,7 @@ async function main(): Promise<void> {
     logger.info('Daemon shutting down...');
 
     idleManager.dispose();
+    outputPersistence.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
     removeGlobalMcpConfig();
