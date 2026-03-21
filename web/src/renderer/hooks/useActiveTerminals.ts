@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
 import { useTerminalSessions, type TerminalSessionInfo } from './useTerminalSessions.js';
 import { SessionStatus, isActiveSessionStatus } from '../../shared/session-status.js';
+import { PullRequestStatus, type CheckStatus } from '../graphql/__generated__/generated.js';
+
+interface PrimaryPullRequest {
+  number: number;
+  status: PullRequestStatus;
+  draft: boolean;
+  checkStatus: CheckStatus | null;
+}
 
 export interface ActiveTerminalEntry {
   taskId: string;
@@ -11,18 +19,58 @@ export interface ActiveTerminalEntry {
   sessionCount: number;
   sessionIds: string[];
   status: string;
+  pullRequest?: PrimaryPullRequest;
+}
+
+interface PullRequestRef {
+  id: string;
+  number: number;
+  status: PullRequestStatus;
+  draft: boolean;
+  checkStatus: CheckStatus | null;
+  createdAt: string;
 }
 
 interface TaskRef {
   id: string;
   displayId: string;
   title: string;
+  pullRequests?: PullRequestRef[];
 }
 
 interface ProjectData {
   id: string;
   name: string;
   tasks: TaskRef[];
+}
+
+/** Pick the most relevant PR to display: prefer open > merged > closed, most recent first. */
+export function pickPrimaryPr(
+  pullRequests: PullRequestRef[] | undefined,
+): PrimaryPullRequest | undefined {
+  if (!pullRequests || pullRequests.length === 0) return undefined;
+
+  let bestOpen: PullRequestRef | undefined;
+  let bestMerged: PullRequestRef | undefined;
+  let bestOther: PullRequestRef | undefined;
+
+  for (const pr of pullRequests) {
+    if (pr.status === PullRequestStatus.Open) {
+      if (!bestOpen || pr.createdAt > bestOpen.createdAt) bestOpen = pr;
+    } else if (pr.status === PullRequestStatus.Merged) {
+      if (!bestMerged || pr.createdAt > bestMerged.createdAt) bestMerged = pr;
+    } else {
+      if (!bestOther || pr.createdAt > bestOther.createdAt) bestOther = pr;
+    }
+  }
+
+  const pick = bestOpen ?? bestMerged ?? bestOther!;
+  return {
+    number: pick.number,
+    status: pick.status,
+    draft: pick.draft,
+    checkStatus: pick.checkStatus,
+  };
 }
 
 export function useActiveTerminals(
@@ -39,7 +87,13 @@ export function useActiveTerminals(
     // Build a lookup map from task_id -> task info
     const taskLookup = new Map<
       string,
-      { displayId: string; title: string; projectId: string; projectName: string }
+      {
+        displayId: string;
+        title: string;
+        projectId: string;
+        projectName: string;
+        pullRequests?: PullRequestRef[];
+      }
     >();
     for (const project of projects) {
       for (const task of project.tasks) {
@@ -48,6 +102,7 @@ export function useActiveTerminals(
           title: task.title,
           projectId: project.id,
           projectName: project.name,
+          pullRequests: task.pullRequests,
         });
       }
     }
@@ -58,6 +113,7 @@ export function useActiveTerminals(
           title: task.title,
           projectId: '',
           projectName: 'Inbox',
+          pullRequests: task.pullRequests,
         });
       }
     }
@@ -90,6 +146,7 @@ export function useActiveTerminals(
         sessionCount: taskSessions.length,
         sessionIds: taskSessions.map((s) => s.id),
         status,
+        pullRequest: pickPrimaryPr(info.pullRequests),
       });
     }
 

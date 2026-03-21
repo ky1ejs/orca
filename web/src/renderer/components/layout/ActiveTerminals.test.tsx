@@ -5,6 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { SessionStatus } from '../../../shared/session-status.js';
 import type { ActiveTerminalEntry } from '../../hooks/useActiveTerminals.js';
+import { PullRequestStatus, CheckStatus } from '../../graphql/__generated__/generated.js';
 
 const mockNavigate = vi.fn();
 vi.mock('../../navigation/context.js', () => ({
@@ -103,5 +104,63 @@ describe('ActiveTerminals', () => {
     // No numeric badge should be present
     expect(screen.queryByText('1')).not.toBeInTheDocument();
     expect(screen.queryByText('2')).not.toBeInTheDocument();
+  });
+
+  it('shows PR number and icon when pullRequest is present', () => {
+    const entries = [
+      makeEntry({
+        pullRequest: {
+          number: 42,
+          status: PullRequestStatus.Open,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ];
+    render(<ActiveTerminals entries={entries} />);
+
+    expect(screen.getByText('#42')).toBeInTheDocument();
+  });
+
+  it('shows CI status dot when checkStatus is present', () => {
+    const entries = [
+      makeEntry({
+        pullRequest: {
+          number: 42,
+          status: PullRequestStatus.Open,
+          draft: false,
+          checkStatus: CheckStatus.Success,
+        },
+      }),
+    ];
+    render(<ActiveTerminals entries={entries} />);
+
+    expect(screen.getByTestId('ci-status-dot')).toBeInTheDocument();
+  });
+
+  it('does not show PR indicator when pullRequest is absent', () => {
+    const entries = [makeEntry()];
+    render(<ActiveTerminals entries={entries} />);
+
+    expect(screen.queryByText(/#\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ci-status-dot')).not.toBeInTheDocument();
+  });
+
+  it('does not show PR info when attention label is shown', () => {
+    const entries = [
+      makeEntry({
+        status: SessionStatus.AwaitingPermission,
+        pullRequest: {
+          number: 42,
+          status: PullRequestStatus.Open,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ];
+    render(<ActiveTerminals entries={entries} />);
+
+    expect(screen.getByText('Needs Permission')).toBeInTheDocument();
+    expect(screen.queryByText('#42')).not.toBeInTheDocument();
   });
 });

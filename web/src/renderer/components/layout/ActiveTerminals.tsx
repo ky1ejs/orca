@@ -6,6 +6,8 @@ import {
   isNeedsAttentionStatus,
 } from '../../../shared/session-status.js';
 import { useNavigation } from '../../navigation/context.js';
+import { PullRequestIcon } from '../tasks/PullRequestIcon.js';
+import { ciDotClassName } from '../tasks/CIStatusBadge.js';
 
 const attentionLabel: Partial<Record<SessionStatusType, { text: string; className: string }>> = {
   [SessionStatus.AwaitingPermission]: {
@@ -77,8 +79,23 @@ export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsPr
                       {label.text}
                     </span>
                   ) : (
-                    <span className="block truncate text-[10px] text-fg-faint">
-                      {entry.projectName}
+                    <span className="flex items-center gap-1.5 text-[10px] text-fg-faint truncate">
+                      <span className="truncate">{entry.projectName}</span>
+                      {entry.pullRequest && (
+                        <span className="inline-flex items-center gap-0.5 flex-shrink-0">
+                          <PullRequestIcon
+                            status={entry.pullRequest.status}
+                            className="w-2.5 h-2.5"
+                          />
+                          <span>#{entry.pullRequest.number}</span>
+                          {entry.pullRequest.checkStatus && (
+                            <span
+                              className={`inline-block h-1.5 w-1.5 rounded-full ${ciDotClassName[entry.pullRequest.checkStatus]}`}
+                              data-testid="ci-status-dot"
+                            />
+                          )}
+                        </span>
+                      )}
                     </span>
                   )}
                 </span>

@@ -9,7 +9,8 @@ vi.mock('./useTerminalSessions.js', () => ({
   useTerminalSessions: () => ({ sessions: mockSessions(), loading: false, refresh: vi.fn() }),
 }));
 
-const { useActiveTerminals } = await import('./useActiveTerminals.js');
+const { useActiveTerminals, pickPrimaryPr } = await import('./useActiveTerminals.js');
+import { PullRequestStatus, CheckStatus } from '../graphql/__generated__/generated.js';
 
 const projects = [
   {
@@ -126,5 +127,145 @@ describe('useActiveTerminals', () => {
     expect(result.current[0].displayId).toBe('TSK-1');
     expect(result.current[0].taskTitle).toBe('First Task');
     expect(result.current[0].projectName).toBe('Project Alpha');
+  });
+
+  it('includes pullRequest from task data', () => {
+    const projectsWithPRs = [
+      {
+        id: 'proj-1',
+        name: 'Project Alpha',
+        tasks: [
+          {
+            id: 'task-1',
+            displayId: 'TSK-1',
+            title: 'First Task',
+            pullRequests: [
+              {
+                id: 'pr-1',
+                number: 42,
+                status: PullRequestStatus.Open,
+                draft: false,
+                checkStatus: CheckStatus.Success,
+                createdAt: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    mockSessions.mockReturnValue([
+      makeSession({ id: 'sess-1', task_id: 'task-1', status: SessionStatus.Running }),
+    ]);
+
+    const { result } = renderHook(() => useActiveTerminals(projectsWithPRs));
+
+    expect(result.current[0].pullRequest).toEqual({
+      number: 42,
+      status: PullRequestStatus.Open,
+      draft: false,
+      checkStatus: CheckStatus.Success,
+    });
+  });
+
+  it('returns no pullRequest when task has no PRs', () => {
+    mockSessions.mockReturnValue([
+      makeSession({ id: 'sess-1', task_id: 'task-1', status: SessionStatus.Running }),
+    ]);
+
+    const { result } = renderHook(() => useActiveTerminals(projects));
+
+    expect(result.current[0].pullRequest).toBeUndefined();
+  });
+});
+
+describe('pickPrimaryPr', () => {
+  it('returns undefined for empty or undefined input', () => {
+    expect(pickPrimaryPr(undefined)).toBeUndefined();
+    expect(pickPrimaryPr([])).toBeUndefined();
+  });
+
+  it('prefers open PR over merged or closed', () => {
+    const result = pickPrimaryPr([
+      {
+        id: 'pr-1',
+        number: 10,
+        status: PullRequestStatus.Merged,
+        draft: false,
+        checkStatus: null,
+        createdAt: '2024-01-03T00:00:00Z',
+      },
+      {
+        id: 'pr-2',
+        number: 20,
+        status: PullRequestStatus.Open,
+        draft: false,
+        checkStatus: CheckStatus.Success,
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+    ]);
+
+    expect(result).toEqual({
+      number: 20,
+      status: PullRequestStatus.Open,
+      draft: false,
+      checkStatus: CheckStatus.Success,
+    });
+  });
+
+  it('prefers merged PR over closed when no open PRs', () => {
+    const result = pickPrimaryPr([
+      {
+        id: 'pr-1',
+        number: 10,
+        status: PullRequestStatus.Closed,
+        draft: false,
+        checkStatus: null,
+        createdAt: '2024-01-02T00:00:00Z',
+      },
+      {
+        id: 'pr-2',
+        number: 20,
+        status: PullRequestStatus.Merged,
+        draft: false,
+        checkStatus: null,
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+    ]);
+
+    expect(result).toEqual({
+      number: 20,
+      status: PullRequestStatus.Merged,
+      draft: false,
+      checkStatus: null,
+    });
+  });
+
+  it('picks most recent open PR when multiple open', () => {
+    const result = pickPrimaryPr([
+      {
+        id: 'pr-1',
+        number: 10,
+        status: PullRequestStatus.Open,
+        draft: false,
+        checkStatus: null,
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        id: 'pr-2',
+        number: 20,
+        status: PullRequestStatus.Open,
+        draft: true,
+        checkStatus: null,
+        createdAt: '2024-01-03T00:00:00Z',
+      },
+    ]);
+
+    expect(result).toEqual({
+      number: 20,
+      status: PullRequestStatus.Open,
+      draft: true,
+      checkStatus: null,
+    });
   });
 });
