@@ -21,9 +21,25 @@ export class DaemonPtyManager {
   private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
+  private onDataCallback: ((sessionId: string) => void) | null = null;
+  private onExitCallback: ((sessionId: string) => void) | null = null;
 
   constructor(broadcast: BroadcastFn) {
     this.broadcast = broadcast;
+  }
+
+  setOnData(cb: (sessionId: string) => void): void {
+    this.onDataCallback = cb;
+  }
+
+  setOnExit(cb: (sessionId: string) => void): void {
+    this.onExitCallback = cb;
+  }
+
+  restoreBuffer(sessionId: string, content: string): void {
+    const buf = new RingBuffer();
+    buf.append(content);
+    this.buffers.set(sessionId, buf);
   }
 
   spawn(
@@ -53,6 +69,7 @@ export class DaemonPtyManager {
       const { output, response } = processKittyKeyboard(data);
       if (response) shell.write(response);
       this.buffers.get(sessionId)?.append(output);
+      this.onDataCallback?.(sessionId);
       this.broadcast('pty.data', { sessionId, data: output });
     });
 
@@ -60,6 +77,7 @@ export class DaemonPtyManager {
       this.processes.delete(sessionId);
       this.lastDataAt.delete(sessionId);
       if (this.disposed) return;
+      this.onExitCallback?.(sessionId);
       try {
         updateSession(sessionId, {
           status: exitCode === 0 ? SessionStatus.Exited : SessionStatus.Error,
@@ -85,6 +103,7 @@ export class DaemonPtyManager {
   kill(sessionId: string): void {
     const proc = this.processes.get(sessionId);
     if (proc) {
+      this.onExitCallback?.(sessionId);
       proc.pty.kill();
       this.processes.delete(sessionId);
       this.buffers.delete(sessionId);
@@ -106,6 +125,7 @@ export class DaemonPtyManager {
 
   clear(sessionId: string): void {
     this.buffers.get(sessionId)?.clear();
+    this.onDataCallback?.(sessionId);
   }
 
   get activeCount(): number {

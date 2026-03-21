@@ -54,7 +54,7 @@ src/
 │   ├── ipc/                   — IPC channel definitions and handlers
 │   ├── daemon/                — Daemon connector (client, migrate-db)
 │   ├── db/                    — SQLite schema and client (re-exports shared)
-│   ├── pty/                   — PTY management (claude, shell, manager)
+│   ├── pty/                   — PTY management (shell, auth)
 │   ├── config/                — Settings, font listing
 │   ├── menu.ts, updater.ts, logger.ts, dock-badge.ts
 │   └── diagnostics.ts
@@ -66,7 +66,8 @@ src/
 │   ├── sessions.ts            — Session lifecycle
 │   ├── db.ts                  — SQLite init for daemon
 │   ├── status-manager.ts      — Session status tracking
-│   └── idle.ts, logger.ts, pid-sweep.ts, output-buffer.ts
+│   ├── output-persistence.ts  — Batched SQLite persistence for ring buffers
+│   └── idle.ts, logger.ts, pid-sweep.ts
 ├── preload/index.ts           — Exposes window.orca API to renderer
 ├── renderer/                  — React UI
 │   ├── index.tsx, App.tsx     — Entry and root component

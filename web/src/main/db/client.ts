@@ -6,16 +6,10 @@ import * as schema from './schema.js';
 export type OrcaDb = BetterSQLite3Database<typeof schema>;
 
 let db: OrcaDb | null = null;
-let sqlite: Database.Database | null = null;
 
 export function getDb(): OrcaDb {
   if (!db) throw new Error('Database not initialized. Call initDb() first.');
   return db;
-}
-
-export function getRawDb(): Database.Database {
-  if (!sqlite) throw new Error('Database not initialized. Call initDb() first.');
-  return sqlite;
 }
 
 export function createDb(sqliteDb: Database.Database, migrationsFolder: string): OrcaDb {
