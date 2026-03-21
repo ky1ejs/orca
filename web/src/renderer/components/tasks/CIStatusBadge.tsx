@@ -46,6 +46,10 @@ const statusConfig: Record<
   },
 };
 
+export const ciDotClassName: Record<CheckStatus, string> = Object.fromEntries(
+  Object.entries(statusConfig).map(([k, v]) => [k, v.dotClassName]),
+) as Record<CheckStatus, string>;
+
 interface CIStatusBadgeProps {
   status: CheckStatus | null | undefined;
 }

@@ -168,8 +168,11 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               invalidateAllWorkspaceQueries(cache);
             },
             taskChanged(_result, _args, cache) {
-              const task = _result.taskChanged as { projectId: string | null } | undefined;
+              const task = _result.taskChanged as
+                | { id: string; projectId: string | null }
+                | undefined;
               if (task) {
+                cache.invalidate({ __typename: 'Task', id: task.id });
                 if (task.projectId) {
                   cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
                 }

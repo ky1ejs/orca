@@ -54,6 +54,14 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
               color
             }
             pullRequestCount
+            pullRequests {
+              id
+              number
+              status
+              draft
+              checkStatus
+              createdAt
+            }
           }
           archivedAt
           createdAt
@@ -85,6 +93,14 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
             color
           }
           pullRequestCount
+          pullRequests {
+            id
+            number
+            status
+            draft
+            checkStatus
+            createdAt
+          }
         }
         archivedAt
         createdAt
@@ -106,6 +122,14 @@ export const WorkspaceQueryDocument = /* GraphQL */ `
           color
         }
         pullRequestCount
+        pullRequests {
+          id
+          number
+          status
+          draft
+          checkStatus
+          createdAt
+        }
       }
       createdAt
       updatedAt
