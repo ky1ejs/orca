@@ -37,7 +37,9 @@ function resolveSession(deps: McpToolsDeps): { taskId: string; token: string } |
   const sessionId = deps.sessionId;
   if (!sessionId) {
     deps.log?.warn('MCP resolveSession: no session ID provided via header');
-    return toolError('No session ID provided. Ensure ORCA_SESSION_ID is set.');
+    return toolError(
+      'No session ID provided. Ensure the X-Orca-Session-Id header is set (usually sourced from ORCA_SESSION_ID in the MCP settings).',
+    );
   }
   const session = getSession(sessionId);
   if (!session) {

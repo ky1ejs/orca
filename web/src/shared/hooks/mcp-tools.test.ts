@@ -156,6 +156,13 @@ describe('MCP tools', () => {
   });
 
   describe('update_task_status', () => {
+    it('returns error when no session ID in deps', async () => {
+      const result = await callTool('update_task_status', { status: 'DONE' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('No session ID provided');
+    });
+
     it('returns error when session not found', async () => {
       mockGetSession.mockReturnValue(undefined);
       deps.sessionId = 'nonexistent';
