@@ -26,6 +26,7 @@ import type {
   PtyKillParams,
   PtyReplayParams,
   PtyClearParams,
+  PtySnapshotParams,
   PtySubscribeParams,
   PtyUnsubscribeParams,
   AgentLaunchParams,
@@ -102,6 +103,12 @@ export function createHandler(deps: HandlerDeps) {
       case DAEMON_METHODS.PTY_CLEAR: {
         const p = params as PtyClearParams;
         ptyManager.clear(p.sessionId);
+        return { ok: true };
+      }
+
+      case DAEMON_METHODS.PTY_SNAPSHOT: {
+        const p = params as PtySnapshotParams;
+        ptyManager.setSnapshot(p.sessionId, p.content);
         return { ok: true };
       }
 

@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import { usePreferences } from '../../preferences/context.js';
 import '@xterm/xterm/css/xterm.css';
 
@@ -69,7 +70,9 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     const fitAddon = new FitAddon();
+    const serializeAddon = new SerializeAddon();
     terminal.loadAddon(fitAddon);
+    terminal.loadAddon(serializeAddon);
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
@@ -136,6 +139,24 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
     resizeObserver.observe(container);
 
+    // Periodically serialize terminal state for persistence.
+    // Serialized snapshots capture exactly what the user sees (cursor, colors, styles)
+    // and are more compact and robust than replaying raw PTY chunks.
+    let lastSnapshot = '';
+    const sendSnapshot = () => {
+      try {
+        const serialized = serializeAddon.serialize();
+        if (serialized && serialized !== lastSnapshot) {
+          lastSnapshot = serialized;
+          window.orca.pty.snapshot(sessionId, serialized);
+        }
+      } catch {
+        // Addon may not be ready if terminal hasn't fully initialized
+      }
+    };
+    const SNAPSHOT_INTERVAL_MS = 5_000;
+    const snapshotTimer = setInterval(sendSnapshot, SNAPSHOT_INTERVAL_MS);
+
     // Update terminal theme when color scheme changes (media query or class toggle)
     const handleColorSchemeChange = () => {
       terminal.options.theme = readTerminalTheme();
@@ -151,11 +172,14 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     return () => {
+      clearInterval(snapshotTimer);
+      sendSnapshot();
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
       classObserver.disconnect();
       webglAddon?.dispose();
+      serializeAddon.dispose();
       onDataDisposable.dispose();
       unsubData();
       unsubExit();

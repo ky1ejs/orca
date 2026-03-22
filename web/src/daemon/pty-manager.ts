@@ -18,6 +18,7 @@ export type BroadcastFn = (event: string, params: unknown) => void;
 export class DaemonPtyManager {
   private processes = new Map<string, PtyProcess>();
   private buffers = new Map<string, RingBuffer>();
+  private snapshots = new Map<string, string>();
   private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
@@ -107,8 +108,18 @@ export class DaemonPtyManager {
       proc.pty.kill();
       this.processes.delete(sessionId);
       this.buffers.delete(sessionId);
+      this.snapshots.delete(sessionId);
       this.lastDataAt.delete(sessionId);
     }
+  }
+
+  setSnapshot(sessionId: string, content: string): void {
+    this.snapshots.set(sessionId, content);
+    this.onDataCallback?.(sessionId);
+  }
+
+  getSnapshot(sessionId: string): string | undefined {
+    return this.snapshots.get(sessionId);
   }
 
   replay(sessionId: string): string {
@@ -139,6 +150,7 @@ export class DaemonPtyManager {
     }
     this.processes.clear();
     this.buffers.clear();
+    this.snapshots.clear();
     this.lastDataAt.clear();
   }
 

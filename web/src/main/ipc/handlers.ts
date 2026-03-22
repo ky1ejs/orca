@@ -123,6 +123,10 @@ export function registerIpcHandlers(client: DaemonClient): void {
     return client.request(DAEMON_METHODS.PTY_REPLAY, { sessionId });
   });
 
+  ipcMain.handle(IPC_CHANNELS.PTY_SNAPSHOT, (_event, sessionId: string, content: string) => {
+    return client.request(DAEMON_METHODS.PTY_SNAPSHOT, { sessionId, content });
+  });
+
   // ── Agent handlers (proxy to daemon) ────────────────────────────────
   ipcMain.handle(
     IPC_CHANNELS.AGENT_LAUNCH,

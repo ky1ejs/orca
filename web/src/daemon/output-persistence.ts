@@ -96,7 +96,7 @@ export class OutputPersistence {
   private persistSession(tx: Tx, sessionId: string): void {
     tx.delete(terminalOutputBuffer).where(eq(terminalOutputBuffer.session_id, sessionId)).run();
 
-    const content = this.ptyManager.replay(sessionId);
+    const content = this.ptyManager.getSnapshot(sessionId) ?? this.ptyManager.replay(sessionId);
     if (content) {
       tx.insert(terminalOutputBuffer)
         .values({

@@ -51,6 +51,15 @@ vi.mock('@xterm/addon-web-links', () => ({
   WebLinksAddon: vi.fn(),
 }));
 
+const mockSerialize = vi.fn().mockReturnValue('serialized state');
+const mockSerializeDispose = vi.fn();
+vi.mock('@xterm/addon-serialize', () => ({
+  SerializeAddon: vi.fn().mockImplementation(() => ({
+    serialize: mockSerialize,
+    dispose: mockSerializeDispose,
+  })),
+}));
+
 const mockWebglDispose = vi.fn();
 const mockWebglOnContextLoss = vi.fn();
 vi.mock('@xterm/addon-webgl', () => ({
@@ -74,6 +83,7 @@ const mockPtyOnData = vi.fn().mockReturnValue(vi.fn());
 const mockPtyOnExit = vi.fn().mockReturnValue(vi.fn());
 const mockPtyWrite = vi.fn();
 const mockPtyResize = vi.fn();
+const mockPtySnapshot = vi.fn().mockResolvedValue(undefined);
 
 // Capture the ResizeObserver callback so we can invoke it in tests
 let resizeObserverCallback: ResizeObserverCallback | null = null;
@@ -83,6 +93,7 @@ beforeEach(() => {
   (window as unknown as { orca: unknown }).orca = {
     pty: {
       replay: mockReplay,
+      snapshot: mockPtySnapshot,
       onData: mockPtyOnData,
       onExit: mockPtyOnExit,
       write: mockPtyWrite,
