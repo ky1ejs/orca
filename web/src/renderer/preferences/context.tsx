@@ -97,12 +97,17 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   );
 
   const persistHeightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (persistHeightTimer.current) clearTimeout(persistHeightTimer.current);
+    };
+  }, []);
   const setTerminalPanelHeight = useCallback((height: number) => {
     setTerminalPanelHeightState(height);
     if (persistHeightTimer.current) clearTimeout(persistHeightTimer.current);
     persistHeightTimer.current = setTimeout(() => {
       if (window.orca?.settings) {
-        window.orca.settings.set(TERMINAL_PANEL_HEIGHT_KEY, height);
+        window.orca.settings.set(TERMINAL_PANEL_HEIGHT_KEY, height).catch(() => {});
       }
     }, 300);
   }, []);

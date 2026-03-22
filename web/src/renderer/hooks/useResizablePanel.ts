@@ -33,6 +33,15 @@ export function useResizablePanel({
     [minHeight, maxHeightFraction],
   );
 
+  // Clamp incoming height on mount and when it changes (e.g. loaded from settings)
+  useEffect(() => {
+    const current = Number.isFinite(heightRef.current) ? heightRef.current : minHeight;
+    const clamped = clamp(current);
+    if (clamped !== heightRef.current) {
+      onHeightChangeRef.current(clamped);
+    }
+  }, [height, clamp, minHeight]);
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const handleResize = () => {
@@ -72,6 +81,8 @@ export function useResizablePanel({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
     };
   }, [isDragging, clamp]);
 
