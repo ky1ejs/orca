@@ -19,6 +19,7 @@ vi.mock('../../workspace/context.js', () => ({
 }));
 
 // Mock useGraphQL (useWorkspaceBySlug)
+const mockRefetch = vi.fn();
 vi.mock('../../hooks/useGraphQL.js', () => ({
   useWorkspaceBySlug: () => ({
     data: {
@@ -62,7 +63,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
       },
     },
     fetching: false,
-    refetch: vi.fn(),
+    refetch: mockRefetch,
   }),
 }));
 
@@ -173,5 +174,15 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...defaultProps} />);
     expect(screen.getByText('navigate')).toBeInTheDocument();
     expect(screen.getByText('select')).toBeInTheDocument();
+  });
+
+  it('refetches workspace data when opened', () => {
+    render(<CommandPalette {...defaultProps} isOpen={true} />);
+    expect(mockRefetch).toHaveBeenCalledWith({ requestPolicy: 'network-only' });
+  });
+
+  it('does not refetch when closed', () => {
+    render(<CommandPalette {...defaultProps} isOpen={false} />);
+    expect(mockRefetch).not.toHaveBeenCalled();
   });
 });

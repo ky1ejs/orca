@@ -92,15 +92,15 @@ const staticActions: ActionItem[] = [
 
 export function useCommandPalette(query: string, isOpen: boolean): PaletteResults {
   const { currentWorkspace } = useWorkspace();
-  const { data, refetch } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const slug = currentWorkspace?.slug ?? '';
+  const { data, refetch } = useWorkspaceBySlug(slug);
 
   // Refetch workspace data when the palette opens so tasks created outside
   // the urql pipeline (e.g. via MCP / CLI) are picked up immediately.
   useEffect(() => {
-    if (isOpen) {
-      refetch({ requestPolicy: 'network-only' });
-    }
-  }, [isOpen, refetch]);
+    if (!isOpen || !slug) return;
+    refetch({ requestPolicy: 'network-only' });
+  }, [isOpen, slug, refetch]);
 
   const allItems = useMemo((): PaletteItem[] => {
     const workspace = data?.workspace;
