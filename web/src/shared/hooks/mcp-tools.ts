@@ -399,5 +399,252 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
     },
   );
 
+  // ── Update tools ──────────────────────────────────────────────────
+
+  server.registerTool(
+    'update_task',
+    {
+      description:
+        'Update a task by ID. All fields are optional — only provided fields are changed.',
+      inputSchema: {
+        id: z.string().describe('The task ID'),
+        title: z.string().optional().describe('New task title'),
+        description: z.string().optional().describe('New task description'),
+        status: z
+          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
+          .optional()
+          .describe('New task status'),
+        priority: z
+          .enum(['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+          .optional()
+          .describe('New task priority'),
+        projectId: z.string().optional().describe('Project ID to move the task to'),
+        assigneeId: z.string().optional().describe('User ID to assign the task to'),
+        labelIds: z.array(z.string()).optional().describe('Label IDs to set on the task'),
+      },
+    },
+    async ({ id, title, description, status, priority, projectId, assigneeId, labelIds }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
+          updateTask(id: $id, input: $input) {
+            id displayId title description status priority projectId
+            assignee { id name }
+            labels { id name color }
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          id,
+          input: { title, description, status, priority, projectId, assigneeId, labelIds },
+        });
+
+        if (json.errors || !json.data?.updateTask) {
+          return toolError(`Failed to update task: ${JSON.stringify(json.errors ?? 'no data')}`);
+        }
+
+        return toolSuccess(JSON.stringify(json.data.updateTask, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'update_project',
+    {
+      description:
+        'Update a project by ID. All fields are optional — only provided fields are changed.',
+      inputSchema: {
+        id: z.string().describe('The project ID'),
+        name: z.string().optional().describe('New project name'),
+        description: z.string().optional().describe('New project description'),
+        defaultDirectory: z.string().optional().describe('New default directory path'),
+        initiativeId: z.string().optional().describe('Initiative ID to associate with'),
+      },
+    },
+    async ({ id, name, description, defaultDirectory, initiativeId }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation UpdateProject($id: ID!, $input: UpdateProjectInput!) {
+          updateProject(id: $id, input: $input) {
+            id name description defaultDirectory initiativeId
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          id,
+          input: { name, description, defaultDirectory, initiativeId },
+        });
+
+        if (json.errors || !json.data?.updateProject) {
+          return toolError(`Failed to update project: ${JSON.stringify(json.errors ?? 'no data')}`);
+        }
+
+        return toolSuccess(JSON.stringify(json.data.updateProject, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'update_initiative',
+    {
+      description:
+        'Update an initiative by ID. All fields are optional — only provided fields are changed.',
+      inputSchema: {
+        id: z.string().describe('The initiative ID'),
+        name: z.string().optional().describe('New initiative name'),
+        description: z.string().optional().describe('New initiative description'),
+      },
+    },
+    async ({ id, name, description }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation UpdateInitiative($id: ID!, $input: UpdateInitiativeInput!) {
+          updateInitiative(id: $id, input: $input) {
+            id name description
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, {
+          id,
+          input: { name, description },
+        });
+
+        if (json.errors || !json.data?.updateInitiative) {
+          return toolError(
+            `Failed to update initiative: ${JSON.stringify(json.errors ?? 'no data')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(json.data.updateInitiative, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  // ── Archive tools ─────────────────────────────────────────────────
+
+  server.registerTool(
+    'archive_task',
+    {
+      description: 'Archive a task by ID.',
+      inputSchema: {
+        id: z.string().describe('The task ID to archive'),
+      },
+    },
+    async ({ id }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation ArchiveTask($id: ID!) {
+          archiveTask(id: $id) {
+            id archivedAt
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, { id });
+
+        if (json.errors || !json.data?.archiveTask) {
+          return toolError(`Failed to archive task: ${JSON.stringify(json.errors ?? 'no data')}`);
+        }
+
+        return toolSuccess(JSON.stringify(json.data.archiveTask, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'archive_project',
+    {
+      description: 'Archive a project by ID.',
+      inputSchema: {
+        id: z.string().describe('The project ID to archive'),
+      },
+    },
+    async ({ id }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation ArchiveProject($id: ID!) {
+          archiveProject(id: $id) {
+            id archivedAt
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, { id });
+
+        if (json.errors || !json.data?.archiveProject) {
+          return toolError(
+            `Failed to archive project: ${JSON.stringify(json.errors ?? 'no data')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(json.data.archiveProject, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  server.registerTool(
+    'archive_initiative',
+    {
+      description: 'Archive an initiative by ID.',
+      inputSchema: {
+        id: z.string().describe('The initiative ID to archive'),
+      },
+    },
+    async ({ id }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+
+      const mutation = `
+        mutation ArchiveInitiative($id: ID!) {
+          archiveInitiative(id: $id) {
+            id archivedAt
+          }
+        }
+      `;
+
+      try {
+        const json = await graphqlRequest(deps.backendUrl, token, mutation, { id });
+
+        if (json.errors || !json.data?.archiveInitiative) {
+          return toolError(
+            `Failed to archive initiative: ${JSON.stringify(json.errors ?? 'no data')}`,
+          );
+        }
+
+        return toolSuccess(JSON.stringify(json.data.archiveInitiative, null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
   return server;
 }
