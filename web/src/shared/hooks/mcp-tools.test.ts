@@ -457,4 +457,293 @@ describe('MCP tools', () => {
       });
     });
   });
+
+  describe('update_task', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('update_task', { id: 'task-1', title: 'Updated' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('updates task with all fields and returns result', async () => {
+      const updated = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'Updated Title',
+        description: 'New desc',
+        status: 'IN_REVIEW',
+        priority: 'HIGH',
+        projectId: 'proj-2',
+        assignee: { id: 'user-1', name: 'Alice' },
+        labels: [{ id: 'label-1', name: 'Bug', color: '#ff0000' }],
+      };
+
+      await withMockBackend({ updateTask: updated }, async (received) => {
+        const result = await callTool('update_task', {
+          id: 'task-1',
+          title: 'Updated Title',
+          description: 'New desc',
+          status: 'IN_REVIEW',
+          priority: 'HIGH',
+          projectId: 'proj-2',
+          assigneeId: 'user-1',
+          labelIds: ['label-1'],
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.title).toBe('Updated Title');
+        expect(parsed.assignee.name).toBe('Alice');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+        expect(sentVars.input.title).toBe('Updated Title');
+        expect(sentVars.input.status).toBe('IN_REVIEW');
+        expect(sentVars.input.assigneeId).toBe('user-1');
+        expect(sentVars.input.labelIds).toEqual(['label-1']);
+      });
+    });
+
+    it('sends only provided fields in input', async () => {
+      const updated = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'New Title',
+        description: null,
+        status: 'TODO',
+        priority: 'NONE',
+        projectId: null,
+        assignee: null,
+        labels: [],
+      };
+
+      await withMockBackend({ updateTask: updated }, async (received) => {
+        const result = await callTool('update_task', {
+          id: 'task-1',
+          title: 'New Title',
+        });
+        expect(result.isError).toBeUndefined();
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+        expect(sentVars.input.title).toBe('New Title');
+        expect(Object.keys(sentVars.input)).toEqual(['title']);
+      });
+    });
+
+    it('sends null to clear projectId and assigneeId', async () => {
+      const updated = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'Test',
+        description: null,
+        status: 'TODO',
+        priority: 'NONE',
+        projectId: null,
+        assignee: null,
+        labels: [],
+      };
+
+      await withMockBackend({ updateTask: updated }, async (received) => {
+        const result = await callTool('update_task', {
+          id: 'task-1',
+          projectId: null,
+          assigneeId: null,
+        });
+        expect(result.isError).toBeUndefined();
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+        expect(sentVars.input.projectId).toBeNull();
+        expect(sentVars.input.assigneeId).toBeNull();
+      });
+    });
+  });
+
+  describe('update_project', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('update_project', { id: 'proj-1', name: 'Updated' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('updates project and returns result', async () => {
+      const updated = {
+        id: 'proj-1',
+        name: 'Updated Project',
+        description: 'New desc',
+        defaultDirectory: '/code',
+        initiativeId: 'init-2',
+      };
+
+      await withMockBackend({ updateProject: updated }, async (received) => {
+        const result = await callTool('update_project', {
+          id: 'proj-1',
+          name: 'Updated Project',
+          description: 'New desc',
+          defaultDirectory: '/code',
+          initiativeId: 'init-2',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.name).toBe('Updated Project');
+        expect(parsed.initiativeId).toBe('init-2');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('proj-1');
+        expect(sentVars.input.name).toBe('Updated Project');
+        expect(sentVars.input.defaultDirectory).toBe('/code');
+      });
+    });
+
+    it('sends null to clear defaultDirectory and initiativeId', async () => {
+      const updated = {
+        id: 'proj-1',
+        name: 'Test',
+        description: null,
+        defaultDirectory: null,
+        initiativeId: null,
+      };
+
+      await withMockBackend({ updateProject: updated }, async (received) => {
+        const result = await callTool('update_project', {
+          id: 'proj-1',
+          defaultDirectory: null,
+          initiativeId: null,
+        });
+        expect(result.isError).toBeUndefined();
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('proj-1');
+        expect(sentVars.input.defaultDirectory).toBeNull();
+        expect(sentVars.input.initiativeId).toBeNull();
+      });
+    });
+  });
+
+  describe('update_initiative', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('update_initiative', { id: 'init-1', name: 'Updated' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('updates initiative and returns result', async () => {
+      const updated = { id: 'init-1', name: 'Updated Initiative', description: 'New desc' };
+
+      await withMockBackend({ updateInitiative: updated }, async (received) => {
+        const result = await callTool('update_initiative', {
+          id: 'init-1',
+          name: 'Updated Initiative',
+          description: 'New desc',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.name).toBe('Updated Initiative');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('init-1');
+        expect(sentVars.input.name).toBe('Updated Initiative');
+        expect(sentVars.input.description).toBe('New desc');
+      });
+    });
+  });
+
+  describe('archive_task', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('archive_task', { id: 'task-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('archives task and returns result', async () => {
+      const archived = { id: 'task-1', archivedAt: '2026-03-22T00:00:00.000Z' };
+
+      await withMockBackend({ archiveTask: archived }, async (received) => {
+        const result = await callTool('archive_task', { id: 'task-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('task-1');
+        expect(parsed.archivedAt).toBe('2026-03-22T00:00:00.000Z');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
+        const result = await callTool('archive_task', { id: 'task-1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Failed to archive task');
+      });
+    });
+  });
+
+  describe('archive_project', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('archive_project', { id: 'proj-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('archives project and returns result', async () => {
+      const archived = { id: 'proj-1', archivedAt: '2026-03-22T00:00:00.000Z' };
+
+      await withMockBackend({ archiveProject: archived }, async (received) => {
+        const result = await callTool('archive_project', { id: 'proj-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('proj-1');
+        expect(parsed.archivedAt).toBe('2026-03-22T00:00:00.000Z');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('proj-1');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
+        const result = await callTool('archive_project', { id: 'proj-1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Failed to archive project');
+      });
+    });
+  });
+
+  describe('archive_initiative', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('archive_initiative', { id: 'init-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('archives initiative and returns result', async () => {
+      const archived = { id: 'init-1', archivedAt: '2026-03-22T00:00:00.000Z' };
+
+      await withMockBackend({ archiveInitiative: archived }, async (received) => {
+        const result = await callTool('archive_initiative', { id: 'init-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('init-1');
+        expect(parsed.archivedAt).toBe('2026-03-22T00:00:00.000Z');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('init-1');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
+        const result = await callTool('archive_initiative', { id: 'init-1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Failed to archive initiative');
+      });
+    });
+  });
 });
