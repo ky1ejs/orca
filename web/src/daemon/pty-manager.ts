@@ -7,6 +7,7 @@ import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
 import { RingBuffer } from '../shared/ring-buffer.js';
 import { processKittyKeyboard } from './kitty-keyboard.js';
+import { DataBatcher } from './data-batcher.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -22,11 +23,27 @@ export class DaemonPtyManager {
   private lastDataAt = new Map<string, number>();
   private disposed = false;
   private broadcast: BroadcastFn;
+  private batcher: DataBatcher;
   private onDataCallback: ((sessionId: string) => void) | null = null;
   private onExitCallback: ((sessionId: string) => void) | null = null;
 
   constructor(broadcast: BroadcastFn) {
     this.broadcast = broadcast;
+    this.batcher = new DataBatcher();
+
+    this.batcher.onFlush((sessionId, data) => {
+      this.buffers.get(sessionId)?.append(data);
+      this.onDataCallback?.(sessionId);
+      this.broadcast('pty.data', { sessionId, data });
+    });
+
+    this.batcher.onPause((sessionId) => {
+      this.processes.get(sessionId)?.pty.pause();
+    });
+
+    this.batcher.onResume((sessionId) => {
+      this.processes.get(sessionId)?.pty.resume();
+    });
   }
 
   setOnData(cb: (sessionId: string) => void): void {
@@ -69,9 +86,7 @@ export class DaemonPtyManager {
       this.lastDataAt.set(sessionId, Date.now());
       const { output, response } = processKittyKeyboard(data);
       if (response) shell.write(response);
-      this.buffers.get(sessionId)?.append(output);
-      this.onDataCallback?.(sessionId);
-      this.broadcast('pty.data', { sessionId, data: output });
+      this.batcher.push(sessionId, output);
     });
 
     shell.onExit(({ exitCode }: { exitCode: number }) => {
@@ -106,6 +121,7 @@ export class DaemonPtyManager {
     if (proc) {
       this.onExitCallback?.(sessionId);
       proc.pty.kill();
+      this.batcher.remove(sessionId);
       this.processes.delete(sessionId);
       this.buffers.delete(sessionId);
       this.snapshots.delete(sessionId);
@@ -145,6 +161,7 @@ export class DaemonPtyManager {
 
   killAll(): void {
     this.disposed = true;
+    this.batcher.dispose();
     for (const [, proc] of this.processes) {
       proc.pty.kill('SIGTERM');
     }
