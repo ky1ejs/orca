@@ -47,8 +47,7 @@ export class DaemonConnector {
   constructor(client: DaemonClient) {
     this.client = client;
     this.heartbeat = new HeartbeatMonitor(client, () => {
-      this.client.disconnect();
-      this.startReconnection();
+      void this.handleHeartbeatFailure();
     });
   }
 
@@ -322,6 +321,25 @@ export class DaemonConnector {
     await this.shutdownAndRespawn();
     this.setupReconnection();
     this.heartbeat.start();
+  }
+
+  /**
+   * Handle heartbeat failure by force-restarting the daemon.
+   * Unlike normal reconnection, this explicitly kills the (possibly hung)
+   * daemon process and spawns a fresh one.
+   */
+  private async handleHeartbeatFailure(): Promise<void> {
+    this.client.disconnect();
+    try {
+      await this.shutdownAndRespawn();
+    } catch {
+      this.cleanupStaleFiles();
+      this.spawnDaemon();
+      await this.waitForConnection();
+    }
+    this.setupReconnection();
+    this.heartbeat.start();
+    this.onReconnect?.();
   }
 }
 

@@ -16,6 +16,8 @@ export class HeartbeatMonitor {
   private interval: ReturnType<typeof setInterval> | null = null;
   private consecutiveFailures = 0;
   private pending = false;
+  /** Incremented on start/stop so stale in-flight pings don't mutate state. */
+  private generation = 0;
 
   constructor(client: DaemonClient, onFailure: () => void) {
     this.client = client;
@@ -24,7 +26,8 @@ export class HeartbeatMonitor {
 
   start(): void {
     this.stop();
-    this.interval = setInterval(() => this.ping(), HEARTBEAT_INTERVAL_MS);
+    this.generation++;
+    this.interval = setInterval(() => this.ping(this.generation), HEARTBEAT_INTERVAL_MS);
   }
 
   stop(): void {
@@ -32,19 +35,22 @@ export class HeartbeatMonitor {
       clearInterval(this.interval);
       this.interval = null;
     }
+    this.generation++;
     this.consecutiveFailures = 0;
     this.pending = false;
   }
 
-  private async ping(): Promise<void> {
+  private async ping(gen: number): Promise<void> {
     if (this.pending) return;
     this.pending = true;
 
     const timeout = rejectAfter(HEARTBEAT_TIMEOUT_MS);
     try {
       await Promise.race([this.client.request(DAEMON_METHODS.DAEMON_PING), timeout.promise]);
+      if (gen !== this.generation) return;
       this.consecutiveFailures = 0;
     } catch {
+      if (gen !== this.generation) return;
       this.consecutiveFailures++;
       logger.warn(`Daemon heartbeat missed (${this.consecutiveFailures}/${MAX_MISSED_HEARTBEATS})`);
 
@@ -56,7 +62,9 @@ export class HeartbeatMonitor {
       }
     } finally {
       timeout.cancel();
-      this.pending = false;
+      if (gen === this.generation) {
+        this.pending = false;
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { HeartbeatMonitor } from './heartbeat.js';
+import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 
 // Stub the logger to suppress output during tests
 vi.mock('../logger.js', () => ({
@@ -30,7 +31,7 @@ describe('HeartbeatMonitor', () => {
     // Advance past first heartbeat interval (10s)
     await vi.advanceTimersByTimeAsync(10_000);
     expect(client.request).toHaveBeenCalledTimes(1);
-    expect(client.request).toHaveBeenCalledWith('daemon.ping');
+    expect(client.request).toHaveBeenCalledWith(DAEMON_METHODS.DAEMON_PING);
 
     // Second tick
     await vi.advanceTimersByTimeAsync(10_000);
@@ -127,6 +128,50 @@ describe('HeartbeatMonitor', () => {
     // Advance to just before the timeout fires to confirm no extra calls.
     await vi.advanceTimersByTimeAsync(4_999);
     expect(client.request).toHaveBeenCalledTimes(1);
+
+    monitor.stop();
+  });
+
+  it('stale in-flight ping does not affect state after stop + restart', async () => {
+    const client = createMockClient();
+    const onFailure = vi.fn();
+
+    const monitor = new HeartbeatMonitor(client as never, onFailure);
+
+    // Start with 2 failures to get close to the threshold
+    client.request.mockRejectedValue(new Error('fail'));
+    monitor.start();
+    await vi.advanceTimersByTimeAsync(10_000); // fail 1
+    await vi.advanceTimersByTimeAsync(10_000); // fail 2
+
+    // Now make request hang, then stop + restart while it's in-flight
+    let rejectHanging: ((err: Error) => void) | null = null;
+    client.request.mockImplementation(
+      () =>
+        new Promise<unknown>((_, reject) => {
+          rejectHanging = reject;
+        }),
+    );
+    await vi.advanceTimersByTimeAsync(10_000); // ping 3 starts (in-flight)
+
+    // Stop and restart — this should invalidate the in-flight ping
+    monitor.stop();
+    client.request.mockRejectedValue(new Error('fail'));
+    monitor.start();
+
+    // Resolve the stale in-flight ping — should be ignored (wrong generation)
+    rejectHanging!(new Error('stale fail'));
+    await vi.advanceTimersByTimeAsync(0); // flush microtasks
+
+    // The restarted monitor should have a fresh failure counter.
+    // 2 more failures should NOT trigger onFailure (need 3 from scratch)
+    await vi.advanceTimersByTimeAsync(10_000); // fail 1 (new generation)
+    await vi.advanceTimersByTimeAsync(10_000); // fail 2
+    expect(onFailure).not.toHaveBeenCalled();
+
+    // Third failure in new generation triggers
+    await vi.advanceTimersByTimeAsync(10_000); // fail 3
+    expect(onFailure).toHaveBeenCalledTimes(1);
 
     monitor.stop();
   });
