@@ -88,6 +88,9 @@ export function AppShell({ onLogout }: AppShellProps) {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  // Latch: once projects have been observed, never show onboarding again.
+  // Prevents transient flash when cache invalidation temporarily clears workspace data.
+  const hasEverHadProjects = useRef(false);
 
   // Ref for sessions used in shortcut actions — avoids recreating shortcuts on every session change
   const sessionsRef = useRef(sessions);
@@ -138,8 +141,13 @@ export function AppShell({ onLogout }: AppShellProps) {
 
   // Determine if we should show the onboarding flow
   const projects = workspaceData?.workspace?.projects ?? [];
+  if (projects.length > 0) hasEverHadProjects.current = true;
   const showOnboarding =
-    !workspaceLoading && !projectsFetching && projects.length === 0 && !onboardingDismissed;
+    !workspaceLoading &&
+    !projectsFetching &&
+    projects.length === 0 &&
+    !onboardingDismissed &&
+    !hasEverHadProjects.current;
 
   const handleOnboardingComplete = useCallback(() => {
     setOnboardingDismissed(true);
