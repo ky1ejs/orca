@@ -163,7 +163,8 @@ export class HookServer extends EventEmitter<HookServerEvents> {
       return;
     }
 
-    const mcpServer = createMcpServer(this.mcpDeps!);
+    const sessionId = typeof sessionIdHeader === 'string' ? sessionIdHeader : undefined;
+    const mcpServer = createMcpServer({ ...this.mcpDeps!, sessionId });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });

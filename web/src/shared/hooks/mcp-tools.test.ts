@@ -67,9 +67,17 @@ describe('MCP tools', () => {
   }
 
   describe('get_current_task', () => {
+    it('returns error when no session ID in deps', async () => {
+      const result = await callTool('get_current_task', {});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('No session ID provided');
+    });
+
     it('returns error when session not found', async () => {
       mockGetSession.mockReturnValue(undefined);
-      const result = await callTool('get_current_task', { sessionId: 'nonexistent' });
+      deps.sessionId = 'nonexistent';
+      const result = await callTool('get_current_task', {});
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Session not found: nonexistent');
@@ -86,7 +94,8 @@ describe('MCP tools', () => {
         stopped_at: null,
         created_at: new Date().toISOString(),
       });
-      const result = await callTool('get_current_task', { sessionId: 'sess-no-task' });
+      deps.sessionId = 'sess-no-task';
+      const result = await callTool('get_current_task', {});
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('No task is associated with session: sess-no-task');
@@ -104,8 +113,9 @@ describe('MCP tools', () => {
         created_at: new Date().toISOString(),
       });
       deps.getToken = () => null;
+      deps.sessionId = 'sess-1';
 
-      const result = await callTool('get_current_task', { sessionId: 'sess-1' });
+      const result = await callTool('get_current_task', {});
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Not authenticated');
     });
@@ -133,9 +143,10 @@ describe('MCP tools', () => {
         stopped_at: null,
         created_at: new Date().toISOString(),
       });
+      deps.sessionId = 'sess-1';
 
       await withMockBackend({ task: mockTask }, async () => {
-        const result = await callTool('get_current_task', { sessionId: 'sess-1' });
+        const result = await callTool('get_current_task', {});
         expect(result.isError).toBeUndefined();
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.displayId).toBe('ORCA-42');
@@ -147,8 +158,8 @@ describe('MCP tools', () => {
   describe('update_task_status', () => {
     it('returns error when session not found', async () => {
       mockGetSession.mockReturnValue(undefined);
+      deps.sessionId = 'nonexistent';
       const result = await callTool('update_task_status', {
-        sessionId: 'nonexistent',
         status: 'DONE',
       });
 
@@ -167,12 +178,12 @@ describe('MCP tools', () => {
         stopped_at: null,
         created_at: new Date().toISOString(),
       });
+      deps.sessionId = 'sess-1';
 
       await withMockBackend(
         { updateTask: { id: 'task-uuid', status: 'DONE' } },
         async (received) => {
           const result = await callTool('update_task_status', {
-            sessionId: 'sess-1',
             status: 'DONE',
           });
 

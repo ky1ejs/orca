@@ -5,7 +5,7 @@ function orcaSystemPromptLines(taskId: string, title: string): string[] {
     'You were launched by Orca to work on a task.',
     `Task: ${taskId} — ${title}`,
     'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
-    'Use the get_current_task MCP tool (pass ORCA_SESSION_ID as the sessionId) to fetch full task details including description, status, priority, and labels.',
+    'Use the get_current_task MCP tool to fetch full task details including description, status, priority, and labels.',
     `If you create a branch, include the task ID in the name: feat/${taskId}-short-description.`,
   ];
 }
