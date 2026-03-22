@@ -64,15 +64,28 @@ function MainContent({ sessions, refreshSessions }: MainContentProps) {
   }
 }
 
-/** Memoized terminal container — prevents parent re-renders from triggering ResizeObserver */
-const TerminalContainer = memo(function TerminalContainer({
+/**
+ * Renders ALL session terminals stacked via absolute positioning.
+ * Only the active terminal is visible; others use visibility: hidden.
+ * Terminals stay mounted across tab switches so xterm.js buffers persist
+ * and no replay/remount cycle is needed — matching VS Code's approach.
+ */
+const TerminalPanel = memo(function TerminalPanel({
+  sessions,
   activeSessionId,
 }: {
-  activeSessionId: string;
+  sessions: TerminalSessionInfo[];
+  activeSessionId: string | null;
 }) {
   return (
-    <div className="flex-1 overflow-hidden">
-      <AgentTerminal key={activeSessionId} sessionId={activeSessionId} />
+    <div className="flex-1 overflow-hidden relative">
+      {sessions.map((session) => (
+        <AgentTerminal
+          key={session.id}
+          sessionId={session.id}
+          visible={session.id === activeSessionId}
+        />
+      ))}
     </div>
   );
 });
@@ -353,7 +366,7 @@ export function AppShell({ onLogout }: AppShellProps) {
                     onSelectSession={setActiveSessionId}
                     onCloseSession={handleCloseSession}
                   />
-                  {activeSessionId && <TerminalContainer activeSessionId={activeSessionId} />}
+                  <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
                 </>
               ) : (
                 <EmptyTerminalArea />

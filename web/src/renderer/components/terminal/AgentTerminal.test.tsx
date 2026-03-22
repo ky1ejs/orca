@@ -143,7 +143,8 @@ afterEach(() => {
 
 /** Simulate the first ResizeObserver callback (initial layout completion). */
 function triggerInitialResize() {
-  resizeObserverCallback?.([], {} as ResizeObserver);
+  const entry = { contentRect: { width: 800, height: 400 } } as ResizeObserverEntry;
+  resizeObserverCallback?.([entry], {} as ResizeObserver);
 }
 
 // Dynamic import after mocks
@@ -151,40 +152,53 @@ const { AgentTerminal } = await import('./AgentTerminal.js');
 
 describe('AgentTerminal', () => {
   it('renders the terminal container', () => {
-    const { getByTestId } = render(<AgentTerminal sessionId="test-session" />);
+    const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(getByTestId('agent-terminal')).toBeInTheDocument();
   });
 
   it('calls replay after ResizeObserver fires (not rAF)', async () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     // Before ResizeObserver fires, replay should not have been called
     expect(mockReplay).not.toHaveBeenCalled();
 
-    // Simulate layout completion
+    // Simulate layout completion — replay is called with valid dimensions
     triggerInitialResize();
     expect(mockReplay).toHaveBeenCalledWith('test-session');
+
+    // After replay resolves, onData should be subscribed
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
   });
 
   it('resizes PTY after fit on initial ResizeObserver callback', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockPtyResize).toHaveBeenCalledWith('test-session', 80, 24);
   });
 
-  it('subscribes to onData for live output immediately (before resize)', () => {
-    render(<AgentTerminal sessionId="test-session" />);
-    // onData should be subscribed before ResizeObserver fires
-    expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+  it('defers onData subscription until after fit + replay', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    // onData should NOT be subscribed before ResizeObserver fires
+    expect(mockPtyOnData).not.toHaveBeenCalled();
+
+    // Simulate layout completion — triggers fit + replay
+    triggerInitialResize();
+
+    // onData is subscribed after replay resolves
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
   });
 
   it('subscribes to onExit', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockPtyOnExit).toHaveBeenCalledWith('test-session', expect.any(Function));
   });
 
   it('connects terminal onData to pty.write for user input', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockOnData).toHaveBeenCalled();
 
     // Simulate user typing
@@ -194,7 +208,7 @@ describe('AgentTerminal', () => {
   });
 
   it('intercepts Shift+Enter to send CSI u escape sequence', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockAttachCustomKeyEventHandler).toHaveBeenCalled();
 
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
@@ -217,7 +231,7 @@ describe('AgentTerminal', () => {
   });
 
   it('loads WebGL addon and registers context loss handler', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockLoadAddon).toHaveBeenCalledWith(
       expect.objectContaining({ dispose: mockWebglDispose }),
     );
@@ -225,21 +239,21 @@ describe('AgentTerminal', () => {
   });
 
   it('disposes WebGL addon on context loss', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
     onContextLossCallback();
     expect(mockWebglDispose).toHaveBeenCalled();
   });
 
   it('disposes terminal and WebGL addon on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     unmount();
     expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
   });
 
   it('disconnects ResizeObserver on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     const observer = (globalThis as unknown as { ResizeObserver: ReturnType<typeof vi.fn> })
       .ResizeObserver;
     const instance = observer.mock.results[0].value;
@@ -248,20 +262,20 @@ describe('AgentTerminal', () => {
   });
 
   it('loads SearchAddon', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockLoadAddon).toHaveBeenCalledWith(
       expect.objectContaining({ findNext: mockSearchFindNext }),
     );
   });
 
   it('disposes SearchAddon on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     unmount();
     expect(mockSearchDispose).toHaveBeenCalled();
   });
 
   it('intercepts Cmd+F to open search', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
     const cmdF = {
       type: 'keydown',
@@ -276,7 +290,7 @@ describe('AgentTerminal', () => {
   });
 
   it('intercepts Ctrl+F to open search', () => {
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
     const ctrlF = {
       type: 'keydown',
@@ -292,7 +306,7 @@ describe('AgentTerminal', () => {
 
   it('skips fit when proposed dimensions match current terminal dimensions', () => {
     mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
     // proposeDimensions returns 80x24 which matches terminal.cols/rows — fit should be skipped
     expect(mockFit).not.toHaveBeenCalled();
@@ -302,7 +316,7 @@ describe('AgentTerminal', () => {
   it('scrolls to bottom after fit when viewport was at bottom', () => {
     mockBuffer.active.viewportY = 100;
     mockBuffer.active.baseY = 100;
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).toHaveBeenCalled();
@@ -311,7 +325,7 @@ describe('AgentTerminal', () => {
   it('does not scroll to bottom after fit when viewport was scrolled up', () => {
     mockBuffer.active.viewportY = 50;
     mockBuffer.active.baseY = 100;
-    render(<AgentTerminal sessionId="test-session" />);
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).not.toHaveBeenCalled();

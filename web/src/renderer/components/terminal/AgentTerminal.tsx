@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -40,6 +40,8 @@ function readTerminalTheme() {
 
 interface AgentTerminalProps {
   sessionId: string;
+  /** Whether this terminal is the active/visible tab. */
+  visible: boolean;
 }
 
 /** Fit the terminal to its container and sync the PTY dimensions. */
@@ -55,17 +57,22 @@ function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string)
     const wasAtBottom = buffer.viewportY >= buffer.baseY;
 
     fitAddon.fit();
-    window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+    if (terminal.cols > 0 && terminal.rows > 0) {
+      window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+    }
 
     if (wasAtBottom) {
       terminal.scrollToBottom();
     }
   } catch {
-    // Container may have been removed before the fit completes
+    // Container may have been removed or have zero dimensions
   }
 }
 
-export function AgentTerminal({ sessionId }: AgentTerminalProps) {
+export const AgentTerminal = memo(function AgentTerminal({
+  sessionId,
+  visible,
+}: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -73,10 +80,15 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   const [searchVisible, setSearchVisible] = useState(false);
   const { terminalFontFamily } = usePreferences();
   const fontRef = useRef(terminalFontFamily);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    let disposed = false;
+    let unsubData: (() => void) | null = null;
 
     const terminal = new Terminal({
       theme: readTerminalTheme(),
@@ -128,11 +140,6 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
 
-    // Subscribe to live output + keyboard input immediately (no dimension dependency)
-    const unsubData = window.orca.pty.onData(sessionId, (data) => {
-      terminal.write(data);
-    });
-
     const onDataDisposable = terminal.onData((data) => {
       window.orca.pty.write(sessionId, data);
     });
@@ -141,22 +148,38 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       terminal.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
     });
 
-    // Use ResizeObserver for both initial fit+replay and subsequent resizes.
-    // The first callback fires after the browser has completed layout, guaranteeing
-    // correct container dimensions — unlike rAF which can fire before flex layout stabilizes.
+    // PTY output subscription is DEFERRED to after initial fit + replay.
+    // Subscribing immediately would write data at wrong dimensions (default 80x24)
+    // and duplicate content when replay() returns the full buffer.
     let initialFitDone = false;
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-    const resizeObserver = new ResizeObserver(() => {
+    // ResizeObserver fires after layout completes, guaranteeing correct container
+    // dimensions — unlike rAF which can fire before flex layout stabilizes.
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (disposed) return;
+      const entry = entries[0];
+      if (!entry || entry.contentRect.width === 0 || entry.contentRect.height === 0) {
+        return;
+      }
+
       if (!initialFitDone) {
-        // First callback: fit immediately (no debounce), resize PTY, then replay
         initialFitDone = true;
         fitAndResize(fitAddon, terminal, sessionId);
         window.orca.pty.replay(sessionId).then((output) => {
+          if (disposed) return;
           if (output) terminal.write(output);
+          // Subscribe to live PTY output AFTER fit + replay completes.
+          // JS event loop guarantees no IPC events dispatch between the
+          // promise resolution and this synchronous listener registration.
+          unsubData = window.orca.pty.onData(sessionId, (data) => {
+            terminal.write(data);
+          });
         });
         return;
       }
-      // Subsequent callbacks: debounce for resize stability
+      // Skip resize IPC for hidden terminals — only the visible one needs to
+      // refit and sync PTY dimensions. Hidden terminals refit when they become visible.
+      if (!visibleRef.current) return;
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         fitAndResize(fitAddon, terminal, sessionId);
@@ -197,6 +220,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     return () => {
+      disposed = true;
       setSearchVisible(false);
       clearInterval(snapshotTimer);
       sendSnapshot();
@@ -208,7 +232,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       serializeAddon.dispose();
       searchAddon.dispose();
       onDataDisposable.dispose();
-      unsubData();
+      unsubData?.();
       unsubExit();
       terminal.dispose();
       terminalRef.current = null;
@@ -222,6 +246,17 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     searchAddonRef.current?.clearDecorations();
     terminalRef.current?.focus();
   };
+
+  // Refit when terminal becomes visible — ResizeObserver won't fire on
+  // visibility: hidden → visible since element size doesn't change.
+  useEffect(() => {
+    if (!visible) return;
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (terminal && fitAddon) {
+      fitAndResize(fitAddon, terminal, sessionId);
+    }
+  }, [visible, sessionId]);
 
   // Apply font changes live
   useEffect(() => {
@@ -237,7 +272,14 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   }, [terminalFontFamily]);
 
   return (
-    <div className="relative h-full w-full" data-testid="agent-terminal">
+    <div
+      className="absolute inset-0"
+      data-testid="agent-terminal"
+      style={{
+        visibility: visible ? 'visible' : 'hidden',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
+    >
       {searchVisible && searchAddonRef.current && (
         <TerminalSearchBar searchAddon={searchAddonRef.current} onClose={handleSearchClose} />
       )}
@@ -248,4 +290,4 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       />
     </div>
   );
-}
+});
