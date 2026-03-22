@@ -19,6 +19,7 @@ import {
   deleteProjectDirectory,
 } from './project-directories.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
+import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
   AuthSetTokenParams,
   PtySpawnParams,
@@ -42,6 +43,7 @@ import type {
   ProjectDirSetParams,
   ProjectDirDeleteParams,
   DaemonStatusResult,
+  SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
 
 interface HandlerDeps {
@@ -203,6 +205,18 @@ export function createHandler(deps: HandlerDeps) {
         outputPersistence.removeSession(p.id);
         deleteSession(p.id);
         return { ok: true };
+      }
+
+      // ── Session Restore ─────────────────────────────
+      case DAEMON_METHODS.SESSIONS_RESTORE_ALL: {
+        const sessions = getSessions();
+        for (const session of sessions) {
+          if (isActiveSessionStatus(session.status)) {
+            server.subscribeClient(client.id, session.id);
+          }
+        }
+        const result: SessionsRestoreAllResult = { sessions };
+        return result;
       }
 
       // ── Project Directories ────────────────────────

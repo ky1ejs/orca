@@ -10,13 +10,13 @@ import { readToken } from './pty/auth.js';
 import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
 import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
-import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
   PtyDataEvent,
   PtyExitEvent,
   PidSweepSessionsDiedEvent,
   SessionStatusChangedEvent,
   SessionActivityChangedEvent,
+  SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
 import { exportDiagnostics } from './diagnostics.js';
@@ -174,19 +174,15 @@ async function pushTokenToDaemon(client: DaemonClient): Promise<void> {
 
 /**
  * Re-subscribe to all active sessions so PTY data flows after reconnect.
+ * Uses a single atomic daemon request instead of N+1 round trips.
  */
 async function resubscribeToActiveSessions(client: DaemonClient): Promise<void> {
   try {
-    const sessions = (await client.request(DAEMON_METHODS.DB_GET_SESSIONS)) as Array<{
-      id: string;
-      status: string;
-    }>;
+    const { sessions } = (await client.request(
+      DAEMON_METHODS.SESSIONS_RESTORE_ALL,
+    )) as SessionsRestoreAllResult;
     dockBadge.initFromSessions(sessions);
     trayManager.initFromSessions(sessions);
-    const active = sessions.filter((s) => isActiveSessionStatus(s.status));
-    await Promise.all(
-      active.map((s) => client.request(DAEMON_METHODS.PTY_SUBSCRIBE, { sessionId: s.id })),
-    );
   } catch {
     // Best effort — sessions may not exist
   }

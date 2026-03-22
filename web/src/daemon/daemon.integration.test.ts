@@ -16,7 +16,7 @@ import { OutputPersistence } from './output-persistence.js';
 import { createHandler } from './handlers.js';
 import { createSession, updateSession } from './sessions.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
-import type { DaemonStatusResult } from '../shared/daemon-protocol.js';
+import type { DaemonStatusResult, SessionsRestoreAllResult } from '../shared/daemon-protocol.js';
 import { SessionStatus } from '../shared/session-status.js';
 
 const migrationsFolder = resolve(process.cwd(), 'drizzle');
@@ -303,6 +303,67 @@ describe('daemon integration', () => {
     // Shutdown is deferred 100ms in the handler
     await waitFor(() => shutdownCalled, 1000);
     expect(shutdownCalled).toBe(true);
+  });
+
+  it('sessions.restoreAll subscribes client to active sessions and returns all sessions', async () => {
+    // Create sessions with different statuses
+    const running = createSession({ status: SessionStatus.Running });
+    updateSession(running.id, { pid: process.pid, status: SessionStatus.Running });
+
+    const exited = createSession({ status: SessionStatus.Exited });
+    updateSession(exited.id, { status: SessionStatus.Exited });
+
+    const waiting = createSession({ status: SessionStatus.WaitingForInput });
+    updateSession(waiting.id, { pid: process.pid, status: SessionStatus.WaitingForInput });
+
+    // Call sessions.restoreAll
+    const result = (await client.request(
+      DAEMON_METHODS.SESSIONS_RESTORE_ALL,
+    )) as SessionsRestoreAllResult;
+
+    // Should return all sessions (3)
+    expect(result.sessions).toHaveLength(3);
+
+    // Verify the client is subscribed to active sessions by using a second
+    // unsubscribed client as a control
+    const client2 = new DaemonClient();
+    await client2.connect(socketPath);
+
+    try {
+      const client1Data: string[] = [];
+      const client2Data: string[] = [];
+
+      client.subscribe('pty.data', (params) => {
+        const p = params as { sessionId: string; data: string };
+        client1Data.push(p.sessionId);
+      });
+
+      client2.subscribe('pty.data', (params) => {
+        const p = params as { sessionId: string; data: string };
+        client2Data.push(p.sessionId);
+      });
+
+      // Broadcast to the running session — only client1 (restored) should receive
+      server.broadcastToSubscribed(running.id, 'pty.data', {
+        sessionId: running.id,
+        data: 'test',
+      });
+
+      // Broadcast to the exited session — neither client should receive
+      // (exited sessions are not subscribed)
+      server.broadcastToSubscribed(exited.id, 'pty.data', {
+        sessionId: exited.id,
+        data: 'test',
+      });
+
+      await sleep(100);
+
+      expect(client1Data).toContain(running.id);
+      expect(client1Data).not.toContain(exited.id);
+      expect(client2Data).toHaveLength(0);
+    } finally {
+      client2.disconnect();
+    }
   });
 
   it('stale session sweep marks dead PIDs as ERROR', () => {

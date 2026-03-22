@@ -162,6 +162,19 @@ export interface DaemonStatusResult {
   connectedClients: number;
 }
 
+export interface SessionsRestoreAllResult {
+  sessions: Array<{
+    id: string;
+    task_id: string | null;
+    pid: number | null;
+    status: string;
+    working_directory: string | null;
+    started_at: string | null;
+    stopped_at: string | null;
+    created_at: string;
+  }>;
+}
+
 // ─── Event parameter types ─────────────────────────────────────────────
 
 export interface PtyDataEvent {
@@ -234,6 +247,7 @@ export const DAEMON_METHODS = {
   DB_CREATE_SESSION: 'db.createSession',
   DB_UPDATE_SESSION: 'db.updateSession',
   DB_DELETE_SESSION: 'db.deleteSession',
+  SESSIONS_RESTORE_ALL: 'sessions.restoreAll',
   PROJECT_DIR_GET: 'projectDir.get',
   PROJECT_DIR_SET: 'projectDir.set',
   PROJECT_DIR_DELETE: 'projectDir.delete',
