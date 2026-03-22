@@ -105,7 +105,7 @@ src/
 - **Daemon**: Runs via `ELECTRON_RUN_AS_NODE=1`. Owns PTY processes (node-pty), SQLite database (`~/.orca/orca.db`), session monitoring. Communicates via NDJSON over Unix socket (`~/.orca/daemon.sock`).
 - **Shared**: Electron-independent modules used by both daemon and main.
 
-The daemon survives Electron restarts (e.g., during app updates). On normal quit, Electron tells daemon to shut down. Daemon has a 5-minute idle timeout.
+The daemon survives Electron quit and restarts. On quit, Electron disconnects but does not shut the daemon down — the daemon's 5-minute idle timeout handles cleanup when no clients are connected and no sessions are active. Dev instances (`bun run dev`) use a separate daemon directory (`~/.orca-dev/`) for full isolation from the production app.
 
 ## Testing
 
