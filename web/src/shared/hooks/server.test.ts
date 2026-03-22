@@ -171,10 +171,9 @@ describe('HookServer MCP endpoint', () => {
     if (sessionId) {
       headers['X-Orca-Session-Id'] = sessionId;
     }
-    const transport = new StreamableHTTPClientTransport(
-      new URL(`http://127.0.0.1:${port}/mcp`),
-      { requestInit: { headers } },
-    );
+    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), {
+      requestInit: { headers },
+    });
     await client.connect(transport);
     const result = await client.callTool({ name: toolName, arguments: args });
     await client.close();
