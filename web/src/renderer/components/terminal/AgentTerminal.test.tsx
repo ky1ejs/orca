@@ -25,6 +25,8 @@ const mockDispose = vi.fn();
 const mockLoadAddon = vi.fn();
 const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
 const mockAttachCustomKeyEventHandler = vi.fn();
+const mockScrollToBottom = vi.fn();
+const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -34,6 +36,8 @@ vi.mock('@xterm/xterm', () => ({
     loadAddon: mockLoadAddon,
     onData: mockOnData,
     attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
+    scrollToBottom: mockScrollToBottom,
+    buffer: mockBuffer,
     options: {},
     cols: 80,
     rows: 24,
@@ -41,9 +45,11 @@ vi.mock('@xterm/xterm', () => ({
 }));
 
 const mockFit = vi.fn();
+const mockProposeDimensions = vi.fn().mockReturnValue({ cols: 120, rows: 30 });
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(() => ({
     fit: mockFit,
+    proposeDimensions: mockProposeDimensions,
   })),
 }));
 
@@ -102,6 +108,10 @@ const mockPtySnapshot = vi.fn().mockResolvedValue(undefined);
 let resizeObserverCallback: ResizeObserverCallback | null = null;
 
 beforeEach(() => {
+  // Reset mutable mock state between tests
+  mockBuffer.active.viewportY = 0;
+  mockBuffer.active.baseY = 0;
+  mockProposeDimensions.mockReturnValue({ cols: 120, rows: 30 });
   // Add orca to existing window (don't overwrite — preserves matchMedia mock)
   (window as unknown as { orca: unknown }).orca = {
     pty: {
@@ -278,5 +288,32 @@ describe('AgentTerminal', () => {
     };
     expect(handler(ctrlF)).toBe(false);
     expect(ctrlF.preventDefault).toHaveBeenCalled();
+  });
+
+  it('skips fit when proposed dimensions match current terminal dimensions', () => {
+    mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+    render(<AgentTerminal sessionId="test-session" />);
+    triggerInitialResize();
+    // proposeDimensions returns 80x24 which matches terminal.cols/rows — fit should be skipped
+    expect(mockFit).not.toHaveBeenCalled();
+    expect(mockPtyResize).not.toHaveBeenCalled();
+  });
+
+  it('scrolls to bottom after fit when viewport was at bottom', () => {
+    mockBuffer.active.viewportY = 100;
+    mockBuffer.active.baseY = 100;
+    render(<AgentTerminal sessionId="test-session" />);
+    triggerInitialResize();
+    expect(mockFit).toHaveBeenCalled();
+    expect(mockScrollToBottom).toHaveBeenCalled();
+  });
+
+  it('does not scroll to bottom after fit when viewport was scrolled up', () => {
+    mockBuffer.active.viewportY = 50;
+    mockBuffer.active.baseY = 100;
+    render(<AgentTerminal sessionId="test-session" />);
+    triggerInitialResize();
+    expect(mockFit).toHaveBeenCalled();
+    expect(mockScrollToBottom).not.toHaveBeenCalled();
   });
 });

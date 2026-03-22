@@ -45,8 +45,21 @@ interface AgentTerminalProps {
 /** Fit the terminal to its container and sync the PTY dimensions. */
 function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string): void {
   try {
+    const dims = fitAddon.proposeDimensions();
+    if (!dims || isNaN(dims.cols) || isNaN(dims.rows)) return;
+    if (dims.cols === terminal.cols && dims.rows === terminal.rows) return;
+
+    // Preserve scroll position across resize — fit() calls _renderService.clear()
+    // + terminal.resize() which can reset the viewport scroll offset.
+    const buffer = terminal.buffer.active;
+    const wasAtBottom = buffer.viewportY >= buffer.baseY;
+
     fitAddon.fit();
     window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+
+    if (wasAtBottom) {
+      terminal.scrollToBottom();
+    }
   } catch {
     // Container may have been removed before the fit completes
   }
