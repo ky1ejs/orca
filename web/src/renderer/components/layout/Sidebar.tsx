@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Box,
   PanelLeft,
@@ -24,7 +24,7 @@ import { SidebarSkeleton } from './Skeleton.js';
 import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
 import { NotificationBell } from '../notifications/NotificationBell.js';
 import { ActiveTerminals } from './ActiveTerminals.js';
-import { useActiveTerminals } from '../../hooks/useActiveTerminals.js';
+import { useActiveTerminals, type ActiveTerminalEntry } from '../../hooks/useActiveTerminals.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { SessionStatus } from '../../../shared/session-status.js';
 import { iconSize } from '../../tokens/icon-size.js';
@@ -192,8 +192,19 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const inboxTasks = data?.workspace?.tasks ?? [];
   const activeTaskId = current.view === 'task' ? current.id : undefined;
   const { count: myTaskCount } = useMyTasks();
-  const activeTerminals = useActiveTerminals(allProjects, inboxTasks);
+  const { entries: activeTerminals, refreshSessions } = useActiveTerminals(allProjects, inboxTasks);
   const activeSessionIds = useSessionActivity();
+
+  const handleCloseActiveTerminal = useCallback(
+    async (entry: ActiveTerminalEntry) => {
+      for (const sessionId of entry.sessionIds) {
+        await window.orca.agent.stop(sessionId);
+        await window.orca.db.deleteSession(sessionId);
+      }
+      refreshSessions();
+    },
+    [refreshSessions],
+  );
 
   if (collapsed) {
     return (
@@ -253,7 +264,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
         </div>
       </div>
       <WorkspaceSwitcher />
-      <ActiveTerminals entries={activeTerminals} activeSessionIds={activeSessionIds} />
+      <ActiveTerminals
+        entries={activeTerminals}
+        activeSessionIds={activeSessionIds}
+        onClose={handleCloseActiveTerminal}
+      />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
         <div className="mb-2">
           <button

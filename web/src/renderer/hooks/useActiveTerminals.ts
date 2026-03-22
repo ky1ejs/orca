@@ -19,7 +19,13 @@ export interface ActiveTerminalEntry {
   sessionCount: number;
   sessionIds: string[];
   status: string;
+  taskStatus: string;
   pullRequest?: PrimaryPullRequest;
+}
+
+/** Returns true when the entry represents completed work that can be dismissed. */
+export function isCloseable(entry: ActiveTerminalEntry): boolean {
+  return entry.taskStatus === 'DONE' && entry.pullRequest?.status === PullRequestStatus.Merged;
 }
 
 interface PullRequestRef {
@@ -35,6 +41,7 @@ interface TaskRef {
   id: string;
   displayId: string;
   title: string;
+  status: string;
   pullRequests?: PullRequestRef[];
 }
 
@@ -76,10 +83,10 @@ export function pickPrimaryPr(
 export function useActiveTerminals(
   projects: ProjectData[],
   inboxTasks: TaskRef[] = [],
-): ActiveTerminalEntry[] {
-  const { sessions } = useTerminalSessions();
+): { entries: ActiveTerminalEntry[]; refreshSessions: () => void } {
+  const { sessions, refresh } = useTerminalSessions();
 
-  return useMemo(() => {
+  const entries = useMemo(() => {
     const activeSessions = sessions.filter(
       (s) => s.task_id !== null && isActiveSessionStatus(s.status),
     );
@@ -90,6 +97,7 @@ export function useActiveTerminals(
       {
         displayId: string;
         title: string;
+        status: string;
         projectId: string;
         projectName: string;
         pullRequests?: PullRequestRef[];
@@ -100,6 +108,7 @@ export function useActiveTerminals(
         taskLookup.set(task.id, {
           displayId: task.displayId,
           title: task.title,
+          status: task.status,
           projectId: project.id,
           projectName: project.name,
           pullRequests: task.pullRequests,
@@ -111,6 +120,7 @@ export function useActiveTerminals(
         taskLookup.set(task.id, {
           displayId: task.displayId,
           title: task.title,
+          status: task.status,
           projectId: '',
           projectName: 'Inbox',
           pullRequests: task.pullRequests,
@@ -146,12 +156,15 @@ export function useActiveTerminals(
         sessionCount: taskSessions.length,
         sessionIds: taskSessions.map((s) => s.id),
         status,
+        taskStatus: info.status,
         pullRequest: pickPrimaryPr(info.pullRequests),
       });
     }
 
     return entries;
   }, [sessions, projects, inboxTasks]);
+
+  return { entries, refreshSessions: refresh };
 }
 
 /** Pick the most prominent status to display for a group of sessions. */
