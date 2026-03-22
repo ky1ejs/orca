@@ -25,6 +25,7 @@
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "graphql": "^16.10.0",
+    "graphql-ws": "^6.0.7",
     "graphql-yoga": "^5.10.6",
     "jose": "^6.2.1",
     "prisma": "^6.4.1"

@@ -1,6 +1,6 @@
 import { Client, fetchExchange, subscriptionExchange, mapExchange } from 'urql';
 import { type Cache, cacheExchange } from '@urql/exchange-graphcache';
-import { createClient as createSSEClient } from 'graphql-sse';
+import { createClient as createWSClient, CloseCode } from 'graphql-ws';
 
 function invalidateAllWorkspaceQueries(cache: Cache) {
   const fields = cache.inspectFields('Query');
@@ -13,6 +13,7 @@ function invalidateAllWorkspaceQueries(cache: Cache) {
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
 export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
+const WS_GRAPHQL_URL = GRAPHQL_URL.replace(/^http/, 'ws');
 
 let cachedToken: string | null = null;
 let onAuthError: (() => void) | null = null;
@@ -46,6 +47,15 @@ function authHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function isForbiddenClose(event: unknown): boolean {
+  return (
+    event != null &&
+    typeof event === 'object' &&
+    'code' in event &&
+    event.code === CloseCode.Forbidden
+  );
+}
+
 const authErrorExchange = mapExchange({
   onResult(result) {
     const errors = result.error?.graphQLErrors;
@@ -68,9 +78,26 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
     console.warn('No auth token found — user needs to log in');
   }
 
-  const sseClient = createSSEClient({
-    url: GRAPHQL_URL,
-    headers: () => authHeaders(cachedToken),
+  const wsClient = createWSClient({
+    url: WS_GRAPHQL_URL,
+    connectionParams: () => ({ token: cachedToken }),
+    // Retry indefinitely on transient failures (network blips, server restarts).
+    // Auth failures (4403 Forbidden) are excluded via shouldRetry below.
+    retryAttempts: Infinity,
+    retryWait: async (retries) => {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** retries, 30_000)));
+    },
+    shouldRetry: (errOrCloseEvent) => !isForbiddenClose(errOrCloseEvent),
+    keepAlive: 10_000,
+    on: {
+      // authErrorExchange only sees HTTP errors, so handle WS auth rejections here
+      closed: (event) => {
+        if (isForbiddenClose(event)) {
+          cachedToken = null;
+          onAuthError?.();
+        }
+      },
+    },
   });
 
   const client = new Client({
@@ -188,8 +215,8 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
         forwardSubscription(operation) {
           return {
             subscribe(sink) {
-              const dispose = sseClient.subscribe(
-                { query: operation.query, variables: operation.variables },
+              const dispose = wsClient.subscribe(
+                { query: operation.query!, variables: operation.variables },
                 sink,
               );
               return { unsubscribe: dispose };
@@ -202,6 +229,6 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
 
   return {
     client,
-    dispose: () => sseClient.dispose(),
+    dispose: () => wsClient.dispose(),
   };
 }

@@ -1,5 +1,6 @@
 import { createYoga, type Plugin } from 'graphql-yoga';
 import { GraphQLError, type DefinitionNode, type SelectionNode } from 'graphql';
+import { makeHandler, handleProtocols } from 'graphql-ws/use/bun';
 import { schema } from './schema/index.js';
 import { prisma } from './db/client.js';
 import { pubsub } from './pubsub.js';
@@ -61,10 +62,40 @@ const yoga = createYoga({
 
 const PORT = Number(process.env.PORT ?? 4000);
 
+const wsHandler = makeHandler({
+  schema,
+  // userId is resolved once in onConnect and stashed on ctx.extra
+  context: (ctx) =>
+    ({
+      prisma,
+      pubsub,
+      userId: (ctx.extra as { userId?: string }).userId ?? '',
+    }) satisfies ServerContext,
+  onConnect: async (ctx) => {
+    const token = ctx.connectionParams?.token as string | undefined;
+    if (!token) {
+      console.log('ws:connect rejected — no token');
+      return false;
+    }
+    try {
+      const payload = await verifyJwt(token);
+      (ctx.extra as unknown as { userId: string }).userId = payload.sub;
+      console.log(`ws:connect userId=${payload.sub}`);
+      return true;
+    } catch {
+      console.log('ws:connect rejected — invalid token');
+      return false;
+    }
+  },
+  onClose: (_ctx, code, reason) => {
+    console.log(`ws:close code=${code ?? 'none'} reason=${reason ?? 'none'}`);
+  },
+});
+
 const server = Bun.serve({
   port: PORT,
   hostname: '0.0.0.0',
-  fetch(request) {
+  fetch(request, server) {
     const url = new URL(request.url);
     if (url.pathname === '/health') {
       return new Response('ok', { status: 200 });
@@ -78,8 +109,21 @@ const server = Bun.serve({
     if (url.pathname === '/github/oauth/callback' && request.method === 'GET') {
       return handleGitHubOAuthCallback(request);
     }
+
+    if (url.pathname === '/graphql' && request.headers.get('upgrade') === 'websocket') {
+      const protocol = handleProtocols(request.headers.get('sec-websocket-protocol') || '');
+      if (!protocol) {
+        return new Response('Bad Request', { status: 400 });
+      }
+      if (!server.upgrade(request, { headers: { 'sec-websocket-protocol': protocol } })) {
+        return new Response('WebSocket upgrade failed', { status: 500 });
+      }
+      return undefined;
+    }
+
     return yoga.fetch(request);
   },
+  websocket: wsHandler,
 });
 
 console.log(`Orca server running at http://0.0.0.0:${server.port}/graphql`);
