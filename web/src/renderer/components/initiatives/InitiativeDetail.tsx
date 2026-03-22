@@ -45,6 +45,9 @@ export function InitiativeDetail({ initiativeId }: InitiativeDetailProps) {
   const initiative = data?.initiative;
 
   if (!initiative) {
+    if (fetching) {
+      return <ProjectDetailSkeleton />;
+    }
     return (
       <div className="p-6 text-fg-muted">
         <p>Initiative not found.</p>

@@ -118,6 +118,9 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   const task = data?.task;
 
   if (!task) {
+    if (fetching) {
+      return <TaskDetailSkeleton />;
+    }
     return (
       <div className="p-6 text-fg-muted">
         <p>Task not found.</p>
