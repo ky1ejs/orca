@@ -195,16 +195,21 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
 
   // Preserve last-known projects/inbox so active terminals don't disappear
   // while workspace data is being refetched after cache invalidation.
+  // Only use fallback when refetching the same workspace (not on workspace switch).
   const prevProjectsRef = useRef(allProjects);
   const prevInboxTasksRef = useRef(inboxTasks);
+  const prevSlugRef = useRef(currentWorkspace?.slug);
   const hasWorkspaceData = !!data?.workspace;
+  const sameWorkspace = currentWorkspace?.slug === prevSlugRef.current;
   if (hasWorkspaceData) {
     prevProjectsRef.current = allProjects;
     prevInboxTasksRef.current = inboxTasks;
+    prevSlugRef.current = currentWorkspace?.slug;
   }
+  const useFallback = !hasWorkspaceData && sameWorkspace;
   const { entries: activeTerminals, refreshSessions } = useActiveTerminals(
-    hasWorkspaceData ? allProjects : prevProjectsRef.current,
-    hasWorkspaceData ? inboxTasks : prevInboxTasksRef.current,
+    useFallback ? prevProjectsRef.current : allProjects,
+    useFallback ? prevInboxTasksRef.current : inboxTasks,
   );
   const activeSessionIds = useSessionActivity();
 
