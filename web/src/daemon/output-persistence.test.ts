@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { initDaemonDb, closeDaemonDb, getDb } from './db.js';
 import { DaemonPtyManager } from './pty-manager.js';
 import { OutputPersistence } from './output-persistence.js';
-import { createSession } from './sessions.js';
+import { createSession, deleteSession } from './sessions.js';
 import { terminalOutputBuffer } from '../shared/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { SessionStatus } from '../shared/session-status.js';
@@ -276,5 +276,39 @@ describe('OutputPersistence', () => {
     ptyManager.setSnapshot(sessionId, 'snapshot content');
 
     expect(dirtySpy).toHaveBeenCalledWith(sessionId);
+  });
+
+  it('removeSession prevents flush from persisting a deleted session', () => {
+    const sessionId = createTestSession();
+    ptyManager.restoreBuffer(sessionId, 'doomed data');
+
+    persistence = new OutputPersistence(ptyManager);
+    persistence.markDirty(sessionId);
+    persistence.removeSession(sessionId);
+    deleteSession(sessionId);
+
+    // flush should not throw (session row is gone)
+    expect(() => persistence.flush()).not.toThrow();
+  });
+
+  it('flush survives when a dirty session has been deleted from DB', () => {
+    const keptId = createTestSession();
+    const deletedId = createTestSession();
+    ptyManager.restoreBuffer(keptId, 'keep me');
+    ptyManager.restoreBuffer(deletedId, 'delete me');
+
+    persistence = new OutputPersistence(ptyManager);
+    persistence.markDirty(keptId);
+    persistence.markDirty(deletedId);
+
+    // Delete session row (cascades output buffer) without calling removeSession
+    deleteSession(deletedId);
+
+    // flush should not throw — the FK error for deletedId is caught
+    expect(() => persistence.flush()).not.toThrow();
+
+    // The surviving session should still be persisted
+    expect(getPersistedChunks(keptId)).toHaveLength(1);
+    expect(getPersistedChunks(keptId)[0].chunk.toString()).toBe('keep me');
   });
 });

@@ -5,6 +5,7 @@
 import type { ClientConnection, DaemonServer } from './server.js';
 import type { DaemonPtyManager } from './pty-manager.js';
 import type { DaemonStatusManager } from './status-manager.js';
+import type { OutputPersistence } from './output-persistence.js';
 import {
   getSessions,
   getSession,
@@ -47,6 +48,7 @@ interface HandlerDeps {
   ptyManager: DaemonPtyManager;
   statusManager: DaemonStatusManager;
   server: DaemonServer;
+  outputPersistence: OutputPersistence;
   setToken: (token: string | null) => void;
   getVersion: () => string;
   getUptime: () => number;
@@ -56,7 +58,15 @@ interface HandlerDeps {
 export function createHandler(deps: HandlerDeps) {
   // Note: `server` is accessed lazily via `deps.server` (not destructured) because
   // it's created after the handler — the getter resolves it at call time.
-  const { ptyManager, statusManager, setToken, getVersion, getUptime, shutdown } = deps;
+  const {
+    ptyManager,
+    statusManager,
+    outputPersistence,
+    setToken,
+    getVersion,
+    getUptime,
+    shutdown,
+  } = deps;
 
   return async (client: ClientConnection, method: string, params: unknown): Promise<unknown> => {
     const server = deps.server;
@@ -190,6 +200,7 @@ export function createHandler(deps: HandlerDeps) {
 
       case DAEMON_METHODS.DB_DELETE_SESSION: {
         const p = params as DbDeleteSessionParams;
+        outputPersistence.removeSession(p.id);
         deleteSession(p.id);
         return { ok: true };
       }

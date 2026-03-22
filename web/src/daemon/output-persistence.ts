@@ -26,6 +26,11 @@ export class OutputPersistence {
     this.dirtySessionIds.add(sessionId);
   }
 
+  /** Remove a session from the dirty set (e.g. before deleting the session row). */
+  removeSession(sessionId: string): void {
+    this.dirtySessionIds.delete(sessionId);
+  }
+
   start(): void {
     this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL_MS);
   }
@@ -36,21 +41,16 @@ export class OutputPersistence {
     const sessionIds = [...this.dirtySessionIds];
     this.dirtySessionIds.clear();
 
-    const db = getDb();
-    db.transaction((tx) => {
-      for (const sessionId of sessionIds) {
-        this.persistSession(tx, sessionId);
-      }
-    });
+    for (const sessionId of sessionIds) {
+      this.tryPersistSession(sessionId);
+    }
 
     logger.debug(`Flushed output for ${sessionIds.length} session(s)`);
   }
 
   flushSession(sessionId: string): void {
     this.dirtySessionIds.delete(sessionId);
-
-    const db = getDb();
-    db.transaction((tx) => this.persistSession(tx, sessionId));
+    this.tryPersistSession(sessionId);
   }
 
   loadAll(): void {
@@ -91,6 +91,15 @@ export class OutputPersistence {
       this.flushTimer = null;
     }
     this.flush();
+  }
+
+  private tryPersistSession(sessionId: string): void {
+    try {
+      const db = getDb();
+      db.transaction((tx) => this.persistSession(tx, sessionId));
+    } catch (err) {
+      logger.warn(`Failed to persist output for session ${sessionId}: ${err}`);
+    }
   }
 
   private persistSession(tx: Tx, sessionId: string): void {

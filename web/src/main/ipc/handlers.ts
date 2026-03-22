@@ -9,10 +9,11 @@ import { resolveColorScheme } from '../config/theme.js';
 import { listSystemFonts } from '../config/list-fonts.js';
 import { storeToken, readToken, clearToken } from '../pty/auth.js';
 import type { DaemonClient } from '../daemon/client.js';
+import type { DaemonConnector } from '../daemon/connector.js';
 import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 import type { AgentLaunchOptions, TaskMetadata } from '../../shared/daemon-protocol.js';
 
-export function registerIpcHandlers(client: DaemonClient): void {
+export function registerIpcHandlers(client: DaemonClient, connector: DaemonConnector): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
   ipcMain.handle(IPC_CHANNELS.DB_GET_SESSIONS, () => {
     return client.request(DAEMON_METHODS.DB_GET_SESSIONS);
@@ -128,15 +129,18 @@ export function registerIpcHandlers(client: DaemonClient): void {
   });
 
   // ── Agent handlers (proxy to daemon) ────────────────────────────────
+  // Agent operations ensure the daemon is running first — the daemon may have
+  // shut down (idle timeout, crash) between the last connection and the request.
   ipcMain.handle(
     IPC_CHANNELS.AGENT_LAUNCH,
-    (
+    async (
       _event,
       taskId: string,
       workingDirectory: string,
       options?: AgentLaunchOptions,
       metadata?: TaskMetadata,
     ) => {
+      if (!client.connected) await connector.ensureRunning();
       return client.request(DAEMON_METHODS.AGENT_LAUNCH, {
         taskId,
         workingDirectory,
@@ -153,7 +157,7 @@ export function registerIpcHandlers(client: DaemonClient): void {
 
   ipcMain.handle(
     IPC_CHANNELS.AGENT_RESTART,
-    (
+    async (
       _event,
       taskId: string,
       sessionId: string,
@@ -161,6 +165,7 @@ export function registerIpcHandlers(client: DaemonClient): void {
       options?: AgentLaunchOptions,
       metadata?: TaskMetadata,
     ) => {
+      if (!client.connected) await connector.ensureRunning();
       return client.request(DAEMON_METHODS.AGENT_RESTART, {
         taskId,
         sessionId,
