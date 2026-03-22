@@ -24,6 +24,8 @@ import { Breadcrumbs } from './Breadcrumbs.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
 import { CommandPalette } from '../command-palette/CommandPalette.js';
+import { usePreferences } from '../../preferences/context.js';
+import { useResizablePanel } from '../../hooks/useResizablePanel.js';
 
 interface AppShellProps {
   onLogout: () => void;
@@ -86,6 +88,13 @@ export function AppShell({ onLogout }: AppShellProps) {
   const { sessions, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { terminalPanelHeight, setTerminalPanelHeight } = usePreferences();
+  const { handleProps: resizeHandleProps, isDragging: isResizingTerminal } = useResizablePanel({
+    height: terminalPanelHeight,
+    onHeightChange: setTerminalPanelHeight,
+    minHeight: 120,
+    maxHeightFraction: 0.8,
+  });
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -322,26 +331,35 @@ export function AppShell({ onLogout }: AppShellProps) {
           <MainContent sessions={sessions} refreshSessions={refresh} />
         </main>
         {current.view === 'task' && taskId && (
-          <div className="h-80 shrink-0 border-t border-edge flex flex-col">
-            <TerminalPRStatusBar
-              pullRequests={taskData?.task?.pullRequests ?? []}
-              taskId={taskId}
-              onMutate={() => refetchTask({ requestPolicy: 'network-only' })}
+          <>
+            <div
+              {...resizeHandleProps}
+              className={`h-1.5 shrink-0 cursor-row-resize border-t border-edge hover:bg-accent-muted active:bg-accent-muted${isResizingTerminal ? ' bg-accent-muted' : ''}`}
             />
-            {hasActiveSessions ? (
-              <>
-                <TerminalTabs
-                  sessions={sessions}
-                  activeSessionId={activeSessionId}
-                  onSelectSession={setActiveSessionId}
-                  onCloseSession={handleCloseSession}
-                />
-                {activeSessionId && <TerminalContainer activeSessionId={activeSessionId} />}
-              </>
-            ) : (
-              <EmptyTerminalArea />
-            )}
-          </div>
+            <div
+              className="shrink-0 flex flex-col overflow-hidden"
+              style={{ height: terminalPanelHeight }}
+            >
+              <TerminalPRStatusBar
+                pullRequests={taskData?.task?.pullRequests ?? []}
+                taskId={taskId}
+                onMutate={() => refetchTask({ requestPolicy: 'network-only' })}
+              />
+              {hasActiveSessions ? (
+                <>
+                  <TerminalTabs
+                    sessions={sessions}
+                    activeSessionId={activeSessionId}
+                    onSelectSession={setActiveSessionId}
+                    onCloseSession={handleCloseSession}
+                  />
+                  {activeSessionId && <TerminalContainer activeSessionId={activeSessionId} />}
+                </>
+              ) : (
+                <EmptyTerminalArea />
+              )}
+            </div>
+          </>
         )}
       </div>
       <KeyboardShortcutHelp
