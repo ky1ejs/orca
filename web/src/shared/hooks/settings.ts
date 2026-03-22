@@ -13,9 +13,9 @@ interface MatcherGroup {
 }
 
 interface McpServerEntry {
+  type: string;
   url: string;
   headers?: Record<string, string>;
-  allowedEnvVars?: string[];
 }
 
 interface SettingsFile {
@@ -68,11 +68,11 @@ function applyHooks(settings: SettingsFile, port: number): void {
 function applyMcpConfig(settings: SettingsFile, port: number): void {
   settings.mcpServers = {
     orca: {
+      type: 'http',
       url: `http://127.0.0.1:${port}/mcp`,
       headers: {
-        'X-Orca-Session-Id': '$ORCA_SESSION_ID',
+        'X-Orca-Session-Id': '${ORCA_SESSION_ID}',
       },
-      allowedEnvVars: ORCA_ENV_VARS,
     },
   };
 }
