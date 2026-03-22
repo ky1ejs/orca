@@ -73,8 +73,16 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           .enum(['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'])
           .optional()
           .describe('New task priority'),
-        projectId: z.string().optional().describe('Project ID to move the task to'),
-        assigneeId: z.string().optional().describe('User ID to assign the task to'),
+        projectId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Project ID to move the task to, or null to clear'),
+        assigneeId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('User ID to assign the task to, or null to unassign'),
         labelIds: z.array(z.string()).optional().describe('Label IDs to set on the task'),
       },
     },

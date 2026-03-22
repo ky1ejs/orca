@@ -82,8 +82,8 @@ export function registerSessionTools(server: McpServer, deps: McpToolsDeps): voi
           input: { status },
         });
 
-        if (json.errors) {
-          return toolError(`Failed to update task: ${JSON.stringify(json.errors)}`);
+        if (json.errors || !json.data?.updateTask) {
+          return toolError(`Failed to update task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
         return toolSuccess(`Task status updated to ${status}.`);

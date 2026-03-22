@@ -57,8 +57,16 @@ export function registerProjectTools(server: McpServer, deps: McpToolsDeps): voi
         id: z.string().describe('The project ID'),
         name: z.string().optional().describe('New project name'),
         description: z.string().optional().describe('New project description'),
-        defaultDirectory: z.string().optional().describe('New default directory path'),
-        initiativeId: z.string().optional().describe('Initiative ID to associate with'),
+        defaultDirectory: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('New default directory path, or null to clear'),
+        initiativeId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Initiative ID to associate with, or null to disassociate'),
       },
     },
     async ({ id, name, description, defaultDirectory, initiativeId }) => {

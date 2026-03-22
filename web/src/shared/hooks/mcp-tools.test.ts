@@ -530,6 +530,34 @@ describe('MCP tools', () => {
         expect(Object.keys(sentVars.input)).toEqual(['title']);
       });
     });
+
+    it('sends null to clear projectId and assigneeId', async () => {
+      const updated = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'Test',
+        description: null,
+        status: 'TODO',
+        priority: 'NONE',
+        projectId: null,
+        assignee: null,
+        labels: [],
+      };
+
+      await withMockBackend({ updateTask: updated }, async (received) => {
+        const result = await callTool('update_task', {
+          id: 'task-1',
+          projectId: null,
+          assigneeId: null,
+        });
+        expect(result.isError).toBeUndefined();
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+        expect(sentVars.input.projectId).toBeNull();
+        expect(sentVars.input.assigneeId).toBeNull();
+      });
+    });
   });
 
   describe('update_project', () => {
@@ -566,6 +594,30 @@ describe('MCP tools', () => {
         expect(sentVars.id).toBe('proj-1');
         expect(sentVars.input.name).toBe('Updated Project');
         expect(sentVars.input.defaultDirectory).toBe('/code');
+      });
+    });
+
+    it('sends null to clear defaultDirectory and initiativeId', async () => {
+      const updated = {
+        id: 'proj-1',
+        name: 'Test',
+        description: null,
+        defaultDirectory: null,
+        initiativeId: null,
+      };
+
+      await withMockBackend({ updateProject: updated }, async (received) => {
+        const result = await callTool('update_project', {
+          id: 'proj-1',
+          defaultDirectory: null,
+          initiativeId: null,
+        });
+        expect(result.isError).toBeUndefined();
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('proj-1');
+        expect(sentVars.input.defaultDirectory).toBeNull();
+        expect(sentVars.input.initiativeId).toBeNull();
       });
     });
   });
