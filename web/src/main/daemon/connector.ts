@@ -13,6 +13,7 @@ import {
 import { join } from 'node:path';
 import { app } from 'electron';
 import { DaemonClient } from './client.js';
+import { HeartbeatMonitor } from './heartbeat.js';
 import { migrateDb } from './migrate-db.js';
 import {
   DAEMON_SOCKET_PATH,
@@ -38,12 +39,17 @@ export interface EnsureRunningResult {
 
 export class DaemonConnector {
   private client: DaemonClient;
+  private heartbeat: HeartbeatMonitor;
   private reconnecting = false;
   private onReconnect: (() => void) | null = null;
   private onDisconnect: (() => void) | null = null;
 
   constructor(client: DaemonClient) {
     this.client = client;
+    this.heartbeat = new HeartbeatMonitor(client, () => {
+      this.client.disconnect();
+      this.startReconnection();
+    });
   }
 
   setOnReconnect(cb: () => void): void {
@@ -82,10 +88,12 @@ export class DaemonConnector {
         if (needsRestart && versionCheck.activeSessions === 0) {
           await this.shutdownAndRespawn();
           this.setupReconnection();
+          this.heartbeat.start();
           return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
         }
 
         this.setupReconnection();
+        this.heartbeat.start();
         return {
           reconnected: true,
           activeSessions: versionCheck.activeSessions,
@@ -105,6 +113,7 @@ export class DaemonConnector {
     // Wait for daemon to be ready
     await this.waitForConnection();
     this.setupReconnection();
+    this.heartbeat.start();
     return { reconnected: false, activeSessions: 0, pendingProtocolUpdate: false };
   }
 
@@ -263,6 +272,7 @@ export class DaemonConnector {
 
   private setupReconnection(): void {
     this.client.setOnDisconnect(() => {
+      this.heartbeat.stop();
       this.onDisconnect?.();
       this.startReconnection();
     });
@@ -289,6 +299,7 @@ export class DaemonConnector {
         await this.client.connect(DAEMON_SOCKET_PATH);
         this.reconnecting = false;
         this.setupReconnection();
+        this.heartbeat.start();
         this.onReconnect?.();
         return;
       } catch {
@@ -299,6 +310,7 @@ export class DaemonConnector {
 
   stopReconnection(): void {
     this.reconnecting = false;
+    this.heartbeat.stop();
   }
 
   /**
@@ -306,8 +318,10 @@ export class DaemonConnector {
    * on a breaking protocol update).
    */
   async forceRestart(): Promise<void> {
+    this.heartbeat.stop();
     await this.shutdownAndRespawn();
     this.setupReconnection();
+    this.heartbeat.start();
   }
 }
 
