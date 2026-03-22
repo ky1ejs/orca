@@ -37,7 +37,7 @@ async function queryAuditEvents(
   first: number,
   after?: string | null,
 ) {
-  const take = Math.min(first, MAX_PAGE_SIZE);
+  const take = Math.max(1, Math.min(first, MAX_PAGE_SIZE));
   const orderBy: Prisma.AuditEventOrderByWithRelationInput[] = [
     { createdAt: 'desc' },
     { id: 'desc' },
