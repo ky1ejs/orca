@@ -38,6 +38,15 @@ function readTerminalTheme() {
   };
 }
 
+const DANGEROUS_CHARS = /[`$|&>~#!^*;<]/g;
+
+/** Modeled on VS Code's `escapeNonWindowsPath()`. */
+export function escapeFilePath(p: string): string {
+  const sanitized = p.replace(DANGEROUS_CHARS, '');
+  if (/^[a-zA-Z0-9_./:@-]+$/.test(sanitized)) return sanitized;
+  return "'" + sanitized.replace(/'/g, "'\\''") + "'";
+}
+
 interface AgentTerminalProps {
   sessionId: string;
   /** Whether this terminal is the active/visible tab. */
@@ -78,6 +87,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const { terminalFontFamily } = usePreferences();
   const fontRef = useRef(terminalFontFamily);
   const visibleRef = useRef(visible);
@@ -258,6 +268,42 @@ export const AgentTerminal = memo(function AgentTerminal({
     }
   }, [visible, sessionId]);
 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDragOver) setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const paths = files
+      .map((file) => file.path)
+      .filter((p) => p)
+      .map(escapeFilePath)
+      .join(' ');
+
+    if (paths) {
+      terminal.paste(paths);
+    }
+  };
+
   // Apply font changes live
   useEffect(() => {
     fontRef.current = terminalFontFamily;
@@ -279,9 +325,17 @@ export const AgentTerminal = memo(function AgentTerminal({
         visibility: visible ? 'visible' : 'hidden',
         pointerEvents: visible ? 'auto' : 'none',
       }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {searchVisible && searchAddonRef.current && (
         <TerminalSearchBar searchAddon={searchAddonRef.current} onClose={handleSearchClose} />
+      )}
+      {isDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-accent/10 text-body-sm text-fg-muted">
+          Drop files to paste path
+        </div>
       )}
       <div
         ref={containerRef}
