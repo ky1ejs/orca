@@ -47,7 +47,7 @@ describe('DaemonServer.consolidateEvents', () => {
     expect(result).toEqual(events);
   });
 
-  it('preserves relative order of mixed event types', () => {
+  it('merges pty.data to first occurrence, non-pty.data events retain order', () => {
     const events = [
       { event: 'pty.data', params: { sessionId: 'a', data: 'chunk1' } },
       { event: 'session.statusChanged', params: { sessionId: 'a', status: 'RUNNING' } },

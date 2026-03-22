@@ -140,7 +140,7 @@ export class DaemonServer {
     });
 
     socket.on('close', () => {
-      this.flushClient(client);
+      this.cancelClientFlush(client);
       this.clients.delete(client.id);
       this.onClientCountChange?.(this.clients.size);
     });
@@ -228,8 +228,9 @@ export class DaemonServer {
   /**
    * Merge multiple pty.data events for the same session into one by
    * concatenating their data strings. The merged event appears at the
-   * position of its first occurrence. Non-pty.data events pass through
-   * unchanged. Overall event order is preserved.
+   * position of its first occurrence for that session. Non-pty.data events
+   * pass through unchanged and retain their relative order. This may change
+   * the precise interleaving of pty.data events with non-pty.data events.
    */
   // Public for testability
   static consolidateEvents(events: DaemonEvent[]): DaemonEvent[] {
