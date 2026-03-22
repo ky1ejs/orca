@@ -209,21 +209,9 @@ async function main(): Promise<void> {
     outputPersistence.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
-    try {
-      unlinkSync(DAEMON_MCP_CONFIG_FILE);
-    } catch {
-      // May already be gone
-    }
-    try {
-      unlinkSync(DAEMON_CLAUDE_SETTINGS_FILE);
-    } catch {
-      // May already be gone
-    }
-    try {
-      unlinkSync(DAEMON_CLI_SCRIPT);
-    } catch {
-      // May already be gone
-    }
+    // Config files (mcp-config.json, claude-settings.json, orca CLI script) are
+    // intentionally kept on disk — they are overwritten on every daemon startup
+    // and must survive shutdown so agent launches work during daemon restarts.
     hookServer.stop().catch(() => {});
     ptyManager.killAll();
 
@@ -259,6 +247,7 @@ async function main(): Promise<void> {
   const handler = createHandler({
     ptyManager,
     statusManager,
+    outputPersistence,
     get server() {
       return server;
     },

@@ -12,6 +12,7 @@ import { initDaemonDb, closeDaemonDb } from './db.js';
 import { DaemonPtyManager, type BroadcastFn } from './pty-manager.js';
 import { DaemonStatusManager } from './status-manager.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
+import { OutputPersistence } from './output-persistence.js';
 import { createHandler } from './handlers.js';
 import { createSession, updateSession } from './sessions.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
@@ -56,9 +57,12 @@ beforeEach(async () => {
     broadcastFn(event, params);
   });
 
+  const outputPersistence = new OutputPersistence(ptyManager);
+
   const handler = createHandler({
     ptyManager,
     statusManager,
+    outputPersistence,
     get server() {
       return server;
     },

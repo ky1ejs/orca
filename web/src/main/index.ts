@@ -249,7 +249,7 @@ app.whenReady().then(async () => {
   });
 
   // Register IPC handlers (proxy to daemon)
-  registerIpcHandlers(daemonClient);
+  registerIpcHandlers(daemonClient, daemonConnector);
 
   // App menu (before auto-updater so menu exists when first check fires)
   initAppMenu({ onCheckForUpdates: checkForUpdates, onExportDiagnostics: exportDiagnostics });
