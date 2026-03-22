@@ -70,6 +70,11 @@ export interface PtyClearParams {
   sessionId: string;
 }
 
+export interface PtySnapshotParams {
+  sessionId: string;
+  content: string;
+}
+
 export interface PtySubscribeParams {
   sessionId: string;
 }
@@ -213,6 +218,7 @@ export const DAEMON_METHODS = {
   PTY_KILL: 'pty.kill',
   PTY_REPLAY: 'pty.replay',
   PTY_CLEAR: 'pty.clear',
+  PTY_SNAPSHOT: 'pty.snapshot',
   PTY_SUBSCRIBE: 'pty.subscribe',
   PTY_UNSUBSCRIBE: 'pty.unsubscribe',
   AGENT_LAUNCH: 'agent.launch',

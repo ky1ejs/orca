@@ -240,4 +240,41 @@ describe('OutputPersistence', () => {
 
     vi.useRealTimers();
   });
+
+  it('flush persists snapshot over ring buffer replay when available', () => {
+    const sessionId = createTestSession();
+    ptyManager.restoreBuffer(sessionId, 'raw chunks');
+    ptyManager.setSnapshot(sessionId, 'serialized state');
+
+    persistence = new OutputPersistence(ptyManager);
+    persistence.markDirty(sessionId);
+    persistence.flush();
+
+    const rows = getPersistedChunks(sessionId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].chunk.toString()).toBe('serialized state');
+  });
+
+  it('flush falls back to ring buffer when no snapshot exists', () => {
+    const sessionId = createTestSession();
+    ptyManager.restoreBuffer(sessionId, 'raw chunks only');
+
+    persistence = new OutputPersistence(ptyManager);
+    persistence.markDirty(sessionId);
+    persistence.flush();
+
+    const rows = getPersistedChunks(sessionId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].chunk.toString()).toBe('raw chunks only');
+  });
+
+  it('setSnapshot triggers dirty marking via onData callback', () => {
+    const sessionId = createTestSession();
+    const dirtySpy = vi.fn();
+    ptyManager.setOnData(dirtySpy);
+
+    ptyManager.setSnapshot(sessionId, 'snapshot content');
+
+    expect(dirtySpy).toHaveBeenCalledWith(sessionId);
+  });
 });

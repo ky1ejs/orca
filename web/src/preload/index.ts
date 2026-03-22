@@ -47,6 +47,7 @@ export interface OrcaAPI {
     resize: (sessionId: string, cols: number, rows: number) => Promise<void>;
     kill: (sessionId: string) => Promise<void>;
     replay: (sessionId: string) => Promise<string>;
+    snapshot: (sessionId: string, content: string) => Promise<void>;
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
@@ -130,6 +131,7 @@ const api: OrcaAPI = {
     resize: (sessionId, cols, rows) => ipcRenderer.invoke('pty:resize', sessionId, cols, rows),
     kill: (sessionId) => ipcRenderer.invoke('pty:kill', sessionId),
     replay: (sessionId) => ipcRenderer.invoke('pty:replay', sessionId),
+    snapshot: (sessionId, content) => ipcRenderer.invoke('pty:snapshot', sessionId, content),
     onData: (sessionId, cb) => {
       const channel = `pty:data:${sessionId}`;
       const listener = (_event: unknown, data: string) => cb(data);
