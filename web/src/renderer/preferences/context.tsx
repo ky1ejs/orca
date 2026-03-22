@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from 'react';
 
 export type ColorScheme = 'system' | 'light' | 'dark';
 type AgentLaunchMode = 'terminal' | 'plan';
@@ -10,6 +18,8 @@ interface PreferencesContextValue {
   setColorScheme: (scheme: ColorScheme) => Promise<void>;
   agentLaunchMode: AgentLaunchMode;
   setAgentLaunchMode: (mode: AgentLaunchMode) => Promise<void>;
+  terminalPanelHeight: number;
+  setTerminalPanelHeight: (height: number) => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
@@ -17,7 +27,9 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 const TERMINAL_FONT_FAMILY_KEY = 'terminal.fontFamily';
 const COLOR_SCHEME_KEY = 'appearance.colorScheme';
 const AGENT_LAUNCH_MODE_KEY = 'agent.launchMode';
+const TERMINAL_PANEL_HEIGHT_KEY = 'ui.terminalPanelHeight';
 const DEFAULT_FONT = 'monospace';
+const DEFAULT_TERMINAL_HEIGHT = 320;
 
 /** Apply the color scheme to the document root element. */
 function applyColorScheme(scheme: ColorScheme) {
@@ -32,6 +44,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [terminalFontFamily, setTerminalFontFamilyState] = useState(DEFAULT_FONT);
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>('system');
   const [agentLaunchMode, setAgentLaunchModeState] = useState<AgentLaunchMode>('terminal');
+  const [terminalPanelHeight, setTerminalPanelHeightState] = useState(DEFAULT_TERMINAL_HEIGHT);
 
   useEffect(() => {
     if (!window.orca?.settings) return;
@@ -48,6 +61,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       const launchMode = settings[AGENT_LAUNCH_MODE_KEY];
       if (launchMode === 'terminal' || launchMode === 'plan') {
         setAgentLaunchModeState(launchMode);
+      }
+      const height = settings[TERMINAL_PANEL_HEIGHT_KEY];
+      if (typeof height === 'number' && height > 0) {
+        setTerminalPanelHeightState(height);
       }
     });
   }, []);
@@ -79,6 +96,17 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     [agentLaunchMode],
   );
 
+  const persistHeightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setTerminalPanelHeight = useCallback((height: number) => {
+    setTerminalPanelHeightState(height);
+    if (persistHeightTimer.current) clearTimeout(persistHeightTimer.current);
+    persistHeightTimer.current = setTimeout(() => {
+      if (window.orca?.settings) {
+        window.orca.settings.set(TERMINAL_PANEL_HEIGHT_KEY, height);
+      }
+    }, 300);
+  }, []);
+
   return (
     <PreferencesContext.Provider
       value={{
@@ -88,6 +116,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         setColorScheme,
         agentLaunchMode,
         setAgentLaunchMode,
+        terminalPanelHeight,
+        setTerminalPanelHeight,
       }}
     >
       {children}
