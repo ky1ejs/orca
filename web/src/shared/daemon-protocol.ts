@@ -208,6 +208,10 @@ export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
 export const MAIN_LOG_FILE = join(ORCA_DIR, 'main.log');
 export const DAEMON_HOOK_PORT = 19819;
 export const DAEMON_HOOK_PORT_FILE = join(ORCA_DIR, 'hook-port');
+export const DAEMON_MCP_CONFIG_FILE = join(ORCA_DIR, 'mcp-config.json');
+export const DAEMON_CLAUDE_SETTINGS_FILE = join(ORCA_DIR, 'claude-settings.json');
+export const DAEMON_CLI_DIR = join(ORCA_DIR, 'bin');
+export const DAEMON_CLI_SCRIPT = join(DAEMON_CLI_DIR, 'orca');
 
 /** Methods the daemon supports */
 export const DAEMON_METHODS = {

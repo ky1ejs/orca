@@ -1,5 +1,25 @@
 import { execSync } from 'node:child_process';
 
+function orcaSystemPromptLines(taskId: string, title: string): string[] {
+  return [
+    'You were launched by Orca to work on a task.',
+    `Task: ${taskId} — ${title}`,
+    'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
+    'Use the get_current_task MCP tool (pass ORCA_SESSION_ID as the sessionId) to fetch full task details including description, status, priority, and labels.',
+    `If you create a branch, include the task ID in the name: feat/${taskId}-short-description.`,
+  ];
+}
+
+/** System prompt for plan-mode sessions with concrete task metadata. */
+export function buildOrcaSystemPrompt(taskId: string, title: string): string {
+  return orcaSystemPromptLines(taskId, title).join(' ');
+}
+
+/** System prompt for the CLI wrapper script, using shell variable references. */
+export function buildShellOrcaSystemPrompt(): string {
+  return orcaSystemPromptLines('$ORCA_TASK_ID', '$ORCA_TASK_TITLE').join(' ');
+}
+
 /**
  * Finds the path to the Claude CLI binary.
  *

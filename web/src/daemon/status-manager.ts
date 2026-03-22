@@ -5,7 +5,7 @@
 import { existsSync } from 'node:fs';
 import type { DaemonPtyManager, BroadcastFn } from './pty-manager.js';
 import { getDefaultShell, getLoginShellArgs } from '../shared/shell.js';
-import { findClaudePath } from '../shared/claude.js';
+import { findClaudePath, buildOrcaSystemPrompt } from '../shared/claude.js';
 import { createSession, getSession, updateSession } from './sessions.js';
 import { SessionStatus, isActiveSessionStatus } from '../shared/session-status.js';
 import {
@@ -17,9 +17,13 @@ import {
 } from '../shared/errors.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
-import { ensureHooks } from '../shared/hooks/settings.js';
 import { logger } from './logger.js';
-import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
+import {
+  DAEMON_EVENTS,
+  DAEMON_MCP_CONFIG_FILE,
+  DAEMON_CLAUDE_SETTINGS_FILE,
+  DAEMON_CLI_DIR,
+} from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
 
 /**
@@ -110,15 +114,6 @@ export class DaemonStatusManager {
         workingDirectory,
       });
 
-      // Ensure Claude Code hooks are configured before spawning (MCP is global)
-      if (this.hookPort) {
-        try {
-          ensureHooks(workingDirectory, this.hookPort);
-        } catch (err) {
-          logger.warn(`Failed to ensure hooks: ${err}`);
-        }
-      }
-
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
       if (colorScheme === 'light') {
@@ -144,20 +139,22 @@ export class DaemonStatusManager {
             throw new ClaudeNotFoundError();
           }
           const args = ['--permission-mode', 'plan'];
+          if (this.hookPort) {
+            args.push('--mcp-config', DAEMON_MCP_CONFIG_FILE);
+            args.push('--settings', DAEMON_CLAUDE_SETTINGS_FILE);
+          }
           if (metadata) {
             args.push(
               '--append-system-prompt',
-              [
-                'You were launched by Orca to work on a task.',
-                `Task: ${metadata.displayId} — ${metadata.title}`,
-                'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
-                'Use the get_current_task MCP tool (pass ORCA_SESSION_ID as the sessionId) to fetch full task details including description, status, priority, and labels.',
-                `If you create a branch, include the task ID in the name: feat/${metadata.displayId}-short-description.`,
-              ].join(' '),
+              buildOrcaSystemPrompt(metadata.displayId, metadata.title),
             );
           }
           this.manager.spawn(session.id, claudePath, args, workingDirectory, env);
         } else {
+          // Prepend ~/.orca/bin to PATH so the `orca` CLI wrapper is available in the shell
+          if (this.hookPort) {
+            env.PATH = `${DAEMON_CLI_DIR}:${process.env.PATH ?? ''}`;
+          }
           const shell = getDefaultShell();
           this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory, env);
         }
