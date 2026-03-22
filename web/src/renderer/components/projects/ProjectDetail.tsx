@@ -49,6 +49,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const project = data?.project;
 
   if (!project) {
+    if (fetching) {
+      return <ProjectDetailSkeleton />;
+    }
     return (
       <div className="p-6 text-fg-muted">
         <p>Project not found.</p>
