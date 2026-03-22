@@ -52,6 +52,23 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum AuditEntityType {
+  TASK
+  PROJECT
+  INITIATIVE
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  ARCHIVED
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+}
+
 model User {
   id                String                @id @default(cuid())
   email             String                @unique
@@ -81,6 +98,7 @@ model Workspace {
   pullRequests          PullRequest[]
   githubInstallations   GitHubInstallation[]
   settings              WorkspaceSettings?
+  auditEvents           AuditEvent[]
   deletedAt             DateTime?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -249,4 +267,21 @@ model WorkspaceSettings {
   autoInReviewOnPrOpen Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+}
+
+model AuditEvent {
+  id          String          @id @default(cuid())
+  entityType  AuditEntityType
+  entityId    String
+  action      AuditAction
+  actorType   AuditActorType
+  actorId     String?
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  changes     Json            @default("[]")
+  createdAt   DateTime        @default(now())
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([workspaceId, entityType, createdAt(sort: Desc)])
 }

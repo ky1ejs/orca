@@ -21,6 +21,7 @@ const config: CodegenConfig = {
           WorkspaceSettings: '@prisma/client#WorkspaceSettings as WorkspaceSettingsModel',
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
+          AuditEvent: '@prisma/client#AuditEvent as AuditEventModel',
         },
         enumValues: {
           WorkspaceRole: '@prisma/client#WorkspaceRole',
@@ -28,6 +29,9 @@ const config: CodegenConfig = {
           PullRequestStatus: '@prisma/client#PullRequestStatus',
           ReviewStatus: '@prisma/client#ReviewStatus',
           CheckStatus: '@prisma/client#CheckStatus',
+          AuditEntityType: '@prisma/client#AuditEntityType',
+          AuditAction: '@prisma/client#AuditAction',
+          AuditActorType: '@prisma/client#AuditActorType',
         },
         useIndexSignature: true,
       },

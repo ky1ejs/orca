@@ -352,6 +352,117 @@ export const GitHubOAuthUrlQueryDocument = /* GraphQL */ `
   }
 `;
 
+export const TaskActivityQueryDocument = /* GraphQL */ `
+  query TaskActivity($taskId: ID!, $first: Int, $after: String) {
+    task(id: $taskId) {
+      id
+      activity(first: $first, after: $after) {
+        edges {
+          node {
+            id
+            action
+            actorType
+            actor {
+              ... on User {
+                id
+                name
+              }
+              ... on SystemActor {
+                label
+              }
+            }
+            changes {
+              field
+              oldValue
+              newValue
+            }
+            createdAt
+          }
+          cursor
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+export const ProjectActivityQueryDocument = /* GraphQL */ `
+  query ProjectActivity($projectId: ID!, $first: Int, $after: String) {
+    project(id: $projectId) {
+      id
+      activity(first: $first, after: $after) {
+        edges {
+          node {
+            id
+            action
+            actorType
+            actor {
+              ... on User {
+                id
+                name
+              }
+              ... on SystemActor {
+                label
+              }
+            }
+            changes {
+              field
+              oldValue
+              newValue
+            }
+            createdAt
+          }
+          cursor
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+export const InitiativeActivityQueryDocument = /* GraphQL */ `
+  query InitiativeActivity($initiativeId: ID!, $first: Int, $after: String) {
+    initiative(id: $initiativeId) {
+      id
+      activity(first: $first, after: $after) {
+        edges {
+          node {
+            id
+            action
+            actorType
+            actor {
+              ... on User {
+                id
+                name
+              }
+              ... on SystemActor {
+                label
+              }
+            }
+            changes {
+              field
+              oldValue
+              newValue
+            }
+            createdAt
+          }
+          cursor
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
 export const LabelsQueryDocument = /* GraphQL */ `
   query Labels($workspaceId: ID!) {
     labels(workspaceId: $workspaceId) {

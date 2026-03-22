@@ -34,6 +34,7 @@ import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { PullRequestList } from './PullRequestList.js';
 import { usePreferences } from '../../preferences/context.js';
+import { TaskActivityFeed } from '../activity/TaskActivityFeed.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -610,6 +611,8 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
                 <MarkdownRenderer content={task.description} />
               </div>
             )}
+
+            <TaskActivityFeed taskId={taskId} />
           </div>
         </div>
       )}

@@ -12,6 +12,8 @@ import {
   requireWorkspaceAccess,
   workspaceScopedSubscription,
 } from '../auth/workspace.js';
+import { recordAuditEvent } from '../audit/record-event.js';
+import { diffFields } from '../audit/diff.js';
 
 export const taskResolvers = {
   Query: {
@@ -90,6 +92,14 @@ export const taskResolvers = {
         });
       });
       context.pubsub.publish('taskChanged', task);
+      recordAuditEvent(context.prisma, {
+        entityType: 'TASK',
+        entityId: task.id,
+        action: 'CREATED',
+        actorType: 'USER',
+        actorId: context.userId,
+        workspaceId: task.workspaceId,
+      });
       return task;
     },
     updateTask: async (_parent, args, context) => {
@@ -143,13 +153,14 @@ export const taskResolvers = {
         }
       }
 
-      // Handle labels
+      let validatedNewLabels: Array<{ id: string; name: string }> = [];
       if (args.input.labelIds !== undefined) {
         if (args.input.labelIds?.length) {
-          const labels = await context.prisma.label.findMany({
+          validatedNewLabels = await context.prisma.label.findMany({
             where: { id: { in: args.input.labelIds }, workspaceId: existingTask.workspaceId },
+            select: { id: true, name: true },
           });
-          if (labels.length !== args.input.labelIds.length) {
+          if (validatedNewLabels.length !== args.input.labelIds.length) {
             throw new GraphQLError('One or more labels do not belong to this workspace', {
               extensions: { code: 'BAD_USER_INPUT' },
             });
@@ -160,11 +171,115 @@ export const taskResolvers = {
         }
       }
 
+      const auditChanges: Array<{
+        field: string;
+        oldValue: string | null;
+        newValue: string | null;
+      }> = [];
+
+      const scalarDiff = diffFields(
+        existingTask,
+        {
+          ...(args.input.title != null && { title: args.input.title }),
+          ...(args.input.description !== undefined && { description: args.input.description }),
+          ...(args.input.status != null && { status: args.input.status }),
+          ...(args.input.priority != null && { priority: args.input.priority }),
+        },
+        ['title', 'description', 'status', 'priority'],
+      );
+      auditChanges.push(...scalarDiff);
+
+      if (
+        args.input.assigneeId !== undefined &&
+        args.input.assigneeId !== existingTask.assigneeId
+      ) {
+        const [oldUser, newUser] = await Promise.all([
+          existingTask.assigneeId
+            ? context.prisma.user.findUnique({ where: { id: existingTask.assigneeId } })
+            : null,
+          args.input.assigneeId
+            ? context.prisma.user.findUnique({ where: { id: args.input.assigneeId } })
+            : null,
+        ]);
+        auditChanges.push(
+          {
+            field: 'assigneeId',
+            oldValue: existingTask.assigneeId ?? null,
+            newValue: args.input.assigneeId ?? null,
+          },
+          { field: 'assignee', oldValue: oldUser?.name ?? null, newValue: newUser?.name ?? null },
+        );
+      }
+
+      if (args.input.projectId !== undefined && args.input.projectId !== existingTask.projectId) {
+        const [oldProject, newProject] = await Promise.all([
+          existingTask.projectId
+            ? context.prisma.project.findUnique({ where: { id: existingTask.projectId } })
+            : null,
+          args.input.projectId
+            ? context.prisma.project.findUnique({ where: { id: args.input.projectId } })
+            : null,
+        ]);
+        auditChanges.push(
+          {
+            field: 'projectId',
+            oldValue: existingTask.projectId ?? null,
+            newValue: args.input.projectId ?? null,
+          },
+          {
+            field: 'project',
+            oldValue: oldProject?.name ?? null,
+            newValue: newProject?.name ?? null,
+          },
+        );
+      }
+
+      if (args.input.labelIds !== undefined) {
+        const existingLabels = await context.prisma.task
+          .findUnique({ where: { id: existingTask.id } })
+          .labels();
+        const oldLabelIds = new Set((existingLabels ?? []).map((l) => l.id));
+        const newLabelIds = new Set(args.input.labelIds ?? []);
+
+        const addedIds = [...newLabelIds].filter((id) => !oldLabelIds.has(id));
+        const removedIds = [...oldLabelIds].filter((id) => !newLabelIds.has(id));
+
+        if (addedIds.length > 0) {
+          const addedLabels = validatedNewLabels.filter((l) => addedIds.includes(l.id));
+          auditChanges.push({
+            field: 'labelsAdded',
+            oldValue: null,
+            newValue: addedLabels.map((l) => l.name).join(', '),
+          });
+        }
+        if (removedIds.length > 0) {
+          const removedLabels = (existingLabels ?? []).filter((l) => removedIds.includes(l.id));
+          auditChanges.push({
+            field: 'labelsRemoved',
+            oldValue: removedLabels.map((l) => l.name).join(', '),
+            newValue: null,
+          });
+        }
+      }
+
       const task = await context.prisma.task.update({
         where: { id: args.id },
         data,
       });
       context.pubsub.publish('taskChanged', task);
+
+      if (auditChanges.length > 0) {
+        recordAuditEvent(context.prisma, {
+          entityType: 'TASK',
+          entityId: task.id,
+          action: 'UPDATED',
+          actorType: 'USER',
+          actorId: context.userId,
+          workspaceId: task.workspaceId,
+          changes: auditChanges,
+        });
+      }
+
       return task;
     },
     archiveTask: async (_parent, args, context) => {
@@ -174,6 +289,14 @@ export const taskResolvers = {
         data: { archivedAt: new Date() },
       });
       context.pubsub.publish('taskChanged', task);
+      recordAuditEvent(context.prisma, {
+        entityType: 'TASK',
+        entityId: task.id,
+        action: 'ARCHIVED',
+        actorType: 'USER',
+        actorId: context.userId,
+        workspaceId: task.workspaceId,
+      });
       return task;
     },
   } satisfies Pick<MutationResolvers, 'createTask' | 'updateTask' | 'archiveTask'>,

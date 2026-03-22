@@ -55,6 +55,9 @@ function createMockContext() {
     label: {
       findMany: vi.fn(),
     },
+    auditEvent: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn((cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
   };
   return {
@@ -440,10 +443,15 @@ describe('task resolvers', () => {
     it('updateTask sets labelIds', async () => {
       const ctx = createMockContext();
       const task = { id: '1', title: 'Task', projectId: 'p1', workspaceId: 'ws1' };
-      ctx.prisma.task.findUnique.mockResolvedValue(task);
+      // First call: requireTaskAccess
+      ctx.prisma.task.findUnique.mockResolvedValueOnce(task);
+      // Second call: audit code fluent API for existing labels
+      ctx.prisma.task.findUnique.mockReturnValueOnce({
+        labels: vi.fn().mockResolvedValue([]),
+      });
       ctx.prisma.label.findMany.mockResolvedValue([
-        { id: 'l1', workspaceId: 'ws1' },
-        { id: 'l2', workspaceId: 'ws1' },
+        { id: 'l1', workspaceId: 'ws1', name: 'Bug' },
+        { id: 'l2', workspaceId: 'ws1', name: 'Feature' },
       ]);
       ctx.prisma.task.update.mockResolvedValue(task);
 

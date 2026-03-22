@@ -70,6 +70,12 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
     unlinkPullRequest: vi.fn(),
     fetching: false,
   }),
+  useTaskActivity: () => ({
+    data: null,
+    fetching: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock('../../navigation/context.js', () => ({

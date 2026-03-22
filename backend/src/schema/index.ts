@@ -15,6 +15,7 @@ import { workspaceResolvers } from './workspace.js';
 import { pullRequestFieldResolvers, pullRequestMutationResolvers } from './pull-request.js';
 import { workspaceSettingsResolvers } from './workspace-settings.js';
 import { githubInstallationResolvers } from './github-installation.js';
+import { auditEventResolvers } from './audit-event.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +33,7 @@ const resolvers: Resolvers = {
     ...labelResolvers.Query,
     ...githubInstallationResolvers.Query,
     ...membershipResolvers.Query,
+    ...auditEventResolvers.Query,
   },
   Mutation: {
     ...authResolvers.Mutation,
@@ -51,11 +53,25 @@ const resolvers: Resolvers = {
     ...taskResolvers.Subscription,
   },
   Workspace: workspaceResolvers.Workspace,
-  Initiative: initiativeResolvers.Initiative,
-  Project: projectResolvers.Project,
+  Initiative: {
+    ...initiativeResolvers.Initiative,
+    ...auditEventResolvers.Initiative,
+  },
+  Project: {
+    ...projectResolvers.Project,
+    ...auditEventResolvers.Project,
+  },
   Task: {
     ...taskResolvers.Task,
     ...pullRequestFieldResolvers,
+    ...auditEventResolvers.Task,
+  },
+  AuditEvent: auditEventResolvers.AuditEvent,
+  AuditActor: {
+    __resolveType: (obj) => {
+      if ('label' in obj) return 'SystemActor';
+      return 'User';
+    },
   },
   AddMemberResult: {
     __resolveType: (obj) => {
