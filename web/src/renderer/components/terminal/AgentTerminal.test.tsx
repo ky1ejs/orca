@@ -51,6 +51,15 @@ vi.mock('@xterm/addon-web-links', () => ({
   WebLinksAddon: vi.fn(),
 }));
 
+const mockWebglDispose = vi.fn();
+const mockWebglOnContextLoss = vi.fn();
+vi.mock('@xterm/addon-webgl', () => ({
+  WebglAddon: vi.fn().mockImplementation(() => ({
+    dispose: mockWebglDispose,
+    onContextLoss: mockWebglOnContextLoss,
+  })),
+}));
+
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
 
 vi.mock('../../preferences/context.js', () => ({
@@ -173,9 +182,25 @@ describe('AgentTerminal', () => {
     expect(handler(otherKey)).toBe(true);
   });
 
-  it('disposes terminal on unmount', () => {
+  it('loads WebGL addon and registers context loss handler', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockLoadAddon).toHaveBeenCalledWith(
+      expect.objectContaining({ dispose: mockWebglDispose }),
+    );
+    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('disposes WebGL addon on context loss', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
+    onContextLossCallback();
+    expect(mockWebglDispose).toHaveBeenCalled();
+  });
+
+  it('disposes terminal and WebGL addon on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" />);
     unmount();
+    expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
   });
 
