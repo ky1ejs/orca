@@ -163,8 +163,12 @@ export class DaemonStatusManager {
         throw new PtySpawnError(err);
       }
 
-      // Update task to IN_PROGRESS
-      await this.updateTaskStatus(taskId, 'IN_PROGRESS');
+      // Update task to IN_PROGRESS and assign to current user
+      const userId = this.getUserIdFromToken();
+      await this.updateTask(taskId, {
+        status: 'IN_PROGRESS',
+        ...(userId && { assigneeId: userId }),
+      });
 
       this.startMonitoring(session.id, taskId, workingDirectory);
 
@@ -298,7 +302,7 @@ export class DaemonStatusManager {
 
       if (session.status !== lastStatus) {
         if (session.status === SessionStatus.Exited && lastStatus !== SessionStatus.Exited) {
-          await this.updateTaskStatus(taskId, 'IN_REVIEW');
+          await this.updateTask(taskId, { status: 'IN_REVIEW' });
           this.stopMonitoring(sessionId);
         }
         lastStatus = session.status;
@@ -413,7 +417,21 @@ export class DaemonStatusManager {
     this.broadcast(DAEMON_EVENTS.SESSION_STATUS_CHANGED, { sessionId, status });
   }
 
-  private async updateTaskStatus(taskId: string, status: string): Promise<void> {
+  private getUserIdFromToken(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+      return (payload.sub as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async updateTask(
+    taskId: string,
+    input: { status?: string; assigneeId?: string },
+  ): Promise<void> {
     const token = this.getToken();
     if (!token) return;
 
@@ -435,7 +453,7 @@ export class DaemonStatusManager {
         },
         body: JSON.stringify({
           query: mutation,
-          variables: { id: taskId, input: { status } },
+          variables: { id: taskId, input },
         }),
       });
     } catch {
