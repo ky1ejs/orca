@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { SerializeAddon } from '@xterm/addon-serialize';
+import { SearchAddon } from '@xterm/addon-search';
 import { usePreferences } from '../../preferences/context.js';
+import { TerminalSearchBar } from './TerminalSearchBar.js';
 import '@xterm/xterm/css/xterm.css';
 
 function readTerminalTheme() {
@@ -54,6 +56,8 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
+  const [searchVisible, setSearchVisible] = useState(false);
   const { terminalFontFamily } = usePreferences();
   const fontRef = useRef(terminalFontFamily);
 
@@ -71,8 +75,10 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
 
     const fitAddon = new FitAddon();
     const serializeAddon = new SerializeAddon();
+    const searchAddon = new SearchAddon();
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(serializeAddon);
+    terminal.loadAddon(searchAddon);
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
@@ -97,11 +103,17 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
         window.orca.pty.write(sessionId, '\x1b[13;2u');
         return false;
       }
+      if (event.type === 'keydown' && event.key === 'f' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setSearchVisible(true);
+        return false;
+      }
       return true;
     });
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
+    searchAddonRef.current = searchAddon;
 
     // Subscribe to live output + keyboard input immediately (no dimension dependency)
     const unsubData = window.orca.pty.onData(sessionId, (data) => {
@@ -172,6 +184,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     });
 
     return () => {
+      setSearchVisible(false);
       clearInterval(snapshotTimer);
       sendSnapshot();
       if (resizeTimeout) clearTimeout(resizeTimeout);
@@ -180,14 +193,22 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       classObserver.disconnect();
       webglAddon?.dispose();
       serializeAddon.dispose();
+      searchAddon.dispose();
       onDataDisposable.dispose();
       unsubData();
       unsubExit();
       terminal.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
+      searchAddonRef.current = null;
     };
   }, [sessionId]);
+
+  const handleSearchClose = () => {
+    setSearchVisible(false);
+    searchAddonRef.current?.clearDecorations();
+    terminalRef.current?.focus();
+  };
 
   // Apply font changes live
   useEffect(() => {
@@ -203,11 +224,15 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   }, [terminalFontFamily]);
 
   return (
-    <div
-      ref={containerRef}
-      data-testid="agent-terminal"
-      className="h-full w-full"
-      style={{ backgroundColor: 'var(--color-terminal-bg)' }}
-    />
+    <div className="relative h-full w-full" data-testid="agent-terminal">
+      {searchVisible && searchAddonRef.current && (
+        <TerminalSearchBar searchAddon={searchAddonRef.current} onClose={handleSearchClose} />
+      )}
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        style={{ backgroundColor: 'var(--color-terminal-bg)' }}
+      />
+    </div>
   );
 }
