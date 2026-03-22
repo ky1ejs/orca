@@ -1,20 +1,32 @@
 /**
  * Kitty keyboard protocol interceptor.
  *
- * xterm.js doesn't support the kitty keyboard protocol, so programs like
- * Claude Code that query for it (`\x1b[?u`) never activate their CSI u
- * parser. This filter sits in the PTY data flow and:
+ * Claude Code uses the kitty keyboard protocol to handle Shift+Enter (CSI u
+ * encoding: `\x1b[13;2u`). It only activates the CSI u key parser after
+ * pushing kitty keyboard mode, which it does for terminals it recognises —
+ * we set `TERM_PROGRAM=ghostty` in pty-manager.ts to trigger this.
  *
- *  1. Responds to protocol queries on behalf of xterm.js
- *  2. Strips push/pop sequences that xterm.js can't handle
+ * Once the mode is pushed, Claude Code writes escape sequences that xterm.js
+ * (v6.0) can't handle. This filter sits in the PTY output path and:
  *
- * This allows the existing Shift+Enter handler (which sends `\x1b[13;2u`)
- * to be recognized by Claude Code.
+ *  1. Responds to protocol queries (`\x1b[?u`) on behalf of xterm.js
+ *  2. Strips push/pop sequences (`\x1b[>Nu`, `\x1b[<Nu`) before they
+ *     reach xterm.js, which would display them as garbage
+ *
+ * The corresponding Shift+Enter key handler lives in AgentTerminal.tsx —
+ * it intercepts the browser keydown event and writes `\x1b[13;2u` to the PTY.
  */
 
 const CSI_PREFIX = '\x1b[';
 const QUERY = '\x1b[?u';
 const QUERY_RESPONSE = '\x1b[?1u';
+
+/**
+ * The TERM_PROGRAM value we inject so Claude Code recognises the terminal
+ * and pushes kitty keyboard mode. Must be one of Claude Code's hardcoded
+ * set: iTerm.app, kitty, WezTerm, ghostty.
+ */
+export const KITTY_TERM_PROGRAM = 'ghostty';
 
 interface FilterResult {
   /** Data to forward to xterm.js / output buffer */
@@ -29,7 +41,12 @@ export function processKittyKeyboard(data: string): FilterResult {
   }
 
   let response = '';
-  const output = data.replace(/\x1b\[\?u|\x1b\[>\d*u|\x1b\[<\d*u/g, (match) => {
+  // Match all kitty keyboard protocol sequences:
+  //   \x1b[?u        — query current mode
+  //   \x1b[>N u      — push mode (simple: flags only)
+  //   \x1b[>N;M u    — push mode (extended: flags + disposition, e.g. set/or/not)
+  //   \x1b[<N u      — pop mode (with optional count)
+  const output = data.replace(/\x1b\[\?u|\x1b\[>[0-9;]*u|\x1b\[<[0-9;]*u/g, (match) => {
     if (match === QUERY) {
       response += QUERY_RESPONSE;
     }

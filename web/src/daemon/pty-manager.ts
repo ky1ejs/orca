@@ -6,7 +6,7 @@ import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
 import { RingBuffer } from '../shared/ring-buffer.js';
-import { processKittyKeyboard } from './kitty-keyboard.js';
+import { processKittyKeyboard, KITTY_TERM_PROGRAM } from './kitty-keyboard.js';
 import { DataBatcher } from './data-batcher.js';
 
 interface PtyProcess {
@@ -73,7 +73,13 @@ export class DaemonPtyManager {
       cols: 80,
       rows: 24,
       cwd,
-      env: { ...cleanEnv, ...env },
+      env: {
+        ...cleanEnv,
+        ...env,
+        // Triggers Claude Code to push kitty keyboard mode, enabling Shift+Enter.
+        // See kitty-keyboard.ts for the full protocol explanation.
+        TERM_PROGRAM: KITTY_TERM_PROGRAM,
+      },
     });
 
     this.processes.set(sessionId, { pty: shell, sessionId });

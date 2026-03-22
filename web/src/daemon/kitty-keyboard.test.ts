@@ -74,4 +74,17 @@ describe('processKittyKeyboard', () => {
     expect(result.output).toBe('');
     expect(result.response).toBe('');
   });
+
+  it('strips push sequence with disposition parameter', () => {
+    // Extended format: \x1b[>flags;disposition u (e.g. set=1, or=2, not=3)
+    const result = processKittyKeyboard('\x1b[>1;1u');
+    expect(result.output).toBe('');
+    expect(result.response).toBe('');
+  });
+
+  it('strips push sequence with multi-digit disposition', () => {
+    const result = processKittyKeyboard('\x1b[>31;2u');
+    expect(result.output).toBe('');
+    expect(result.response).toBe('');
+  });
 });
