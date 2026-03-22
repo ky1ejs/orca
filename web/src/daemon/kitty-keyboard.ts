@@ -46,7 +46,7 @@ export function processKittyKeyboard(data: string): FilterResult {
   //   \x1b[>N u      — push mode (simple: flags only)
   //   \x1b[>N;M u    — push mode (extended: flags + disposition, e.g. set/or/not)
   //   \x1b[<N u      — pop mode (with optional count)
-  const output = data.replace(/\x1b\[\?u|\x1b\[>[0-9;]*u|\x1b\[<[0-9;]*u/g, (match) => {
+  const output = data.replace(/\x1b\[\?u|\x1b\[>[0-9;]*u|\x1b\[<[0-9]*u/g, (match) => {
     if (match === QUERY) {
       response += QUERY_RESPONSE;
     }
