@@ -16,10 +16,7 @@ describe('buildMcpConfigJson', () => {
   it('returns valid JSON with mcpServers.orca', () => {
     const json = buildMcpConfigJson(4242);
     const parsed = JSON.parse(json) as {
-      mcpServers: Record<
-        string,
-        { url: string; headers: Record<string, string>; allowedEnvVars: string[] }
-      >;
+      mcpServers: Record<string, { type: string; url: string; headers: Record<string, string> }>;
     };
 
     expect(parsed.mcpServers).toBeDefined();
@@ -33,15 +30,15 @@ describe('buildMcpConfigJson', () => {
     expect(parsed.mcpServers.orca.url).toBe('http://127.0.0.1:9999/mcp');
   });
 
-  it('contains session header and allowedEnvVars', () => {
+  it('contains type and session header', () => {
     const parsed = JSON.parse(buildMcpConfigJson(4242)) as {
-      mcpServers: Record<string, { headers: Record<string, string>; allowedEnvVars: string[] }>;
+      mcpServers: Record<string, { type: string; headers: Record<string, string> }>;
     };
 
+    expect(parsed.mcpServers.orca.type).toBe('http');
     expect(parsed.mcpServers.orca.headers).toEqual({
-      'X-Orca-Session-Id': '$ORCA_SESSION_ID',
+      'X-Orca-Session-Id': '${ORCA_SESSION_ID}',
     });
-    expect(parsed.mcpServers.orca.allowedEnvVars).toEqual(EXPECTED_ENV_VARS);
   });
 
   it('uses different port values correctly', () => {
