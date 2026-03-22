@@ -107,7 +107,7 @@ describe('DataBatcher', () => {
   // --- Size threshold ---
 
   it('flushes immediately when size threshold is exceeded', () => {
-    const batcher = new DataBatcher({ sizeThresholdBytes: 10 });
+    const batcher = new DataBatcher({ sizeThreshold: 10 });
     const flushed: string[] = [];
     batcher.onFlush((_, data) => flushed.push(data));
 
@@ -118,7 +118,7 @@ describe('DataBatcher', () => {
   });
 
   it('does not flush immediately below size threshold', () => {
-    const batcher = new DataBatcher({ sizeThresholdBytes: 10 });
+    const batcher = new DataBatcher({ sizeThreshold: 10 });
     const flushed: string[] = [];
     batcher.onFlush((_, data) => flushed.push(data));
 
@@ -129,7 +129,7 @@ describe('DataBatcher', () => {
   });
 
   it('accumulates to threshold across multiple pushes', () => {
-    const batcher = new DataBatcher({ sizeThresholdBytes: 10 });
+    const batcher = new DataBatcher({ sizeThreshold: 10 });
     const flushed: string[] = [];
     batcher.onFlush((_, data) => flushed.push(data));
 
@@ -144,7 +144,7 @@ describe('DataBatcher', () => {
   // --- Flow control ---
 
   it('calls pause at high watermark', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThresholdBytes: 200 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 200 });
     const paused: string[] = [];
     batcher.onPause((sessionId) => paused.push(sessionId));
 
@@ -156,7 +156,7 @@ describe('DataBatcher', () => {
 
   it('calls pause when a single push exceeds highWatermark even with lower sizeThreshold', () => {
     // Validates that watermark check fires before size-threshold flush
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThresholdBytes: 50 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
     const paused: string[] = [];
     const flushed: string[] = [];
     batcher.onPause((sessionId) => paused.push(sessionId));
@@ -170,7 +170,7 @@ describe('DataBatcher', () => {
   });
 
   it('does not call pause below high watermark', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThresholdBytes: 200 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 200 });
     const paused: string[] = [];
     batcher.onPause((sessionId) => paused.push(sessionId));
 
@@ -181,7 +181,7 @@ describe('DataBatcher', () => {
   });
 
   it('calls pause only once while paused', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThresholdBytes: 500 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 500 });
     const paused: string[] = [];
     batcher.onPause((sessionId) => paused.push(sessionId));
 
@@ -196,7 +196,7 @@ describe('DataBatcher', () => {
     const batcher = new DataBatcher({
       highWatermark: 100,
       lowWatermark: 50,
-      sizeThresholdBytes: 500,
+      sizeThreshold: 500,
     });
     const resumed: string[] = [];
     batcher.onFlush(() => {});
@@ -238,7 +238,7 @@ describe('DataBatcher', () => {
   });
 
   it('clears paused state on remove so re-added session starts unpaused', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThresholdBytes: 500 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 500 });
     const paused: string[] = [];
     batcher.onPause((sessionId) => paused.push(sessionId));
 
@@ -248,6 +248,37 @@ describe('DataBatcher', () => {
     batcher.remove('s1');
     batcher.push('s1', 'y'.repeat(100)); // new session state → pause again
     expect(paused).toEqual(['s1', 's1']);
+    batcher.dispose();
+  });
+
+  // --- Flush and remove ---
+
+  it('flushAndRemove flushes pending data then removes session', () => {
+    const batcher = new DataBatcher();
+    const flushed: string[] = [];
+    batcher.onFlush((_, data) => flushed.push(data));
+
+    batcher.push('s1', 'last-output');
+    batcher.flushAndRemove('s1');
+
+    expect(flushed).toEqual(['last-output']);
+
+    // Session is removed — subsequent flushAll should not flush it
+    batcher.push('s1', 'new');
+    batcher.remove('s1');
+    batcher.flushAll();
+    expect(flushed).toHaveLength(1);
+    batcher.dispose();
+  });
+
+  it('flushAndRemove is safe on unknown session', () => {
+    const batcher = new DataBatcher();
+    const flushed: string[] = [];
+    batcher.onFlush((_, data) => flushed.push(data));
+
+    batcher.flushAndRemove('nonexistent');
+
+    expect(flushed).toHaveLength(0);
     batcher.dispose();
   });
 
@@ -291,7 +322,7 @@ describe('DataBatcher', () => {
   // --- Single chunk optimization ---
 
   it('passes single chunk directly without join', () => {
-    const batcher = new DataBatcher({ sizeThresholdBytes: 5 });
+    const batcher = new DataBatcher({ sizeThreshold: 5 });
     const flushed: string[] = [];
     batcher.onFlush((_, data) => flushed.push(data));
 

@@ -7,11 +7,11 @@
 interface DataBatcherOptions {
   /** Flush interval in milliseconds. Default: 4. */
   flushIntervalMs?: number;
-  /** Accumulated bytes per session before forcing an immediate flush. Default: 64KB. */
-  sizeThresholdBytes?: number;
-  /** Pause PTY when pending data exceeds this. Default: 512KB. */
+  /** Accumulated size (UTF-16 code units) per session before forcing an immediate flush. Default: 64KB. */
+  sizeThreshold?: number;
+  /** Pause PTY when pending size exceeds this (UTF-16 code units). Default: 512KB. */
   highWatermark?: number;
-  /** Resume PTY when pending data drops below this after flush. Default: 128KB. */
+  /** Resume PTY when pending size drops below this after flush (UTF-16 code units). Default: 128KB. */
   lowWatermark?: number;
 }
 
@@ -26,7 +26,7 @@ type FlowCallback = (sessionId: string) => void;
 
 export class DataBatcher {
   private readonly flushIntervalMs: number;
-  private readonly sizeThresholdBytes: number;
+  private readonly sizeThreshold: number;
   private readonly highWatermark: number;
   private readonly lowWatermark: number;
 
@@ -39,7 +39,7 @@ export class DataBatcher {
 
   constructor(options?: DataBatcherOptions) {
     this.flushIntervalMs = options?.flushIntervalMs ?? 4;
-    this.sizeThresholdBytes = options?.sizeThresholdBytes ?? 64 * 1024;
+    this.sizeThreshold = options?.sizeThreshold ?? 64 * 1024;
     this.highWatermark = options?.highWatermark ?? 512 * 1024;
     this.lowWatermark = options?.lowWatermark ?? 128 * 1024;
 
@@ -77,9 +77,18 @@ export class DataBatcher {
       this.pauseCb?.(sessionId);
     }
 
-    if (state.pendingSize >= this.sizeThresholdBytes) {
+    if (state.pendingSize >= this.sizeThreshold) {
       this.flushSession(sessionId, state);
     }
+  }
+
+  /** Flush any pending data for a session and remove it. */
+  flushAndRemove(sessionId: string): void {
+    const state = this.sessions.get(sessionId);
+    if (state && state.chunks.length > 0) {
+      this.flushSession(sessionId, state);
+    }
+    this.sessions.delete(sessionId);
   }
 
   remove(sessionId: string): void {

@@ -93,6 +93,9 @@ export class DaemonPtyManager {
       this.processes.delete(sessionId);
       this.lastDataAt.delete(sessionId);
       if (this.disposed) return;
+      // Flush remaining batched data before signaling exit so
+      // consumers receive the last output before the exit event.
+      this.batcher.flushAndRemove(sessionId);
       this.onExitCallback?.(sessionId);
       try {
         updateSession(sessionId, {
