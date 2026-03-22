@@ -58,6 +58,7 @@ export const TaskChangedDocument = /* GraphQL */ `
       title
       description
       status
+      priority
       projectId
       assignee {
         id

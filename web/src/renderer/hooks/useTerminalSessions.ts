@@ -47,6 +47,12 @@ export function useTerminalSessions(taskId?: string) {
     fetchSessions();
   }, [fetchSessions]);
 
+  // Show loading indicator while fetching sessions for new task
+  useEffect(() => {
+    if (!taskId) return;
+    if (hasElectronApi()) setLoading(true);
+  }, [taskId]);
+
   useEffect(() => {
     if (!hasElectronApi()) return;
     mountedRef.current = true;

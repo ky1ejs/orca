@@ -98,7 +98,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   );
   const taskId = current.view === 'task' ? current.id : undefined;
   const { data: taskData, refetch: refetchTask } = useTask(taskId ?? '');
-  const { sessions, refresh } = useTerminalSessions(taskId);
+  const { sessions, loading: sessionsLoading, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { terminalPanelHeight, setTerminalPanelHeight } = usePreferences();
@@ -358,7 +358,14 @@ export function AppShell({ onLogout }: AppShellProps) {
                 taskId={taskId}
                 onMutate={() => refetchTask({ requestPolicy: 'network-only' })}
               />
-              {hasActiveSessions ? (
+              {sessionsLoading ? (
+                <div
+                  className="flex-1 flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--color-terminal-bg)' }}
+                  role="status"
+                  aria-label="Loading terminal sessions"
+                />
+              ) : hasActiveSessions ? (
                 <>
                   <TerminalTabs
                     sessions={sessions}
