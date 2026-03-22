@@ -349,6 +349,8 @@ export function AppShell({ onLogout }: AppShellProps) {
                 <div
                   className="flex-1 flex items-center justify-center"
                   style={{ backgroundColor: 'var(--color-terminal-bg)' }}
+                  role="status"
+                  aria-label="Loading terminal sessions"
                 />
               ) : hasActiveSessions ? (
                 <>
