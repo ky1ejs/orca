@@ -2,9 +2,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import { getSession } from '../../daemon/sessions.js';
 
+export interface McpToolsLog {
+  debug(msg: string): void;
+  warn(msg: string): void;
+}
+
 export interface McpToolsDeps {
   backendUrl: string;
   getToken: () => string | null;
+  log?: McpToolsLog;
 }
 
 interface ToolError {
@@ -29,10 +35,16 @@ function resolveToken(getToken: () => string | null): string | ToolError {
 function resolveSession(
   sessionId: string,
   getToken: () => string | null,
+  log?: McpToolsLog,
 ): { taskId: string; token: string } | ToolError {
   const session = getSession(sessionId);
-  if (!session || !session.task_id) {
-    return toolError('No task is associated with this session.');
+  if (!session) {
+    log?.warn(`MCP resolveSession: session not found (sessionId=${sessionId})`);
+    return toolError(`Session not found: ${sessionId}`);
+  }
+  if (!session.task_id) {
+    log?.warn(`MCP resolveSession: session has no task_id (sessionId=${sessionId})`);
+    return toolError(`No task is associated with session: ${sessionId}`);
   }
   const token = resolveToken(getToken);
   if (typeof token !== 'string') return token;
@@ -74,7 +86,7 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
       },
     },
     async ({ sessionId }) => {
-      const resolved = resolveSession(sessionId, deps.getToken);
+      const resolved = resolveSession(sessionId, deps.getToken, deps.log);
       if ('isError' in resolved) return resolved;
 
       const query = `
@@ -123,7 +135,7 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
       },
     },
     async ({ sessionId, status }) => {
-      const resolved = resolveSession(sessionId, deps.getToken);
+      const resolved = resolveSession(sessionId, deps.getToken, deps.log);
       if ('isError' in resolved) return resolved;
 
       const mutation = `

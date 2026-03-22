@@ -136,6 +136,7 @@ async function main(): Promise<void> {
     mcpDeps: {
       backendUrl,
       getToken: () => authToken,
+      log: logger,
     },
     preferredPort: DAEMON_HOOK_PORT,
   });

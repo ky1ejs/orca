@@ -72,7 +72,24 @@ describe('MCP tools', () => {
       const result = await callTool('get_current_task', { sessionId: 'nonexistent' });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('No task is associated');
+      expect(result.content[0].text).toContain('Session not found: nonexistent');
+    });
+
+    it('returns error when session has no task_id', async () => {
+      mockGetSession.mockReturnValue({
+        id: 'sess-no-task',
+        task_id: null,
+        pid: 1234,
+        status: 'running',
+        working_directory: '/tmp',
+        started_at: new Date().toISOString(),
+        stopped_at: null,
+        created_at: new Date().toISOString(),
+      });
+      const result = await callTool('get_current_task', { sessionId: 'sess-no-task' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('No task is associated with session: sess-no-task');
     });
 
     it('returns error when no token', async () => {
@@ -136,7 +153,7 @@ describe('MCP tools', () => {
       });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('No task is associated');
+      expect(result.content[0].text).toContain('Session not found: nonexistent');
     });
 
     it('sends mutation to backend and returns success', async () => {
