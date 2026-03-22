@@ -143,13 +143,20 @@ export class DaemonStatusManager {
           if (!claudePath) {
             throw new ClaudeNotFoundError();
           }
-          this.manager.spawn(
-            session.id,
-            claudePath,
-            ['--permission-mode', 'plan'],
-            workingDirectory,
-            env,
-          );
+          const args = ['--permission-mode', 'plan'];
+          if (metadata) {
+            args.push(
+              '--append-system-prompt',
+              [
+                'You were launched by Orca to work on a task.',
+                `Task: ${metadata.displayId} — ${metadata.title}`,
+                'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
+                'Use the get_current_task MCP tool (pass ORCA_SESSION_ID as the sessionId) to fetch full task details including description, status, priority, and labels.',
+                `If you create a branch, include the task ID in the name: feat/${metadata.displayId}-short-description.`,
+              ].join(' '),
+            );
+          }
+          this.manager.spawn(session.id, claudePath, args, workingDirectory, env);
         } else {
           const shell = getDefaultShell();
           this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory, env);
