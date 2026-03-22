@@ -151,6 +151,7 @@ export interface ProjectDirDeleteParams {
 export interface DaemonStatusResult {
   version: string;
   protocolVersion: number;
+  /** Daemon uptime in milliseconds. */
   uptime: number;
   activeSessions: number;
   connectedClients: number;
