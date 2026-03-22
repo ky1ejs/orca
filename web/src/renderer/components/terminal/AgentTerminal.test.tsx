@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 // Mock matchMedia for color scheme listener
@@ -27,6 +27,7 @@ const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
 const mockAttachCustomKeyEventHandler = vi.fn();
 const mockScrollToBottom = vi.fn();
 const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
+const mockPaste = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -38,6 +39,7 @@ vi.mock('@xterm/xterm', () => ({
     attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     scrollToBottom: mockScrollToBottom,
     buffer: mockBuffer,
+    paste: mockPaste,
     options: {},
     cols: 80,
     rows: 24,
@@ -148,7 +150,7 @@ function triggerInitialResize() {
 }
 
 // Dynamic import after mocks
-const { AgentTerminal } = await import('./AgentTerminal.js');
+const { AgentTerminal, escapeFilePath } = await import('./AgentTerminal.js');
 
 describe('AgentTerminal', () => {
   it('renders the terminal container', () => {
@@ -329,5 +331,154 @@ describe('AgentTerminal', () => {
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).not.toHaveBeenCalled();
+  });
+
+  describe('drag and drop', () => {
+    it('shows drop overlay on dragOver with files', () => {
+      const { getByTestId, getByText } = render(
+        <AgentTerminal sessionId="test-session" visible={true} />,
+      );
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.dragOver(container, {
+        dataTransfer: { types: ['Files'] },
+      });
+
+      expect(getByText('Drop files to paste path')).toBeInTheDocument();
+    });
+
+    it('does not show drop overlay for non-file drags', () => {
+      const { getByTestId, queryByText } = render(
+        <AgentTerminal sessionId="test-session" visible={true} />,
+      );
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.dragOver(container, {
+        dataTransfer: { types: ['text/plain'] },
+      });
+
+      expect(queryByText('Drop files to paste path')).not.toBeInTheDocument();
+    });
+
+    it('hides overlay on dragLeave', () => {
+      const { getByTestId, queryByText } = render(
+        <AgentTerminal sessionId="test-session" visible={true} />,
+      );
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.dragOver(container, {
+        dataTransfer: { types: ['Files'] },
+      });
+      fireEvent.dragLeave(container, {
+        relatedTarget: document.body,
+      });
+
+      expect(queryByText('Drop files to paste path')).not.toBeInTheDocument();
+    });
+
+    it('pastes single file path on drop', () => {
+      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.drop(container, {
+        dataTransfer: {
+          files: [{ path: '/Users/test/screenshot.png' }],
+          types: ['Files'],
+        },
+      });
+
+      expect(mockPaste).toHaveBeenCalledWith('/Users/test/screenshot.png');
+    });
+
+    it('quotes paths with spaces', () => {
+      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.drop(container, {
+        dataTransfer: {
+          files: [{ path: '/Users/test/my screenshot.png' }],
+          types: ['Files'],
+        },
+      });
+
+      expect(mockPaste).toHaveBeenCalledWith("'/Users/test/my screenshot.png'");
+    });
+
+    it('pastes multiple file paths space-separated', () => {
+      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.drop(container, {
+        dataTransfer: {
+          files: [{ path: '/Users/test/file1.txt' }, { path: '/Users/test/file2.txt' }],
+          types: ['Files'],
+        },
+      });
+
+      expect(mockPaste).toHaveBeenCalledWith('/Users/test/file1.txt /Users/test/file2.txt');
+    });
+
+    it('hides overlay after drop', () => {
+      const { getByTestId, queryByText } = render(
+        <AgentTerminal sessionId="test-session" visible={true} />,
+      );
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.dragOver(container, {
+        dataTransfer: { types: ['Files'] },
+      });
+      fireEvent.drop(container, {
+        dataTransfer: {
+          files: [{ path: '/Users/test/file.txt' }],
+          types: ['Files'],
+        },
+      });
+
+      expect(queryByText('Drop files to paste path')).not.toBeInTheDocument();
+    });
+
+    it('does not paste when no files are dropped', () => {
+      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const container = getByTestId('agent-terminal');
+
+      fireEvent.drop(container, {
+        dataTransfer: {
+          files: [],
+          types: ['Files'],
+        },
+      });
+
+      expect(mockPaste).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('escapeFilePath', () => {
+  it('returns simple paths unquoted', () => {
+    expect(escapeFilePath('/Users/test/file.txt')).toBe('/Users/test/file.txt');
+  });
+
+  it('quotes paths with spaces', () => {
+    expect(escapeFilePath('/Users/test/my file.txt')).toBe("'/Users/test/my file.txt'");
+  });
+
+  it('escapes single quotes within the path', () => {
+    expect(escapeFilePath("/Users/test/it's a file.txt")).toBe("'/Users/test/it'\\''s a file.txt'");
+  });
+
+  it('quotes paths with parentheses', () => {
+    expect(escapeFilePath('/Users/test/file (1).txt')).toBe("'/Users/test/file (1).txt'");
+  });
+
+  it('strips dangerous shell characters', () => {
+    expect(escapeFilePath('/Users/test/file$evil.txt')).toBe('/Users/test/fileevil.txt');
+  });
+
+  it('strips backticks', () => {
+    expect(escapeFilePath('/Users/test/file`cmd`.txt')).toBe('/Users/test/filecmd.txt');
+  });
+
+  it('handles paths with both spaces and dangerous chars', () => {
+    expect(escapeFilePath('/Users/test/my $file.txt')).toBe("'/Users/test/my file.txt'");
   });
 });
