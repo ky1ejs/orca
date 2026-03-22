@@ -13,6 +13,11 @@ interface ChunkMeta {
  */
 export class RingBuffer {
   static readonly MAX_SIZE = 1024 * 1024; // 1MB (measured in UTF-16 code units)
+  private static readonly TARGET_SIZE = Math.floor(RingBuffer.MAX_SIZE * 0.75);
+  private static readonly HEAD_KEEP = 64 * 1024; // 64KB
+  static readonly TRUNCATION_MARKER = '\r\n\x1b[2m[...output truncated...]\x1b[0m\r\n';
+  private static readonly MARKER_RAW_LEN = RingBuffer.TRUNCATION_MARKER.length;
+  private static readonly MARKER_VIS_LEN = visibleLength(RingBuffer.TRUNCATION_MARKER);
 
   private chunks: ChunkMeta[] = [];
   private rawSize = 0;
@@ -56,14 +61,41 @@ export class RingBuffer {
     this._tail = '';
   }
 
+  /** Keep first N chunks (command context) + last M chunks (recent output), evict the middle. */
   private evict(): void {
-    const toDelete = Math.max(1, Math.floor(this.chunks.length * 0.25));
-    for (let i = 0; i < toDelete; i++) {
-      const chunk = this.chunks[i];
-      this.rawSize -= chunk.rawLen;
-      this._visibleSize -= chunk.visLen;
+    // Walk forward: keep whole chunks up to HEAD_KEEP (always keep at least 1)
+    let headRaw = 0;
+    let headVis = 0;
+    let headEnd = 0;
+    for (let i = 0; i < this.chunks.length; i++) {
+      if (headRaw + this.chunks[i].rawLen > RingBuffer.HEAD_KEEP && headEnd > 0) break;
+      headRaw += this.chunks[i].rawLen;
+      headVis += this.chunks[i].visLen;
+      headEnd = i + 1;
     }
-    this.chunks.splice(0, toDelete);
-    this._visibleSize = Math.max(0, this._visibleSize);
+
+    // Walk backward: keep whole chunks up to remaining budget
+    const tailKeep = RingBuffer.TARGET_SIZE - headRaw;
+    let tailRaw = 0;
+    let tailVis = 0;
+    let tailStart = this.chunks.length;
+    for (let i = this.chunks.length - 1; i >= headEnd; i--) {
+      if (tailRaw + this.chunks[i].rawLen > tailKeep) break;
+      tailRaw += this.chunks[i].rawLen;
+      tailVis += this.chunks[i].visLen;
+      tailStart = i;
+    }
+
+    if (tailStart <= headEnd) return;
+
+    const markerChunk: ChunkMeta = {
+      data: RingBuffer.TRUNCATION_MARKER,
+      rawLen: RingBuffer.MARKER_RAW_LEN,
+      visLen: RingBuffer.MARKER_VIS_LEN,
+    };
+
+    this.chunks.splice(headEnd, tailStart - headEnd, markerChunk);
+    this.rawSize = headRaw + tailRaw + markerChunk.rawLen;
+    this._visibleSize = Math.max(0, headVis + tailVis + markerChunk.visLen);
   }
 }
