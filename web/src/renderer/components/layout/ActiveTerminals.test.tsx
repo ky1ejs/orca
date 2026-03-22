@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ActiveTerminals } from './ActiveTerminals.js';
 import { SessionStatus } from '../../../shared/session-status.js';
@@ -22,9 +22,12 @@ function makeEntry(overrides: Partial<ActiveTerminalEntry> = {}): ActiveTerminal
     taskId: 'task-1',
     displayId: 'TSK-1',
     taskTitle: 'Test task',
+    projectId: 'proj-1',
     projectName: 'My Project',
     sessionCount: 1,
+    sessionIds: ['sess-1'],
     status: SessionStatus.Running,
+    taskStatus: 'IN_PROGRESS',
     ...overrides,
   };
 }
@@ -162,5 +165,60 @@ describe('ActiveTerminals', () => {
 
     expect(screen.getByText('Needs Permission')).toBeInTheDocument();
     expect(screen.queryByText('#42')).not.toBeInTheDocument();
+  });
+
+  it('shows close button when task is DONE and PR is MERGED', () => {
+    const onClose = vi.fn();
+    const entries = [
+      makeEntry({
+        taskStatus: 'DONE',
+        pullRequest: {
+          number: 10,
+          status: PullRequestStatus.Merged,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ];
+    render(<ActiveTerminals entries={entries} onClose={onClose} />);
+
+    expect(screen.getByTestId('close-active-terminal-task-1')).toBeInTheDocument();
+  });
+
+  it('does not show close button for non-closeable entries', () => {
+    const onClose = vi.fn();
+    const entries = [
+      makeEntry({
+        taskStatus: 'IN_PROGRESS',
+        pullRequest: {
+          number: 10,
+          status: PullRequestStatus.Open,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ];
+    render(<ActiveTerminals entries={entries} onClose={onClose} />);
+
+    expect(screen.queryByTestId('close-active-terminal-task-1')).not.toBeInTheDocument();
+  });
+
+  it('calls onClose and does not navigate when close button is clicked', () => {
+    const onClose = vi.fn();
+    const entry = makeEntry({
+      taskStatus: 'DONE',
+      pullRequest: {
+        number: 10,
+        status: PullRequestStatus.Merged,
+        draft: false,
+        checkStatus: null,
+      },
+    });
+    render(<ActiveTerminals entries={[entry]} onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId('close-active-terminal-task-1'));
+
+    expect(onClose).toHaveBeenCalledWith(entry);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

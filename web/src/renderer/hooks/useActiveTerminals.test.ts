@@ -9,7 +9,7 @@ vi.mock('./useTerminalSessions.js', () => ({
   useTerminalSessions: () => ({ sessions: mockSessions(), loading: false, refresh: vi.fn() }),
 }));
 
-const { useActiveTerminals, pickPrimaryPr } = await import('./useActiveTerminals.js');
+const { useActiveTerminals, pickPrimaryPr, isCloseable } = await import('./useActiveTerminals.js');
 import { PullRequestStatus, CheckStatus } from '../graphql/__generated__/generated.js';
 
 const projects = [
@@ -17,8 +17,8 @@ const projects = [
     id: 'proj-1',
     name: 'Project Alpha',
     tasks: [
-      { id: 'task-1', displayId: 'TSK-1', title: 'First Task' },
-      { id: 'task-2', displayId: 'TSK-2', title: 'Second Task' },
+      { id: 'task-1', displayId: 'TSK-1', title: 'First Task', status: 'IN_PROGRESS' },
+      { id: 'task-2', displayId: 'TSK-2', title: 'Second Task', status: 'TODO' },
     ],
   },
 ];
@@ -55,8 +55,8 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].status).toBe(SessionStatus.AwaitingPermission);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].status).toBe(SessionStatus.AwaitingPermission);
   });
 
   it('AWAITING_PERMISSION takes priority over RUNNING', () => {
@@ -67,8 +67,8 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].status).toBe(SessionStatus.AwaitingPermission);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].status).toBe(SessionStatus.AwaitingPermission);
   });
 
   it('WAITING_FOR_INPUT takes priority over RUNNING', () => {
@@ -79,8 +79,8 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].status).toBe(SessionStatus.WaitingForInput);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].status).toBe(SessionStatus.WaitingForInput);
   });
 
   it('RUNNING takes priority over STARTING', () => {
@@ -91,8 +91,8 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].status).toBe(SessionStatus.Running);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].status).toBe(SessionStatus.Running);
   });
 
   it('returns empty when no active sessions', () => {
@@ -100,7 +100,7 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(0);
+    expect(result.current.entries).toHaveLength(0);
   });
 
   it('excludes exited sessions', () => {
@@ -110,7 +110,7 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(0);
+    expect(result.current.entries).toHaveLength(0);
   });
 
   it('groups sessions by task and reports correct session count', () => {
@@ -121,12 +121,12 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].sessionCount).toBe(2);
-    expect(result.current[0].taskId).toBe('task-1');
-    expect(result.current[0].displayId).toBe('TSK-1');
-    expect(result.current[0].taskTitle).toBe('First Task');
-    expect(result.current[0].projectName).toBe('Project Alpha');
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].sessionCount).toBe(2);
+    expect(result.current.entries[0].taskId).toBe('task-1');
+    expect(result.current.entries[0].displayId).toBe('TSK-1');
+    expect(result.current.entries[0].taskTitle).toBe('First Task');
+    expect(result.current.entries[0].projectName).toBe('Project Alpha');
   });
 
   it('includes pullRequest from task data', () => {
@@ -139,6 +139,7 @@ describe('useActiveTerminals', () => {
             id: 'task-1',
             displayId: 'TSK-1',
             title: 'First Task',
+            status: 'IN_PROGRESS',
             pullRequests: [
               {
                 id: 'pr-1',
@@ -160,7 +161,7 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projectsWithPRs));
 
-    expect(result.current[0].pullRequest).toEqual({
+    expect(result.current.entries[0].pullRequest).toEqual({
       number: 42,
       status: PullRequestStatus.Open,
       draft: false,
@@ -175,7 +176,23 @@ describe('useActiveTerminals', () => {
 
     const { result } = renderHook(() => useActiveTerminals(projects));
 
-    expect(result.current[0].pullRequest).toBeUndefined();
+    expect(result.current.entries[0].pullRequest).toBeUndefined();
+  });
+
+  it('includes taskStatus from project data', () => {
+    mockSessions.mockReturnValue([
+      makeSession({ id: 'sess-1', task_id: 'task-1', status: SessionStatus.Running }),
+    ]);
+
+    const { result } = renderHook(() => useActiveTerminals(projects));
+
+    expect(result.current.entries[0].taskStatus).toBe('IN_PROGRESS');
+  });
+
+  it('exposes refreshSessions callback', () => {
+    const { result } = renderHook(() => useActiveTerminals(projects));
+
+    expect(typeof result.current.refreshSessions).toBe('function');
   });
 });
 
@@ -267,5 +284,89 @@ describe('pickPrimaryPr', () => {
       draft: true,
       checkStatus: null,
     });
+  });
+});
+
+describe('isCloseable', () => {
+  it('returns true when taskStatus is DONE and PR is MERGED', () => {
+    expect(
+      isCloseable({
+        taskId: 't1',
+        displayId: 'TSK-1',
+        taskTitle: 'Task',
+        projectId: 'p1',
+        projectName: 'Proj',
+        sessionCount: 1,
+        sessionIds: ['s1'],
+        status: SessionStatus.Running,
+        taskStatus: 'DONE',
+        pullRequest: {
+          number: 1,
+          status: PullRequestStatus.Merged,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it('returns false when taskStatus is DONE but PR is OPEN', () => {
+    expect(
+      isCloseable({
+        taskId: 't1',
+        displayId: 'TSK-1',
+        taskTitle: 'Task',
+        projectId: 'p1',
+        projectName: 'Proj',
+        sessionCount: 1,
+        sessionIds: ['s1'],
+        status: SessionStatus.Running,
+        taskStatus: 'DONE',
+        pullRequest: {
+          number: 1,
+          status: PullRequestStatus.Open,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when PR is MERGED but taskStatus is not DONE', () => {
+    expect(
+      isCloseable({
+        taskId: 't1',
+        displayId: 'TSK-1',
+        taskTitle: 'Task',
+        projectId: 'p1',
+        projectName: 'Proj',
+        sessionCount: 1,
+        sessionIds: ['s1'],
+        status: SessionStatus.Running,
+        taskStatus: 'IN_PROGRESS',
+        pullRequest: {
+          number: 1,
+          status: PullRequestStatus.Merged,
+          draft: false,
+          checkStatus: null,
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when no pullRequest exists', () => {
+    expect(
+      isCloseable({
+        taskId: 't1',
+        displayId: 'TSK-1',
+        taskTitle: 'Task',
+        projectId: 'p1',
+        projectName: 'Proj',
+        sessionCount: 1,
+        sessionIds: ['s1'],
+        status: SessionStatus.Running,
+        taskStatus: 'DONE',
+      }),
+    ).toBe(false);
   });
 });

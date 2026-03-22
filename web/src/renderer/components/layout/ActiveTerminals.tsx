@@ -1,4 +1,5 @@
-import type { ActiveTerminalEntry } from '../../hooks/useActiveTerminals.js';
+import { X } from 'lucide-react';
+import { isCloseable, type ActiveTerminalEntry } from '../../hooks/useActiveTerminals.js';
 import {
   SessionStatus,
   type SessionStatus as SessionStatusType,
@@ -8,6 +9,7 @@ import {
 import { useNavigation } from '../../navigation/context.js';
 import { PullRequestIcon } from '../tasks/PullRequestIcon.js';
 import { ciDotClassName } from '../tasks/CIStatusBadge.js';
+import { iconSize } from '../../tokens/icon-size.js';
 
 const attentionLabel: Partial<Record<SessionStatusType, { text: string; className: string }>> = {
   [SessionStatus.AwaitingPermission]: {
@@ -19,9 +21,10 @@ const attentionLabel: Partial<Record<SessionStatusType, { text: string; classNam
 interface ActiveTerminalsProps {
   entries: ActiveTerminalEntry[];
   activeSessionIds?: Set<string>;
+  onClose?: (entry: ActiveTerminalEntry) => void;
 }
 
-export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsProps) {
+export function ActiveTerminals({ entries, activeSessionIds, onClose }: ActiveTerminalsProps) {
   const { navigate, current } = useNavigation();
 
   if (entries.length === 0) return null;
@@ -102,6 +105,29 @@ export function ActiveTerminals({ entries, activeSessionIds }: ActiveTerminalsPr
                 {entry.sessionCount > 1 && (
                   <span className="flex-shrink-0 rounded bg-surface-hover px-1.5 py-0.5 text-label-xs text-fg-muted">
                     {entry.sessionCount}
+                  </span>
+                )}
+                {isCloseable(entry) && onClose && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onClose(entry);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onClose(entry);
+                      }
+                    }}
+                    className="flex-shrink-0 p-0.5 rounded text-fg-faint hover:text-fg hover:bg-surface-hover transition-colors"
+                    aria-label={`Close sessions for ${entry.displayId}`}
+                    data-testid={`close-active-terminal-${entry.taskId}`}
+                  >
+                    <X className={iconSize.xs} />
                   </span>
                 )}
               </button>
