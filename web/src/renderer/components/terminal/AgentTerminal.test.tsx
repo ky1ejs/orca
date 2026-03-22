@@ -69,6 +69,19 @@ vi.mock('@xterm/addon-webgl', () => ({
   })),
 }));
 
+const mockSearchFindNext = vi.fn();
+const mockSearchFindPrevious = vi.fn();
+const mockSearchClearDecorations = vi.fn();
+const mockSearchDispose = vi.fn();
+vi.mock('@xterm/addon-search', () => ({
+  SearchAddon: vi.fn().mockImplementation(() => ({
+    findNext: mockSearchFindNext,
+    findPrevious: mockSearchFindPrevious,
+    clearDecorations: mockSearchClearDecorations,
+    dispose: mockSearchDispose,
+  })),
+}));
+
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
 
 vi.mock('../../preferences/context.js', () => ({
@@ -222,5 +235,32 @@ describe('AgentTerminal', () => {
     const instance = observer.mock.results[0].value;
     unmount();
     expect(instance.disconnect).toHaveBeenCalled();
+  });
+
+  it('loads SearchAddon', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    expect(mockLoadAddon).toHaveBeenCalledWith(
+      expect.objectContaining({ findNext: mockSearchFindNext }),
+    );
+  });
+
+  it('disposes SearchAddon on unmount', () => {
+    const { unmount } = render(<AgentTerminal sessionId="test-session" />);
+    unmount();
+    expect(mockSearchDispose).toHaveBeenCalled();
+  });
+
+  it('intercepts Cmd+F to open search', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+    const cmdF = { type: 'keydown', key: 'f', metaKey: true, ctrlKey: false, shiftKey: false };
+    expect(handler(cmdF)).toBe(false);
+  });
+
+  it('intercepts Ctrl+F to open search', () => {
+    render(<AgentTerminal sessionId="test-session" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+    const ctrlF = { type: 'keydown', key: 'f', metaKey: false, ctrlKey: true, shiftKey: false };
+    expect(handler(ctrlF)).toBe(false);
   });
 });
