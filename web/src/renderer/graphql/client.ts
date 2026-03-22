@@ -164,7 +164,6 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
           },
           Subscription: {
             projectChanged(_result, _args, cache) {
-              cache.invalidate('Query', 'workspaces');
               invalidateAllWorkspaceQueries(cache);
             },
             taskChanged(_result, _args, cache) {
@@ -172,11 +171,13 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 | { id: string; projectId: string | null }
                 | undefined;
               if (task) {
-                cache.invalidate({ __typename: 'Task', id: task.id });
+                // Invalidate project task lists for structural changes
+                // (task created/deleted/moved). Don't invalidate the Task
+                // entity itself — graphcache already normalized the
+                // subscription payload into the cache.
                 if (task.projectId) {
                   cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
                 }
-                cache.invalidate('Query', 'workspaces');
                 invalidateAllWorkspaceQueries(cache);
               }
             },
