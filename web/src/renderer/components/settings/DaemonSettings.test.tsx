@@ -35,7 +35,7 @@ const { DaemonSettings } = await import('./DaemonSettings.js');
 const MOCK_STATUS = {
   version: '1.2.3',
   protocolVersion: 2,
-  uptime: 180120, // 2d 2h 2m
+  uptime: 180120000, // 2d 2h 2m in milliseconds
   activeSessions: 3,
   connectedClients: 1,
 };
