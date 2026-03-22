@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
 import { usePreferences } from '../../preferences/context.js';
 import '@xterm/xterm/css/xterm.css';
 
@@ -38,6 +39,16 @@ interface AgentTerminalProps {
   sessionId: string;
 }
 
+/** Fit the terminal to its container and sync the PTY dimensions. */
+function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string): void {
+  try {
+    fitAddon.fit();
+    window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+  } catch {
+    // Container may have been removed before the fit completes
+  }
+}
+
 export function AgentTerminal({ sessionId }: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -62,6 +73,19 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
+
+    // GPU-accelerated rendering with graceful fallback to DOM renderer
+    let webglAddon: WebglAddon | null = null;
+    try {
+      webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddon?.dispose();
+        webglAddon = null;
+      });
+      terminal.loadAddon(webglAddon);
+    } catch {
+      webglAddon = null;
+    }
 
     // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
     // plain \r so Claude Code can distinguish it and insert a newline.
@@ -98,12 +122,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       if (!initialFitDone) {
         // First callback: fit immediately (no debounce), resize PTY, then replay
         initialFitDone = true;
-        try {
-          fitAddon.fit();
-          window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
-        } catch {
-          // Container may have been removed
-        }
+        fitAndResize(fitAddon, terminal, sessionId);
         window.orca.pty.replay(sessionId).then((output) => {
           if (output) terminal.write(output);
         });
@@ -112,12 +131,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       // Subsequent callbacks: debounce for resize stability
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        try {
-          fitAddon.fit();
-          window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
-        } catch {
-          // Container may have been removed
-        }
+        fitAndResize(fitAddon, terminal, sessionId);
       }, 100);
     });
     resizeObserver.observe(container);
@@ -141,6 +155,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
       classObserver.disconnect();
+      webglAddon?.dispose();
       onDataDisposable.dispose();
       unsubData();
       unsubExit();
@@ -158,12 +173,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
     if (terminal) {
       terminal.options.fontFamily = terminalFontFamily;
       if (fitAddon) {
-        try {
-          fitAddon.fit();
-          window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
-        } catch {
-          // Container may have been removed
-        }
+        fitAndResize(fitAddon, terminal, sessionId);
       }
     }
   }, [terminalFontFamily]);
