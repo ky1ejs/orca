@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   Box,
   PanelLeft,
@@ -192,7 +192,20 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const inboxTasks = data?.workspace?.tasks ?? [];
   const activeTaskId = current.view === 'task' ? current.id : undefined;
   const { count: myTaskCount } = useMyTasks();
-  const { entries: activeTerminals, refreshSessions } = useActiveTerminals(allProjects, inboxTasks);
+
+  // Preserve last-known projects/inbox so active terminals don't disappear
+  // while workspace data is being refetched after cache invalidation.
+  const prevProjectsRef = useRef(allProjects);
+  const prevInboxTasksRef = useRef(inboxTasks);
+  const hasWorkspaceData = !!data?.workspace;
+  if (hasWorkspaceData) {
+    prevProjectsRef.current = allProjects;
+    prevInboxTasksRef.current = inboxTasks;
+  }
+  const { entries: activeTerminals, refreshSessions } = useActiveTerminals(
+    hasWorkspaceData ? allProjects : prevProjectsRef.current,
+    hasWorkspaceData ? inboxTasks : prevInboxTasksRef.current,
+  );
   const activeSessionIds = useSessionActivity();
 
   const handleCloseActiveTerminal = useCallback(
