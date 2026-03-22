@@ -12,7 +12,7 @@
  */
 process.title = 'orca-daemon';
 
-import { mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { chmodSync, mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { initDaemonDb, closeDaemonDb } from './db.js';
 import { sweepStaleSessions } from './sessions.js';
@@ -29,8 +29,13 @@ import {
   DAEMON_DB_PATH,
   DAEMON_HOOK_PORT,
   DAEMON_HOOK_PORT_FILE,
+  DAEMON_MCP_CONFIG_FILE,
+  DAEMON_CLAUDE_SETTINGS_FILE,
+  DAEMON_CLI_DIR,
+  DAEMON_CLI_SCRIPT,
 } from '../shared/daemon-protocol.js';
-import { ensureGlobalMcpConfig, removeGlobalMcpConfig } from '../shared/hooks/settings.js';
+import { buildMcpConfigJson, buildHooksConfigJson } from '../shared/hooks/settings.js';
+import { buildShellOrcaSystemPrompt } from '../shared/claude.js';
 import { OutputPersistence } from './output-persistence.js';
 import { logger } from './logger.js';
 
@@ -139,8 +144,31 @@ async function main(): Promise<void> {
       // Write port file so other tools can discover the hook server
       writeFileSync(DAEMON_HOOK_PORT_FILE, String(port));
 
-      // Register MCP globally so all Claude sessions discover Orca while daemon runs
-      ensureGlobalMcpConfig(port);
+      // Write Orca-owned config files for Claude Code sessions
+      writeFileSync(DAEMON_MCP_CONFIG_FILE, buildMcpConfigJson(port));
+      writeFileSync(DAEMON_CLAUDE_SETTINGS_FILE, buildHooksConfigJson(port));
+
+      // Write CLI wrapper so shell sessions can run `orca` to launch Claude with MCP + hooks
+      const shellPrompt = buildShellOrcaSystemPrompt();
+      mkdirSync(DAEMON_CLI_DIR, { recursive: true });
+      writeFileSync(
+        DAEMON_CLI_SCRIPT,
+        [
+          '#!/usr/bin/env bash',
+          '# Orca CLI — launches Claude Code with Orca MCP tools and hooks',
+          '',
+          `ARGS=(--mcp-config "${DAEMON_MCP_CONFIG_FILE}" --settings "${DAEMON_CLAUDE_SETTINGS_FILE}")`,
+          '',
+          '# Append task context as system prompt if launched from an Orca session',
+          'if [[ -n "$ORCA_TASK_ID" ]]; then',
+          `  ARGS+=(--append-system-prompt "${shellPrompt}")`,
+          'fi',
+          '',
+          'exec claude "${ARGS[@]}" "$@"',
+          '',
+        ].join('\n'),
+      );
+      chmodSync(DAEMON_CLI_SCRIPT, 0o755);
     }
   } catch (err) {
     logger.warn(`Failed to start hook server: ${err}`);
@@ -175,7 +203,21 @@ async function main(): Promise<void> {
     outputPersistence.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
-    removeGlobalMcpConfig();
+    try {
+      unlinkSync(DAEMON_MCP_CONFIG_FILE);
+    } catch {
+      // May already be gone
+    }
+    try {
+      unlinkSync(DAEMON_CLAUDE_SETTINGS_FILE);
+    } catch {
+      // May already be gone
+    }
+    try {
+      unlinkSync(DAEMON_CLI_SCRIPT);
+    } catch {
+      // May already be gone
+    }
     hookServer.stop().catch(() => {});
     ptyManager.killAll();
 
