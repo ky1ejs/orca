@@ -13,6 +13,8 @@ import {
   requireWorkspaceAccess,
   workspaceScopedSubscription,
 } from '../auth/workspace.js';
+import { recordAuditEvent } from '../audit/record-event.js';
+import { diffFields } from '../audit/diff.js';
 
 async function validateInitiativeBelongsToWorkspace(
   prisma: PrismaClient,
@@ -58,6 +60,14 @@ export const projectResolvers = {
         },
       });
       context.pubsub.publish('projectChanged', project);
+      recordAuditEvent(context.prisma, {
+        entityType: 'PROJECT',
+        entityId: project.id,
+        action: 'CREATED',
+        actorType: 'USER',
+        actorId: context.userId,
+        workspaceId: project.workspaceId,
+      });
       return project;
     },
     updateProject: async (_parent, args, context) => {
@@ -86,11 +96,62 @@ export const projectResolvers = {
         }
       }
 
+      const auditChanges = diffFields(
+        existingProject,
+        {
+          ...(args.input.name != null && { name: args.input.name }),
+          ...(args.input.description !== undefined && { description: args.input.description }),
+          ...(args.input.defaultDirectory !== undefined && {
+            defaultDirectory: args.input.defaultDirectory,
+          }),
+        },
+        ['name', 'description', 'defaultDirectory'],
+      );
+
+      if (
+        args.input.initiativeId !== undefined &&
+        args.input.initiativeId !== existingProject.initiativeId
+      ) {
+        const [oldInit, newInit] = await Promise.all([
+          existingProject.initiativeId
+            ? context.prisma.initiative.findUnique({
+                where: { id: existingProject.initiativeId },
+              })
+            : null,
+          args.input.initiativeId
+            ? context.prisma.initiative.findUnique({
+                where: { id: args.input.initiativeId },
+              })
+            : null,
+        ]);
+        auditChanges.push(
+          {
+            field: 'initiativeId',
+            oldValue: existingProject.initiativeId ?? null,
+            newValue: args.input.initiativeId ?? null,
+          },
+          { field: 'initiative', oldValue: oldInit?.name ?? null, newValue: newInit?.name ?? null },
+        );
+      }
+
       const project = await context.prisma.project.update({
         where: { id: args.id },
         data,
       });
       context.pubsub.publish('projectChanged', project);
+
+      if (auditChanges.length > 0) {
+        recordAuditEvent(context.prisma, {
+          entityType: 'PROJECT',
+          entityId: project.id,
+          action: 'UPDATED',
+          actorType: 'USER',
+          actorId: context.userId,
+          workspaceId: project.workspaceId,
+          changes: auditChanges,
+        });
+      }
+
       return project;
     },
     archiveProject: async (_parent, args, context) => {
@@ -100,6 +161,14 @@ export const projectResolvers = {
         data: { archivedAt: new Date() },
       });
       context.pubsub.publish('projectChanged', project);
+      recordAuditEvent(context.prisma, {
+        entityType: 'PROJECT',
+        entityId: project.id,
+        action: 'ARCHIVED',
+        actorType: 'USER',
+        actorId: context.userId,
+        workspaceId: project.workspaceId,
+      });
       return project;
     },
   } satisfies Pick<MutationResolvers, 'createProject' | 'updateProject' | 'archiveProject'>,

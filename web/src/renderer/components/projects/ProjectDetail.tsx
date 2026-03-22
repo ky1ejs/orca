@@ -13,6 +13,7 @@ import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { TaskTable } from '../tasks/TaskTable.js';
 import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
+import { ProjectActivityFeed } from '../activity/ProjectActivityFeed.js';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -179,6 +180,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           });
         }}
       />
+
+      <div className="mt-6">
+        <ProjectActivityFeed projectId={projectId} />
+      </div>
     </div>
   );
 }

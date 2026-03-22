@@ -3,6 +3,7 @@ import type { PubSubLike } from '../context.js';
 import { extractDisplayIds } from './display-id-parser.js';
 import { fetchCombinedCheckStatus, getInstallationAccessToken } from './github-api.js';
 import { getWorkspaceSettings } from './workspace-settings.js';
+import { recordAuditEvent } from '../audit/record-event.js';
 
 interface PullRequestPayload {
   action: string;
@@ -163,9 +164,18 @@ export async function handlePullRequestOpenedOrEdited(
         task.status !== TaskStatus.IN_REVIEW &&
         task.status !== TaskStatus.DONE
       ) {
+        const oldStatus = task.status;
         const updated = await prisma.task.update({
           where: { id: task.id },
           data: { status: TaskStatus.IN_REVIEW },
+        });
+        recordAuditEvent(prisma, {
+          entityType: 'TASK',
+          entityId: task.id,
+          action: 'UPDATED',
+          actorType: 'SYSTEM',
+          workspaceId,
+          changes: [{ field: 'status', oldValue: oldStatus, newValue: 'IN_REVIEW' }],
         });
         pubsub.publish('taskChanged', updated);
       } else {
@@ -199,9 +209,18 @@ export async function handlePullRequestClosed(
       if (openPrs === 0) {
         const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
         if (task && task.status !== TaskStatus.DONE) {
+          const oldStatus = task.status;
           const updated = await prisma.task.update({
             where: { id: prRecord.taskId },
             data: { status: TaskStatus.DONE },
+          });
+          recordAuditEvent(prisma, {
+            entityType: 'TASK',
+            entityId: prRecord.taskId,
+            action: 'UPDATED',
+            actorType: 'SYSTEM',
+            workspaceId: prRecord.workspaceId,
+            changes: [{ field: 'status', oldValue: oldStatus, newValue: 'DONE' }],
           });
           pubsub.publish('taskChanged', updated);
           return;
@@ -236,6 +255,14 @@ export async function handlePullRequestReopened(
       const updated = await prisma.task.update({
         where: { id: prRecord.taskId },
         data: { status: TaskStatus.IN_REVIEW },
+      });
+      recordAuditEvent(prisma, {
+        entityType: 'TASK',
+        entityId: prRecord.taskId,
+        action: 'UPDATED',
+        actorType: 'SYSTEM',
+        workspaceId: prRecord.workspaceId,
+        changes: [{ field: 'status', oldValue: 'DONE', newValue: 'IN_REVIEW' }],
       });
       pubsub.publish('taskChanged', updated);
       return;

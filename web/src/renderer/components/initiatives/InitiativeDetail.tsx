@@ -10,6 +10,7 @@ import {
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
+import { InitiativeActivityFeed } from '../activity/InitiativeActivityFeed.js';
 
 interface InitiativeDetailProps {
   initiativeId: string;
@@ -226,6 +227,10 @@ export function InitiativeDetail({ initiativeId }: InitiativeDetailProps) {
           ))}
         </div>
       )}
+
+      <div className="mt-6">
+        <InitiativeActivityFeed initiativeId={initiativeId} />
+      </div>
     </div>
   );
 }

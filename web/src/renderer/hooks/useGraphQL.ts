@@ -42,6 +42,9 @@ import {
   InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
+  TaskActivityDocument,
+  ProjectActivityDocument,
+  InitiativeActivityDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
   LinkPullRequestInput,
@@ -120,6 +123,33 @@ export function usePendingInvitations() {
     }, 60_000);
     return () => clearInterval(interval);
   }, [reexecute]);
+  return { ...result, refetch: reexecute };
+}
+
+export function useTaskActivity(taskId: string, first = 20, after?: string | null) {
+  const [result, reexecute] = useQuery({
+    query: TaskActivityDocument,
+    variables: { taskId, first, after: after ?? undefined },
+    pause: !taskId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useProjectActivity(projectId: string, first = 20, after?: string | null) {
+  const [result, reexecute] = useQuery({
+    query: ProjectActivityDocument,
+    variables: { projectId, first, after: after ?? undefined },
+    pause: !projectId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useInitiativeActivity(initiativeId: string, first = 20, after?: string | null) {
+  const [result, reexecute] = useQuery({
+    query: InitiativeActivityDocument,
+    variables: { initiativeId, first, after: after ?? undefined },
+    pause: !initiativeId,
+  });
   return { ...result, refetch: reexecute };
 }
 
