@@ -152,6 +152,7 @@ export class DaemonStatusManager {
                 `Task: ${metadata.displayId} — ${metadata.title}`,
                 'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
                 'Use the get_current_task MCP tool (pass ORCA_SESSION_ID as the sessionId) to fetch full task details including description, status, priority, and labels.',
+                `If you create a branch, include the task ID in the name: feat/${metadata.displayId}-short-description.`,
               ].join(' '),
             );
           }
