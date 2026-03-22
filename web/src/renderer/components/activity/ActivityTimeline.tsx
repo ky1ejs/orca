@@ -7,24 +7,15 @@ import {
 } from '../../graphql/__generated__/generated.js';
 import { Skeleton } from '../layout/Skeleton.js';
 import { formatRelativeTime } from '../../utils/formatRelativeTime.js';
+import { STATUS_LABELS, PRIORITY_LABELS } from '../../utils/task-status.js';
 
 type ActivityEdge = AuditEventConnection['edges'][number];
 type ActivityNode = ActivityEdge['node'];
 
-const ENUM_DISPLAY_NAMES: Record<string, string> = {
-  TODO: 'Todo',
-  IN_PROGRESS: 'In Progress',
-  IN_REVIEW: 'In Review',
-  DONE: 'Done',
-  NONE: 'None',
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  URGENT: 'Urgent',
-};
+const ENUM_DISPLAY: Record<string, string> = { ...STATUS_LABELS, ...PRIORITY_LABELS };
 
 function displayEnum(value: string): string {
-  return ENUM_DISPLAY_NAMES[value] ?? value;
+  return ENUM_DISPLAY[value] ?? value;
 }
 
 function describeChange(change: {
