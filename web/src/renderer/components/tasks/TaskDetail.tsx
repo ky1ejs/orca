@@ -7,6 +7,8 @@ import {
   FolderOpen,
   X,
   ChevronDown,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
@@ -31,6 +33,7 @@ import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { PullRequestList } from './PullRequestList.js';
+import { usePreferences } from '../../preferences/context.js';
 
 interface TaskDetailProps {
   taskId: string;
@@ -69,6 +72,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   const [launching, setLaunching] = useState(false);
   const [launchMenuOpen, setLaunchMenuOpen] = useState(false);
   const launchMenuRef = useRef<HTMLDivElement>(null);
+  const { agentLaunchMode, setAgentLaunchMode } = usePreferences();
   const [agentError, setAgentError] = useState<{
     message: string;
     suggestion: string;
@@ -269,46 +273,58 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
       );
     }
 
+    const isPlanDefault = agentLaunchMode === 'plan';
+    const colorBg = isPlanDefault
+      ? 'bg-claude hover:bg-claude-hover text-on-claude'
+      : 'bg-accent hover:bg-accent-hover text-on-accent';
+    const chevronBorder = isPlanDefault ? 'border-claude-hover' : 'border-accent-active';
+    const MainIcon = isPlanDefault ? Sparkles : SquareTerminal;
+    const mainLabel = isPlanDefault ? 'Claude Plan' : 'Open Terminal';
+
     return (
       <div className="relative" ref={launchMenuRef}>
         <div className="flex">
           <button
-            onClick={() => handleLaunchAgent()}
-            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-l-md transition-colors inline-flex items-center"
+            onClick={() => handleLaunchAgent(isPlanDefault ? { planMode: true } : undefined)}
+            className={`px-3 py-1.5 ${colorBg} text-label-md rounded-l-md transition-colors inline-flex items-center`}
             data-testid="agent-button"
           >
-            <SquareTerminal className={`${iconSize.sm} mr-1`} />
-            Open Terminal
+            <MainIcon className={`${iconSize.sm} mr-1`} />
+            {mainLabel}
           </button>
           <button
             onClick={() => setLaunchMenuOpen((prev) => !prev)}
-            className="px-1.5 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-label-md rounded-r-md border-l border-accent-active transition-colors"
+            className={`px-1.5 py-1.5 ${colorBg} border-l ${chevronBorder} text-label-md rounded-r-md transition-colors`}
             data-testid="agent-menu-toggle"
           >
             <ChevronDown className={iconSize.xs} />
           </button>
         </div>
         {launchMenuOpen && (
-          <div className="absolute top-full left-0 mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 min-w-[160px] animate-slide-up">
+          <div className="absolute top-full left-0 mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 min-w-[180px] animate-slide-up">
             <button
               onClick={() => {
                 setLaunchMenuOpen(false);
+                setAgentLaunchMode('terminal');
                 handleLaunchAgent();
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-t-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-t-md transition-colors inline-flex items-center justify-between"
               data-testid="launch-terminal"
             >
               Open Terminal
+              {!isPlanDefault && <Check className={iconSize.xs} />}
             </button>
             <button
               onClick={() => {
                 setLaunchMenuOpen(false);
+                setAgentLaunchMode('plan');
                 handleLaunchAgent({ planMode: true });
               }}
-              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-b-md transition-colors"
+              className="w-full text-left px-3 py-2 text-body-sm text-fg hover:bg-surface-hover rounded-b-md transition-colors inline-flex items-center justify-between"
               data-testid="launch-plan-mode"
             >
-              Open in Plan Mode
+              Claude Plan
+              {isPlanDefault && <Check className={iconSize.xs} />}
             </button>
           </div>
         )}
