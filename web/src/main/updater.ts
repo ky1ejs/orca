@@ -9,8 +9,6 @@ type MenuStateCallback = (label: string, enabled: boolean) => void;
 let onMenuStateChange: MenuStateCallback | null = null;
 let isManualCheck = false;
 
-export let isAutoUpdateRestart = false;
-
 export function initAutoUpdater(menuCallback: MenuStateCallback): void {
   onMenuStateChange = menuCallback;
 
@@ -88,7 +86,5 @@ export function checkForUpdates(): void {
 }
 
 export function installUpdate(): void {
-  isAutoUpdateRestart = true;
-  // Sessions survive in the daemon — just quit and install
   autoUpdater.quitAndInstall(false, true);
 }

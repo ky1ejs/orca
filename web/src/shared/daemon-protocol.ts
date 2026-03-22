@@ -213,13 +213,14 @@ import { homedir } from 'node:os';
  */
 export const DAEMON_PROTOCOL_VERSION = 2;
 
-export const ORCA_DIR = join(homedir(), '.orca');
+const IS_DEV = process.env.NODE_ENV === 'development';
+export const ORCA_DIR = join(homedir(), IS_DEV ? '.orca-dev' : '.orca');
 export const DAEMON_SOCKET_PATH = join(ORCA_DIR, 'daemon.sock');
 export const DAEMON_PID_FILE = join(ORCA_DIR, 'daemon.pid');
 export const DAEMON_DB_PATH = join(ORCA_DIR, 'orca.db');
 export const DAEMON_LOG_FILE = join(ORCA_DIR, 'daemon.log');
 export const MAIN_LOG_FILE = join(ORCA_DIR, 'main.log');
-export const DAEMON_HOOK_PORT = 19819;
+export const DAEMON_HOOK_PORT = IS_DEV ? 19820 : 19819;
 export const DAEMON_HOOK_PORT_FILE = join(ORCA_DIR, 'hook-port');
 export const DAEMON_MCP_CONFIG_FILE = join(ORCA_DIR, 'mcp-config.json');
 export const DAEMON_CLAUDE_SETTINGS_FILE = join(ORCA_DIR, 'claude-settings.json');

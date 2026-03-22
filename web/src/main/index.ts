@@ -7,7 +7,7 @@ import { DaemonClient } from './daemon/client.js';
 import { DaemonConnector } from './daemon/connector.js';
 import type { EnsureRunningResult } from './daemon/connector.js';
 import { readToken } from './pty/auth.js';
-import { initAutoUpdater, installUpdate, checkForUpdates, isAutoUpdateRestart } from './updater.js';
+import { initAutoUpdater, installUpdate, checkForUpdates } from './updater.js';
 import { initAppMenu, setCheckForUpdatesState } from './menu.js';
 import { DAEMON_EVENTS, DAEMON_METHODS } from '../shared/daemon-protocol.js';
 import type {
@@ -298,17 +298,8 @@ app.on('before-quit', () => {
   trayManager.clear();
   daemonConnector?.stopReconnection();
 
-  if (isAutoUpdateRestart) {
-    // Update restart: just disconnect — daemon stays alive, sessions survive.
-    // When the updated app launches, it reconnects to the same daemon.
-    daemonClient?.disconnect();
-  } else {
-    // Normal quit: tell the daemon to shut down.
-    // Fire-and-forget — we can't await in before-quit, and the daemon
-    // handles shutdown gracefully (kills PTYs, closes DB, removes socket).
-    if (daemonClient?.connected) {
-      daemonClient.request(DAEMON_METHODS.DAEMON_SHUTDOWN).catch(() => {});
-    }
-    daemonClient?.disconnect();
-  }
+  // Just disconnect — never tell the daemon to shut down.
+  // The daemon's idle timeout (5 min with 0 clients + 0 active sessions)
+  // handles cleanup. This prevents one instance from killing another's sessions.
+  daemonClient?.disconnect();
 });
