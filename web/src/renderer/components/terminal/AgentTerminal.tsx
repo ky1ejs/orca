@@ -247,6 +247,17 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
+  // Refit when terminal becomes visible — ResizeObserver won't fire on
+  // visibility: hidden → visible since element size doesn't change.
+  useEffect(() => {
+    if (!visible) return;
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (terminal && fitAddon) {
+      fitAndResize(fitAddon, terminal, sessionId);
+    }
+  }, [visible, sessionId]);
+
   // Apply font changes live
   useEffect(() => {
     fontRef.current = terminalFontFamily;
