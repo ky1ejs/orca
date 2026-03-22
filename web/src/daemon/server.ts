@@ -1,16 +1,29 @@
 /**
  * Unix domain socket server for the daemon.
  * Handles client connections, message routing, and NDJSON protocol.
+ *
+ * Broadcast events are batched: instead of writing each event immediately,
+ * events are queued per-client and flushed after a short interval (~4ms).
+ * Multiple pty.data events for the same session are consolidated into a
+ * single message to reduce JSON serialization overhead and IPC crossings.
  */
 import * as net from 'node:net';
 import { randomUUID } from 'node:crypto';
-import type { DaemonRequest, DaemonResponse, DaemonEvent } from '../shared/daemon-protocol.js';
+import type {
+  DaemonRequest,
+  DaemonResponse,
+  DaemonEvent,
+  PtyDataEvent,
+} from '../shared/daemon-protocol.js';
+import { DAEMON_EVENTS } from '../shared/daemon-protocol.js';
 
 export interface ClientConnection {
   id: string;
   socket: net.Socket;
   subscriptions: Set<string>; // sessionIds this client is subscribed to
   buffer: string;
+  pendingEvents: DaemonEvent[];
+  flushTimer: ReturnType<typeof setTimeout> | null;
 }
 
 type RequestHandler = (
@@ -20,6 +33,8 @@ type RequestHandler = (
 ) => Promise<unknown>;
 
 export class DaemonServer {
+  private static readonly BATCH_INTERVAL_MS = 4;
+
   private server: net.Server | null = null;
   private clients = new Map<string, ClientConnection>();
   private handler: RequestHandler;
@@ -51,8 +66,8 @@ export class DaemonServer {
 
   stop(): Promise<void> {
     return new Promise((resolve) => {
-      // Close all client connections
       for (const [, client] of this.clients) {
+        this.flushClient(client);
         client.socket.destroy();
       }
       this.clients.clear();
@@ -72,14 +87,15 @@ export class DaemonServer {
   /**
    * Broadcast an event to all connected clients that are subscribed to the given sessionId.
    * If sessionId is null, broadcast to all clients.
+   *
+   * Events are not written immediately — they are queued per-client and
+   * flushed after BATCH_INTERVAL_MS. Multiple pty.data events for the same
+   * session are consolidated into a single message on flush.
    */
   broadcastToSubscribed(sessionId: string | null, event: string, params: unknown): void {
-    const msg: DaemonEvent = { event, params };
-    const line = JSON.stringify(msg) + '\n';
-
     for (const [, client] of this.clients) {
       if (sessionId === null || client.subscriptions.has(sessionId)) {
-        this.safeWrite(client, line);
+        this.enqueueEvent(client, event, params);
       }
     }
   }
@@ -111,6 +127,8 @@ export class DaemonServer {
       socket,
       subscriptions: new Set(),
       buffer: '',
+      pendingEvents: [],
+      flushTimer: null,
     };
 
     this.clients.set(client.id, client);
@@ -122,11 +140,13 @@ export class DaemonServer {
     });
 
     socket.on('close', () => {
+      this.flushClient(client);
       this.clients.delete(client.id);
       this.onClientCountChange?.(this.clients.size);
     });
 
     socket.on('error', () => {
+      this.cancelClientFlush(client);
       this.clients.delete(client.id);
       this.onClientCountChange?.(this.clients.size);
     });
@@ -134,7 +154,6 @@ export class DaemonServer {
 
   private processBuffer(client: ClientConnection): void {
     const lines = client.buffer.split('\n');
-    // Keep the last incomplete line in the buffer
     client.buffer = lines.pop() ?? '';
 
     for (const line of lines) {
@@ -164,6 +183,82 @@ export class DaemonServer {
       };
       this.safeWrite(client, JSON.stringify(response) + '\n');
     }
+  }
+
+  // ─── Broadcast batching ─────────────────────────────────────────────
+
+  private enqueueEvent(client: ClientConnection, event: string, params: unknown): void {
+    client.pendingEvents.push({ event, params });
+
+    if (client.flushTimer === null) {
+      client.flushTimer = setTimeout(() => {
+        this.flushClient(client);
+      }, DaemonServer.BATCH_INTERVAL_MS);
+    }
+  }
+
+  private flushClient(client: ClientConnection): void {
+    if (client.flushTimer !== null) {
+      clearTimeout(client.flushTimer);
+      client.flushTimer = null;
+    }
+
+    const events = client.pendingEvents;
+    if (events.length === 0) return;
+    client.pendingEvents = [];
+
+    const consolidated = DaemonServer.consolidateEvents(events);
+
+    let batch = '';
+    for (const evt of consolidated) {
+      batch += JSON.stringify(evt) + '\n';
+    }
+
+    this.safeWrite(client, batch);
+  }
+
+  private cancelClientFlush(client: ClientConnection): void {
+    if (client.flushTimer !== null) {
+      clearTimeout(client.flushTimer);
+      client.flushTimer = null;
+    }
+    client.pendingEvents = [];
+  }
+
+  /**
+   * Merge multiple pty.data events for the same session into one by
+   * concatenating their data strings. The merged event appears at the
+   * position of its first occurrence. Non-pty.data events pass through
+   * unchanged. Overall event order is preserved.
+   */
+  // Public for testability
+  static consolidateEvents(events: DaemonEvent[]): DaemonEvent[] {
+    const ptyDataIndex = new Map<string, number>();
+    const result: DaemonEvent[] = [];
+
+    for (const evt of events) {
+      if (evt.event === DAEMON_EVENTS.PTY_DATA) {
+        const p = evt.params as PtyDataEvent;
+        const existingIdx = ptyDataIndex.get(p.sessionId);
+        if (existingIdx !== undefined) {
+          const existing = result[existingIdx].params as PtyDataEvent;
+          result[existingIdx] = {
+            event: DAEMON_EVENTS.PTY_DATA,
+            params: { sessionId: p.sessionId, data: existing.data + p.data },
+          };
+        } else {
+          ptyDataIndex.set(p.sessionId, result.length);
+          result.push({
+            event: DAEMON_EVENTS.PTY_DATA,
+            params: { sessionId: p.sessionId, data: p.data },
+          });
+        }
+      } else {
+        result.push(evt);
+      }
+    }
+
+    return result;
   }
 
   private safeWrite(client: ClientConnection, data: string): void {
