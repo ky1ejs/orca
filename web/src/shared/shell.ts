@@ -33,13 +33,14 @@ export function enrichPathFromLoginShell(): void {
 
   try {
     const shell = getDefaultShell();
-    const result = execSync(`${shell} -lc 'echo __PATH__$PATH__PATH__'`, {
+    // `printenv PATH` outputs colon-separated PATH in all shells including fish,
+    // where `echo $PATH` would output space-separated entries.
+    const result = execSync(`${shell} -lc 'printenv PATH'`, {
       encoding: 'utf-8',
       timeout: 5000,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    const match = result.match(/__PATH__(.+)__PATH__/);
-    const loginPath = match?.[1]?.trim();
+    const loginPath = result.trim();
     if (!loginPath) return;
 
     const existing = new Set((process.env.PATH ?? '').split(':'));

@@ -29,6 +29,21 @@ function TestNavigationConsumer() {
       >
         Go to Task
       </button>
+      <button onClick={() => navigate({ view: 'my-tasks' })}>Go to My Tasks</button>
+      <button
+        onClick={() =>
+          navigate({
+            view: 'task',
+            id: 't2',
+            projectId: 'p1',
+            projectName: 'Project One',
+            taskName: 'Task Two',
+            fromView: 'my-tasks',
+          })
+        }
+      >
+        Go to Task from My Tasks
+      </button>
       <button onClick={goToParent}>Go to Parent</button>
     </div>
   );
@@ -140,5 +155,40 @@ describe('NavigationProvider', () => {
       screen.getByText('Go to Parent').click();
     });
     expect(screen.getByTestId('view')).toHaveTextContent('initiatives');
+  });
+
+  it('navigates to my-tasks view', () => {
+    render(
+      <NavigationProvider>
+        <TestNavigationConsumer />
+      </NavigationProvider>,
+    );
+
+    act(() => {
+      screen.getByText('Go to My Tasks').click();
+    });
+
+    expect(screen.getByTestId('view')).toHaveTextContent('my-tasks');
+    expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('no');
+  });
+
+  it('goes to my-tasks from task with fromView', () => {
+    render(
+      <NavigationProvider>
+        <TestNavigationConsumer />
+      </NavigationProvider>,
+    );
+
+    act(() => {
+      screen.getByText('Go to Task from My Tasks').click();
+    });
+    expect(screen.getByTestId('view')).toHaveTextContent('task');
+    expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('yes');
+
+    act(() => {
+      screen.getByText('Go to Parent').click();
+    });
+    expect(screen.getByTestId('view')).toHaveTextContent('my-tasks');
+    expect(screen.getByTestId('can-go-to-parent')).toHaveTextContent('no');
   });
 });

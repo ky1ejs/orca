@@ -1,47 +1,28 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
-import { iconSize } from '../../tokens/icon-size.js';
-import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
+import { ChevronRight, ClipboardList } from 'lucide-react';
+import { iconSize, iconStroke } from '../../tokens/icon-size.js';
+import { TaskStatus } from '../../graphql/__generated__/generated.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { PriorityIcon } from '../shared/PriorityIcon.js';
-import { formatRelativeDate } from '../../utils/formatRelativeDate.js';
-import { TaskTableInlineCreate } from './TaskTableInlineCreate.js';
-import { EmptyTaskList } from '../layout/EmptyState.js';
 import { PullRequestIndicator } from './PullRequestIndicator.js';
+import { EmptyState } from '../layout/EmptyState.js';
+import { useMyTasks, type MyTask } from '../../hooks/useMyTasks.js';
+import { useNavigation } from '../../navigation/context.js';
 import { STATUS_ORDER, STATUS_LABELS, groupTasksByStatus } from '../../utils/task-status.js';
 
-interface TaskSummary {
-  id: string;
-  displayId: string;
-  title: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assignee?: { id: string; name: string } | null;
-  labels: { id: string; name: string; color: string }[];
-  pullRequestCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TaskTableProps {
-  projectId: string;
-  tasks: TaskSummary[];
-  onTaskClick: (taskId: string) => void;
-}
-
-export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
+export function MyTasksView() {
+  const { tasks, count } = useMyTasks();
+  const { navigate } = useNavigation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     [TaskStatus.Done]: true,
   });
-  const [inlineCreateStatus, setInlineCreateStatus] = useState<TaskStatus | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const grouped = groupTasksByStatus(tasks);
+  const grouped = useMemo(() => groupTasksByStatus(tasks), [tasks]);
 
-  // Build a flat list of visible task IDs for keyboard navigation
   const visibleTasks = useMemo(() => {
-    const result: TaskSummary[] = [];
+    const result: MyTask[] = [];
     for (const status of STATUS_ORDER) {
       if (!collapsed[status]) {
         result.push(...grouped[status]);
@@ -54,14 +35,26 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
     setCollapsed((prev) => ({ ...prev, [status]: !prev[status] }));
   };
 
+  const handleTaskClick = useCallback(
+    (task: MyTask) => {
+      navigate({
+        view: 'task',
+        id: task.id,
+        projectId: task.projectId,
+        projectName: task.projectName,
+        taskName: task.title,
+        fromView: 'my-tasks',
+      });
+    },
+    [navigate],
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // Don't intercept keys when typing in an input/textarea/contenteditable
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
-
       if (visibleTasks.length === 0) return;
 
       switch (e.key) {
@@ -80,7 +73,7 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
         case 'Enter': {
           e.preventDefault();
           if (focusedIndex >= 0 && focusedIndex < visibleTasks.length) {
-            onTaskClick(visibleTasks[focusedIndex].id);
+            handleTaskClick(visibleTasks[focusedIndex]);
           }
           break;
         }
@@ -92,7 +85,7 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
         }
       }
     },
-    [visibleTasks, focusedIndex, onTaskClick],
+    [visibleTasks, focusedIndex, handleTaskClick],
   );
 
   const handleTableFocus = () => {
@@ -101,80 +94,78 @@ export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
     }
   };
 
-  if (tasks.length === 0 && !inlineCreateStatus) {
-    return <EmptyTaskList onCreateTask={() => setInlineCreateStatus(TaskStatus.Todo)} />;
+  if (count === 0) {
+    return (
+      <div className="px-6">
+        <h1 className="text-heading-lg font-semibold text-fg mb-6">My Tasks</h1>
+        <EmptyState
+          icon={<ClipboardList className={iconSize.lg} strokeWidth={iconStroke.lg} />}
+          title="No tasks assigned to you"
+          description="Tasks assigned to you will appear here."
+        />
+      </div>
+    );
   }
 
   return (
-    <div
-      ref={tableRef}
-      role="grid"
-      aria-label="Tasks"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onFocus={handleTableFocus}
-      className="outline-none"
-    >
-      {STATUS_ORDER.map((status) => {
-        const groupTasks = grouped[status];
-        const isCollapsed = !!collapsed[status];
+    <div className="px-6">
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-heading-lg font-semibold text-fg">My Tasks</h1>
+        <span className="text-label-sm text-fg-faint bg-surface-inset rounded-full px-2 py-0.5">
+          {count}
+        </span>
+      </div>
+      <div
+        ref={tableRef}
+        role="grid"
+        aria-label="My Tasks"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onFocus={handleTableFocus}
+        className="outline-none"
+      >
+        {STATUS_ORDER.map((status) => {
+          const groupTasks = grouped[status];
+          const isCollapsed = !!collapsed[status];
 
-        return (
-          <TaskTableGroup
-            key={status}
-            status={status}
-            tasks={groupTasks}
-            isCollapsed={isCollapsed}
-            onToggleCollapse={() => toggleCollapse(status)}
-            onTaskClick={onTaskClick}
-            onAddTask={() => setInlineCreateStatus(status)}
-            focusedTaskId={
-              focusedIndex >= 0 && focusedIndex < visibleTasks.length
-                ? visibleTasks[focusedIndex].id
-                : null
-            }
-            inlineCreate={
-              inlineCreateStatus === status ? (
-                <TaskTableInlineCreate
-                  projectId={projectId}
-                  status={status}
-                  onClose={() => setInlineCreateStatus(null)}
-                />
-              ) : null
-            }
-          />
-        );
-      })}
+          return (
+            <MyTasksGroup
+              key={status}
+              status={status}
+              tasks={groupTasks}
+              isCollapsed={isCollapsed}
+              onToggleCollapse={() => toggleCollapse(status)}
+              onTaskClick={handleTaskClick}
+              focusedTaskId={
+                focusedIndex >= 0 && focusedIndex < visibleTasks.length
+                  ? visibleTasks[focusedIndex].id
+                  : null
+              }
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// --- Unexported sub-components ---
-
-interface TaskTableGroupProps {
-  status: TaskStatus;
-  tasks: TaskSummary[];
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
-  onTaskClick: (taskId: string) => void;
-  onAddTask: () => void;
-  focusedTaskId: string | null;
-  inlineCreate: React.ReactNode;
-}
-
-function TaskTableGroup({
+function MyTasksGroup({
   status,
   tasks,
   isCollapsed,
   onToggleCollapse,
   onTaskClick,
-  onAddTask,
   focusedTaskId,
-  inlineCreate,
-}: TaskTableGroupProps) {
+}: {
+  status: TaskStatus;
+  tasks: MyTask[];
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  onTaskClick: (task: MyTask) => void;
+  focusedTaskId: string | null;
+}) {
   return (
     <div>
-      {/* Group Header */}
       <div
         role="row"
         aria-expanded={!isCollapsed}
@@ -189,32 +180,18 @@ function TaskTableGroup({
         <StatusIcon status={status} className={`${iconSize.sm} mr-2`} />
         <span className="text-fg-muted text-body-sm font-medium">{STATUS_LABELS[status]}</span>
         <span className="text-fg-faint text-code-sm font-mono ml-2">{tasks.length}</span>
-        <div className="flex-1" />
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddTask();
-          }}
-          className="opacity-0 group-hover:opacity-100 text-fg-faint hover:text-fg-muted text-body-sm transition-opacity"
-          aria-label={`Add task to ${STATUS_LABELS[status]}`}
-        >
-          <Plus className={iconSize.sm} />
-        </button>
       </div>
-
-      {/* Collapsible content using grid-template-rows */}
       <div
         className="grid transition-[grid-template-rows] duration-150 ease-in-out"
         style={{ gridTemplateRows: isCollapsed ? '0fr' : '1fr' }}
       >
         <div className="overflow-hidden">
-          {inlineCreate}
           {tasks.map((task) => (
-            <TaskTableRow
+            <MyTaskRow
               key={task.id}
               task={task}
               isFocused={task.id === focusedTaskId}
-              onClick={() => onTaskClick(task.id)}
+              onClick={() => onTaskClick(task)}
             />
           ))}
         </div>
@@ -223,13 +200,15 @@ function TaskTableGroup({
   );
 }
 
-interface TaskTableRowProps {
-  task: TaskSummary;
+function MyTaskRow({
+  task,
+  isFocused,
+  onClick,
+}: {
+  task: MyTask;
   isFocused: boolean;
   onClick: () => void;
-}
-
-function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
+}) {
   return (
     <div
       role="row"
@@ -261,21 +240,18 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
           />
         ))}
       </div>
+      {task.projectName && (
+        <div role="gridcell" className="flex-shrink-0">
+          <span className="text-fg-faint text-label-xs bg-surface-inset rounded px-1.5 py-0.5">
+            {task.projectName}
+          </span>
+        </div>
+      )}
       {task.pullRequestCount != null && task.pullRequestCount > 0 && (
         <div role="gridcell" className="flex-shrink-0">
           <PullRequestIndicator count={task.pullRequestCount} />
         </div>
       )}
-      {task.assignee && (
-        <div role="gridcell" className="flex-shrink-0 mr-2">
-          <span className="text-fg-muted text-label-sm" title={task.assignee.name}>
-            {task.assignee.name}
-          </span>
-        </div>
-      )}
-      <div role="gridcell" className="flex-shrink-0">
-        <span className="text-fg-faint text-label-sm">{formatRelativeDate(task.updatedAt)}</span>
-      </div>
     </div>
   );
 }

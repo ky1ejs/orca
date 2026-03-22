@@ -6,6 +6,7 @@ type ViewType =
   | 'projects'
   | 'project'
   | 'task'
+  | 'my-tasks'
   | 'members'
   | 'invitations'
   | 'settings';
@@ -16,6 +17,7 @@ interface NavigationState {
   projectId?: string;
   projectName?: string;
   taskName?: string;
+  fromView?: 'my-tasks';
 }
 
 interface NavigationContextValue {
@@ -47,6 +49,9 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setCurrent((prev) => {
       switch (prev.view) {
         case 'task':
+          if (prev.fromView === 'my-tasks') {
+            return { view: 'my-tasks' as const };
+          }
           return prev.projectId
             ? { view: 'project' as const, id: prev.projectId, projectName: prev.projectName }
             : { view: 'initiatives' as const };

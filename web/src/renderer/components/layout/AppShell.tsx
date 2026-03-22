@@ -9,6 +9,7 @@ import { InitiativeDetail } from '../initiatives/InitiativeDetail.js';
 import { ProjectList } from '../projects/ProjectList.js';
 import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
+import { MyTasksView } from '../tasks/MyTasksView.js';
 import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
 import { useWorkspaceBySlug, useTask } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -43,6 +44,8 @@ function MainContent({ sessions, refreshSessions }: MainContentProps) {
       return current.id ? <InitiativeDetail initiativeId={current.id} /> : <InitiativeList />;
     case 'projects':
       return <ProjectList />;
+    case 'my-tasks':
+      return <MyTasksView />;
     case 'project':
       return current.id ? <ProjectDetail projectId={current.id} /> : <InitiativeList />;
     case 'task':

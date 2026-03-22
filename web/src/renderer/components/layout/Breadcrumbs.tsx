@@ -23,11 +23,22 @@ export function Breadcrumbs() {
       segments.push({ label: current.projectName ?? 'Project' });
       break;
 
+    case 'my-tasks':
+      segments.push({ label: 'My Tasks' });
+      break;
+
     case 'task':
-      segments.push({
-        label: 'Projects',
-        onClick: () => navigate({ view: 'projects' }),
-      });
+      if (current.fromView === 'my-tasks') {
+        segments.push({
+          label: 'My Tasks',
+          onClick: () => navigate({ view: 'my-tasks' }),
+        });
+      } else {
+        segments.push({
+          label: 'Projects',
+          onClick: () => navigate({ view: 'projects' }),
+        });
+      }
       if (current.projectId) {
         segments.push({
           label: current.projectName ?? 'Project',
