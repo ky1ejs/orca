@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Target,
+  User,
 } from 'lucide-react';
 import {
   useWorkspaceBySlug,
@@ -17,6 +18,7 @@ import {
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useMyTasks } from '../../hooks/useMyTasks.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { SidebarSkeleton } from './Skeleton.js';
 import { WorkspaceSwitcher } from '../workspace/WorkspaceSwitcher.js';
@@ -189,6 +191,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const standaloneProjects = allProjects.filter((p) => !p.initiativeId);
   const inboxTasks = data?.workspace?.tasks ?? [];
   const activeTaskId = current.view === 'task' ? current.id : undefined;
+  const { count: myTaskCount } = useMyTasks();
   const activeTerminals = useActiveTerminals(allProjects, inboxTasks);
   const activeSessionIds = useSessionActivity();
 
@@ -252,6 +255,27 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
       <WorkspaceSwitcher />
       <ActiveTerminals entries={activeTerminals} activeSessionIds={activeSessionIds} />
       <nav className="flex-1 p-2 overflow-y-auto min-h-0">
+        <div className="mb-2">
+          <button
+            onClick={() => navigate({ view: 'my-tasks' })}
+            className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors flex items-center justify-between ${
+              current.view === 'my-tasks'
+                ? 'bg-surface-inset text-fg'
+                : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+            }`}
+            data-testid="sidebar-my-tasks-btn"
+          >
+            <span className="flex items-center gap-1.5">
+              <User className={iconSize.sm} />
+              My Tasks
+            </span>
+            {myTaskCount > 0 && (
+              <span className="text-label-xs text-fg-faint bg-surface-inset rounded-full px-1.5 py-0.5">
+                {myTaskCount}
+              </span>
+            )}
+          </button>
+        </div>
         {inboxTasks.length > 0 && (
           <div className="mb-2">
             <button

@@ -159,4 +159,55 @@ describe('Breadcrumbs', () => {
 
     expect(screen.getByLabelText('Breadcrumb')).toBeInTheDocument();
   });
+
+  it('renders "My Tasks" on my-tasks view', async () => {
+    mockCurrent = { view: 'my-tasks' };
+    mockCanGoToParent = false;
+    await importAndRender();
+
+    expect(screen.getByText('My Tasks')).toBeInTheDocument();
+    expect(screen.getByText('My Tasks').tagName).toBe('SPAN');
+    expect(screen.getByText('My Tasks')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('renders "My Tasks" breadcrumb trail when task has fromView my-tasks', async () => {
+    mockCurrent = {
+      view: 'task',
+      id: 't1',
+      projectId: 'p1',
+      projectName: 'My Project',
+      taskName: 'Fix Bug',
+      fromView: 'my-tasks',
+    };
+    mockCanGoToParent = true;
+    await importAndRender();
+
+    const myTasksButton = screen.getByText('My Tasks');
+    expect(myTasksButton.tagName).toBe('BUTTON');
+
+    const projectButton = screen.getByText('My Project');
+    expect(projectButton.tagName).toBe('BUTTON');
+
+    const taskName = screen.getByText('Fix Bug');
+    expect(taskName.tagName).toBe('SPAN');
+    expect(taskName).toHaveAttribute('aria-current', 'page');
+
+    fireEvent.click(myTasksButton);
+    expect(mockNavigate).toHaveBeenCalledWith({ view: 'my-tasks' });
+  });
+
+  it('renders "My Tasks > Task" when from my-tasks with no project', async () => {
+    mockCurrent = {
+      view: 'task',
+      id: 't1',
+      taskName: 'Inbox Task',
+      fromView: 'my-tasks',
+    };
+    mockCanGoToParent = true;
+    await importAndRender();
+
+    expect(screen.getByText('My Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Inbox Task')).toBeInTheDocument();
+    expect(screen.queryByText('Projects')).not.toBeInTheDocument();
+  });
 });

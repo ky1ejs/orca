@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Search, Folder, Target, Plus, Settings, Users, Keyboard } from 'lucide-react';
+import { Search, Folder, Target, Plus, Settings, Users, User, Keyboard } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { useNavigation } from '../../navigation/context.js';
 import {
@@ -87,6 +87,9 @@ export function CommandPalette({
               break;
             case 'create-project':
               navigate({ view: 'projects' });
+              break;
+            case 'my-tasks':
+              navigate({ view: 'my-tasks' });
               break;
             case 'settings':
               navigate({ view: 'settings' });
@@ -264,6 +267,8 @@ function ActionIcon({ actionId }: { actionId: ActionId }) {
     case 'create-task':
     case 'create-project':
       return <Plus className={`${iconSize.sm} text-fg-muted`} />;
+    case 'my-tasks':
+      return <User className={`${iconSize.sm} text-fg-muted`} />;
     case 'settings':
       return <Settings className={`${iconSize.sm} text-fg-muted`} />;
     case 'members':

@@ -23,6 +23,7 @@ export interface InitiativeItem extends SearchableItem {
 export type ActionId =
   | 'create-task'
   | 'create-project'
+  | 'my-tasks'
   | 'settings'
   | 'members'
   | 'keyboard-shortcuts';
@@ -57,6 +58,13 @@ const staticActions: ActionItem[] = [
     actionId: 'create-project',
     label: 'Create Project',
     searchFields: ['Create Project', 'new project'],
+  },
+  {
+    id: 'action:my-tasks',
+    type: 'action',
+    actionId: 'my-tasks',
+    label: 'Go to My Tasks',
+    searchFields: ['Go to My Tasks', 'assigned', 'my tasks'],
   },
   {
     id: 'action:settings',
