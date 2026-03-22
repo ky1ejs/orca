@@ -11,6 +11,7 @@ export interface McpToolsDeps {
   backendUrl: string;
   getToken: () => string | null;
   log?: McpToolsLog;
+  sessionId?: string;
 }
 
 interface ToolError {
@@ -32,21 +33,24 @@ function resolveToken(getToken: () => string | null): string | ToolError {
   return token;
 }
 
-function resolveSession(
-  sessionId: string,
-  getToken: () => string | null,
-  log?: McpToolsLog,
-): { taskId: string; token: string } | ToolError {
+function resolveSession(deps: McpToolsDeps): { taskId: string; token: string } | ToolError {
+  const sessionId = deps.sessionId;
+  if (!sessionId) {
+    deps.log?.warn('MCP resolveSession: no session ID provided via header');
+    return toolError(
+      'No session ID provided. Ensure the X-Orca-Session-Id header is set (usually sourced from ORCA_SESSION_ID in the MCP settings).',
+    );
+  }
   const session = getSession(sessionId);
   if (!session) {
-    log?.warn(`MCP resolveSession: session not found (sessionId=${sessionId})`);
+    deps.log?.warn(`MCP resolveSession: session not found (sessionId=${sessionId})`);
     return toolError(`Session not found: ${sessionId}`);
   }
   if (!session.task_id) {
-    log?.warn(`MCP resolveSession: session has no task_id (sessionId=${sessionId})`);
+    deps.log?.warn(`MCP resolveSession: session has no task_id (sessionId=${sessionId})`);
     return toolError(`No task is associated with session: ${sessionId}`);
   }
-  const token = resolveToken(getToken);
+  const token = resolveToken(deps.getToken);
   if (typeof token !== 'string') return token;
   return { taskId: session.task_id, token };
 }
@@ -81,12 +85,10 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
     'get_current_task',
     {
       description: 'Get details about the current Orca task assigned to this terminal session.',
-      inputSchema: {
-        sessionId: z.string().describe('The ORCA_SESSION_ID from the environment'),
-      },
+      inputSchema: {},
     },
-    async ({ sessionId }) => {
-      const resolved = resolveSession(sessionId, deps.getToken, deps.log);
+    async () => {
+      const resolved = resolveSession(deps);
       if ('isError' in resolved) return resolved;
 
       const query = `
@@ -128,14 +130,13 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
     {
       description: 'Update the status of the current Orca task.',
       inputSchema: {
-        sessionId: z.string().describe('The ORCA_SESSION_ID from the environment'),
         status: z
           .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
           .describe('The new task status'),
       },
     },
-    async ({ sessionId, status }) => {
-      const resolved = resolveSession(sessionId, deps.getToken, deps.log);
+    async ({ status }) => {
+      const resolved = resolveSession(deps);
       if ('isError' in resolved) return resolved;
 
       const mutation = `

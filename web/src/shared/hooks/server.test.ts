@@ -1,5 +1,14 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { HookServer, type HookEvent } from './server.js';
+
+vi.mock('../../daemon/sessions.js', () => ({
+  getSession: vi.fn(),
+}));
+
+import { getSession } from '../../daemon/sessions.js';
+const mockGetSession = vi.mocked(getSession);
 
 describe('HookServer', () => {
   let server: HookServer;
@@ -129,5 +138,72 @@ describe('HookServer', () => {
 
     const events = await eventsPromise;
     expect(events).toHaveLength(0);
+  });
+});
+
+describe('HookServer MCP endpoint', () => {
+  let hookServer: HookServer;
+  let port: number;
+
+  beforeEach(async () => {
+    hookServer = new HookServer({
+      mcpDeps: {
+        backendUrl: 'http://localhost:0',
+        getToken: () => 'test-token',
+      },
+    });
+    await hookServer.start();
+    port = hookServer.getPort()!;
+  });
+
+  afterEach(async () => {
+    await hookServer.stop();
+    vi.restoreAllMocks();
+  });
+
+  async function callToolWithHeader(
+    toolName: string,
+    args: Record<string, unknown>,
+    sessionId?: string,
+  ) {
+    const client = new Client({ name: 'test', version: '1.0.0' });
+    const headers: Record<string, string> = {};
+    if (sessionId) {
+      headers['X-Orca-Session-Id'] = sessionId;
+    }
+    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), {
+      requestInit: { headers },
+    });
+    await client.connect(transport);
+    const result = await client.callTool({ name: toolName, arguments: args });
+    await client.close();
+    return result as { content: Array<{ type: string; text: string }>; isError?: boolean };
+  }
+
+  it('passes X-Orca-Session-Id header to MCP tools as sessionId', async () => {
+    mockGetSession.mockReturnValue({
+      id: 'sess-from-header',
+      task_id: 'task-uuid',
+      pid: 1234,
+      status: 'running',
+      working_directory: '/tmp',
+      started_at: new Date().toISOString(),
+      stopped_at: null,
+      created_at: new Date().toISOString(),
+    });
+
+    const result = await callToolWithHeader('get_current_task', {}, 'sess-from-header');
+
+    expect(mockGetSession).toHaveBeenCalledWith('sess-from-header');
+    // Backend is unreachable (port 0), but session was resolved — confirms header was forwarded
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Failed to reach Orca backend');
+  });
+
+  it('returns error when X-Orca-Session-Id header is missing', async () => {
+    const result = await callToolWithHeader('get_current_task', {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('No session ID provided');
   });
 });
