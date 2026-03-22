@@ -62,6 +62,7 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
       },
     },
     fetching: false,
+    refetch: vi.fn(),
   }),
 }));
 

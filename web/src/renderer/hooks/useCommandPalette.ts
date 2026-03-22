@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useWorkspaceBySlug } from './useGraphQL.js';
 import { useWorkspace } from '../workspace/context.js';
 import { fuzzyMatch, type SearchableItem } from '../utils/fuzzyMatch.js';
@@ -90,9 +90,17 @@ const staticActions: ActionItem[] = [
   },
 ];
 
-export function useCommandPalette(query: string): PaletteResults {
+export function useCommandPalette(query: string, isOpen: boolean): PaletteResults {
   const { currentWorkspace } = useWorkspace();
-  const { data } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const { data, refetch } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+
+  // Refetch workspace data when the palette opens so tasks created outside
+  // the urql pipeline (e.g. via MCP / CLI) are picked up immediately.
+  useEffect(() => {
+    if (isOpen) {
+      refetch({ requestPolicy: 'network-only' });
+    }
+  }, [isOpen, refetch]);
 
   const allItems = useMemo((): PaletteItem[] => {
     const workspace = data?.workspace;

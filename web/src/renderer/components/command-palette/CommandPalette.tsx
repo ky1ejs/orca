@@ -29,7 +29,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const { navigate } = useNavigation();
-  const results = useCommandPalette(query);
+  const results = useCommandPalette(query, isOpen);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
