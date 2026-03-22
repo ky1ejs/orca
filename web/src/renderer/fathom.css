@@ -58,6 +58,12 @@
   --accent-muted: #252525;
   --accent-muted-hover: #363635;
 
+  /* Claude — branded agent plan mode */
+  --claude: #d4a27f;
+  --claude-hover: #c4926f;
+  --claude-muted: #2a1f17;
+  --on-claude: #161616;
+
   /* Semantic colors — text (readable on their muted bg in both modes) */
   --success-text: #4ade80;
   --error-text: #f87171;
@@ -143,6 +149,12 @@
     --accent-muted: #e6e6e4;
     --accent-muted-hover: #c9c9c7;
 
+    /* Claude — branded agent plan mode */
+    --claude: #c4926f;
+    --claude-hover: #b4825f;
+    --claude-muted: #fdf0e8;
+    --on-claude: #ffffff;
+
     /* Semantic colors — darker text for light backgrounds */
     --success-text: #15803d;
     --error-text: #b91c1c;
@@ -227,6 +239,12 @@
   --on-accent: #f5f5f4;
   --accent-muted: #e6e6e4;
   --accent-muted-hover: #c9c9c7;
+
+  /* Claude — branded agent plan mode */
+  --claude: #c4926f;
+  --claude-hover: #b4825f;
+  --claude-muted: #fdf0e8;
+  --on-claude: #ffffff;
 
   /* Semantic colors — darker text for light backgrounds */
   --success-text: #15803d;
@@ -339,6 +357,12 @@
 
   /* Subtle accent for secondary interactive elements */
   --color-accent-muted: var(--accent-muted);
+
+  /* Claude — branded agent plan mode */
+  --color-claude: var(--claude);
+  --color-claude-hover: var(--claude-hover);
+  --color-claude-muted: var(--claude-muted);
+  --color-on-claude: var(--on-claude);
   --color-accent-muted-hover: var(--accent-muted-hover);
 
   /* -----------------------------------------------------------

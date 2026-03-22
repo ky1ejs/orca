@@ -122,6 +122,10 @@ vi.mock('../labels/LabelPicker.js', () => ({
     restart: vi.fn().mockResolvedValue({ success: true }),
     status: vi.fn(),
   },
+  settings: {
+    getAll: vi.fn().mockResolvedValue({}),
+    set: vi.fn().mockResolvedValue(undefined),
+  },
 };
 
 beforeEach(() => {
@@ -146,8 +150,11 @@ afterEach(cleanup);
 // Dynamic import to pick up the mocks
 async function importAndRender(taskId = 'task-1') {
   const { TaskDetail } = await import('./TaskDetail.js');
+  const { PreferencesProvider } = await import('../../preferences/context.js');
   return render(
-    <TaskDetail taskId={taskId} sessions={mockSessions} refreshSessions={mockRefreshSessions} />,
+    <PreferencesProvider>
+      <TaskDetail taskId={taskId} sessions={mockSessions} refreshSessions={mockRefreshSessions} />
+    </PreferencesProvider>,
   );
 }
 
