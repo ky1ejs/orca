@@ -42,10 +42,7 @@ export class HeartbeatMonitor {
 
     const timeout = rejectAfter(HEARTBEAT_TIMEOUT_MS);
     try {
-      await Promise.race([
-        this.client.request(DAEMON_METHODS.DAEMON_PING),
-        timeout.promise,
-      ]);
+      await Promise.race([this.client.request(DAEMON_METHODS.DAEMON_PING), timeout.promise]);
       this.consecutiveFailures = 0;
     } catch {
       this.consecutiveFailures++;
