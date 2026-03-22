@@ -30,8 +30,8 @@ When you've finished a coding pass, use the `/simplify` skill to refactor and si
 ### Commands
 
 - Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
-- Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down.
-- Avoid using `git -C` which also leads to permissions requests. Always `cd` into the correct directory first, then run git commands.
+- Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down. Instead, cd into the directory first and then run git commands in separate calls.
+- Alternatively, you can use `git -C path/to/repo <command>` to run git commands without changing directories.
 
 ### Keep documentation up to date
 
