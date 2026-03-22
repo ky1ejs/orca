@@ -32,6 +32,7 @@ import {
 } from '../shared/daemon-protocol.js';
 import { ensureGlobalMcpConfig, removeGlobalMcpConfig } from '../shared/hooks/settings.js';
 import { OutputPersistence } from './output-persistence.js';
+import { enrichPathFromLoginShell } from '../shared/shell.js';
 import { logger } from './logger.js';
 
 // ── Parse args ──────────────────────────────────────────────────────────
@@ -69,6 +70,11 @@ let shuttingDown = false;
 async function main(): Promise<void> {
   logger.info(`Daemon starting (version=${version}, pid=${process.pid})`);
   logger.info(`DB: ${dbPath}, Socket: ${socketPath}, Migrations: ${migrationsFolder}`);
+
+  // Enrich PATH from login shell — ELECTRON_RUN_AS_NODE gives us a minimal
+  // PATH (/usr/bin:/bin) that misses Homebrew, bun, etc.
+  enrichPathFromLoginShell();
+  logger.info(`PATH: ${(process.env.PATH ?? '').split(':').length} entries`);
 
   // Ensure directories exist
   mkdirSync(dirname(dbPath), { recursive: true });
