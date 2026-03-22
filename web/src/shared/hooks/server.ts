@@ -146,6 +146,11 @@ export class HookServer extends EventEmitter<HookServerEvents> {
   }
 
   private async handleMcpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const sessionIdHeader = req.headers['x-orca-session-id'];
+    this.mcpDeps?.log?.debug(
+      `MCP request received (sessionId header=${sessionIdHeader ?? 'none'})`,
+    );
+
     if (req.method !== 'POST') {
       res.writeHead(405);
       res.end(
