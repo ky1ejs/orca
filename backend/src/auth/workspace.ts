@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import { pipe, filter } from 'graphql-yoga';
 import type {
   PrismaClient,
   Workspace,
@@ -205,4 +206,28 @@ export async function requireTaskAccess(
   }
 
   return { task, role: membership.role };
+}
+
+/**
+ * Wraps a pubsub subscription iterator with workspace-scoped filtering.
+ * Silently drops events that don't match the workspace or where the user
+ * has lost membership, avoiding the non-nullable GraphQL error that occurs
+ * when a resolve function returns undefined for a non-null return type.
+ */
+export function workspaceScopedSubscription<T extends { workspaceId: string }>(
+  subscription: AsyncIterable<T>,
+  prisma: PrismaClient,
+  workspaceId: string,
+  userId: string,
+) {
+  return pipe(
+    subscription,
+    filter(async (payload: T) => {
+      if (payload.workspaceId !== workspaceId) return false;
+      const membership = await prisma.workspaceMembership.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId } },
+      });
+      return !!membership;
+    }),
+  );
 }
