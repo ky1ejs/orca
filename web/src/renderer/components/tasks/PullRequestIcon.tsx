@@ -2,8 +2,8 @@ import { GitPullRequest } from 'lucide-react';
 import { PullRequestStatus } from '../../graphql/__generated__/generated.js';
 
 const statusColorMap: Record<PullRequestStatus, string> = {
-  [PullRequestStatus.Merged]: 'text-accent',
-  [PullRequestStatus.Closed]: 'text-fg-muted',
+  [PullRequestStatus.Merged]: 'text-merged',
+  [PullRequestStatus.Closed]: 'text-error',
   [PullRequestStatus.Open]: 'text-success',
 };
 

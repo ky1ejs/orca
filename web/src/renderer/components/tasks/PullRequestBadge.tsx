@@ -7,11 +7,11 @@ const statusConfig: Record<PullRequestStatus, { label: string; className: string
   },
   [PullRequestStatus.Merged]: {
     label: 'Merged',
-    className: 'bg-accent-muted text-accent',
+    className: 'bg-merged-muted text-merged',
   },
   [PullRequestStatus.Closed]: {
     label: 'Closed',
-    className: 'bg-surface-hover text-fg-muted',
+    className: 'bg-error-muted text-error',
   },
 };
 

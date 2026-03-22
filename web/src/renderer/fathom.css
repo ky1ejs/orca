@@ -75,6 +75,10 @@
   --permission-muted: #28190b;
   --permission-dot: #fb923c;
 
+  /* Merged (purple) — PR merged state */
+  --merged-text: #a371f7;
+  --merged-muted: #1a0f28;
+
   /* Priority muted backgrounds */
   --priority-low-muted: #191919;
   --priority-medium-muted: #281e0b;
@@ -156,6 +160,10 @@
     --permission-muted: #ffedd5;
     --permission-dot: #ea580c;
 
+    /* Merged (purple) */
+    --merged-text: #8250df;
+    --merged-muted: #eddeff;
+
     /* Priority muted backgrounds */
     --priority-low-muted: #e6e6e4;
     --priority-medium-muted: #fef3c7;
@@ -236,6 +244,10 @@
   --permission-text: #c2410c;
   --permission-muted: #ffedd5;
   --permission-dot: #ea580c;
+
+  /* Merged (purple) */
+  --merged-text: #8250df;
+  --merged-muted: #eddeff;
 
   /* Priority muted backgrounds */
   --priority-low-muted: #e6e6e4;
@@ -343,6 +355,11 @@
    *   In Review   → warning (amber)
    *   Done        → success (green)
    *   Error       → error (red)
+   *
+   * Also used for PR status (GitHub colors):
+   *   Open   → success (green)
+   *   Merged → merged (purple)
+   *   Closed → error (red)
    * ----------------------------------------------------------- */
 
   /* Success — Done, confirmed, positive */
@@ -369,6 +386,10 @@
   --color-permission: var(--permission-text);
   --color-permission-muted: var(--permission-muted);
   --color-permission-dot: var(--permission-dot);
+
+  /* Merged — PR merged state (purple) */
+  --color-merged: var(--merged-text);
+  --color-merged-muted: var(--merged-muted);
 
   /* -----------------------------------------------------------
    * Priority Colors — Reserved for task priority levels
