@@ -253,14 +253,30 @@ describe('AgentTerminal', () => {
   it('intercepts Cmd+F to open search', () => {
     render(<AgentTerminal sessionId="test-session" />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
-    const cmdF = { type: 'keydown', key: 'f', metaKey: true, ctrlKey: false, shiftKey: false };
+    const cmdF = {
+      type: 'keydown',
+      key: 'f',
+      metaKey: true,
+      ctrlKey: false,
+      shiftKey: false,
+      preventDefault: vi.fn(),
+    };
     expect(handler(cmdF)).toBe(false);
+    expect(cmdF.preventDefault).toHaveBeenCalled();
   });
 
   it('intercepts Ctrl+F to open search', () => {
     render(<AgentTerminal sessionId="test-session" />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
-    const ctrlF = { type: 'keydown', key: 'f', metaKey: false, ctrlKey: true, shiftKey: false };
+    const ctrlF = {
+      type: 'keydown',
+      key: 'f',
+      metaKey: false,
+      ctrlKey: true,
+      shiftKey: false,
+      preventDefault: vi.fn(),
+    };
     expect(handler(ctrlF)).toBe(false);
+    expect(ctrlF.preventDefault).toHaveBeenCalled();
   });
 });

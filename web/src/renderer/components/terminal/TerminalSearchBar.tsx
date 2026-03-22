@@ -11,8 +11,6 @@ interface TerminalSearchBarProps {
 export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
   const [query, setQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
-  const caseSensitiveRef = useRef(caseSensitive);
-  caseSensitiveRef.current = caseSensitive;
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,17 +27,11 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
 
   useEffect(() => {
     if (query) {
-      searchAddon.findNext(query, { caseSensitive: caseSensitiveRef.current, incremental: true });
+      searchAddon.findNext(query, { caseSensitive, incremental: true });
     } else {
       searchAddon.clearDecorations();
     }
-  }, [searchAddon, query]);
-
-  const handleCaseToggle = () => {
-    const next = !caseSensitive;
-    setCaseSensitive(next);
-    if (query) searchAddon.findNext(query, { caseSensitive: next, incremental: true });
-  };
+  }, [searchAddon, query, caseSensitive]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -71,7 +63,7 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
       />
       <button
         data-testid="terminal-search-case-toggle"
-        onClick={handleCaseToggle}
+        onClick={() => setCaseSensitive((prev) => !prev)}
         className={`rounded p-0.5 transition-colors ${caseSensitive ? 'bg-accent text-on-accent' : 'text-fg-muted hover:text-fg'}`}
         title="Match Case"
       >

@@ -45,12 +45,10 @@ describe('TerminalSearchBar', () => {
   it('performs incremental search on input change', () => {
     const { getByTestId } = render(<TerminalSearchBar searchAddon={addon} onClose={onClose} />);
     fireEvent.change(getByTestId('terminal-search-input'), { target: { value: 'hello' } });
-    expect(addon.findNext).toHaveBeenCalledWith(
-      'hello',
-      expect.objectContaining({
-        incremental: true,
-      }),
-    );
+    expect(addon.findNext).toHaveBeenCalledWith('hello', {
+      caseSensitive: false,
+      incremental: true,
+    });
   });
 
   it('clears decorations when input is emptied', () => {

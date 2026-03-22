@@ -104,6 +104,7 @@ export function AgentTerminal({ sessionId }: AgentTerminalProps) {
         return false;
       }
       if (event.type === 'keydown' && event.key === 'f' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
         setSearchVisible(true);
         return false;
       }
