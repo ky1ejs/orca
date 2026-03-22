@@ -6,12 +6,12 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
-import type { ServerContext } from '../context.js';
 import type { PrismaClient } from '@prisma/client';
 import {
   requireInitiativeAccess,
   requireProjectAccess,
   requireWorkspaceAccess,
+  workspaceScopedSubscription,
 } from '../auth/workspace.js';
 
 async function validateInitiativeBelongsToWorkspace(
@@ -107,24 +107,14 @@ export const projectResolvers = {
     projectChanged: {
       subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
         await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
-        return context.pubsub.subscribe('projectChanged');
+        return workspaceScopedSubscription(
+          context.pubsub.subscribe('projectChanged'),
+          context.prisma,
+          args.workspaceId,
+          context.userId,
+        );
       },
-      resolve: async (payload: Project, args: { workspaceId: string }, context: ServerContext) => {
-        if (payload.workspaceId !== args.workspaceId) return undefined as never;
-
-        // Re-validate membership per event
-        const membership = await context.prisma.workspaceMembership.findUnique({
-          where: {
-            workspaceId_userId: {
-              workspaceId: args.workspaceId,
-              userId: context.userId,
-            },
-          },
-        });
-        if (!membership) return undefined as never;
-
-        return payload;
-      },
+      resolve: (payload: Project) => payload,
     },
   } satisfies Pick<SubscriptionResolvers, 'projectChanged'>,
   Project: {

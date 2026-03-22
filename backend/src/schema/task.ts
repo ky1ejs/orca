@@ -6,11 +6,11 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
-import type { ServerContext } from '../context.js';
 import {
   requireProjectAccess,
   requireTaskAccess,
   requireWorkspaceAccess,
+  workspaceScopedSubscription,
 } from '../auth/workspace.js';
 
 export const taskResolvers = {
@@ -181,24 +181,14 @@ export const taskResolvers = {
     taskChanged: {
       subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
         await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
-        return context.pubsub.subscribe('taskChanged');
+        return workspaceScopedSubscription(
+          context.pubsub.subscribe('taskChanged'),
+          context.prisma,
+          args.workspaceId,
+          context.userId,
+        );
       },
-      resolve: async (payload: Task, args: { workspaceId: string }, context: ServerContext) => {
-        if (payload.workspaceId !== args.workspaceId) return undefined as never;
-
-        // Re-validate membership per event
-        const membership = await context.prisma.workspaceMembership.findUnique({
-          where: {
-            workspaceId_userId: {
-              workspaceId: args.workspaceId,
-              userId: context.userId,
-            },
-          },
-        });
-        if (!membership) return undefined as never;
-
-        return payload;
-      },
+      resolve: (payload: Task) => payload,
     },
   } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {
