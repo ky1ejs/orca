@@ -160,6 +160,8 @@ export interface DaemonStatusResult {
   uptime: number;
   activeSessions: number;
   connectedClients: number;
+  /** Port the MCP/hook server is listening on, or null if not running. */
+  mcpServerPort: number | null;
 }
 
 export interface SessionsRestoreAllResult {

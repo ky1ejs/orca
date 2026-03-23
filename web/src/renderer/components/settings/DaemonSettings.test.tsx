@@ -38,6 +38,7 @@ const MOCK_STATUS = {
   uptime: 180120000, // 2d 2h 2m in milliseconds
   activeSessions: 3,
   connectedClients: 1,
+  mcpServerPort: 19820,
 };
 
 describe('DaemonSettings', () => {
