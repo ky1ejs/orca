@@ -3,9 +3,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 
 const mockFetch = vi.fn();
-globalThis.fetch = mockFetch;
 
 beforeEach(() => {
+  vi.stubGlobal('fetch', mockFetch);
   vi.useFakeTimers({ shouldAdvanceTime: true });
 });
 

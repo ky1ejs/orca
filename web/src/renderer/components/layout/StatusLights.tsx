@@ -13,14 +13,18 @@ function StatusDot({
   label: string;
   showLabel?: boolean;
 }) {
+  const statusText = connected ? 'Connected' : 'Disconnected';
   return (
     <span
       className="flex items-center gap-1"
-      title={`${label}: ${connected ? 'Connected' : 'Disconnected'}`}
+      title={`${label}: ${statusText}`}
+      role="status"
+      aria-label={`${label}: ${statusText}`}
     >
       <span
         className={`inline-block h-1.5 w-1.5 rounded-full ${connected ? 'bg-success' : 'bg-error'}`}
         data-testid={`status-dot-${label.toLowerCase()}`}
+        aria-hidden="true"
       />
       {showLabel && <span className="text-label-xs text-fg-faint">{label}</span>}
     </span>
