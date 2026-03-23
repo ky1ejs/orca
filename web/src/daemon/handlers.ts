@@ -54,6 +54,7 @@ interface HandlerDeps {
   setToken: (token: string | null) => void;
   getVersion: () => string;
   getUptime: () => number;
+  getMcpServerPort: () => number | null;
   shutdown: () => void;
 }
 
@@ -67,6 +68,7 @@ export function createHandler(deps: HandlerDeps) {
     setToken,
     getVersion,
     getUptime,
+    getMcpServerPort,
     shutdown,
   } = deps;
 
@@ -248,6 +250,7 @@ export function createHandler(deps: HandlerDeps) {
           uptime: getUptime(),
           activeSessions: ptyManager.activeCount,
           connectedClients: server.clientCount,
+          mcpServerPort: getMcpServerPort(),
         };
         return result;
       }

@@ -69,6 +69,7 @@ beforeEach(async () => {
     setToken: () => {},
     getVersion: () => version,
     getUptime: () => 1000,
+    getMcpServerPort: () => null,
     shutdown: () => {
       shutdownCalled = true;
     },

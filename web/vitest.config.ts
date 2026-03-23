@@ -6,5 +6,6 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
     __GIT_HASH__: JSON.stringify('test'),
+    __BACKEND_URL__: JSON.stringify('http://localhost:4000'),
   },
 });

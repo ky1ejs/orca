@@ -11,7 +11,7 @@ function invalidateAllWorkspaceQueries(cache: Cache) {
     });
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
 export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 const WS_GRAPHQL_URL = GRAPHQL_URL.replace(/^http/, 'ws');
 

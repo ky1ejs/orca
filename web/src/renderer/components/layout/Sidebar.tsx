@@ -28,6 +28,9 @@ import { useActiveTerminals, type ActiveTerminalEntry } from '../../hooks/useAct
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { SessionStatus } from '../../../shared/session-status.js';
 import { iconSize } from '../../tokens/icon-size.js';
+import { useDaemonStatus } from '../../hooks/useDaemonStatus.js';
+import { useBackendStatus } from '../../hooks/useBackendStatus.js';
+import { StatusLights, StatusLightsCollapsed } from './StatusLights.js';
 
 interface SidebarTask {
   id: string;
@@ -212,6 +215,9 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
     useFallback ? prevInboxTasksRef.current : inboxTasks,
   );
   const activeSessionIds = useSessionActivity();
+  const { connected: daemonConnected, status: daemonStatus } = useDaemonStatus();
+  const { connected: backendConnected } = useBackendStatus();
+  const mcpConnected = daemonConnected && daemonStatus?.mcpServerPort != null;
 
   const handleCloseActiveTerminal = useCallback(
     async (entry: ActiveTerminalEntry) => {
@@ -253,6 +259,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             </div>
           </div>
         )}
+        <div className="mt-auto">
+          <StatusLightsCollapsed
+            daemon={daemonConnected}
+            mcpServer={mcpConnected}
+            backend={backendConnected}
+          />
+        </div>
       </aside>
     );
   }
@@ -486,8 +499,15 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
             Sign out
           </button>
         </div>
-        <div className="px-3 py-2 border-t border-edge text-label-xs text-fg-faint">
-          v{__APP_VERSION__} ({__GIT_HASH__})
+        <div className="border-t border-edge">
+          <StatusLights
+            daemon={daemonConnected}
+            mcpServer={mcpConnected}
+            backend={backendConnected}
+          />
+          <div className="px-3 pb-2 text-label-xs text-fg-faint">
+            v{__APP_VERSION__} ({__GIT_HASH__})
+          </div>
         </div>
       </div>
     </aside>

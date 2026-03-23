@@ -257,6 +257,7 @@ async function main(): Promise<void> {
     },
     getVersion: () => version,
     getUptime: () => Date.now() - startTime,
+    getMcpServerPort: () => hookServerPort,
     shutdown,
   });
 
