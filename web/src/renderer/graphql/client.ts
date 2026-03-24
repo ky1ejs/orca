@@ -191,9 +191,9 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
           },
           // Subscription handlers intentionally empty — graphcache
           // normalizes subscription payloads into the cache automatically.
-          // Mutation handlers cover structural changes (create/delete/move)
-          // for the acting client; other clients pick up structural changes
-          // on their next natural query refetch.
+          // Mutation handlers cover structural create/delete for the acting
+          // client; other clients see field updates via normalization and
+          // pick up list-membership changes on their next query refetch.
           Subscription: {},
         },
       }),
