@@ -162,7 +162,8 @@ export async function handlePullRequestOpenedOrEdited(
         settings.autoInReviewOnPrOpen &&
         !pr.draft &&
         task.status !== TaskStatus.IN_REVIEW &&
-        task.status !== TaskStatus.DONE
+        task.status !== TaskStatus.DONE &&
+        task.status !== TaskStatus.CANCELLED
       ) {
         const oldStatus = task.status;
         const updated = await prisma.task.update({
@@ -208,7 +209,7 @@ export async function handlePullRequestClosed(
       });
       if (openPrs === 0) {
         const task = await prisma.task.findUnique({ where: { id: prRecord.taskId } });
-        if (task && task.status !== TaskStatus.DONE) {
+        if (task && task.status !== TaskStatus.DONE && task.status !== TaskStatus.CANCELLED) {
           const oldStatus = task.status;
           const updated = await prisma.task.update({
             where: { id: prRecord.taskId },

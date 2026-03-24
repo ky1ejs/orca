@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Pencil, Archive, Plus, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Plus, X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   useInitiative,
@@ -145,8 +145,8 @@ export function InitiativeDetail({ initiativeId }: InitiativeDetailProps) {
                 onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Archive className={`${iconSize.sm} mr-1`} />
-                Archive
+                <Trash2 className={`${iconSize.sm} mr-1`} />
+                Delete
               </button>
             </div>
           </div>

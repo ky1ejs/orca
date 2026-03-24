@@ -39,4 +39,12 @@ describe('TaskStatusBadge', () => {
     expect(badge.className).toContain('bg-success-muted');
     expect(badge.className).toContain('text-success');
   });
+
+  it('renders "Cancelled" with red styling', () => {
+    render(<TaskStatusBadge status={TaskStatus.Cancelled} />);
+    const badge = screen.getByTestId('task-status-badge');
+    expect(badge).toHaveTextContent('Cancelled');
+    expect(badge.className).toContain('bg-error-muted');
+    expect(badge.className).toContain('text-error');
+  });
 });

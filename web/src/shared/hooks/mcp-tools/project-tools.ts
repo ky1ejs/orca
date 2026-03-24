@@ -99,11 +99,11 @@ export function registerProjectTools(server: McpServer, deps: McpToolsDeps): voi
   );
 
   server.registerTool(
-    'archive_project',
+    'delete_project',
     {
-      description: 'Archive a project by ID.',
+      description: 'Delete a project by ID.',
       inputSchema: {
-        id: z.string().describe('The project ID to archive'),
+        id: z.string().describe('The project ID to delete'),
       },
     },
     async ({ id }) => {
@@ -122,9 +122,7 @@ export function registerProjectTools(server: McpServer, deps: McpToolsDeps): voi
         const json = await graphqlRequest(deps.backendUrl, token, mutation, { id });
 
         if (json.errors || !json.data?.archiveProject) {
-          return toolError(
-            `Failed to archive project: ${JSON.stringify(json.errors ?? 'no data')}`,
-          );
+          return toolError(`Failed to delete project: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
         return toolSuccess(JSON.stringify(json.data.archiveProject, null, 2));

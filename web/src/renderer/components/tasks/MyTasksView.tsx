@@ -8,14 +8,17 @@ import { PullRequestIndicator } from './PullRequestIndicator.js';
 import { EmptyState } from '../layout/EmptyState.js';
 import { useMyTasks, type MyTask } from '../../hooks/useMyTasks.js';
 import { useNavigation } from '../../navigation/context.js';
-import { STATUS_ORDER, STATUS_LABELS, groupTasksByStatus } from '../../utils/task-status.js';
+import {
+  STATUS_ORDER,
+  STATUS_LABELS,
+  DEFAULT_COLLAPSED_STATUSES,
+  groupTasksByStatus,
+} from '../../utils/task-status.js';
 
 export function MyTasksView() {
   const { tasks, count } = useMyTasks();
   const { navigate } = useNavigation();
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    [TaskStatus.Done]: true,
-  });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(DEFAULT_COLLAPSED_STATUSES);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const tableRef = useRef<HTMLDivElement>(null);
 

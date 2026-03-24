@@ -92,11 +92,11 @@ export function registerInitiativeTools(server: McpServer, deps: McpToolsDeps): 
   );
 
   server.registerTool(
-    'archive_initiative',
+    'delete_initiative',
     {
-      description: 'Archive an initiative by ID.',
+      description: 'Delete an initiative by ID.',
       inputSchema: {
-        id: z.string().describe('The initiative ID to archive'),
+        id: z.string().describe('The initiative ID to delete'),
       },
     },
     async ({ id }) => {
@@ -116,7 +116,7 @@ export function registerInitiativeTools(server: McpServer, deps: McpToolsDeps): 
 
         if (json.errors || !json.data?.archiveInitiative) {
           return toolError(
-            `Failed to archive initiative: ${JSON.stringify(json.errors ?? 'no data')}`,
+            `Failed to delete initiative: ${JSON.stringify(json.errors ?? 'no data')}`,
           );
         }
 

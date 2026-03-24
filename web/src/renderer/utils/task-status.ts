@@ -5,6 +5,7 @@ export const STATUS_ORDER: TaskStatus[] = [
   TaskStatus.InReview,
   TaskStatus.Todo,
   TaskStatus.Done,
+  TaskStatus.Cancelled,
 ];
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -12,6 +13,18 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   [TaskStatus.InReview]: 'In Review',
   [TaskStatus.Todo]: 'Todo',
   [TaskStatus.Done]: 'Done',
+  [TaskStatus.Cancelled]: 'Cancelled',
+};
+
+const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set([TaskStatus.Done, TaskStatus.Cancelled]);
+
+export function isTerminalStatus(status: TaskStatus): boolean {
+  return TERMINAL_STATUSES.has(status);
+}
+
+export const DEFAULT_COLLAPSED_STATUSES: Record<string, boolean> = {
+  [TaskStatus.Done]: true,
+  [TaskStatus.Cancelled]: true,
 };
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -30,6 +43,7 @@ export function groupTasksByStatus<T extends { status: TaskStatus }>(
     [TaskStatus.InReview]: [],
     [TaskStatus.Todo]: [],
     [TaskStatus.Done]: [],
+    [TaskStatus.Cancelled]: [],
   };
   for (const task of tasks) {
     groups[task.status].push(task);

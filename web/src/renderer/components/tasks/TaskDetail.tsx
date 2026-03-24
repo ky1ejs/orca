@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Pencil,
-  Archive,
+  Trash2,
   SquareTerminal,
   RotateCcw,
   FolderOpen,
@@ -29,6 +29,12 @@ import { AgentStatus } from '../terminal/AgentStatus.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
+import {
+  STATUS_ORDER,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
+  isTerminalStatus,
+} from '../../utils/task-status.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
@@ -42,20 +48,11 @@ interface TaskDetailProps {
   refreshSessions: () => void;
 }
 
-const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: TaskStatus.Todo, label: 'Todo' },
-  { value: TaskStatus.InProgress, label: 'In Progress' },
-  { value: TaskStatus.InReview, label: 'In Review' },
-  { value: TaskStatus.Done, label: 'Done' },
-];
+const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
-  { value: TaskPriority.None, label: 'None' },
-  { value: TaskPriority.Low, label: 'Low' },
-  { value: TaskPriority.Medium, label: 'Medium' },
-  { value: TaskPriority.High, label: 'High' },
-  { value: TaskPriority.Urgent, label: 'Urgent' },
-];
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = Object.entries(
+  PRIORITY_LABELS,
+).map(([value, label]) => ({ value: value as TaskPriority, label }));
 
 export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProps) {
   const { data, fetching, error, refetch } = useTask(taskId);
@@ -146,7 +143,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   };
 
   const handleSave = async () => {
-    if (status === TaskStatus.Done && activeSession) {
+    if (isTerminalStatus(status) && activeSession) {
       await window.orca.agent.stop(activeSession.id);
       refreshSessions();
     }
@@ -165,7 +162,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
-    if (newStatus === TaskStatus.Done && activeSession) {
+    if (isTerminalStatus(newStatus) && activeSession) {
       await window.orca.agent.stop(activeSession.id);
       refreshSessions();
     }
@@ -413,8 +410,8 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
                 onClick={handleArchive}
                 className="px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center"
               >
-                <Archive className={`${iconSize.sm} mr-1`} />
-                Archive
+                <Trash2 className={`${iconSize.sm} mr-1`} />
+                Delete
               </button>
             </div>
           </div>

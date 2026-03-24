@@ -18,7 +18,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
         title: z.string().describe('Task title'),
         description: z.string().optional().describe('Task description'),
         status: z
-          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
+          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED'])
           .optional()
           .describe('Task status'),
         priority: z
@@ -66,7 +66,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
         title: z.string().optional().describe('New task title'),
         description: z.string().optional().describe('New task description'),
         status: z
-          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
+          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED'])
           .optional()
           .describe('New task status'),
         priority: z
@@ -118,11 +118,11 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
   );
 
   server.registerTool(
-    'archive_task',
+    'delete_task',
     {
-      description: 'Archive a task by ID.',
+      description: 'Delete a task by ID.',
       inputSchema: {
-        id: z.string().describe('The task ID to archive'),
+        id: z.string().describe('The task ID to delete'),
       },
     },
     async ({ id }) => {
@@ -141,7 +141,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
         const json = await graphqlRequest(deps.backendUrl, token, mutation, { id });
 
         if (json.errors || !json.data?.archiveTask) {
-          return toolError(`Failed to archive task: ${JSON.stringify(json.errors ?? 'no data')}`);
+          return toolError(`Failed to delete task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
         return toolSuccess(JSON.stringify(json.data.archiveTask, null, 2));

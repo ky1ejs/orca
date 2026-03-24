@@ -59,7 +59,7 @@ export function registerSessionTools(server: McpServer, deps: McpToolsDeps): voi
       description: 'Update the status of the current Orca task.',
       inputSchema: {
         status: z
-          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'])
+          .enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED'])
           .describe('The new task status'),
       },
     },
