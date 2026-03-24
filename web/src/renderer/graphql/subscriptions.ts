@@ -80,6 +80,18 @@ export const TaskChangedDocument = /* GraphQL */ `
         draft
       }
       pullRequestCount
+      relationships {
+        id
+        type
+        displayType
+        relatedTask {
+          id
+          displayId
+          title
+          status
+        }
+        createdAt
+      }
       archivedAt
       createdAt
       updatedAt

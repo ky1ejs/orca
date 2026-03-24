@@ -161,6 +161,31 @@ type PullRequest {
   updatedAt: DateTime!
 }
 
+enum TaskRelationshipType {
+  BLOCKS
+  RELATES_TO
+  DUPLICATES
+  CREATED_FROM
+}
+
+enum TaskRelationshipDisplayType {
+  BLOCKS
+  BLOCKED_BY
+  RELATES_TO
+  DUPLICATES
+  DUPLICATED_BY
+  CREATED_FROM
+  CREATED
+}
+
+type TaskRelationship {
+  id: ID!
+  type: TaskRelationshipType!
+  displayType: TaskRelationshipDisplayType!
+  relatedTask: Task!
+  createdAt: DateTime!
+}
+
 type Task {
   id: ID!
   displayId: String!
@@ -174,6 +199,7 @@ type Task {
   labels: [Label!]!
   pullRequests: [PullRequest!]!
   pullRequestCount: Int!
+  relationships: [TaskRelationship!]!
   activity(first: Int = 20, after: String): AuditEventConnection!
   archivedAt: DateTime
   createdAt: DateTime!
@@ -232,6 +258,13 @@ input CreateTaskInput {
   workspaceId: ID!
   assigneeId: ID
   labelIds: [ID!]
+  sourceTaskId: ID
+}
+
+input CreateTaskRelationshipInput {
+  sourceTaskId: ID!
+  targetTaskId: ID!
+  type: TaskRelationshipType!
 }
 
 input UpdateTaskInput {
@@ -351,6 +384,7 @@ type Query {
   initiative(id: ID!): Initiative
   project(id: ID!): Project
   task(id: ID!): Task
+  taskByDisplayId(displayId: String!, workspaceId: ID!): Task
   labels(workspaceId: ID!): [Label!]!
   githubAppInstallUrl(workspaceId: ID!): String!
   githubOAuthUrl(workspaceId: ID!): String!
@@ -397,6 +431,8 @@ type Mutation {
   deleteLabel(id: ID!): Boolean!
   linkPullRequest(input: LinkPullRequestInput!): PullRequest!
   unlinkPullRequest(id: ID!): Boolean!
+  createTaskRelationship(input: CreateTaskRelationshipInput!): TaskRelationship!
+  removeTaskRelationship(id: ID!): Boolean!
 }
 
 type Subscription {

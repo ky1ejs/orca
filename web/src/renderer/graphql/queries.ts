@@ -310,9 +310,32 @@ export const TaskQueryDocument = /* GraphQL */ `
         draft
         createdAt
       }
+      relationships {
+        id
+        type
+        displayType
+        relatedTask {
+          id
+          displayId
+          title
+          status
+        }
+        createdAt
+      }
       archivedAt
       createdAt
       updatedAt
+    }
+  }
+`;
+
+export const TaskByDisplayIdQueryDocument = /* GraphQL */ `
+  query TaskByDisplayId($displayId: String!, $workspaceId: ID!) {
+    taskByDisplayId(displayId: $displayId, workspaceId: $workspaceId) {
+      id
+      displayId
+      title
+      status
     }
   }
 `;

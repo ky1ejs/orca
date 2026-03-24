@@ -33,6 +33,7 @@ import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { PullRequestList } from './PullRequestList.js';
+import { TaskRelationshipList } from './TaskRelationshipList.js';
 import { usePreferences } from '../../preferences/context.js';
 import { TaskActivityFeed } from '../activity/TaskActivityFeed.js';
 
@@ -605,6 +606,13 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
             <PullRequestList
               pullRequests={task.pullRequests ?? []}
               taskId={taskId}
+              onMutate={() => refetch({ requestPolicy: 'network-only' })}
+            />
+
+            <TaskRelationshipList
+              relationships={task.relationships ?? []}
+              taskId={taskId}
+              workspaceId={currentWorkspace?.id ?? ''}
               onMutate={() => refetch({ requestPolicy: 'network-only' })}
             />
 

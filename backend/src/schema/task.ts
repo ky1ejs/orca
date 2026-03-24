@@ -14,6 +14,7 @@ import {
 } from '../auth/workspace.js';
 import { recordAuditEvent } from '../audit/record-event.js';
 import { diffFields } from '../audit/diff.js';
+import { computeDisplayType, DISPLAY_LABELS } from './task-relationship.js';
 
 export const taskResolvers = {
   Query: {
@@ -91,6 +92,54 @@ export const taskResolvers = {
           },
         });
       });
+      // Auto-create CREATED_FROM relationship if sourceTaskId provided
+      if (args.input.sourceTaskId) {
+        const sourceTask = await context.prisma.task.findUnique({
+          where: { id: args.input.sourceTaskId },
+        });
+        if (sourceTask && sourceTask.workspaceId === task.workspaceId) {
+          await context.prisma.taskRelationship.create({
+            data: {
+              type: 'CREATED_FROM',
+              sourceTaskId: task.id,
+              targetTaskId: sourceTask.id,
+              workspaceId: task.workspaceId,
+            },
+          });
+          context.pubsub.publish('taskChanged', sourceTask);
+          const srcLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'source')];
+          const tgtLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'target')];
+          recordAuditEvent(context.prisma, {
+            entityType: 'TASK',
+            entityId: task.id,
+            action: 'UPDATED',
+            actorType: 'SYSTEM',
+            workspaceId: task.workspaceId,
+            changes: [
+              {
+                field: 'relationshipAdded',
+                oldValue: null,
+                newValue: `${srcLabel} ${sourceTask.displayId}`,
+              },
+            ],
+          });
+          recordAuditEvent(context.prisma, {
+            entityType: 'TASK',
+            entityId: sourceTask.id,
+            action: 'UPDATED',
+            actorType: 'SYSTEM',
+            workspaceId: task.workspaceId,
+            changes: [
+              {
+                field: 'relationshipAdded',
+                oldValue: null,
+                newValue: `${tgtLabel} ${task.displayId}`,
+              },
+            ],
+          });
+        }
+      }
+
       context.pubsub.publish('taskChanged', task);
       recordAuditEvent(context.prisma, {
         entityType: 'TASK',
