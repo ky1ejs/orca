@@ -195,14 +195,16 @@ export const AgentTerminal = memo(function AgentTerminal({
           // JS event loop guarantees no IPC events dispatch between the
           // promise resolution and this synchronous listener registration.
           unsubData = window.orca.pty.onData(sessionId, (data) => {
+            if (disposed) return;
             terminal.write(data);
             // Throttled full re-render to clear accumulated WebGL rendering
             // artifacts. Data events fire hundreds of times per second; the
             // renderer already redraws per-frame, so more than 1 Hz yields
             // no visible benefit. fitAndResize refreshes unthrottled because
             // it runs infrequently (resize/visibility events only).
+            // Skip for hidden terminals — only visible ones need GPU refresh.
             const now = performance.now();
-            if (now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+            if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
               lastRefreshAt = now;
               terminal.refresh(0, terminal.rows - 1);
             }
