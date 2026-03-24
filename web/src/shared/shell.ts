@@ -24,14 +24,15 @@ export function getLoginShellArgs(): string[] {
 function mergeLoginPath(loginPath: string): void {
   if (!loginPath) return;
 
-  const existing = new Set((process.env.PATH ?? '').split(':'));
+  const currentPath = process.env.PATH ?? '';
+  const existing = new Set(currentPath.split(':'));
   const missing = loginPath.split(':').filter((p) => {
     if (existing.has(p)) return false;
     existing.add(p);
     return true;
   });
   if (missing.length > 0) {
-    process.env.PATH = `${process.env.PATH}:${missing.join(':')}`;
+    process.env.PATH = currentPath ? `${currentPath}:${missing.join(':')}` : missing.join(':');
   }
 }
 

@@ -1,4 +1,5 @@
 import type { Initiative, Prisma } from '@prisma/client';
+import { GraphQLError } from 'graphql';
 import type {
   InitiativeResolvers,
   QueryResolvers,
@@ -121,7 +122,11 @@ export const initiativeResolvers = {
     },
     workspace: async (parent, _args, context) => {
       const ws = await context.loaders.workspaceById.load(parent.workspaceId);
-      if (!ws) throw new Error(`Workspace ${parent.workspaceId} not found`);
+      if (!ws) {
+        throw new GraphQLError(`Workspace ${parent.workspaceId} not found`, {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
       return ws;
     },
   } satisfies InitiativeResolvers,

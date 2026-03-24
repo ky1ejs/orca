@@ -192,7 +192,11 @@ export const projectResolvers = {
     },
     workspace: async (parent, _args, context) => {
       const ws = await context.loaders.workspaceById.load(parent.workspaceId);
-      if (!ws) throw new Error(`Workspace ${parent.workspaceId} not found`);
+      if (!ws) {
+        throw new GraphQLError(`Workspace ${parent.workspaceId} not found`, {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
       return ws;
     },
     initiative: (parent, _args, context) => {
