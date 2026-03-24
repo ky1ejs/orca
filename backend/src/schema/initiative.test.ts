@@ -40,6 +40,16 @@ function createMockContext() {
         findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
       },
     },
+    loaders: {
+      projectsByInitiativeId: { load: vi.fn().mockResolvedValue([]) },
+      workspaceById: { load: vi.fn().mockResolvedValue(WORKSPACE) },
+      tasksByProjectId: { load: vi.fn() },
+      projectById: { load: vi.fn() },
+      initiativeById: { load: vi.fn() },
+      userById: { load: vi.fn() },
+      labelsByTaskId: { load: vi.fn() },
+      pullRequestsByTaskId: { load: vi.fn() },
+    },
     pubsub: {
       publish: vi.fn(),
       subscribe: vi.fn(),
@@ -157,7 +167,7 @@ describe('initiative resolvers', () => {
     it('projects resolves non-archived initiative projects', async () => {
       const ctx = createMockContext();
       const projects = [{ id: 'p1', name: 'Project 1' }];
-      ctx.prisma.project.findMany.mockResolvedValue(projects);
+      ctx.loaders.projectsByInitiativeId.load.mockResolvedValue(projects);
 
       const result = await initiativeResolvers.Initiative.projects(
         { id: 'init1' } as never,
@@ -165,10 +175,7 @@ describe('initiative resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(projects);
-      expect(ctx.prisma.project.findMany).toHaveBeenCalledWith({
-        where: { initiativeId: 'init1', archivedAt: null },
-        orderBy: { createdAt: 'desc' },
-      });
+      expect(ctx.loaders.projectsByInitiativeId.load).toHaveBeenCalledWith('init1');
     });
 
     it('workspace resolves parent workspace', async () => {
@@ -180,6 +187,7 @@ describe('initiative resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(WORKSPACE);
+      expect(ctx.loaders.workspaceById.load).toHaveBeenCalledWith('ws1');
     });
   });
 });

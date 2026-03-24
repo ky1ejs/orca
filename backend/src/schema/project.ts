@@ -188,16 +188,20 @@ export const projectResolvers = {
   } satisfies Pick<SubscriptionResolvers, 'projectChanged'>,
   Project: {
     tasks: (parent, _args, context) => {
-      return context.prisma.task.findMany({
-        where: { projectId: parent.id, archivedAt: null },
-      });
+      return context.loaders.tasksByProjectId.load(parent.id);
     },
-    workspace: (parent, _args, context) => {
-      return context.prisma.workspace.findUniqueOrThrow({ where: { id: parent.workspaceId } });
+    workspace: async (parent, _args, context) => {
+      const ws = await context.loaders.workspaceById.load(parent.workspaceId);
+      if (!ws) {
+        throw new GraphQLError(`Workspace ${parent.workspaceId} not found`, {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+      return ws;
     },
     initiative: (parent, _args, context) => {
       if (!parent.initiativeId) return null;
-      return context.prisma.initiative.findUnique({ where: { id: parent.initiativeId } });
+      return context.loaders.initiativeById.load(parent.initiativeId);
     },
   } satisfies ProjectResolvers,
 };

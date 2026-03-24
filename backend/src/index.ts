@@ -9,6 +9,7 @@ import { handleGitHubWebhook } from './webhooks/github.js';
 import { handleGitHubCallback } from './webhooks/github-callback.js';
 import { handleGitHubOAuthCallback } from './webhooks/github-oauth.js';
 import type { ServerContext } from './context.js';
+import { createLoaders } from './loaders.js';
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
 
@@ -45,16 +46,17 @@ const yoga = createYoga({
   cors: { origin: '*', credentials: true },
   plugins: [useAuth()],
   context: async ({ request }): Promise<ServerContext> => {
+    const loaders = createLoaders(prisma);
     const header = request.headers.get('authorization');
     if (!header) {
-      return { prisma, pubsub, userId: '' };
+      return { prisma, pubsub, userId: '', loaders };
     }
     const token = header.replace('Bearer ', '');
     try {
       const payload = await verifyJwt(token);
-      return { prisma, pubsub, userId: payload.sub };
+      return { prisma, pubsub, userId: payload.sub, loaders };
     } catch {
-      return { prisma, pubsub, userId: '' };
+      return { prisma, pubsub, userId: '', loaders };
     }
   },
   graphqlEndpoint: '/graphql',
@@ -70,6 +72,7 @@ const wsHandler = makeHandler({
       prisma,
       pubsub,
       userId: (ctx.extra as { userId?: string }).userId ?? '',
+      loaders: createLoaders(prisma),
     }) satisfies ServerContext,
   onConnect: async (ctx) => {
     const token = ctx.connectionParams?.token as string | undefined;

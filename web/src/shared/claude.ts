@@ -28,25 +28,34 @@ export function buildShellOrcaSystemPrompt(): string {
  * shell ensures the user's full PATH (from ~/.zshrc, ~/.bashrc, etc.) is
  * available so we can locate binaries installed via npm, bun, or Homebrew.
  *
+ * The result is cached for the process lifetime since PATH is enriched once
+ * at daemon startup and doesn't change after that.
+ *
  * Returns the absolute path if found, or null if not on PATH.
  */
+let cachedClaudePath: string | null | undefined;
+
 export function findClaudePath(): string | null {
+  if (cachedClaudePath !== undefined) return cachedClaudePath;
+
   try {
+    let result: string;
     if (process.platform === 'win32') {
-      const result = execSync('where claude', {
+      result = execSync('where claude', {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
       });
-      return result.trim().split('\n')[0] ?? null;
+    } else {
+      const shell = process.env.SHELL || '/bin/sh';
+      result = execSync(`${shell} -lc 'which claude'`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
     }
-
-    const shell = process.env.SHELL || '/bin/sh';
-    const result = execSync(`${shell} -lc 'which claude'`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    return result.trim().split('\n')[0] ?? null;
+    cachedClaudePath = result.trim().split('\n')[0] ?? null;
   } catch {
-    return null;
+    cachedClaudePath = null;
   }
+
+  return cachedClaudePath;
 }
