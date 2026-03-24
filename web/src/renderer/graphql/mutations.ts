@@ -341,3 +341,26 @@ export const UnlinkPullRequestDocument = /* GraphQL */ `
     unlinkPullRequest(id: $id)
   }
 `;
+
+export const CreateTaskRelationshipDocument = /* GraphQL */ `
+  mutation CreateTaskRelationship($input: CreateTaskRelationshipInput!) {
+    createTaskRelationship(input: $input) {
+      id
+      type
+      displayType
+      relatedTask {
+        id
+        displayId
+        title
+        status
+      }
+      createdAt
+    }
+  }
+`;
+
+export const RemoveTaskRelationshipDocument = /* GraphQL */ `
+  mutation RemoveTaskRelationship($id: ID!) {
+    removeTaskRelationship(id: $id)
+  }
+`;

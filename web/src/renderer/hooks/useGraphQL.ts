@@ -39,6 +39,8 @@ import {
   UpdateWorkspaceSettingsDocument,
   LinkPullRequestDocument,
   UnlinkPullRequestDocument,
+  CreateTaskRelationshipDocument,
+  RemoveTaskRelationshipDocument,
   InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
@@ -47,6 +49,7 @@ import {
   InitiativeActivityDocument,
 } from '../graphql/__generated__/generated.js';
 import type {
+  CreateTaskRelationshipInput,
   LinkPullRequestInput,
   UpdateWorkspaceSettingsInput,
   CreateWorkspaceInput,
@@ -410,6 +413,24 @@ export function useUnlinkPullRequest() {
   const [result, executeMutation] = useMutation(UnlinkPullRequestDocument);
   const unlinkPullRequest = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, unlinkPullRequest };
+}
+
+export function useCreateTaskRelationship() {
+  const [result, executeMutation] = useMutation(CreateTaskRelationshipDocument);
+  const createTaskRelationship = useCallback(
+    (input: CreateTaskRelationshipInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, createTaskRelationship };
+}
+
+export function useRemoveTaskRelationship() {
+  const [result, executeMutation] = useMutation(RemoveTaskRelationshipDocument);
+  const removeTaskRelationship = useCallback(
+    (id: string) => executeMutation({ id }),
+    [executeMutation],
+  );
+  return { ...result, removeTaskRelationship };
 }
 
 // Subscription hooks — Graphcache handles cache updates automatically

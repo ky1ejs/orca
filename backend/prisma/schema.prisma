@@ -70,6 +70,13 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum TaskRelationshipType {
+  BLOCKS
+  RELATES_TO
+  DUPLICATES
+  CREATED_FROM
+}
+
 model User {
   id                String                @id @default(cuid())
   email             String                @unique
@@ -100,6 +107,7 @@ model Workspace {
   githubInstallations   GitHubInstallation[]
   settings              WorkspaceSettings?
   auditEvents           AuditEvent[]
+  taskRelationships     TaskRelationship[]
   deletedAt             DateTime?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -186,10 +194,12 @@ model Task {
   assigneeId       String?
   assignee         User?        @relation("assignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
   labels           Label[]      @relation("TaskLabels")
-  pullRequests     PullRequest[]
-  archivedAt       DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  pullRequests          PullRequest[]
+  sourceRelationships   TaskRelationship[] @relation("sourceRelationships")
+  targetRelationships   TaskRelationship[] @relation("targetRelationships")
+  archivedAt            DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
 
   @@index([workspaceId])
   @@index([workspaceId, sequenceNumber])
@@ -285,4 +295,21 @@ model AuditEvent {
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([entityType, entityId, createdAt(sort: Desc)])
   @@index([workspaceId, entityType, createdAt(sort: Desc)])
+}
+
+model TaskRelationship {
+  id           String               @id @default(cuid())
+  type         TaskRelationshipType
+  sourceTaskId String
+  sourceTask   Task                 @relation("sourceRelationships", fields: [sourceTaskId], references: [id], onDelete: Cascade)
+  targetTaskId String
+  targetTask   Task                 @relation("targetRelationships", fields: [targetTaskId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime             @default(now())
+
+  @@unique([sourceTaskId, targetTaskId, type])
+  @@index([sourceTaskId])
+  @@index([targetTaskId])
+  @@index([workspaceId])
 }

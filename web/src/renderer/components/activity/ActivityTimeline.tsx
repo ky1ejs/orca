@@ -48,6 +48,10 @@ function describeChange(change: {
       if (!change.oldValue && change.newValue) return `added to initiative ${change.newValue}`;
       if (change.oldValue && !change.newValue) return 'removed from initiative';
       return `moved from initiative ${change.oldValue} to ${change.newValue}`;
+    case 'relationshipAdded':
+      return `added relationship: ${change.newValue}`;
+    case 'relationshipRemoved':
+      return `removed relationship: ${change.oldValue}`;
     case 'defaultDirectory':
       return 'updated default directory';
     case 'name':

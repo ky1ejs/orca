@@ -73,6 +73,14 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
     unlinkPullRequest: vi.fn(),
     fetching: false,
   }),
+  useCreateTaskRelationship: () => ({
+    createTaskRelationship: vi.fn(),
+    fetching: false,
+  }),
+  useRemoveTaskRelationship: () => ({
+    removeTaskRelationship: vi.fn(),
+    fetching: false,
+  }),
   useTaskActivity: () => ({
     data: null,
     fetching: false,
@@ -121,6 +129,10 @@ vi.mock('../labels/LabelBadge.js', () => ({
 
 vi.mock('../labels/LabelPicker.js', () => ({
   LabelPicker: () => null,
+}));
+
+vi.mock('./TaskRelationshipList.js', () => ({
+  TaskRelationshipList: () => null,
 }));
 
 // Mock window.orca

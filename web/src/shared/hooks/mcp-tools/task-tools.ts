@@ -3,6 +3,7 @@ import * as z from 'zod/v4';
 import {
   type McpToolsDeps,
   graphqlRequest,
+  resolveSession,
   resolveToken,
   toolError,
   toolSuccess,
@@ -32,6 +33,15 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
 
+      // Best-effort: resolve source task from session context for CREATED_FROM relationship
+      let sourceTaskId: string | undefined;
+      if (deps.sessionId) {
+        const session = resolveSession(deps);
+        if (!('isError' in session)) {
+          sourceTaskId = session.taskId;
+        }
+      }
+
       const mutation = `
         mutation CreateTask($input: CreateTaskInput!) {
           createTask(input: $input) {
@@ -42,7 +52,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
 
       try {
         const json = await graphqlRequest(deps.backendUrl, token, mutation, {
-          input: { workspaceId, title, description, status, priority, projectId },
+          input: { workspaceId, title, description, status, priority, projectId, sourceTaskId },
         });
 
         if (json.errors || !json.data?.createTask) {

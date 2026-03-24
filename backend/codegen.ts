@@ -22,6 +22,8 @@ const config: CodegenConfig = {
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
           AuditEvent: '@prisma/client#AuditEvent as AuditEventModel',
+          TaskRelationship:
+            '../schema/task-relationship.js#TaskRelationshipParent as TaskRelationshipParent',
         },
         enumValues: {
           WorkspaceRole: '@prisma/client#WorkspaceRole',
@@ -32,6 +34,7 @@ const config: CodegenConfig = {
           AuditEntityType: '@prisma/client#AuditEntityType',
           AuditAction: '@prisma/client#AuditAction',
           AuditActorType: '@prisma/client#AuditActorType',
+          TaskRelationshipType: '@prisma/client#TaskRelationshipType',
         },
         useIndexSignature: true,
       },

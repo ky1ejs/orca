@@ -16,6 +16,12 @@ import { pullRequestFieldResolvers, pullRequestMutationResolvers } from './pull-
 import { workspaceSettingsResolvers } from './workspace-settings.js';
 import { githubInstallationResolvers } from './github-installation.js';
 import { auditEventResolvers } from './audit-event.js';
+import {
+  taskRelationshipFieldResolvers,
+  taskRelationshipMutationResolvers,
+  taskRelationshipQueryResolvers,
+  taskRelationshipTypeResolvers,
+} from './task-relationship.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +40,7 @@ const resolvers: Resolvers = {
     ...githubInstallationResolvers.Query,
     ...membershipResolvers.Query,
     ...auditEventResolvers.Query,
+    ...taskRelationshipQueryResolvers,
   },
   Mutation: {
     ...authResolvers.Mutation,
@@ -46,6 +53,7 @@ const resolvers: Resolvers = {
     ...workspaceSettingsResolvers.Mutation,
     ...githubInstallationResolvers.Mutation,
     ...pullRequestMutationResolvers,
+    ...taskRelationshipMutationResolvers,
   },
   Subscription: {
     ...initiativeResolvers.Subscription,
@@ -64,8 +72,10 @@ const resolvers: Resolvers = {
   Task: {
     ...taskResolvers.Task,
     ...pullRequestFieldResolvers,
+    ...taskRelationshipFieldResolvers,
     ...auditEventResolvers.Task,
   },
+  TaskRelationship: taskRelationshipTypeResolvers,
   AuditEvent: auditEventResolvers.AuditEvent,
   AuditActor: {
     __resolveType: (obj) => {
