@@ -189,26 +189,12 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               cache.invalidate('Query', 'pendingInvitations');
             },
           },
-          Subscription: {
-            projectChanged(_result, _args, cache) {
-              invalidateAllWorkspaceQueries(cache);
-            },
-            taskChanged(_result, _args, cache) {
-              const task = _result.taskChanged as
-                | { id: string; projectId: string | null }
-                | undefined;
-              if (task) {
-                // Invalidate project task lists for structural changes
-                // (task created/deleted/moved). Don't invalidate the Task
-                // entity itself — graphcache already normalized the
-                // subscription payload into the cache.
-                if (task.projectId) {
-                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
-                }
-                invalidateAllWorkspaceQueries(cache);
-              }
-            },
-          },
+          // Subscription handlers intentionally empty — graphcache
+          // normalizes subscription payloads into the cache automatically.
+          // Mutation handlers cover structural create/delete for the acting
+          // client; other clients see field updates via normalization and
+          // pick up list-membership changes on their next query refetch.
+          Subscription: {},
         },
       }),
       fetchExchange,
