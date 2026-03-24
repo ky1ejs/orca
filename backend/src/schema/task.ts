@@ -92,50 +92,59 @@ export const taskResolvers = {
           },
         });
       });
-      // Auto-create CREATED_FROM relationship if sourceTaskId provided
+      // Best-effort: auto-create CREATED_FROM relationship if sourceTaskId provided.
+      // Failures here should not cause the task creation mutation to fail.
       if (args.input.sourceTaskId) {
-        const sourceTask = await context.prisma.task.findUnique({
-          where: { id: args.input.sourceTaskId },
-        });
-        if (sourceTask && sourceTask.workspaceId === task.workspaceId) {
-          await context.prisma.taskRelationship.create({
-            data: {
-              type: 'CREATED_FROM',
-              sourceTaskId: task.id,
-              targetTaskId: sourceTask.id,
+        try {
+          const sourceTask = await context.prisma.task.findUnique({
+            where: { id: args.input.sourceTaskId },
+          });
+          if (sourceTask && sourceTask.workspaceId === task.workspaceId) {
+            await context.prisma.taskRelationship.create({
+              data: {
+                type: 'CREATED_FROM',
+                sourceTaskId: task.id,
+                targetTaskId: sourceTask.id,
+                workspaceId: task.workspaceId,
+              },
+            });
+            context.pubsub.publish('taskChanged', sourceTask);
+            const srcLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'source')];
+            const tgtLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'target')];
+            recordAuditEvent(context.prisma, {
+              entityType: 'TASK',
+              entityId: task.id,
+              action: 'UPDATED',
+              actorType: 'SYSTEM',
               workspaceId: task.workspaceId,
-            },
-          });
-          context.pubsub.publish('taskChanged', sourceTask);
-          const srcLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'source')];
-          const tgtLabel = DISPLAY_LABELS[computeDisplayType('CREATED_FROM', 'target')];
-          recordAuditEvent(context.prisma, {
-            entityType: 'TASK',
-            entityId: task.id,
-            action: 'UPDATED',
-            actorType: 'SYSTEM',
-            workspaceId: task.workspaceId,
-            changes: [
-              {
-                field: 'relationshipAdded',
-                oldValue: null,
-                newValue: `${srcLabel} ${sourceTask.displayId}`,
-              },
-            ],
-          });
-          recordAuditEvent(context.prisma, {
-            entityType: 'TASK',
-            entityId: sourceTask.id,
-            action: 'UPDATED',
-            actorType: 'SYSTEM',
-            workspaceId: task.workspaceId,
-            changes: [
-              {
-                field: 'relationshipAdded',
-                oldValue: null,
-                newValue: `${tgtLabel} ${task.displayId}`,
-              },
-            ],
+              changes: [
+                {
+                  field: 'relationshipAdded',
+                  oldValue: null,
+                  newValue: `${srcLabel} ${sourceTask.displayId}`,
+                },
+              ],
+            });
+            recordAuditEvent(context.prisma, {
+              entityType: 'TASK',
+              entityId: sourceTask.id,
+              action: 'UPDATED',
+              actorType: 'SYSTEM',
+              workspaceId: task.workspaceId,
+              changes: [
+                {
+                  field: 'relationshipAdded',
+                  oldValue: null,
+                  newValue: `${tgtLabel} ${task.displayId}`,
+                },
+              ],
+            });
+          }
+        } catch (error) {
+          console.error('Failed to auto-create CREATED_FROM relationship', {
+            taskId: task.id,
+            sourceTaskId: args.input.sourceTaskId,
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }

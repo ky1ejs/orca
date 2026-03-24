@@ -35,9 +35,11 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
 
       // Best-effort: resolve source task from session context for CREATED_FROM relationship
       let sourceTaskId: string | undefined;
-      const session = resolveSession(deps);
-      if (!('isError' in session)) {
-        sourceTaskId = session.taskId;
+      if (deps.sessionId) {
+        const session = resolveSession(deps);
+        if (!('isError' in session)) {
+          sourceTaskId = session.taskId;
+        }
       }
 
       const mutation = `

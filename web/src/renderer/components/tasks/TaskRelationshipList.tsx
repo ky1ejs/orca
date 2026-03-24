@@ -79,14 +79,29 @@ export function TaskRelationshipList({
     setError(null);
     const trimmed = targetDisplayId.trim().toUpperCase();
     if (!trimmed) return;
+    if (!workspaceId) {
+      setError('No workspace selected');
+      return;
+    }
 
     // Resolve displayId to task ID
     const lookupResult = await client
       .query(TaskByDisplayIdDocument, { displayId: trimmed, workspaceId })
       .toPromise();
+
+    if (lookupResult.error) {
+      setError(lookupResult.error.graphQLErrors[0]?.message ?? lookupResult.error.message);
+      return;
+    }
+
     const targetTask = lookupResult.data?.taskByDisplayId;
     if (!targetTask) {
       setError(`Task "${trimmed}" not found in this workspace`);
+      return;
+    }
+
+    if (targetTask.id === taskId) {
+      setError('Cannot create a relationship between a task and itself');
       return;
     }
 
@@ -152,8 +167,9 @@ export function TaskRelationshipList({
                     <button
                       onClick={() => handleRemove(rel.id)}
                       disabled={removing}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
                       title="Remove relationship"
+                      aria-label={`Remove relationship with ${rel.relatedTask.displayId}`}
                     >
                       <X className={iconSize.xs} />
                     </button>
