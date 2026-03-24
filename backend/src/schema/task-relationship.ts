@@ -1,11 +1,11 @@
 import { GraphQLError } from 'graphql';
 import type { Task, TaskRelationship, TaskRelationshipType } from '@prisma/client';
-import {
+import type {
+  QueryResolvers,
+  MutationResolvers,
+  TaskResolvers,
+  TaskRelationshipResolvers,
   TaskRelationshipDisplayType,
-  type QueryResolvers,
-  type MutationResolvers,
-  type TaskResolvers,
-  type TaskRelationshipResolvers,
 } from '../__generated__/graphql.js';
 import { requireTaskAccess, requireWorkspaceAccess } from '../auth/workspace.js';
 import { recordAuditEvent } from '../audit/record-event.js';
@@ -16,7 +16,18 @@ export type TaskRelationshipParent = TaskRelationship & {
   _relatedTask?: Task;
 };
 
-const DT = TaskRelationshipDisplayType;
+// String constants matching the GraphQL TaskRelationshipDisplayType enum.
+// We use plain strings instead of importing the generated enum to avoid
+// a runtime dependency on __generated__/graphql.js (not available in Docker).
+const DT = {
+  Blocks: 'BLOCKS' as TaskRelationshipDisplayType,
+  BlockedBy: 'BLOCKED_BY' as TaskRelationshipDisplayType,
+  RelatesTo: 'RELATES_TO' as TaskRelationshipDisplayType,
+  Duplicates: 'DUPLICATES' as TaskRelationshipDisplayType,
+  DuplicatedBy: 'DUPLICATED_BY' as TaskRelationshipDisplayType,
+  CreatedFrom: 'CREATED_FROM' as TaskRelationshipDisplayType,
+  Created: 'CREATED' as TaskRelationshipDisplayType,
+};
 
 const SOURCE_DISPLAY_MAP: Record<TaskRelationshipType, TaskRelationshipDisplayType> = {
   BLOCKS: DT.Blocks,
@@ -39,15 +50,15 @@ export function computeDisplayType(
   return viewingSide === 'source' ? SOURCE_DISPLAY_MAP[type] : TARGET_DISPLAY_MAP[type];
 }
 
-export const DISPLAY_LABELS: Record<TaskRelationshipDisplayType, string> = {
-  [DT.Blocks]: 'blocks',
-  [DT.BlockedBy]: 'blocked by',
-  [DT.RelatesTo]: 'relates to',
-  [DT.Duplicates]: 'duplicates',
-  [DT.DuplicatedBy]: 'duplicated by',
-  [DT.CreatedFrom]: 'created from',
-  [DT.Created]: 'created',
-};
+export const DISPLAY_LABELS = {
+  BLOCKS: 'blocks',
+  BLOCKED_BY: 'blocked by',
+  RELATES_TO: 'relates to',
+  DUPLICATES: 'duplicates',
+  DUPLICATED_BY: 'duplicated by',
+  CREATED_FROM: 'created from',
+  CREATED: 'created',
+} satisfies Record<TaskRelationshipDisplayType, string>;
 
 export const taskRelationshipQueryResolvers = {
   taskByDisplayId: async (_parent, args, context) => {
