@@ -26,6 +26,7 @@ const mockLoadAddon = vi.fn();
 const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
 const mockAttachCustomKeyEventHandler = vi.fn();
 const mockScrollToBottom = vi.fn();
+const mockRefresh = vi.fn();
 const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
 const mockPaste = vi.fn();
 
@@ -38,6 +39,7 @@ vi.mock('@xterm/xterm', () => ({
     onData: mockOnData,
     attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     scrollToBottom: mockScrollToBottom,
+    refresh: mockRefresh,
     buffer: mockBuffer,
     paste: mockPaste,
     options: {},
@@ -331,6 +333,53 @@ describe('AgentTerminal', () => {
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).not.toHaveBeenCalled();
+  });
+
+  it('calls refresh after fitAndResize even when dimensions match', () => {
+    mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+    // fit should be skipped (dimensions match) but refresh should still fire
+    expect(mockFit).not.toHaveBeenCalled();
+    expect(mockRefresh).toHaveBeenCalledWith(0, 23);
+  });
+
+  it('scrolls to bottom when viewport is within 1 row of bottom', () => {
+    mockBuffer.active.viewportY = 99;
+    mockBuffer.active.baseY = 100;
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+    expect(mockFit).toHaveBeenCalled();
+    expect(mockScrollToBottom).toHaveBeenCalled();
+  });
+
+  it('throttles refresh calls during active output', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
+
+    const onDataCallback = mockPtyOnData.mock.calls[0][1];
+    mockRefresh.mockClear();
+
+    // First data event should trigger refresh
+    onDataCallback('line 1');
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+    // Immediate second call should be throttled (within 1000ms)
+    onDataCallback('line 2');
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls refresh when terminal becomes visible', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
+    triggerInitialResize();
+    mockRefresh.mockClear();
+
+    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    expect(mockRefresh).toHaveBeenCalledWith(0, 23);
   });
 
   describe('drag and drop', () => {
