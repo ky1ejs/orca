@@ -26,12 +26,15 @@ let mockTask: {
   assignee: { id: string; name: string; email: string } | null;
   labels: { id: string; name: string; color: string }[];
 } | null = null;
+let mockFetching = false;
+let mockError: { message: string } | null = null;
 
 vi.mock('../../hooks/useGraphQL.js', () => ({
   useTask: () => ({
     data: mockTask ? { task: mockTask } : null,
-    fetching: false,
-    error: null,
+    fetching: mockFetching,
+    error: mockError,
+    refetch: vi.fn(),
   }),
   useUpdateTask: () => ({ updateTask: mockUpdateTask }),
   useArchiveTask: () => ({ archiveTask: mockArchiveTask }),
@@ -148,6 +151,8 @@ beforeEach(() => {
     labels: [],
   };
   mockSessions = [];
+  mockFetching = false;
+  mockError = null;
   vi.clearAllMocks();
 });
 
@@ -165,6 +170,90 @@ async function importAndRender(taskId = 'task-1') {
 }
 
 describe('TaskDetail', () => {
+  describe('rendering', () => {
+    it('renders task content immediately when data is available', async () => {
+      await importAndRender();
+
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+      expect(screen.getByText('TST-1')).toBeInTheDocument();
+      expect(screen.getByText('A test description')).toBeInTheDocument();
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+    });
+
+    it('shows skeleton when fetching with no prior data', async () => {
+      mockTask = null;
+      mockFetching = true;
+
+      await importAndRender();
+
+      expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+      expect(screen.queryByText('Test Task')).not.toBeInTheDocument();
+    });
+
+    it('keeps showing task while refetching (no loading flash)', async () => {
+      mockFetching = true;
+
+      await importAndRender();
+
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+      expect(screen.getByText('TST-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+    });
+
+    it('renders error state', async () => {
+      mockTask = null;
+      mockError = { message: 'Network failure' };
+
+      await importAndRender();
+
+      expect(screen.getByText(/Network failure/)).toBeInTheDocument();
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+    });
+
+    it('renders "Task not found" when data is absent and not fetching', async () => {
+      mockTask = null;
+
+      await importAndRender();
+
+      expect(screen.getByText('Task not found.')).toBeInTheDocument();
+    });
+  });
+
+  describe('task fields', () => {
+    it('renders project selector with workspace projects', async () => {
+      await importAndRender();
+
+      const projectSelect = screen.getByDisplayValue('Test Project');
+      expect(projectSelect).toBeInTheDocument();
+      expect(screen.getByText('Other Project')).toBeInTheDocument();
+      expect(screen.getByText('Inbox (no project)')).toBeInTheDocument();
+    });
+
+    it('renders assignee selector with workspace members', async () => {
+      await importAndRender();
+
+      const assigneeSelect = screen.getByTestId('assignee-select');
+      expect(assigneeSelect).toBeInTheDocument();
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    });
+
+    it('renders description with MarkdownRenderer', async () => {
+      await importAndRender();
+
+      expect(screen.getByText('A test description')).toBeInTheDocument();
+    });
+
+    it('does not render description section when absent', async () => {
+      mockTask!.description = null;
+
+      await importAndRender();
+
+      expect(screen.queryByText('Description:')).not.toBeInTheDocument();
+    });
+  });
+
   describe('back navigation', () => {
     it('no inline back button (breadcrumbs handle navigation)', async () => {
       await importAndRender();
