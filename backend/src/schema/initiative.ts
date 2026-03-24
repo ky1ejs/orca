@@ -117,13 +117,12 @@ export const initiativeResolvers = {
   } satisfies Pick<SubscriptionResolvers, 'initiativeChanged'>,
   Initiative: {
     projects: (parent, _args, context) => {
-      return context.prisma.project.findMany({
-        where: { initiativeId: parent.id, archivedAt: null },
-        orderBy: { createdAt: 'desc' },
-      });
+      return context.loaders.projectsByInitiativeId.load(parent.id);
     },
-    workspace: (parent, _args, context) => {
-      return context.prisma.workspace.findUniqueOrThrow({ where: { id: parent.workspaceId } });
+    workspace: async (parent, _args, context) => {
+      const ws = await context.loaders.workspaceById.load(parent.workspaceId);
+      if (!ws) throw new Error(`Workspace ${parent.workspaceId} not found`);
+      return ws;
     },
   } satisfies InitiativeResolvers,
 };

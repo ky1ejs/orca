@@ -37,7 +37,7 @@ import {
 import { buildMcpConfigJson, buildHooksConfigJson } from '../shared/hooks/settings.js';
 import { buildShellOrcaSystemPrompt } from '../shared/claude.js';
 import { OutputPersistence } from './output-persistence.js';
-import { enrichPathFromLoginShell } from '../shared/shell.js';
+import { enrichPathFromLoginShellAsync } from '../shared/shell.js';
 import { logger } from './logger.js';
 
 // ── Parse args ──────────────────────────────────────────────────────────
@@ -76,40 +76,45 @@ async function main(): Promise<void> {
   logger.info(`Daemon starting (version=${version}, pid=${process.pid})`);
   logger.info(`DB: ${dbPath}, Socket: ${socketPath}, Migrations: ${migrationsFolder}`);
 
-  // Enrich PATH from login shell — ELECTRON_RUN_AS_NODE gives us a minimal
-  // PATH (/usr/bin:/bin) that misses Homebrew, bun, etc.
-  enrichPathFromLoginShell();
-  logger.info(`PATH: ${(process.env.PATH ?? '').split(':').length} entries`);
-
-  // Ensure directories exist
-  mkdirSync(dirname(dbPath), { recursive: true });
-  mkdirSync(dirname(socketPath), { recursive: true });
-
-  // Write PID file
-  writeFileSync(DAEMON_PID_FILE, String(process.pid));
-
-  // Remove stale socket file
-  if (existsSync(socketPath)) {
-    try {
-      unlinkSync(socketPath);
-    } catch {
-      // May fail if in use
-    }
-  }
-
-  // Initialize database
   if (!migrationsFolder) {
     logger.error('--migrations argument is required');
     process.exit(1);
   }
-  initDaemonDb(dbPath, migrationsFolder);
-  logger.info('Database initialized');
 
-  // Sweep stale sessions from previous run
-  const sweepResult = sweepStaleSessions();
-  if (sweepResult.total > 0) {
-    logger.info(`Swept ${sweepResult.total} stale session(s)`);
-  }
+  // Run PATH enrichment (async login shell) in parallel with DB init.
+  // PATH enrichment can take 1-5s depending on the user's shell config;
+  // overlapping it with DB setup shaves that time off daemon startup.
+  await Promise.all([
+    enrichPathFromLoginShellAsync(),
+    (async () => {
+      // Ensure directories exist
+      mkdirSync(dirname(dbPath), { recursive: true });
+      mkdirSync(dirname(socketPath), { recursive: true });
+
+      // Write PID file
+      writeFileSync(DAEMON_PID_FILE, String(process.pid));
+
+      // Remove stale socket file
+      if (existsSync(socketPath)) {
+        try {
+          unlinkSync(socketPath);
+        } catch {
+          // May fail if in use
+        }
+      }
+
+      // Initialize database
+      initDaemonDb(dbPath, migrationsFolder);
+      logger.info('Database initialized');
+
+      // Sweep stale sessions from previous run
+      const sweepResult = sweepStaleSessions();
+      if (sweepResult.total > 0) {
+        logger.info(`Swept ${sweepResult.total} stale session(s)`);
+      }
+    })(),
+  ]);
+  logger.info(`PATH: ${(process.env.PATH ?? '').split(':').length} entries`);
 
   // Create broadcast function — will be wired to server after creation
   let server: DaemonServer;
@@ -184,9 +189,10 @@ async function main(): Promise<void> {
   // Create components
   const ptyManager = new DaemonPtyManager(broadcast);
 
-  // Output persistence — flush dirty ring buffers to SQLite periodically
+  // Output persistence — flush dirty ring buffers to SQLite periodically.
+  // loadAll() is deferred until after the server starts listening so clients
+  // can connect while terminal output buffers are being restored.
   const outputPersistence = new OutputPersistence(ptyManager);
-  outputPersistence.loadAll();
   ptyManager.setOnData((id) => outputPersistence.markDirty(id));
   ptyManager.setOnExit((id) => outputPersistence.flushSession(id));
   outputPersistence.start();
@@ -282,6 +288,9 @@ async function main(): Promise<void> {
   // Start server
   await server.start(socketPath);
   logger.info(`Daemon listening on ${socketPath}`);
+
+  // Restore persisted terminal output now that the server is accepting connections
+  outputPersistence.loadAll();
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);

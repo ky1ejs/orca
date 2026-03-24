@@ -317,14 +317,14 @@ export const taskResolvers = {
   Task: {
     project: (parent, _args, context) => {
       if (!parent.projectId) return null;
-      return context.prisma.project.findUnique({ where: { id: parent.projectId } });
+      return context.loaders.projectById.load(parent.projectId);
     },
     assignee: (parent, _args, context) => {
       if (!parent.assigneeId) return null;
-      return context.prisma.user.findUnique({ where: { id: parent.assigneeId } });
+      return context.loaders.userById.load(parent.assigneeId);
     },
-    labels: async (parent, _args, context) => {
-      return (await context.prisma.task.findUnique({ where: { id: parent.id } }).labels()) ?? [];
+    labels: (parent, _args, context) => {
+      return context.loaders.labelsByTaskId.load(parent.id);
     },
   } satisfies TaskResolvers,
 };

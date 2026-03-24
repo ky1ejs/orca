@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, execFile } from 'node:child_process';
 
 export function getDefaultShell(): string {
   if (process.platform === 'win32') {
@@ -18,6 +18,21 @@ export function getLoginShellArgs(): string[] {
     return [];
   }
   return ['-l'];
+}
+
+/** Merge login shell PATH entries into process.env.PATH. */
+function mergeLoginPath(loginPath: string): void {
+  if (!loginPath) return;
+
+  const existing = new Set((process.env.PATH ?? '').split(':'));
+  const missing = loginPath.split(':').filter((p) => {
+    if (existing.has(p)) return false;
+    existing.add(p);
+    return true;
+  });
+  if (missing.length > 0) {
+    process.env.PATH = `${process.env.PATH}:${missing.join(':')}`;
+  }
 }
 
 /**
@@ -40,19 +55,33 @@ export function enrichPathFromLoginShell(): void {
       timeout: 5000,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    const loginPath = result.trim();
-    if (!loginPath) return;
-
-    const existing = new Set((process.env.PATH ?? '').split(':'));
-    const missing = loginPath.split(':').filter((p) => {
-      if (existing.has(p)) return false;
-      existing.add(p);
-      return true;
-    });
-    if (missing.length > 0) {
-      process.env.PATH = `${process.env.PATH}:${missing.join(':')}`;
-    }
+    mergeLoginPath(result.trim());
   } catch {
     // Login shell resolution failed — continue with inherited PATH
   }
+}
+
+/**
+ * Async variant of enrichPathFromLoginShell.
+ * Uses execFile with a promise wrapper to avoid blocking the event loop,
+ * allowing other startup work (DB init, etc.) to run in parallel.
+ */
+export function enrichPathFromLoginShellAsync(): Promise<void> {
+  if (process.platform === 'win32') return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const shell = getDefaultShell();
+    execFile(
+      shell,
+      ['-lc', 'printenv PATH'],
+      { encoding: 'utf-8', timeout: 5000 },
+      (err, stdout) => {
+        if (!err && stdout) {
+          mergeLoginPath(stdout.trim());
+        }
+        // Always resolve — PATH enrichment is best-effort
+        resolve();
+      },
+    );
+  });
 }

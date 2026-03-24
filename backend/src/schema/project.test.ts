@@ -50,6 +50,16 @@ function createMockContext() {
         findUnique: vi.fn().mockResolvedValue(MEMBERSHIP),
       },
     },
+    loaders: {
+      tasksByProjectId: { load: vi.fn().mockResolvedValue([]) },
+      workspaceById: { load: vi.fn().mockResolvedValue(WORKSPACE) },
+      initiativeById: { load: vi.fn().mockResolvedValue(INITIATIVE) },
+      projectById: { load: vi.fn() },
+      userById: { load: vi.fn() },
+      labelsByTaskId: { load: vi.fn() },
+      pullRequestsByTaskId: { load: vi.fn() },
+      projectsByInitiativeId: { load: vi.fn() },
+    },
     pubsub: {
       publish: vi.fn(),
       subscribe: vi.fn(),
@@ -181,13 +191,11 @@ describe('project resolvers', () => {
     it('tasks resolves non-archived project tasks', async () => {
       const ctx = createMockContext();
       const tasks = [{ id: '1', title: 'Task 1' }];
-      ctx.prisma.task.findMany.mockResolvedValue(tasks);
+      ctx.loaders.tasksByProjectId.load.mockResolvedValue(tasks);
 
       const result = await projectResolvers.Project.tasks({ id: 'p1' } as never, {}, ctx as never);
       expect(result).toEqual(tasks);
-      expect(ctx.prisma.task.findMany).toHaveBeenCalledWith({
-        where: { projectId: 'p1', archivedAt: null },
-      });
+      expect(ctx.loaders.tasksByProjectId.load).toHaveBeenCalledWith('p1');
     });
 
     it('workspace resolves parent workspace', async () => {
@@ -199,9 +207,7 @@ describe('project resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(WORKSPACE);
-      expect(ctx.prisma.workspace.findUniqueOrThrow).toHaveBeenCalledWith({
-        where: { id: 'ws1' },
-      });
+      expect(ctx.loaders.workspaceById.load).toHaveBeenCalledWith('ws1');
     });
 
     it('initiative resolves parent initiative', async () => {
@@ -213,9 +219,7 @@ describe('project resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(INITIATIVE);
-      expect(ctx.prisma.initiative.findUnique).toHaveBeenCalledWith({
-        where: { id: 'init1' },
-      });
+      expect(ctx.loaders.initiativeById.load).toHaveBeenCalledWith('init1');
     });
 
     it('initiative resolves null when no initiativeId', async () => {
@@ -227,7 +231,7 @@ describe('project resolvers', () => {
         ctx as never,
       );
       expect(result).toBeNull();
-      expect(ctx.prisma.initiative.findUnique).not.toHaveBeenCalled();
+      expect(ctx.loaders.initiativeById.load).not.toHaveBeenCalled();
     });
   });
 });

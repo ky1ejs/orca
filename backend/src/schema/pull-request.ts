@@ -10,15 +10,11 @@ import {
 
 export const pullRequestFieldResolvers = {
   pullRequests: (parent, _args, context) => {
-    return context.prisma.pullRequest.findMany({
-      where: { taskId: parent.id },
-      orderBy: { createdAt: 'desc' },
-    });
+    return context.loaders.pullRequestsByTaskId.load(parent.id);
   },
-  pullRequestCount: (parent, _args, context) => {
-    return context.prisma.pullRequest.count({
-      where: { taskId: parent.id, status: PullRequestStatus.OPEN },
-    });
+  pullRequestCount: async (parent, _args, context) => {
+    const prs = await context.loaders.pullRequestsByTaskId.load(parent.id);
+    return prs.filter((pr) => pr.status === PullRequestStatus.OPEN).length;
   },
 } satisfies Pick<TaskResolvers, 'pullRequests' | 'pullRequestCount'>;
 

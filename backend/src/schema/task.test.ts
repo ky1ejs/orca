@@ -60,6 +60,16 @@ function createMockContext() {
     },
     $transaction: vi.fn((cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
   };
+  const loaders = {
+    userById: { load: vi.fn() },
+    projectById: { load: vi.fn().mockResolvedValue(PROJECT) },
+    initiativeById: { load: vi.fn() },
+    workspaceById: { load: vi.fn() },
+    labelsByTaskId: { load: vi.fn().mockResolvedValue([]) },
+    pullRequestsByTaskId: { load: vi.fn().mockResolvedValue([]) },
+    tasksByProjectId: { load: vi.fn() },
+    projectsByInitiativeId: { load: vi.fn() },
+  };
   return {
     prisma,
     pubsub: {
@@ -67,6 +77,7 @@ function createMockContext() {
       subscribe: vi.fn(),
     },
     userId: 'user1',
+    loaders,
   };
 }
 
@@ -471,7 +482,7 @@ describe('task resolvers', () => {
     it('project resolves the parent project', async () => {
       const ctx = createMockContext();
       const project = { id: 'p1', name: 'Project 1' };
-      ctx.prisma.project.findUnique.mockResolvedValue(project);
+      ctx.loaders.projectById.load.mockResolvedValue(project);
 
       const result = await taskResolvers.Task.project(
         { projectId: 'p1' } as never,
@@ -479,7 +490,7 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(project);
-      expect(ctx.prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: 'p1' } });
+      expect(ctx.loaders.projectById.load).toHaveBeenCalledWith('p1');
     });
 
     it('project resolves null when projectId is null', async () => {
@@ -491,7 +502,7 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toBeNull();
-      expect(ctx.prisma.project.findUnique).not.toHaveBeenCalled();
+      expect(ctx.loaders.projectById.load).not.toHaveBeenCalled();
     });
 
     it('assignee resolves null when no assigneeId', async () => {
@@ -508,7 +519,7 @@ describe('task resolvers', () => {
     it('assignee resolves the user when assigneeId is set', async () => {
       const ctx = createMockContext();
       const user = { id: 'user1', name: 'Test User', email: 'test@test.com' };
-      ctx.prisma.user.findUnique.mockResolvedValue(user);
+      ctx.loaders.userById.load.mockResolvedValue(user);
 
       const result = await taskResolvers.Task.assignee!(
         { assigneeId: 'user1' } as never,
@@ -516,16 +527,17 @@ describe('task resolvers', () => {
         ctx as never,
       );
       expect(result).toEqual(user);
+      expect(ctx.loaders.userById.load).toHaveBeenCalledWith('user1');
     });
 
-    it('labels resolves via fluent API', async () => {
+    it('labels resolves via DataLoader', async () => {
       const ctx = createMockContext();
       const labels = [{ id: 'l1', name: 'Bug', color: '#FF0000' }];
-      const mockLabels = vi.fn().mockResolvedValue(labels);
-      ctx.prisma.task.findUnique.mockReturnValue({ labels: mockLabels });
+      ctx.loaders.labelsByTaskId.load.mockResolvedValue(labels);
 
       const result = await taskResolvers.Task.labels!({ id: 'task1' } as never, {}, ctx as never);
       expect(result).toEqual(labels);
+      expect(ctx.loaders.labelsByTaskId.load).toHaveBeenCalledWith('task1');
     });
   });
 });
