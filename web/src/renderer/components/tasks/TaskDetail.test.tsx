@@ -261,10 +261,10 @@ describe('TaskDetail', () => {
       expect(screen.queryByText(/Back to Test Project/)).not.toBeInTheDocument();
     });
 
-    it('archive calls goToParent', async () => {
+    it('delete calls goToParent', async () => {
       await importAndRender();
 
-      fireEvent.click(screen.getByText('Archive'));
+      fireEvent.click(screen.getByText('Delete'));
 
       await vi.waitFor(() => {
         expect(mockArchiveTask).toHaveBeenCalledWith('task-1');

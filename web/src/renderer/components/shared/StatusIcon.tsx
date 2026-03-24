@@ -61,5 +61,22 @@ export function StatusIcon({ status, className = iconSize.sm }: StatusIconProps)
           />
         </svg>
       );
+    case TaskStatus.Cancelled:
+      return (
+        <svg
+          className={`${className} text-error`}
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-label="Status: Cancelled"
+        >
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M5.5 5.5l5 5M10.5 5.5l-5 5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
   }
 }

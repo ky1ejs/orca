@@ -8,7 +8,12 @@ import { formatRelativeDate } from '../../utils/formatRelativeDate.js';
 import { TaskTableInlineCreate } from './TaskTableInlineCreate.js';
 import { EmptyTaskList } from '../layout/EmptyState.js';
 import { PullRequestIndicator } from './PullRequestIndicator.js';
-import { STATUS_ORDER, STATUS_LABELS, groupTasksByStatus } from '../../utils/task-status.js';
+import {
+  STATUS_ORDER,
+  STATUS_LABELS,
+  DEFAULT_COLLAPSED_STATUSES,
+  groupTasksByStatus,
+} from '../../utils/task-status.js';
 
 interface TaskSummary {
   id: string;
@@ -30,9 +35,7 @@ interface TaskTableProps {
 }
 
 export function TaskTable({ projectId, tasks, onTaskClick }: TaskTableProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    [TaskStatus.Done]: true,
-  });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(DEFAULT_COLLAPSED_STATUSES);
   const [inlineCreateStatus, setInlineCreateStatus] = useState<TaskStatus | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const tableRef = useRef<HTMLDivElement>(null);

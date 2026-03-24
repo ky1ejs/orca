@@ -17,6 +17,10 @@ const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
     label: 'Done',
     className: 'bg-success-muted text-success',
   },
+  [TaskStatus.Cancelled]: {
+    label: 'Cancelled',
+    className: 'bg-error-muted text-error',
+  },
 };
 
 interface TaskStatusBadgeProps {

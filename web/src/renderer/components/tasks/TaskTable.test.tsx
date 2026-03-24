@@ -65,6 +65,7 @@ describe('TaskTable', () => {
     expect(screen.getByText('In Review')).toBeTruthy();
     expect(screen.getByText('Todo')).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('Cancelled')).toBeTruthy();
   });
 
   it('renders task titles', () => {
@@ -93,6 +94,12 @@ describe('TaskTable', () => {
     render(<TaskTable projectId="p1" tasks={mockTasks} onTaskClick={vi.fn()} />);
     const doneHeader = screen.getByText('Done').closest('[role="row"]');
     expect(doneHeader?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('collapses Cancelled group by default', () => {
+    render(<TaskTable projectId="p1" tasks={mockTasks} onTaskClick={vi.fn()} />);
+    const cancelledHeader = screen.getByText('Cancelled').closest('[role="row"]');
+    expect(cancelledHeader?.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('toggles group collapse on header click', () => {

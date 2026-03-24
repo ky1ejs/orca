@@ -1,4 +1,4 @@
-import { Archive, FilePlus } from 'lucide-react';
+import { Trash2, FilePlus } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   AuditAction,
@@ -66,7 +66,7 @@ function describeEvent(event: ActivityNode): string {
     case AuditAction.Created:
       return 'created this';
     case AuditAction.Archived:
-      return 'archived this';
+      return 'deleted this';
     case AuditAction.Updated: {
       const descriptions = event.changes.map(describeChange).filter((d): d is string => d !== null);
       if (descriptions.length === 0) return 'made changes';
@@ -88,7 +88,7 @@ function EventIcon({ action }: { action: AuditAction }) {
     case AuditAction.Created:
       return <FilePlus className={`${iconSize.xs} text-success`} />;
     case AuditAction.Archived:
-      return <Archive className={`${iconSize.xs} text-error`} />;
+      return <Trash2 className={`${iconSize.xs} text-error`} />;
     case AuditAction.Updated:
       return <div className="w-2 h-2 rounded-full bg-fg-faint" />;
   }

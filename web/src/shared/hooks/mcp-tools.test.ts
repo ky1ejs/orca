@@ -651,19 +651,19 @@ describe('MCP tools', () => {
     });
   });
 
-  describe('archive_task', () => {
+  describe('delete_task', () => {
     it('returns error when no token', async () => {
       deps.getToken = () => null;
-      const result = await callTool('archive_task', { id: 'task-1' });
+      const result = await callTool('delete_task', { id: 'task-1' });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Not authenticated');
     });
 
-    it('archives task and returns result', async () => {
+    it('deletes task and returns result', async () => {
       const archived = { id: 'task-1', archivedAt: '2026-03-22T00:00:00.000Z' };
 
       await withMockBackend({ archiveTask: archived }, async (received) => {
-        const result = await callTool('archive_task', { id: 'task-1' });
+        const result = await callTool('delete_task', { id: 'task-1' });
         expect(result.isError).toBeUndefined();
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.id).toBe('task-1');
@@ -676,26 +676,26 @@ describe('MCP tools', () => {
 
     it('returns error on GraphQL errors', async () => {
       await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
-        const result = await callTool('archive_task', { id: 'task-1' });
+        const result = await callTool('delete_task', { id: 'task-1' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Failed to archive task');
+        expect(result.content[0].text).toContain('Failed to delete task');
       });
     });
   });
 
-  describe('archive_project', () => {
+  describe('delete_project', () => {
     it('returns error when no token', async () => {
       deps.getToken = () => null;
-      const result = await callTool('archive_project', { id: 'proj-1' });
+      const result = await callTool('delete_project', { id: 'proj-1' });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Not authenticated');
     });
 
-    it('archives project and returns result', async () => {
+    it('deletes project and returns result', async () => {
       const archived = { id: 'proj-1', archivedAt: '2026-03-22T00:00:00.000Z' };
 
       await withMockBackend({ archiveProject: archived }, async (received) => {
-        const result = await callTool('archive_project', { id: 'proj-1' });
+        const result = await callTool('delete_project', { id: 'proj-1' });
         expect(result.isError).toBeUndefined();
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.id).toBe('proj-1');
@@ -708,26 +708,26 @@ describe('MCP tools', () => {
 
     it('returns error on GraphQL errors', async () => {
       await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
-        const result = await callTool('archive_project', { id: 'proj-1' });
+        const result = await callTool('delete_project', { id: 'proj-1' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Failed to archive project');
+        expect(result.content[0].text).toContain('Failed to delete project');
       });
     });
   });
 
-  describe('archive_initiative', () => {
+  describe('delete_initiative', () => {
     it('returns error when no token', async () => {
       deps.getToken = () => null;
-      const result = await callTool('archive_initiative', { id: 'init-1' });
+      const result = await callTool('delete_initiative', { id: 'init-1' });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Not authenticated');
     });
 
-    it('archives initiative and returns result', async () => {
+    it('deletes initiative and returns result', async () => {
       const archived = { id: 'init-1', archivedAt: '2026-03-22T00:00:00.000Z' };
 
       await withMockBackend({ archiveInitiative: archived }, async (received) => {
-        const result = await callTool('archive_initiative', { id: 'init-1' });
+        const result = await callTool('delete_initiative', { id: 'init-1' });
         expect(result.isError).toBeUndefined();
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.id).toBe('init-1');
@@ -740,9 +740,9 @@ describe('MCP tools', () => {
 
     it('returns error on GraphQL errors', async () => {
       await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
-        const result = await callTool('archive_initiative', { id: 'init-1' });
+        const result = await callTool('delete_initiative', { id: 'init-1' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Failed to archive initiative');
+        expect(result.content[0].text).toContain('Failed to delete initiative');
       });
     });
   });

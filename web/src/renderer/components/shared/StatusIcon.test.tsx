@@ -33,6 +33,12 @@ describe('StatusIcon', () => {
     expect(path).toBeTruthy();
   });
 
+  it('renders a CANCELLED icon with aria-label', () => {
+    const { container } = render(<StatusIcon status={TaskStatus.Cancelled} />);
+    const svg = container.querySelector('svg');
+    expect(svg?.getAttribute('aria-label')).toBe('Status: Cancelled');
+  });
+
   it('applies custom className', () => {
     const { container } = render(<StatusIcon status={TaskStatus.Todo} className="w-6 h-6" />);
     const svg = container.querySelector('svg');
