@@ -27,9 +27,7 @@ export function createLoaders(prisma: PrismaClient) {
   return {
     userById: byId((ids) => prisma.user.findMany({ where: { id: { in: [...ids] } } })),
     projectById: byId((ids) => prisma.project.findMany({ where: { id: { in: [...ids] } } })),
-    initiativeById: byId((ids) =>
-      prisma.initiative.findMany({ where: { id: { in: [...ids] } } }),
-    ),
+    initiativeById: byId((ids) => prisma.initiative.findMany({ where: { id: { in: [...ids] } } })),
     workspaceById: byId((ids) => prisma.workspace.findMany({ where: { id: { in: [...ids] } } })),
 
     labelsByTaskId: new DataLoader(async (taskIds: readonly string[]) => {
