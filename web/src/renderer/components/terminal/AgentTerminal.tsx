@@ -47,6 +47,9 @@ export function escapeFilePath(p: string): string {
   return "'" + sanitized.replace(/'/g, "'\\''") + "'";
 }
 
+/** How often (ms) to force a full re-render during active PTY output. */
+const REFRESH_THROTTLE_MS = 1_000;
+
 interface AgentTerminalProps {
   sessionId: string;
   /** Whether this terminal is the active/visible tab. */
@@ -58,21 +61,30 @@ function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string)
   try {
     const dims = fitAddon.proposeDimensions();
     if (!dims || isNaN(dims.cols) || isNaN(dims.rows)) return;
-    if (dims.cols === terminal.cols && dims.rows === terminal.rows) return;
 
-    // Preserve scroll position across resize — fit() calls _renderService.clear()
-    // + terminal.resize() which can reset the viewport scroll offset.
-    const buffer = terminal.buffer.active;
-    const wasAtBottom = buffer.viewportY >= buffer.baseY;
+    if (dims.cols !== terminal.cols || dims.rows !== terminal.rows) {
+      // Preserve scroll position across resize — fit() calls _renderService.clear()
+      // + terminal.resize() which can reset the viewport scroll offset.
+      // Use a 1-row threshold: during active output with scroll regions, baseY can
+      // advance by one row between reading viewportY and the reflow.
+      const buffer = terminal.buffer.active;
+      const wasAtBottom = buffer.viewportY >= buffer.baseY - 1;
 
-    fitAddon.fit();
-    if (terminal.cols > 0 && terminal.rows > 0) {
-      window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+      fitAddon.fit();
+      if (terminal.cols > 0 && terminal.rows > 0) {
+        window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+      }
+
+      if (wasAtBottom) {
+        terminal.scrollToBottom();
+      }
     }
 
-    if (wasAtBottom) {
-      terminal.scrollToBottom();
-    }
+    // Always force a full re-render to clear accumulated rendering artifacts
+    // (e.g. WebGL state drift), even when terminal dimensions haven't changed.
+    // Layout reflows from sibling component re-renders can disturb the renderer
+    // without changing the terminal's col/row count.
+    terminal.refresh(0, terminal.rows - 1);
   } catch {
     // Container may have been removed or have zero dimensions
   }
@@ -99,6 +111,7 @@ export const AgentTerminal = memo(function AgentTerminal({
 
     let disposed = false;
     let unsubData: (() => void) | null = null;
+    let lastRefreshAt = -REFRESH_THROTTLE_MS;
 
     const terminal = new Terminal({
       theme: readTerminalTheme(),
@@ -183,6 +196,16 @@ export const AgentTerminal = memo(function AgentTerminal({
           // promise resolution and this synchronous listener registration.
           unsubData = window.orca.pty.onData(sessionId, (data) => {
             terminal.write(data);
+            // Throttled full re-render to clear accumulated WebGL rendering
+            // artifacts. Data events fire hundreds of times per second; the
+            // renderer already redraws per-frame, so more than 1 Hz yields
+            // no visible benefit. fitAndResize refreshes unthrottled because
+            // it runs infrequently (resize/visibility events only).
+            const now = performance.now();
+            if (now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+              lastRefreshAt = now;
+              terminal.refresh(0, terminal.rows - 1);
+            }
           });
         });
         return;
