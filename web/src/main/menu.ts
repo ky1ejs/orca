@@ -69,7 +69,8 @@ function buildMenu(checkForUpdatesLabel: string, checkForUpdatesEnabled: boolean
     {
       label: 'View',
       submenu: [
-        ...(isDev ? [{ role: 'reload' as const }, { role: 'toggleDevTools' as const }] : []),
+        { role: 'reload' as const },
+        { role: 'toggleDevTools' as const },
         { type: 'separator' as const },
         { role: 'resetZoom' as const },
         { role: 'zoomIn' as const },
