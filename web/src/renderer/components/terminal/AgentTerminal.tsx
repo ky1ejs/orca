@@ -98,6 +98,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
+  const webglAddonRef = useRef<WebglAddon | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const { terminalFontFamily } = usePreferences();
@@ -130,19 +131,6 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
-
-    // GPU-accelerated rendering with graceful fallback to DOM renderer
-    let webglAddon: WebglAddon | null = null;
-    try {
-      webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => {
-        webglAddon?.dispose();
-        webglAddon = null;
-      });
-      terminal.loadAddon(webglAddon);
-    } catch {
-      webglAddon = null;
-    }
 
     // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
     // plain \r so Claude Code can distinguish it and insert a newline.
@@ -263,7 +251,6 @@ export const AgentTerminal = memo(function AgentTerminal({
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
       classObserver.disconnect();
-      webglAddon?.dispose();
       serializeAddon.dispose();
       searchAddon.dispose();
       onDataDisposable.dispose();
@@ -282,15 +269,38 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
-  // Refit when terminal becomes visible — ResizeObserver won't fire on
-  // visibility: hidden → visible since element size doesn't change.
+  // Manage WebGL addon lifecycle based on visibility. Only the active terminal
+  // gets a WebGL context — hidden terminals fall back to the DOM renderer.
+  // This prevents "Too many active WebGL contexts" warnings when many sessions
+  // are mounted simultaneously (browsers limit to ~8-16 contexts).
   useEffect(() => {
-    if (!visible) return;
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
-    if (terminal && fitAddon) {
+    if (!terminal || !fitAddon) return;
+
+    const disposeWebgl = () => {
+      const addon = webglAddonRef.current;
+      if (!addon) return;
+      webglAddonRef.current = null;
+      addon.dispose();
+    };
+
+    if (visible) {
+      try {
+        const addon = new WebglAddon();
+        addon.onContextLoss(disposeWebgl);
+        terminal.loadAddon(addon);
+        webglAddonRef.current = addon;
+      } catch {
+        webglAddonRef.current = null;
+      }
+
+      // Refit after loading WebGL — ResizeObserver won't fire on
+      // visibility: hidden → visible since element size doesn't change.
       fitAndResize(fitAddon, terminal, sessionId);
     }
+
+    return disposeWebgl;
   }, [visible, sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
