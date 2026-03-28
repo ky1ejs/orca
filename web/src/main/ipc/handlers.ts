@@ -202,6 +202,8 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
 
   // ── Perf logging (fire-and-forget from renderer → main.log) ─────────
   ipcMain.on(IPC_CHANNELS.PERF_LOG, (_event, msg: string) => {
-    logger.info(msg);
+    if (typeof msg !== 'string' || !msg.startsWith('[perf]')) return;
+    const safe = msg.replace(/[\r\n]+/g, ' ').slice(0, 1024);
+    logger.info(safe);
   });
 }

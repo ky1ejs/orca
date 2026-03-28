@@ -15,7 +15,8 @@ function readLogs(options: {
   source?: string;
   tail: number;
 }): string {
-  const { filter, level, source, tail } = options;
+  const { filter, level, source } = options;
+  const tail = Math.max(1, Math.min(options.tail, 500));
   const sections: string[] = [];
 
   const files = source ? LOG_FILES.filter(([label]) => label === source) : LOG_FILES;

@@ -1,3 +1,11 @@
+/** Monotonic clock — immune to NTP adjustments and wall-clock jumps. */
+const nowMs: () => number =
+  typeof globalThis !== 'undefined' &&
+  typeof globalThis.performance !== 'undefined' &&
+  typeof globalThis.performance.now === 'function'
+    ? () => globalThis.performance.now()
+    : () => Date.now();
+
 /**
  * Lightweight performance timer for tracing operation latency.
  * Browser-safe (no Node dependencies) — usable in renderer, main, and daemon.
@@ -11,8 +19,8 @@ export function createPerfTimer(
   scope: string,
   log: (msg: string) => void,
 ): (label: string) => void {
-  const t0 = Date.now();
-  return (label: string) => log(`[perf] ${scope} ${label} +${Date.now() - t0}ms`);
+  const t0 = nowMs();
+  return (label: string) => log(`[perf] ${scope} ${label} +${Math.round(nowMs() - t0)}ms`);
 }
 
 /**
