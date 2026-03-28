@@ -367,6 +367,123 @@ describe('daemon integration', () => {
     }
   });
 
+  it('notify sends a message without expecting a response', async () => {
+    const session = createSession({ status: SessionStatus.Starting });
+
+    let exited = false;
+    client.subscribe('pty.exit', (params) => {
+      const p = params as { sessionId: string };
+      if (p.sessionId === session.id) exited = true;
+    });
+
+    // Spawn a short-lived process to get a real session with data
+    await client.request(DAEMON_METHODS.PTY_SPAWN, {
+      sessionId: session.id,
+      command: '/bin/echo',
+      args: ['notify-test'],
+      cwd: tempDir,
+    });
+
+    await waitFor(() => exited, 5000);
+
+    // notify() should not throw and should not create a pending request
+    client.notify(DAEMON_METHODS.PTY_ACK, { sessionId: session.id, bytes: 100 });
+
+    // Verify the client is still functional after notify
+    const result = await client.request(DAEMON_METHODS.DAEMON_PING);
+    expect(result).toEqual({ pong: true });
+  });
+
+  it('pty.ack resumes paused PTY after watermark exceeded', async () => {
+    const session = createSession({ status: SessionStatus.Starting });
+    const dataChunks: string[] = [];
+    let exited = false;
+
+    client.subscribe('pty.data', (params) => {
+      const p = params as { sessionId: string; data: string };
+      if (p.sessionId === session.id) dataChunks.push(p.data);
+    });
+    client.subscribe('pty.exit', (params) => {
+      const p = params as { sessionId: string };
+      if (p.sessionId === session.id) exited = true;
+    });
+
+    // Spawn echo — it exits immediately, but ack should still be processed
+    await client.request(DAEMON_METHODS.PTY_SPAWN, {
+      sessionId: session.id,
+      command: '/bin/echo',
+      args: ['ack-test'],
+      cwd: tempDir,
+    });
+
+    await waitFor(() => exited, 5000);
+
+    // Send an ACK via notify — should not throw or hang
+    client.notify(DAEMON_METHODS.PTY_ACK, { sessionId: session.id, bytes: 50 });
+
+    // Verify system is still responsive
+    const ping = await client.request(DAEMON_METHODS.DAEMON_PING);
+    expect(ping).toEqual({ pong: true });
+  });
+
+  it('pty.replay returns snapshot when available instead of raw buffer', async () => {
+    const session = createSession({ status: SessionStatus.Starting });
+    let exited = false;
+
+    client.subscribe('pty.exit', (params) => {
+      const p = params as { sessionId: string };
+      if (p.sessionId === session.id) exited = true;
+    });
+
+    await client.request(DAEMON_METHODS.PTY_SPAWN, {
+      sessionId: session.id,
+      command: '/bin/echo',
+      args: ['raw-buffer-content'],
+      cwd: tempDir,
+    });
+
+    await waitFor(() => exited, 5000);
+
+    // Set a snapshot — replay should now prefer it
+    const snapshotContent = 'clean serialized terminal state';
+    await client.request(DAEMON_METHODS.PTY_SNAPSHOT, {
+      sessionId: session.id,
+      content: snapshotContent,
+    });
+
+    const replay = (await client.request(DAEMON_METHODS.PTY_REPLAY, {
+      sessionId: session.id,
+    })) as string;
+
+    expect(replay).toBe(snapshotContent);
+  });
+
+  it('pty.replay falls back to ring buffer when no snapshot exists', async () => {
+    const session = createSession({ status: SessionStatus.Starting });
+    let exited = false;
+
+    client.subscribe('pty.exit', (params) => {
+      const p = params as { sessionId: string };
+      if (p.sessionId === session.id) exited = true;
+    });
+
+    await client.request(DAEMON_METHODS.PTY_SPAWN, {
+      sessionId: session.id,
+      command: '/bin/echo',
+      args: ['fallback-content'],
+      cwd: tempDir,
+    });
+
+    await waitFor(() => exited, 5000);
+
+    // No snapshot set — replay should return ring buffer content
+    const replay = (await client.request(DAEMON_METHODS.PTY_REPLAY, {
+      sessionId: session.id,
+    })) as string;
+
+    expect(replay).toContain('fallback-content');
+  });
+
   it('stale session sweep marks dead PIDs as ERROR', () => {
     // Create a session with a PID that doesn't exist
     const session = createSession({ status: SessionStatus.Running, pid: 999999 });

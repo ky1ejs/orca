@@ -171,9 +171,12 @@ export class DaemonServer {
   private async handleRequest(client: ClientConnection, request: DaemonRequest): Promise<void> {
     try {
       const result = await this.handler(client, request.method, request.params);
+      // Notifications (no id) don't expect a response — skip the write.
+      if (!request.id) return;
       const response: DaemonResponse = { id: request.id, result: result ?? null };
       this.safeWrite(client, JSON.stringify(response) + '\n');
     } catch (err) {
+      if (!request.id) return;
       const response: DaemonResponse = {
         id: request.id,
         error: {

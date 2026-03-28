@@ -1,7 +1,8 @@
 /**
  * Batches PTY onData events and flushes on a timer or size threshold.
- * Implements watermark-based flow control: pauses PTY reads at HIGH
- * watermark, resumes at LOW watermark.
+ * Implements end-to-end watermark-based flow control: pauses PTY reads
+ * when unacknowledged downstream bytes exceed HIGH watermark, resumes
+ * when renderer ACKs bring them below LOW watermark.
  */
 
 interface DataBatcherOptions {
@@ -9,15 +10,16 @@ interface DataBatcherOptions {
   flushIntervalMs?: number;
   /** Accumulated size (UTF-16 code units) per session before forcing an immediate flush. Default: 64KB. */
   sizeThreshold?: number;
-  /** Pause PTY when pending size exceeds this (UTF-16 code units). Default: 512KB. */
+  /** Pause PTY when unacked bytes exceed this (UTF-16 code units). Default: 512KB. */
   highWatermark?: number;
-  /** Resume PTY when pending size drops below this after flush (UTF-16 code units). Default: 128KB. */
+  /** Resume PTY when unacked bytes drop below this (UTF-16 code units). Default: 128KB. */
   lowWatermark?: number;
 }
 
 interface SessionBatchState {
   chunks: string[];
   pendingSize: number;
+  unackedSize: number;
   paused: boolean;
 }
 
@@ -63,22 +65,28 @@ export class DataBatcher {
 
     let state = this.sessions.get(sessionId);
     if (!state) {
-      state = { chunks: [], pendingSize: 0, paused: false };
+      state = { chunks: [], pendingSize: 0, unackedSize: 0, paused: false };
       this.sessions.set(sessionId, state);
     }
 
     state.chunks.push(data);
     state.pendingSize += data.length;
 
-    // Check watermark before flush — flush resets pendingSize to 0,
-    // so the pause signal must fire while the size is still accurate.
-    if (!state.paused && state.pendingSize >= this.highWatermark) {
-      state.paused = true;
-      this.pauseCb?.(sessionId);
-    }
-
     if (state.pendingSize >= this.sizeThreshold) {
       this.flushSession(sessionId, state);
+    }
+  }
+
+  /** Acknowledge that the renderer has processed `bytes` of data. */
+  ack(sessionId: string, bytes: number): void {
+    const state = this.sessions.get(sessionId);
+    if (!state) return;
+
+    state.unackedSize = Math.max(0, state.unackedSize - bytes);
+
+    if (state.paused && state.unackedSize < this.lowWatermark) {
+      state.paused = false;
+      this.resumeCb?.(sessionId);
     }
   }
 
@@ -118,12 +126,14 @@ export class DataBatcher {
     const batch = state.chunks.length === 1 ? state.chunks[0] : state.chunks.join('');
     state.chunks = [];
     state.pendingSize = 0;
+    state.unackedSize += batch.length;
 
     this.flushCb?.(sessionId, batch);
 
-    if (state.paused && state.pendingSize < this.lowWatermark) {
-      state.paused = false;
-      this.resumeCb?.(sessionId);
+    // Pause PTY when unacked downstream data exceeds the high watermark.
+    if (!state.paused && state.unackedSize >= this.highWatermark) {
+      state.paused = true;
+      this.pauseCb?.(sessionId);
     }
   }
 }

@@ -19,7 +19,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock xterm.js
-const mockWrite = vi.fn();
+const mockWrite = vi.fn((_data: string, cb?: () => void) => cb?.());
 const mockOpen = vi.fn();
 const mockDispose = vi.fn();
 const mockLoadAddon = vi.fn();
@@ -107,6 +107,7 @@ const mockPtyOnExit = vi.fn().mockReturnValue(vi.fn());
 const mockPtyWrite = vi.fn();
 const mockPtyResize = vi.fn();
 const mockPtySnapshot = vi.fn().mockResolvedValue(undefined);
+const mockPtyAck = vi.fn();
 
 // Capture the ResizeObserver callback so we can invoke it in tests
 let resizeObserverCallback: ResizeObserverCallback | null = null;
@@ -121,6 +122,7 @@ beforeEach(() => {
     pty: {
       replay: mockReplay,
       snapshot: mockPtySnapshot,
+      ack: mockPtyAck,
       onData: mockPtyOnData,
       onExit: mockPtyOnExit,
       write: mockPtyWrite,
@@ -364,13 +366,115 @@ describe('AgentTerminal', () => {
     const onDataCallback = mockPtyOnData.mock.calls[0][1];
     mockRefresh.mockClear();
 
-    // First data event should trigger refresh
+    // Data is coalesced via rAF — push data, then flush the rAF
     onDataCallback('line 1');
-    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
 
-    // Immediate second call should be throttled (within 1000ms)
+    // Immediate second data event within 1000ms should be throttled
     onDataCallback('line 2');
+    await vi.waitFor(() => {
+      // write fires (rAF flushes) but refresh is throttled
+      expect(mockWrite).toHaveBeenCalled();
+    });
+    // refresh count stays at 1 (throttled)
     expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces multiple onData events into a single write per frame', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
+
+    const onDataCallback = mockPtyOnData.mock.calls[0][1];
+    mockWrite.mockClear();
+
+    // Push multiple data events before rAF fires
+    onDataCallback('aaa');
+    onDataCallback('bbb');
+    onDataCallback('ccc');
+
+    // rAF flushes — should produce a single coalesced write
+    await vi.waitFor(() => {
+      expect(mockWrite).toHaveBeenCalledWith('aaabbbccc', expect.any(Function));
+    });
+    // Only one write call, not three
+    const dataWrites = mockWrite.mock.calls.filter(
+      (call: unknown[]) => typeof call[0] === 'string' && !call[0].includes('[Process exited'),
+    );
+    expect(dataWrites).toHaveLength(1);
+  });
+
+  it('sends ACK after xterm.js processes a write', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
+
+    const onDataCallback = mockPtyOnData.mock.calls[0][1];
+    mockPtyAck.mockClear();
+
+    onDataCallback('hello');
+
+    await vi.waitFor(() => {
+      expect(mockPtyAck).toHaveBeenCalledWith('test-session', 5);
+    });
+  });
+
+  it('sends ACK after replay write completes', async () => {
+    mockReplay.mockResolvedValue('replayed output');
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyAck).toHaveBeenCalledWith('test-session', 'replayed output'.length);
+    });
+  });
+
+  it('flushes pending data on unmount', async () => {
+    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
+
+    const onDataCallback = mockPtyOnData.mock.calls[0][1];
+    mockWrite.mockClear();
+
+    // Push data but don't wait for rAF
+    onDataCallback('pending');
+
+    // Unmount should flush the pending data
+    unmount();
+
+    const dataWrites = mockWrite.mock.calls.filter(
+      (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('pending'),
+    );
+    expect(dataWrites).toHaveLength(1);
+  });
+
+  it('uses rAF for resize debounce instead of setTimeout', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+    mockFit.mockClear();
+    mockPtyResize.mockClear();
+
+    // Simulate a subsequent resize
+    const entry = { contentRect: { width: 900, height: 500 } } as ResizeObserverEntry;
+    resizeObserverCallback?.([entry], {} as ResizeObserver);
+
+    // fit should be called via rAF (not setTimeout)
+    await vi.waitFor(() => {
+      expect(mockFit).toHaveBeenCalled();
+    });
+    expect(mockPtyResize).toHaveBeenCalled();
   });
 
   it('calls refresh when terminal becomes visible', () => {

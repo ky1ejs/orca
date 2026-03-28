@@ -128,6 +128,11 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     return client.request(DAEMON_METHODS.PTY_SNAPSHOT, { sessionId, content });
   });
 
+  // ACK is fire-and-forget — no UUID, no timeout, no response expected.
+  ipcMain.on(IPC_CHANNELS.PTY_ACK, (_event, sessionId: string, bytes: number) => {
+    client.notify(DAEMON_METHODS.PTY_ACK, { sessionId, bytes });
+  });
+
   // ── Agent handlers (proxy to daemon) ────────────────────────────────
   // Agent operations ensure the daemon is running first — the daemon may have
   // shut down (idle timeout, crash) between the last connection and the request.
