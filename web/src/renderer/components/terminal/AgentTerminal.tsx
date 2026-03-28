@@ -190,7 +190,17 @@ export const AgentTerminal = memo(function AgentTerminal({
         initialFitDone = true;
         fitAndResize(fitAddon, terminal, sessionId);
         mark('fit-complete');
-        window.orca.pty.replay(sessionId).then((output) => {
+        // Replay existing output, then subscribe to live data. The subscription
+        // MUST be established even if replay fails (daemon busy, IPC timeout,
+        // brief disconnection) — otherwise the terminal permanently freezes.
+        (async () => {
+          let output: string | undefined;
+          try {
+            output = await window.orca.pty.replay(sessionId);
+          } catch {
+            // Replay failed — subscribe to live data anyway so the terminal
+            // isn't permanently frozen. New output will still arrive.
+          }
           if (disposed) return;
           mark('replay-complete');
           if (output) {
@@ -198,9 +208,8 @@ export const AgentTerminal = memo(function AgentTerminal({
               window.orca.pty.ack(sessionId, output.length);
             });
           }
-          // Subscribe to live PTY output AFTER fit + replay completes.
           // JS event loop guarantees no IPC events dispatch between the
-          // promise resolution and this synchronous listener registration.
+          // await resolution and this synchronous listener registration.
           unsubData = window.orca.pty.onData(sessionId, (data) => {
             if (disposed) return;
             if (!firstDataLogged) {
@@ -227,7 +236,7 @@ export const AgentTerminal = memo(function AgentTerminal({
               });
             }
           });
-        });
+        })();
         return;
       }
       // Skip resize IPC for hidden terminals — only the visible one needs to
@@ -295,6 +304,8 @@ export const AgentTerminal = memo(function AgentTerminal({
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
       classObserver.disconnect();
+      webglAddonRef.current?.dispose();
+      webglAddonRef.current = null;
       serializeAddon.dispose();
       searchAddon.dispose();
       onDataDisposable.dispose();
@@ -317,9 +328,9 @@ export const AgentTerminal = memo(function AgentTerminal({
   // gets a WebGL context — hidden terminals fall back to the default renderer.
   // This prevents "Too many active WebGL contexts" warnings when many sessions
   // are mounted simultaneously (browsers limit to ~8-16 contexts).
+  // Also refits and focuses on visibility change since ResizeObserver won't fire
+  // on visibility: hidden → visible (element size doesn't change).
   useEffect(() => {
-    // terminalRef and fitAddonRef are populated by the setup effect above,
-    // which runs first (React executes effects in declaration order).
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
@@ -334,23 +345,55 @@ export const AgentTerminal = memo(function AgentTerminal({
     };
 
     if (visible) {
-      try {
-        const addon = new WebglAddon();
-        // Set the ref before loading so context loss during load can still dispose it.
-        webglAddonRef.current = addon;
-        addon.onContextLoss(() => disposeWebgl(addon));
-        terminal.loadAddon(addon);
-      } catch {
-        webglAddonRef.current = null;
+      // Guard: skip if addon already loaded (avoids expensive context churn
+      // when the effect re-runs due to sessionId changes while still visible).
+      if (!webglAddonRef.current) {
+        try {
+          const addon = new WebglAddon();
+          // Set the ref before loading so context loss during load can still dispose it.
+          webglAddonRef.current = addon;
+          addon.onContextLoss(() => disposeWebgl(addon));
+          terminal.loadAddon(addon);
+        } catch {
+          webglAddonRef.current = null;
+        }
       }
 
-      // Refit after loading WebGL — ResizeObserver won't fire on
-      // visibility: hidden → visible since element size doesn't change.
       fitAndResize(fitAddon, terminal, sessionId);
+      terminal.focus();
     }
 
     return () => disposeWebgl();
   }, [visible, sessionId]);
+
+  // Re-replay session data after daemon reconnection to fill any gap in
+  // output that occurred while the socket was down. The ring buffer on the
+  // daemon side still has the full history, so a reset + replay restores
+  // the terminal to an accurate state.
+  useEffect(() => {
+    if (!window.orca?.lifecycle) return;
+    const unsub = window.orca.lifecycle.onDaemonReconnected(() => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      window.orca.pty
+        .replay(sessionId)
+        .then((output) => {
+          if (!terminalRef.current) return; // unmounted during IPC
+          terminal.reset();
+          if (output) {
+            terminal.write(output, () => {
+              // ACK replayed bytes so daemon flow control can resume the PTY.
+              window.orca.pty.ack(sessionId, output.length);
+            });
+          }
+        })
+        .catch(() => {
+          // Session may no longer exist after daemon restart — that's fine,
+          // the status indicator will show it as exited.
+        });
+    });
+    return unsub;
+  }, [sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('Files')) {
@@ -399,7 +442,7 @@ export const AgentTerminal = memo(function AgentTerminal({
         fitAndResize(fitAddon, terminal, sessionId);
       }
     }
-  }, [terminalFontFamily]);
+  }, [terminalFontFamily, sessionId]);
 
   return (
     <div

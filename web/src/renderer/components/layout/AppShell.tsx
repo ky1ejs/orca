@@ -95,7 +95,7 @@ export function AppShell({ onLogout }: AppShellProps) {
   const { loading: workspaceLoading } = useWorkspace();
   const { projects, fetching: projectsFetching } = useWorkspaceData();
   const taskId = current.view === 'task' ? current.id : undefined;
-  const { sessions, loading: sessionsLoading, refresh } = useTerminalSessions(taskId);
+  const { sessions, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { terminalPanelHeight, setTerminalPanelHeight } = usePreferences();
@@ -350,14 +350,7 @@ export function AppShell({ onLogout }: AppShellProps) {
               style={{ height: terminalPanelHeight }}
             >
               <TerminalPRStatusBar taskId={taskId} />
-              {sessionsLoading ? (
-                <div
-                  className="flex-1 flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--color-terminal-bg)' }}
-                  role="status"
-                  aria-label="Loading terminal sessions"
-                />
-              ) : hasActiveSessions ? (
+              {hasActiveSessions ? (
                 <>
                   <TerminalTabs
                     sessions={sessions}

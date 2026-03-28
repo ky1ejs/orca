@@ -29,6 +29,8 @@ const mockScrollToBottom = vi.fn();
 const mockRefresh = vi.fn();
 const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
 const mockPaste = vi.fn();
+const mockFocus = vi.fn();
+const mockTerminalReset = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -40,8 +42,10 @@ vi.mock('@xterm/xterm', () => ({
     attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     scrollToBottom: mockScrollToBottom,
     refresh: mockRefresh,
+    reset: mockTerminalReset,
     buffer: mockBuffer,
     paste: mockPaste,
+    focus: mockFocus,
     options: {},
     cols: 80,
     rows: 24,
@@ -127,6 +131,9 @@ beforeEach(() => {
       onExit: mockPtyOnExit,
       write: mockPtyWrite,
       resize: mockPtyResize,
+    },
+    lifecycle: {
+      onDaemonReconnected: vi.fn().mockReturnValue(vi.fn()),
     },
   };
   // Mock ResizeObserver — capture the callback to simulate layout completion
@@ -283,11 +290,82 @@ describe('AgentTerminal', () => {
     expect(mockWebglDispose).toHaveBeenCalled();
   });
 
+  it('disposes WebGL addon when terminal becomes hidden', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    mockWebglDispose.mockClear();
+    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    expect(mockWebglDispose).toHaveBeenCalled();
+  });
+
   it('disposes terminal and WebGL addon on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     unmount();
     expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it('subscribes to onData even when replay fails', async () => {
+    mockReplay.mockRejectedValueOnce(new Error('Daemon disconnected'));
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    // Despite replay rejection, onData should still be subscribed
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
+  });
+
+  it('re-replays session data on daemon reconnection', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    // Wait for initial replay + subscribe to complete
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalled();
+    });
+
+    const onReconnected = (
+      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
+    ).onDaemonReconnected;
+    const reconnectCallback = onReconnected.mock.calls[0][0];
+
+    // Simulate daemon reconnection with new output
+    mockReplay.mockResolvedValueOnce('reconnected output');
+    mockTerminalReset.mockClear();
+    mockWrite.mockClear();
+
+    reconnectCallback();
+
+    await vi.waitFor(() => {
+      expect(mockTerminalReset).toHaveBeenCalled();
+      expect(mockWrite).toHaveBeenCalledWith('reconnected output', expect.any(Function));
+    });
+  });
+
+  it('handles replay failure gracefully on daemon reconnection', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalled();
+    });
+
+    const onReconnected = (
+      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
+    ).onDaemonReconnected;
+    const reconnectCallback = onReconnected.mock.calls[0][0];
+
+    // Simulate daemon reconnection where session no longer exists
+    mockReplay.mockRejectedValueOnce(new Error('Session not found'));
+    mockTerminalReset.mockClear();
+
+    reconnectCallback();
+
+    // Should not throw or reset terminal — failure is swallowed
+    await vi.waitFor(() => {
+      expect(mockReplay).toHaveBeenCalledTimes(2); // initial + reconnect
+    });
+    expect(mockTerminalReset).not.toHaveBeenCalled();
   });
 
   it('disconnects ResizeObserver on unmount', () => {
@@ -509,15 +587,17 @@ describe('AgentTerminal', () => {
     expect(mockPtyResize).toHaveBeenCalled();
   });
 
-  it('calls refresh and loads WebGL when terminal becomes visible', () => {
+  it('calls refresh, loads WebGL, and focuses when terminal becomes visible', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
     triggerInitialResize();
     mockRefresh.mockClear();
     mockWebglOnContextLoss.mockClear();
+    mockFocus.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockFocus).toHaveBeenCalled();
   });
 
   describe('drag and drop', () => {

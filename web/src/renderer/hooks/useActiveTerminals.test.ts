@@ -6,7 +6,7 @@ import type { TerminalSessionInfo } from './useTerminalSessions.js';
 
 const mockSessions = vi.fn<() => TerminalSessionInfo[]>(() => []);
 vi.mock('./useTerminalSessions.js', () => ({
-  useTerminalSessions: () => ({ sessions: mockSessions(), loading: false, refresh: vi.fn() }),
+  useTerminalSessions: () => ({ sessions: mockSessions(), refresh: vi.fn() }),
 }));
 
 const { useActiveTerminals, pickPrimaryPr, isCloseable } = await import('./useActiveTerminals.js');
