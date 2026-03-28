@@ -765,6 +765,18 @@ describe('MCP tools', () => {
       });
     });
 
+    it('returns error when both id and displayId provided', async () => {
+      await withMockBackend({}, async () => {
+        const result = await callTool('get_task', {
+          id: 'task-1',
+          displayId: 'ORCA-42',
+          workspaceId: 'ws-1',
+        });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('not both');
+      });
+    });
+
     it('returns error when displayId given without workspaceId', async () => {
       await withMockBackend({}, async () => {
         const result = await callTool('get_task', { displayId: 'ORCA-42' });
@@ -936,6 +948,22 @@ describe('MCP tools', () => {
         expect(parsed.every((t: { status: string }) => t.status === 'TODO')).toBe(true);
       });
     });
+
+    it('respects limit parameter', async () => {
+      const mockTasks = Array.from({ length: 5 }, (_, i) => ({
+        id: `task-${i}`,
+        displayId: `ORCA-${i}`,
+        title: `Task ${i}`,
+        status: 'TODO',
+      }));
+
+      await withMockBackend({ project: { tasks: mockTasks } }, async () => {
+        const result = await callTool('list_tasks', { projectId: 'proj-1', limit: 2 });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
   });
 
   describe('search_projects', () => {
@@ -1095,10 +1123,10 @@ describe('MCP tools', () => {
       expect(result.content[0].text).toContain('Not authenticated');
     });
 
-    it('returns members from backend', async () => {
+    it('returns members without email by default', async () => {
       const mockMembers = [
-        { id: 'mem-1', user: { id: 'u-1', name: 'Alice', email: 'alice@test.com' }, role: 'OWNER' },
-        { id: 'mem-2', user: { id: 'u-2', name: 'Bob', email: 'bob@test.com' }, role: 'MEMBER' },
+        { id: 'mem-1', user: { id: 'u-1', name: 'Alice' }, role: 'OWNER' },
+        { id: 'mem-2', user: { id: 'u-2', name: 'Bob' }, role: 'MEMBER' },
       ];
 
       await withMockBackend({ workspace: { members: mockMembers } }, async () => {
@@ -1108,6 +1136,22 @@ describe('MCP tools', () => {
         expect(parsed).toHaveLength(2);
         expect(parsed[0].user.name).toBe('Alice');
         expect(parsed[1].role).toBe('MEMBER');
+      });
+    });
+
+    it('includes email when includeEmail is true', async () => {
+      const mockMembers = [
+        { id: 'mem-1', user: { id: 'u-1', name: 'Alice', email: 'alice@test.com' }, role: 'OWNER' },
+      ];
+
+      await withMockBackend({ workspace: { members: mockMembers } }, async () => {
+        const result = await callTool('list_workspace_members', {
+          workspaceSlug: 'my-ws',
+          includeEmail: true,
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed[0].user.email).toBe('alice@test.com');
       });
     });
   });

@@ -75,6 +75,10 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
         return toolError('Provide either id or displayId.');
       }
 
+      if (id && displayId) {
+        return toolError('Provide either id or displayId, not both.');
+      }
+
       if (displayId && !workspaceId) {
         return toolError('workspaceId is required when using displayId.');
       }
@@ -188,14 +192,15 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
     'list_tasks',
     {
       description:
-        'List tasks in a project (by projectId) or in a workspace (by workspaceSlug). Optionally filter by status. When projectId is provided, workspaceSlug is ignored.',
+        'List tasks in a project (by projectId) or in a workspace (by workspaceSlug). Optionally filter by status. Returns up to `limit` results (default 100). When projectId is provided, workspaceSlug is ignored.',
       inputSchema: {
         projectId: z.string().optional().describe('Project ID to list tasks from'),
         workspaceSlug: z.string().optional().describe('Workspace slug to list all tasks from'),
         status: TASK_STATUS_ENUM,
+        limit: z.number().optional().describe('Maximum number of tasks to return (default 100)'),
       },
     },
-    async ({ projectId, workspaceSlug, status }) => {
+    async ({ projectId, workspaceSlug, status, limit }) => {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
 
@@ -236,7 +241,7 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
           tasks = tasks.filter((t) => t.status === status);
         }
 
-        return toolSuccess(JSON.stringify(tasks, null, 2));
+        return toolSuccess(JSON.stringify(tasks.slice(0, limit ?? 100), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -293,15 +298,16 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
     'search_tasks',
     {
       description:
-        'Search tasks by title within a workspace. Performs case-insensitive substring matching. Optionally filter by projectId and status.',
+        'Search tasks by title within a workspace. Performs case-insensitive substring matching. Optionally filter by projectId and status. Returns up to `limit` results (default 100).',
       inputSchema: {
         workspaceSlug: z.string().describe('The workspace slug'),
         query: z.string().describe('Search term to match against task titles'),
         projectId: z.string().optional().describe('Filter to tasks in this project'),
         status: TASK_STATUS_ENUM,
+        limit: z.number().optional().describe('Maximum number of results to return (default 100)'),
       },
     },
-    async ({ workspaceSlug, query: searchQuery, projectId, status }) => {
+    async ({ workspaceSlug, query: searchQuery, projectId, status, limit }) => {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
 
@@ -322,7 +328,7 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
             (!status || t.status === status),
         );
 
-        return toolSuccess(JSON.stringify(matches, null, 2));
+        return toolSuccess(JSON.stringify(matches.slice(0, limit ?? 100), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -413,19 +419,24 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
   server.registerTool(
     'list_workspace_members',
     {
-      description: 'List members of a workspace.',
+      description: 'List members of a workspace. Email is omitted by default.',
       inputSchema: {
         workspaceSlug: z.string().describe('The workspace slug'),
+        includeEmail: z
+          .boolean()
+          .optional()
+          .describe('Include member email addresses in the response (default false)'),
       },
     },
-    async ({ workspaceSlug }) => {
+    async ({ workspaceSlug, includeEmail }) => {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
 
+      const userFields = includeEmail ? 'id name email' : 'id name';
       const query = `
         query WorkspaceMembers($slug: String!) {
           workspace(slug: $slug) {
-            members { id user { id name email } role createdAt }
+            members { id user { ${userFields} } role createdAt }
           }
         }
       `;
