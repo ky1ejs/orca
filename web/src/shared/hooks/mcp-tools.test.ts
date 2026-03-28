@@ -746,4 +746,413 @@ describe('MCP tools', () => {
       });
     });
   });
+
+  // ── Query tools ─────────────────────────────────────────────────────
+
+  describe('get_task', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('get_task', { id: 'task-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns error when neither id nor displayId provided', async () => {
+      await withMockBackend({}, async () => {
+        const result = await callTool('get_task', {});
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Provide either id or displayId');
+      });
+    });
+
+    it('returns error when both id and displayId provided', async () => {
+      await withMockBackend({}, async () => {
+        const result = await callTool('get_task', {
+          id: 'task-1',
+          displayId: 'ORCA-42',
+          workspaceId: 'ws-1',
+        });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('not both');
+      });
+    });
+
+    it('returns error when displayId given without workspaceId', async () => {
+      await withMockBackend({}, async () => {
+        const result = await callTool('get_task', { displayId: 'ORCA-42' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('workspaceId is required');
+      });
+    });
+
+    it('gets task by UUID', async () => {
+      const mockTask = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'Test task',
+        status: 'TODO',
+        priority: 'NONE',
+        project: null,
+        assignee: null,
+        labels: [],
+        pullRequests: [],
+        relationships: [],
+      };
+
+      await withMockBackend({ task: mockTask }, async () => {
+        const result = await callTool('get_task', { id: 'task-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-42');
+      });
+    });
+
+    it('gets task by displayId with workspaceId', async () => {
+      const mockTask = {
+        id: 'task-1',
+        displayId: 'ORCA-42',
+        title: 'Test task',
+        status: 'TODO',
+      };
+
+      await withMockBackend({ taskByDisplayId: mockTask }, async () => {
+        const result = await callTool('get_task', {
+          displayId: 'ORCA-42',
+          workspaceId: 'ws-1',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-42');
+      });
+    });
+  });
+
+  describe('get_project', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('get_project', { id: 'proj-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns project with tasks', async () => {
+      const mockProject = {
+        id: 'proj-1',
+        name: 'Backend',
+        description: null,
+        defaultDirectory: '/code',
+        workspaceId: 'ws-1',
+        initiativeId: null,
+        initiative: null,
+        tasks: [
+          { id: 'task-1', displayId: 'ORCA-1', title: 'Task 1', status: 'TODO' },
+          { id: 'task-2', displayId: 'ORCA-2', title: 'Task 2', status: 'DONE' },
+        ],
+      };
+
+      await withMockBackend({ project: mockProject }, async () => {
+        const result = await callTool('get_project', { id: 'proj-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.name).toBe('Backend');
+        expect(parsed.tasks).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('get_initiative', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('get_initiative', { id: 'init-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns initiative with projects', async () => {
+      const mockInitiative = {
+        id: 'init-1',
+        name: 'Phase 1',
+        description: 'First phase',
+        workspaceId: 'ws-1',
+        projects: [{ id: 'proj-1', name: 'Backend', description: null }],
+      };
+
+      await withMockBackend({ initiative: mockInitiative }, async () => {
+        const result = await callTool('get_initiative', { id: 'init-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.name).toBe('Phase 1');
+        expect(parsed.projects).toHaveLength(1);
+      });
+    });
+  });
+
+  describe('list_tasks', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_tasks', { projectId: 'proj-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns error when neither projectId nor workspaceSlug provided', async () => {
+      await withMockBackend({}, async () => {
+        const result = await callTool('list_tasks', {});
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Provide either projectId or workspaceSlug');
+      });
+    });
+
+    it('returns tasks from a project', async () => {
+      const mockTasks = [
+        { id: 'task-1', displayId: 'ORCA-1', title: 'Task 1', status: 'TODO' },
+        { id: 'task-2', displayId: 'ORCA-2', title: 'Task 2', status: 'DONE' },
+      ];
+
+      await withMockBackend({ project: { tasks: mockTasks } }, async () => {
+        const result = await callTool('list_tasks', { projectId: 'proj-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
+
+    it('returns tasks from a workspace', async () => {
+      const mockTasks = [
+        { id: 'task-1', displayId: 'ORCA-1', title: 'Task 1', status: 'IN_PROGRESS' },
+      ];
+
+      await withMockBackend({ workspace: { tasks: mockTasks } }, async () => {
+        const result = await callTool('list_tasks', { workspaceSlug: 'my-ws' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(1);
+      });
+    });
+
+    it('filters tasks by status', async () => {
+      const mockTasks = [
+        { id: 'task-1', displayId: 'ORCA-1', title: 'Task 1', status: 'TODO' },
+        { id: 'task-2', displayId: 'ORCA-2', title: 'Task 2', status: 'DONE' },
+        { id: 'task-3', displayId: 'ORCA-3', title: 'Task 3', status: 'TODO' },
+      ];
+
+      await withMockBackend({ project: { tasks: mockTasks } }, async () => {
+        const result = await callTool('list_tasks', {
+          projectId: 'proj-1',
+          status: 'TODO',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+        expect(parsed.every((t: { status: string }) => t.status === 'TODO')).toBe(true);
+      });
+    });
+
+    it('respects limit parameter', async () => {
+      const mockTasks = Array.from({ length: 5 }, (_, i) => ({
+        id: `task-${i}`,
+        displayId: `ORCA-${i}`,
+        title: `Task ${i}`,
+        status: 'TODO',
+      }));
+
+      await withMockBackend({ project: { tasks: mockTasks } }, async () => {
+        const result = await callTool('list_tasks', { projectId: 'proj-1', limit: 2 });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('search_projects', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('search_projects', {
+        workspaceSlug: 'my-ws',
+        query: 'back',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns matching projects case-insensitively', async () => {
+      const mockProjects = [
+        { id: 'proj-1', name: 'Backend API' },
+        { id: 'proj-2', name: 'Frontend App' },
+        { id: 'proj-3', name: 'backend workers' },
+      ];
+
+      await withMockBackend({ workspace: { projects: mockProjects } }, async () => {
+        const result = await callTool('search_projects', {
+          workspaceSlug: 'my-ws',
+          query: 'backend',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
+
+    it('returns empty array when no match', async () => {
+      const mockProjects = [{ id: 'proj-1', name: 'Backend API' }];
+
+      await withMockBackend({ workspace: { projects: mockProjects } }, async () => {
+        const result = await callTool('search_projects', {
+          workspaceSlug: 'my-ws',
+          query: 'zzz',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(0);
+      });
+    });
+  });
+
+  describe('search_tasks', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('search_tasks', {
+        workspaceSlug: 'my-ws',
+        query: 'fix',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns matching tasks case-insensitively', async () => {
+      const mockTasks = [
+        { id: 't-1', title: 'Fix login bug', status: 'TODO', projectId: 'proj-1' },
+        { id: 't-2', title: 'Add feature', status: 'TODO', projectId: 'proj-1' },
+        { id: 't-3', title: 'fix logout issue', status: 'DONE', projectId: 'proj-2' },
+      ];
+
+      await withMockBackend({ workspace: { tasks: mockTasks } }, async () => {
+        const result = await callTool('search_tasks', {
+          workspaceSlug: 'my-ws',
+          query: 'fix',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
+
+    it('filters by projectId and status', async () => {
+      const mockTasks = [
+        { id: 't-1', title: 'Fix login bug', status: 'TODO', projectId: 'proj-1' },
+        { id: 't-2', title: 'Fix signup bug', status: 'DONE', projectId: 'proj-1' },
+        { id: 't-3', title: 'Fix logout issue', status: 'TODO', projectId: 'proj-2' },
+      ];
+
+      await withMockBackend({ workspace: { tasks: mockTasks } }, async () => {
+        const result = await callTool('search_tasks', {
+          workspaceSlug: 'my-ws',
+          query: 'fix',
+          projectId: 'proj-1',
+          status: 'TODO',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(1);
+        expect(parsed[0].id).toBe('t-1');
+      });
+    });
+  });
+
+  describe('search_initiatives', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('search_initiatives', {
+        workspaceSlug: 'my-ws',
+        query: 'phase',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns matching initiatives case-insensitively', async () => {
+      const mockInitiatives = [
+        { id: 'init-1', name: 'Phase 1' },
+        { id: 'init-2', name: 'Phase 2' },
+        { id: 'init-3', name: 'MVP Launch' },
+      ];
+
+      await withMockBackend({ workspace: { initiatives: mockInitiatives } }, async () => {
+        const result = await callTool('search_initiatives', {
+          workspaceSlug: 'my-ws',
+          query: 'phase',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('list_labels', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_labels', { workspaceId: 'ws-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns labels from backend', async () => {
+      const mockLabels = [
+        { id: 'label-1', name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' },
+        { id: 'label-2', name: 'Feature', color: '#00ff00', workspaceId: 'ws-1' },
+      ];
+
+      await withMockBackend({ labels: mockLabels }, async () => {
+        const result = await callTool('list_labels', { workspaceId: 'ws-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+        expect(parsed[0].name).toBe('Bug');
+      });
+    });
+  });
+
+  describe('list_workspace_members', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_workspace_members', { workspaceSlug: 'my-ws' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns members without email by default', async () => {
+      const mockMembers = [
+        { id: 'mem-1', user: { id: 'u-1', name: 'Alice' }, role: 'OWNER' },
+        { id: 'mem-2', user: { id: 'u-2', name: 'Bob' }, role: 'MEMBER' },
+      ];
+
+      await withMockBackend({ workspace: { members: mockMembers } }, async () => {
+        const result = await callTool('list_workspace_members', { workspaceSlug: 'my-ws' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed).toHaveLength(2);
+        expect(parsed[0].user.name).toBe('Alice');
+        expect(parsed[1].role).toBe('MEMBER');
+      });
+    });
+
+    it('includes email when includeEmail is true', async () => {
+      const mockMembers = [
+        { id: 'mem-1', user: { id: 'u-1', name: 'Alice', email: 'alice@test.com' }, role: 'OWNER' },
+      ];
+
+      await withMockBackend({ workspace: { members: mockMembers } }, async () => {
+        const result = await callTool('list_workspace_members', {
+          workspaceSlug: 'my-ws',
+          includeEmail: true,
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed[0].user.email).toBe('alice@test.com');
+      });
+    });
+  });
 });
