@@ -236,12 +236,44 @@ describe('AgentTerminal', () => {
     expect(handler(otherKey)).toBe(true);
   });
 
-  it('loads WebGL addon and registers context loss handler', () => {
+  it('loads WebGL addon when visible and registers context loss handler', () => {
     render(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockLoadAddon).toHaveBeenCalledWith(
       expect.objectContaining({ dispose: mockWebglDispose }),
     );
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('does not load WebGL addon when not visible', () => {
+    render(<AgentTerminal sessionId="test-session" visible={false} />);
+    expect(mockLoadAddon).not.toHaveBeenCalledWith(
+      expect.objectContaining({ dispose: mockWebglDispose }),
+    );
+    expect(mockWebglOnContextLoss).not.toHaveBeenCalled();
+  });
+
+  it('disposes WebGL addon when becoming hidden', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    expect(mockWebglOnContextLoss).toHaveBeenCalled();
+    mockWebglDispose.mockClear();
+
+    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    expect(mockWebglDispose).toHaveBeenCalled();
+  });
+
+  it('creates new WebGL addon when becoming visible again', async () => {
+    const { WebglAddon } = await import('@xterm/addon-webgl');
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const initialCallCount = (WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    // Hide — disposes WebGL
+    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    // Show again — creates a new WebGL addon
+    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+
+    expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
+      initialCallCount,
+    );
   });
 
   it('disposes WebGL addon on context loss', () => {
@@ -477,13 +509,15 @@ describe('AgentTerminal', () => {
     expect(mockPtyResize).toHaveBeenCalled();
   });
 
-  it('calls refresh when terminal becomes visible', () => {
+  it('calls refresh and loads WebGL when terminal becomes visible', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
     triggerInitialResize();
     mockRefresh.mockClear();
+    mockWebglOnContextLoss.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
+    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
   describe('drag and drop', () => {
