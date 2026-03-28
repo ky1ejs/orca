@@ -380,7 +380,12 @@ export const AgentTerminal = memo(function AgentTerminal({
         .then((output) => {
           if (!terminalRef.current) return; // unmounted during IPC
           terminal.reset();
-          if (output) terminal.write(output);
+          if (output) {
+            terminal.write(output, () => {
+              // ACK replayed bytes so daemon flow control can resume the PTY.
+              window.orca.pty.ack(sessionId, output.length);
+            });
+          }
         })
         .catch(() => {
           // Session may no longer exist after daemon restart — that's fine,

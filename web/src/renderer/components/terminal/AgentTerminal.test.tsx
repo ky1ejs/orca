@@ -338,7 +338,7 @@ describe('AgentTerminal', () => {
 
     await vi.waitFor(() => {
       expect(mockTerminalReset).toHaveBeenCalled();
-      expect(mockWrite).toHaveBeenCalledWith('reconnected output');
+      expect(mockWrite).toHaveBeenCalledWith('reconnected output', expect.any(Function));
     });
   });
 
