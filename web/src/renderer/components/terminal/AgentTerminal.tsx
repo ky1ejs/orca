@@ -300,7 +300,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   };
 
   // Manage WebGL addon lifecycle based on visibility. Only the active terminal
-  // gets a WebGL context — hidden terminals fall back to the DOM renderer.
+  // gets a WebGL context — hidden terminals fall back to the default renderer.
   // This prevents "Too many active WebGL contexts" warnings when many sessions
   // are mounted simultaneously (browsers limit to ~8-16 contexts).
   useEffect(() => {
@@ -310,19 +310,22 @@ export const AgentTerminal = memo(function AgentTerminal({
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
 
-    const disposeWebgl = () => {
-      const addon = webglAddonRef.current;
+    const disposeWebgl = (addonToDispose?: WebglAddon | null) => {
+      const addon = addonToDispose ?? webglAddonRef.current;
       if (!addon) return;
-      webglAddonRef.current = null;
+      if (webglAddonRef.current === addon) {
+        webglAddonRef.current = null;
+      }
       addon.dispose();
     };
 
     if (visible) {
       try {
         const addon = new WebglAddon();
-        addon.onContextLoss(disposeWebgl);
-        terminal.loadAddon(addon);
+        // Set the ref before loading so context loss during load can still dispose it.
         webglAddonRef.current = addon;
+        addon.onContextLoss(() => disposeWebgl(addon));
+        terminal.loadAddon(addon);
       } catch {
         webglAddonRef.current = null;
       }
@@ -332,7 +335,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       fitAndResize(fitAddon, terminal, sessionId);
     }
 
-    return disposeWebgl;
+    return () => disposeWebgl();
   }, [visible, sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
