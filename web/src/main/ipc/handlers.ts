@@ -12,6 +12,8 @@ import type { DaemonClient } from '../daemon/client.js';
 import type { DaemonConnector } from '../daemon/connector.js';
 import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 import type { AgentLaunchOptions, TaskMetadata } from '../../shared/daemon-protocol.js';
+import { createPerfTimer } from '../../shared/perf.js';
+import { logger } from '../logger.js';
 
 export function registerIpcHandlers(client: DaemonClient, connector: DaemonConnector): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
@@ -145,14 +147,26 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
       options?: AgentLaunchOptions,
       metadata?: TaskMetadata,
     ) => {
-      if (!client.connected) await connector.ensureRunning();
-      return client.request(DAEMON_METHODS.AGENT_LAUNCH, {
+      const mark = createPerfTimer('ipc.agent-launch', (msg) => logger.info(msg));
+
+      if (!client.connected) {
+        mark('daemon-not-connected');
+        await connector.ensureRunning();
+        mark('ensure-running-done');
+      } else {
+        mark('daemon-already-connected');
+      }
+
+      const result = await client.request(DAEMON_METHODS.AGENT_LAUNCH, {
         taskId,
         workingDirectory,
         options,
         metadata,
         colorScheme: resolveColorScheme(),
       });
+      mark('daemon-response-received');
+
+      return result;
     },
   );
 

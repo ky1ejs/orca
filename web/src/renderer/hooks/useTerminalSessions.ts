@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPerfTimer } from '../../shared/perf.js';
 
 export interface TerminalSessionInfo {
   id: string;
@@ -28,11 +29,15 @@ export function useTerminalSessions(taskId?: string) {
   const [loading, setLoading] = useState(hasElectronApi());
   const mountedRef = useRef(true);
 
+  const initialFetchDone = useRef(false);
+
   const fetchSessions = useCallback(async () => {
     if (!window.orca?.db) {
       setLoading(false);
       return;
     }
+    const isFirst = !initialFetchDone.current;
+    const mark = isFirst ? createPerfTimer('sessions-fetch', console.log) : null;
     try {
       const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
       if (!mountedRef.current) return;
@@ -45,6 +50,10 @@ export function useTerminalSessions(taskId?: string) {
       // Daemon may not be running — silently ignore
     } finally {
       if (mountedRef.current) setLoading(false);
+      if (isFirst) {
+        initialFetchDone.current = true;
+        mark!('complete');
+      }
     }
   }, [taskId]);
 
@@ -55,6 +64,7 @@ export function useTerminalSessions(taskId?: string) {
   // Show loading indicator while fetching sessions for new task
   useEffect(() => {
     if (!taskId) return;
+    initialFetchDone.current = false;
     if (hasElectronApi()) setLoading(true);
   }, [taskId]);
 
