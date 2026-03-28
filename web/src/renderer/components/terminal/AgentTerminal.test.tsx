@@ -30,6 +30,7 @@ const mockRefresh = vi.fn();
 const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
 const mockPaste = vi.fn();
 const mockFocus = vi.fn();
+const mockTerminalReset = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -41,6 +42,7 @@ vi.mock('@xterm/xterm', () => ({
     attachCustomKeyEventHandler: mockAttachCustomKeyEventHandler,
     scrollToBottom: mockScrollToBottom,
     refresh: mockRefresh,
+    reset: mockTerminalReset,
     buffer: mockBuffer,
     paste: mockPaste,
     focus: mockFocus,
@@ -129,6 +131,9 @@ beforeEach(() => {
       onExit: mockPtyOnExit,
       write: mockPtyWrite,
       resize: mockPtyResize,
+    },
+    lifecycle: {
+      onDaemonReconnected: vi.fn().mockReturnValue(vi.fn()),
     },
   };
   // Mock ResizeObserver — capture the callback to simulate layout completion
@@ -308,6 +313,59 @@ describe('AgentTerminal', () => {
     await vi.waitFor(() => {
       expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
     });
+  });
+
+  it('re-replays session data on daemon reconnection', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    // Wait for initial replay + subscribe to complete
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalled();
+    });
+
+    const onReconnected = (
+      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
+    ).onDaemonReconnected;
+    const reconnectCallback = onReconnected.mock.calls[0][0];
+
+    // Simulate daemon reconnection with new output
+    mockReplay.mockResolvedValueOnce('reconnected output');
+    mockTerminalReset.mockClear();
+    mockWrite.mockClear();
+
+    reconnectCallback();
+
+    await vi.waitFor(() => {
+      expect(mockTerminalReset).toHaveBeenCalled();
+      expect(mockWrite).toHaveBeenCalledWith('reconnected output');
+    });
+  });
+
+  it('handles replay failure gracefully on daemon reconnection', async () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalled();
+    });
+
+    const onReconnected = (
+      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
+    ).onDaemonReconnected;
+    const reconnectCallback = onReconnected.mock.calls[0][0];
+
+    // Simulate daemon reconnection where session no longer exists
+    mockReplay.mockRejectedValueOnce(new Error('Session not found'));
+    mockTerminalReset.mockClear();
+
+    reconnectCallback();
+
+    // Should not throw or reset terminal — failure is swallowed
+    await vi.waitFor(() => {
+      expect(mockReplay).toHaveBeenCalledTimes(2); // initial + reconnect
+    });
+    expect(mockTerminalReset).not.toHaveBeenCalled();
   });
 
   it('disconnects ResizeObserver on unmount', () => {

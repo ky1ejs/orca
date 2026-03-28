@@ -366,6 +366,30 @@ export const AgentTerminal = memo(function AgentTerminal({
     return () => disposeWebgl();
   }, [visible, sessionId]);
 
+  // Re-replay session data after daemon reconnection to fill any gap in
+  // output that occurred while the socket was down. The ring buffer on the
+  // daemon side still has the full history, so a reset + replay restores
+  // the terminal to an accurate state.
+  useEffect(() => {
+    if (!window.orca?.lifecycle) return;
+    const unsub = window.orca.lifecycle.onDaemonReconnected(() => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      window.orca.pty
+        .replay(sessionId)
+        .then((output) => {
+          if (!terminalRef.current) return; // unmounted during IPC
+          terminal.reset();
+          if (output) terminal.write(output);
+        })
+        .catch(() => {
+          // Session may no longer exist after daemon restart — that's fine,
+          // the status indicator will show it as exited.
+        });
+    });
+    return unsub;
+  }, [sessionId]);
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('Files')) {
       e.preventDefault();
