@@ -56,7 +56,6 @@ describe('useTerminalSessions', () => {
     });
 
     expect(result.current.sessions).toHaveLength(2);
-    expect(result.current.loading).toBe(false);
   });
 
   it('filters sessions by taskId', async () => {
@@ -208,8 +207,7 @@ describe('useTerminalSessions', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    // Should not throw, sessions should remain empty, loading should be false
+    // Should not throw, sessions should remain empty
     expect(result.current.sessions).toHaveLength(0);
-    expect(result.current.loading).toBe(false);
   });
 });

@@ -26,16 +26,12 @@ function sessionsFingerprint(sessions: TerminalSessionInfo[]): string {
 
 export function useTerminalSessions(taskId?: string) {
   const [sessions, setSessions] = useState<TerminalSessionInfo[]>([]);
-  const [loading, setLoading] = useState(hasElectronApi());
   const mountedRef = useRef(true);
 
   const initialFetchDone = useRef(false);
 
   const fetchSessions = useCallback(async () => {
-    if (!window.orca?.db) {
-      setLoading(false);
-      return;
-    }
+    if (!window.orca?.db) return;
     const isFirst = !initialFetchDone.current;
     const mark = isFirst ? createPerfTimer('sessions-fetch', rendererPerfLog) : null;
     try {
@@ -49,7 +45,6 @@ export function useTerminalSessions(taskId?: string) {
     } catch {
       // Daemon may not be running — silently ignore
     } finally {
-      if (mountedRef.current) setLoading(false);
       if (isFirst) {
         initialFetchDone.current = true;
         mark!('complete');
@@ -61,11 +56,15 @@ export function useTerminalSessions(taskId?: string) {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Show loading indicator while fetching sessions for new task
+  // Clear stale sessions immediately when navigating to a different task.
+  // We intentionally do NOT set loading=true here — that would unmount the
+  // TerminalPanel and destroy all xterm instances, forcing a full replay cycle
+  // on remount. Instead, clearing sessions lets the panel show an empty state
+  // briefly while the (near-instant) fetch completes.
   useEffect(() => {
     if (!taskId) return;
     initialFetchDone.current = false;
-    if (hasElectronApi()) setLoading(true);
+    setSessions([]);
   }, [taskId]);
 
   useEffect(() => {
@@ -95,5 +94,5 @@ export function useTerminalSessions(taskId?: string) {
     return unsubscribe;
   }, []);
 
-  return { sessions, loading, refresh };
+  return { sessions, refresh };
 }

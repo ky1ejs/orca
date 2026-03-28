@@ -29,6 +29,7 @@ const mockScrollToBottom = vi.fn();
 const mockRefresh = vi.fn();
 const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
 const mockPaste = vi.fn();
+const mockFocus = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -42,6 +43,7 @@ vi.mock('@xterm/xterm', () => ({
     refresh: mockRefresh,
     buffer: mockBuffer,
     paste: mockPaste,
+    focus: mockFocus,
     options: {},
     cols: 80,
     rows: 24,
@@ -283,11 +285,29 @@ describe('AgentTerminal', () => {
     expect(mockWebglDispose).toHaveBeenCalled();
   });
 
+  it('disposes WebGL addon when terminal becomes hidden', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    mockWebglDispose.mockClear();
+    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    expect(mockWebglDispose).toHaveBeenCalled();
+  });
+
   it('disposes terminal and WebGL addon on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     unmount();
     expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it('subscribes to onData even when replay fails', async () => {
+    mockReplay.mockRejectedValueOnce(new Error('Daemon disconnected'));
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    triggerInitialResize();
+
+    // Despite replay rejection, onData should still be subscribed
+    await vi.waitFor(() => {
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
+    });
   });
 
   it('disconnects ResizeObserver on unmount', () => {
@@ -509,15 +529,17 @@ describe('AgentTerminal', () => {
     expect(mockPtyResize).toHaveBeenCalled();
   });
 
-  it('calls refresh and loads WebGL when terminal becomes visible', () => {
+  it('calls refresh, loads WebGL, and focuses when terminal becomes visible', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
     triggerInitialResize();
     mockRefresh.mockClear();
     mockWebglOnContextLoss.mockClear();
+    mockFocus.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockFocus).toHaveBeenCalled();
   });
 
   describe('drag and drop', () => {
