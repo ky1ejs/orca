@@ -6,6 +6,7 @@ import { registerProjectTools } from './mcp-tools/project-tools.js';
 import { registerSessionTools } from './mcp-tools/session-tools.js';
 import { registerQueryTools } from './mcp-tools/query-tools.js';
 import { registerTaskTools } from './mcp-tools/task-tools.js';
+import { registerPerfTools } from './mcp-tools/perf-tools.js';
 
 export type { McpToolsDeps } from './mcp-tools/helpers.js';
 
@@ -21,6 +22,7 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
   registerProjectTools(server, deps);
   registerInitiativeTools(server, deps);
   registerQueryTools(server, deps);
+  registerPerfTools(server, deps);
 
   return server;
 }

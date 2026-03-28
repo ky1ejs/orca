@@ -29,4 +29,5 @@ export const IPC_CHANNELS = {
   UPDATE_ERROR: 'update:error',
   DAEMON_STATUS: 'daemon:status',
   GITHUB_INSTALLATION_CALLBACK: 'github:installation-callback',
+  PERF_LOG: 'perf:log',
 } as const;

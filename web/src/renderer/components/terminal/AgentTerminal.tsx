@@ -7,7 +7,7 @@ import { SerializeAddon } from '@xterm/addon-serialize';
 import { SearchAddon } from '@xterm/addon-search';
 import { usePreferences } from '../../preferences/context.js';
 import { TerminalSearchBar } from './TerminalSearchBar.js';
-import { createPerfTimer } from '../../../shared/perf.js';
+import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
 import '@xterm/xterm/css/xterm.css';
 
 function readTerminalTheme() {
@@ -116,7 +116,7 @@ export const AgentTerminal = memo(function AgentTerminal({
     let lastRefreshAt = -REFRESH_THROTTLE_MS;
     let firstDataLogged = false;
 
-    const mark = createPerfTimer(`terminal(${sessionId})`, console.log);
+    const mark = createPerfTimer(`terminal(${sessionId})`, rendererPerfLog);
 
     const terminal = new Terminal({
       theme: readTerminalTheme(),

@@ -199,4 +199,9 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
   ipcMain.handle(IPC_CHANNELS.AGENT_STATUS, (_event, sessionId: string) => {
     return client.request(DAEMON_METHODS.AGENT_STATUS, { sessionId });
   });
+
+  // ── Perf logging (fire-and-forget from renderer → main.log) ─────────
+  ipcMain.on(IPC_CHANNELS.PERF_LOG, (_event, msg: string) => {
+    logger.info(msg);
+  });
 }

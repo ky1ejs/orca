@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createPerfTimer } from '../../shared/perf.js';
+import { createPerfTimer, rendererPerfLog } from '../../shared/perf.js';
 
 export interface TerminalSessionInfo {
   id: string;
@@ -37,7 +37,7 @@ export function useTerminalSessions(taskId?: string) {
       return;
     }
     const isFirst = !initialFetchDone.current;
-    const mark = isFirst ? createPerfTimer('sessions-fetch', console.log) : null;
+    const mark = isFirst ? createPerfTimer('sessions-fetch', rendererPerfLog) : null;
     try {
       const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
       if (!mountedRef.current) return;
