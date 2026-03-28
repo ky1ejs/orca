@@ -92,9 +92,7 @@ export function registerPerfTools(server: McpServer, _deps: McpToolsDeps): void 
         tail: z
           .number()
           .optional()
-          .describe(
-            'Number of most recent [perf] lines to return per log file. Defaults to 50.',
-          ),
+          .describe('Number of most recent [perf] lines to return per log file. Defaults to 50.'),
       },
     },
     async ({ tail }) => {

@@ -23,6 +23,9 @@ export function rendererPerfLog(msg: string): void {
   console.log(msg);
   // window.orca is injected by preload in Electron; absent in browser-only / test contexts.
   // Use a type-safe access pattern since shared/ code doesn't have the renderer's global.d.ts.
-  const orca = typeof window !== 'undefined' ? (window as { orca?: { perf?: { log: (m: string) => void } } }).orca : undefined;
+  const orca =
+    typeof window !== 'undefined'
+      ? (window as { orca?: { perf?: { log: (m: string) => void } } }).orca
+      : undefined;
   orca?.perf?.log(msg);
 }
