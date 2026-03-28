@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useWorkspaceBySlug } from './useGraphQL.js';
-import { useWorkspace } from '../workspace/context.js';
+import { useWorkspaceData } from '../workspace/workspace-data-context.js';
 import { fuzzyMatch, type SearchableItem } from '../utils/fuzzyMatch.js';
 import type { TaskStatus } from '../graphql/__generated__/generated.js';
 
@@ -91,25 +90,20 @@ const staticActions: ActionItem[] = [
 ];
 
 export function useCommandPalette(query: string, isOpen: boolean): PaletteResults {
-  const { currentWorkspace } = useWorkspace();
-  const slug = currentWorkspace?.slug ?? '';
-  const { data, refetch } = useWorkspaceBySlug(slug);
+  const { workspace, projects, inboxTasks, initiatives, refetch } = useWorkspaceData();
 
   // Refetch workspace data when the palette opens so tasks created outside
   // the urql pipeline (e.g. via MCP / CLI) are picked up immediately.
   useEffect(() => {
-    if (!isOpen || !slug) return;
+    if (!isOpen || !workspace) return;
     refetch({ requestPolicy: 'network-only' });
-  }, [isOpen, slug, refetch]);
+  }, [isOpen, workspace, refetch]);
 
   const allItems = useMemo((): PaletteItem[] => {
-    const workspace = data?.workspace;
-    if (!workspace) return [...staticActions];
-
     const items: PaletteItem[] = [...staticActions];
 
     // Projects and their tasks
-    for (const project of workspace.projects) {
+    for (const project of projects) {
       if (project.archivedAt) continue;
       items.push({
         id: project.id,
@@ -132,8 +126,8 @@ export function useCommandPalette(query: string, isOpen: boolean): PaletteResult
       }
     }
 
-    // Inbox tasks (workspace.tasks — unassociated)
-    for (const task of workspace.tasks) {
+    // Inbox tasks (unassociated)
+    for (const task of inboxTasks) {
       items.push({
         id: task.id,
         type: 'task',
@@ -145,7 +139,7 @@ export function useCommandPalette(query: string, isOpen: boolean): PaletteResult
     }
 
     // Initiatives
-    for (const initiative of workspace.initiatives) {
+    for (const initiative of initiatives) {
       if (initiative.archivedAt) continue;
       items.push({
         id: initiative.id,
@@ -156,7 +150,7 @@ export function useCommandPalette(query: string, isOpen: boolean): PaletteResult
     }
 
     return items;
-  }, [data]);
+  }, [projects, inboxTasks, initiatives]);
 
   return useMemo(() => {
     const scored = fuzzyMatch(allItems, query);

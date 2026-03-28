@@ -189,12 +189,62 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
               cache.invalidate('Query', 'pendingInvitations');
             },
           },
-          // Subscription handlers intentionally empty — graphcache
-          // normalizes subscription payloads into the cache automatically.
-          // Mutation handlers cover structural create/delete for the acting
-          // client; other clients see field updates via normalization and
-          // pick up list-membership changes on their next query refetch.
-          Subscription: {},
+          Subscription: {
+            projectChanged(_result, _args, cache) {
+              const project = _result.projectChanged as
+                | { id: string; initiativeId: string | null }
+                | undefined;
+              if (project) {
+                // Read old initiativeId before invalidating so we can update
+                // both old and new initiative when a project moves between them.
+                const oldInitiativeId = cache.resolve(
+                  { __typename: 'Project', id: project.id },
+                  'initiativeId',
+                ) as string | null;
+
+                cache.invalidate({ __typename: 'Project', id: project.id });
+                if (project.initiativeId) {
+                  cache.invalidate(
+                    { __typename: 'Initiative', id: project.initiativeId },
+                    'projects',
+                  );
+                }
+                if (oldInitiativeId && oldInitiativeId !== project.initiativeId) {
+                  cache.invalidate({ __typename: 'Initiative', id: oldInitiativeId }, 'projects');
+                }
+              }
+            },
+            taskChanged(_result, _args, cache) {
+              const task = _result.taskChanged as
+                | { id: string; projectId: string | null }
+                | undefined;
+              if (task) {
+                // Read old projectId before invalidating so we can update
+                // both old and new project when a task moves between projects.
+                const oldProjectId = cache.resolve(
+                  { __typename: 'Task', id: task.id },
+                  'projectId',
+                ) as string | null;
+
+                cache.invalidate({ __typename: 'Task', id: task.id });
+                if (task.projectId) {
+                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                }
+                if (oldProjectId && oldProjectId !== task.projectId) {
+                  cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
+                }
+
+                // If the task moved to/from the inbox (projectId null), invalidate
+                // the workspace's unassociated task list so sidebar/command palette update.
+                const workspaceId = (_args as { workspaceId?: string }).workspaceId;
+                if (workspaceId && oldProjectId !== task.projectId) {
+                  cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
+                    unassociatedOnly: true,
+                  });
+                }
+              }
+            },
+          },
         },
       }),
       fetchExchange,

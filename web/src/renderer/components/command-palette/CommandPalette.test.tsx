@@ -18,50 +18,48 @@ vi.mock('../../workspace/context.js', () => ({
   }),
 }));
 
-// Mock useGraphQL (useWorkspaceBySlug)
+// Mock workspace data context
 const mockRefetch = vi.fn();
-vi.mock('../../hooks/useGraphQL.js', () => ({
-  useWorkspaceBySlug: () => ({
-    data: {
-      workspace: {
-        projects: [
-          {
-            id: 'p-1',
-            name: 'Backend',
-            archivedAt: null,
-            tasks: [
-              {
-                id: 't-1',
-                displayId: 'ORCA-1',
-                title: 'Fix login bug',
-                status: TaskStatus.Todo,
-              },
-              {
-                id: 't-2',
-                displayId: 'ORCA-2',
-                title: 'Add user auth',
-                status: TaskStatus.InProgress,
-              },
-            ],
-          },
-        ],
+vi.mock('../../workspace/workspace-data-context.js', () => ({
+  useWorkspaceData: () => ({
+    workspace: { slug: 'test-ws' },
+    error: undefined,
+    projects: [
+      {
+        id: 'p-1',
+        name: 'Backend',
+        archivedAt: null,
         tasks: [
           {
-            id: 't-3',
-            displayId: 'ORCA-3',
-            title: 'Inbox task',
+            id: 't-1',
+            displayId: 'ORCA-1',
+            title: 'Fix login bug',
             status: TaskStatus.Todo,
           },
-        ],
-        initiatives: [
           {
-            id: 'i-1',
-            name: 'Q1 Goals',
-            archivedAt: null,
+            id: 't-2',
+            displayId: 'ORCA-2',
+            title: 'Add user auth',
+            status: TaskStatus.InProgress,
           },
         ],
       },
-    },
+    ],
+    inboxTasks: [
+      {
+        id: 't-3',
+        displayId: 'ORCA-3',
+        title: 'Inbox task',
+        status: TaskStatus.Todo,
+      },
+    ],
+    initiatives: [
+      {
+        id: 'i-1',
+        name: 'Q1 Goals',
+        archivedAt: null,
+      },
+    ],
     fetching: false,
     refetch: mockRefetch,
   }),

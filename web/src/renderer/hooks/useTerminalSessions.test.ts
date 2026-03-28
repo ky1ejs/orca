@@ -195,4 +195,21 @@ describe('useTerminalSessions', () => {
 
     expect(result.current.sessions[0].status).toBe(SessionStatus.AwaitingPermission);
   });
+
+  it('handles getSessions error gracefully (daemon disconnected)', async () => {
+    const getSessions = vi.fn().mockRejectedValue(new Error('Not connected to daemon'));
+    (
+      window as unknown as { orca: { db: { getSessions: typeof getSessions } } }
+    ).orca.db.getSessions = getSessions;
+
+    const { result } = renderHook(() => useTerminalSessions());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Should not throw, sessions should remain empty, loading should be false
+    expect(result.current.sessions).toHaveLength(0);
+    expect(result.current.loading).toBe(false);
+  });
 });

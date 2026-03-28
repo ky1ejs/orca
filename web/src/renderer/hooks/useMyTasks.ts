@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useMe, useWorkspaceBySlug } from './useGraphQL.js';
-import { useWorkspace } from '../workspace/context.js';
+import { useMe } from './useGraphQL.js';
+import { useWorkspaceData } from '../workspace/workspace-data-context.js';
 import type { TaskStatus, TaskPriority } from '../graphql/__generated__/generated.js';
 
 export interface MyTask {
@@ -18,18 +18,17 @@ export interface MyTask {
 
 export function useMyTasks() {
   const { data: meData } = useMe();
-  const { currentWorkspace } = useWorkspace();
-  const { data, fetching } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const { projects, inboxTasks, fetching } = useWorkspaceData();
 
   const currentUserId = meData?.me?.id;
 
   const tasks = useMemo((): MyTask[] => {
-    if (!currentUserId || !data?.workspace) return [];
+    if (!currentUserId) return [];
 
     const result: MyTask[] = [];
 
     // Collect from all projects (workspace.projects includes both initiative and standalone)
-    for (const project of data.workspace.projects) {
+    for (const project of projects) {
       if (project.archivedAt) continue;
       for (const task of project.tasks) {
         if (task.assignee?.id === currentUserId) {
@@ -50,7 +49,7 @@ export function useMyTasks() {
     }
 
     // Collect from inbox (unassociated tasks)
-    for (const task of data.workspace.tasks) {
+    for (const task of inboxTasks) {
       if (task.assignee?.id === currentUserId) {
         result.push({
           id: task.id,
@@ -66,7 +65,7 @@ export function useMyTasks() {
     }
 
     return result;
-  }, [currentUserId, data]);
+  }, [currentUserId, projects, inboxTasks]);
 
   return { tasks, count: tasks.length, loading: fetching };
 }

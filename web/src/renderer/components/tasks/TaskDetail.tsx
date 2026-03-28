@@ -16,12 +16,11 @@ import {
   useTask,
   useUpdateTask,
   useArchiveTask,
-  useTaskSubscription,
-  useWorkspaceBySlug,
   useWorkspaceMembers,
 } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useProjectDirectory } from '../../hooks/useProjectDirectory.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
@@ -83,12 +82,9 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
     updateDirectory,
   } = useProjectDirectory(data?.task?.projectId);
 
-  const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
-  const workspaceProjects = workspaceData?.workspace?.projects ?? [];
+  const { projects: workspaceProjects } = useWorkspaceData();
   const { data: membersData } = useWorkspaceMembers(currentWorkspace?.slug ?? '');
   const workspaceMembers = membersData?.workspace?.members ?? [];
-
-  useTaskSubscription(currentWorkspace?.id ?? '');
 
   useEffect(() => {
     if (!launchMenuOpen) return;

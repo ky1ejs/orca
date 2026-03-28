@@ -33,14 +33,19 @@ export function useTerminalSessions(taskId?: string) {
       setLoading(false);
       return;
     }
-    const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
-    if (!mountedRef.current) return;
-    const filtered = taskId ? all.filter((s) => s.task_id === taskId) : all;
-    setSessions((prev) => {
-      if (sessionsFingerprint(prev) === sessionsFingerprint(filtered)) return prev;
-      return filtered;
-    });
-    setLoading(false);
+    try {
+      const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
+      if (!mountedRef.current) return;
+      const filtered = taskId ? all.filter((s) => s.task_id === taskId) : all;
+      setSessions((prev) => {
+        if (sessionsFingerprint(prev) === sessionsFingerprint(filtered)) return prev;
+        return filtered;
+      });
+    } catch {
+      // Daemon may not be running — silently ignore
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
   }, [taskId]);
 
   const refresh = useCallback(() => {

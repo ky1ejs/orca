@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import { useWorkspaceBySlug, useCreateInitiative } from '../../hooks/useGraphQL.js';
+import { useCreateInitiative } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { ProjectListSkeleton } from '../layout/Skeleton.js';
 
 export function InitiativeList() {
   const { currentWorkspace } = useWorkspace();
-  const { data, fetching, error } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const { initiatives, projects: allProjects, fetching, error } = useWorkspaceData();
   const { createInitiative } = useCreateInitiative();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
@@ -27,7 +28,7 @@ export function InitiativeList() {
     setShowCreate(false);
   };
 
-  if (fetching && !data) {
+  if (fetching && initiatives.length === 0 && allProjects.length === 0) {
     return <ProjectListSkeleton />;
   }
 
@@ -39,8 +40,6 @@ export function InitiativeList() {
     );
   }
 
-  const initiatives = data?.workspace?.initiatives ?? [];
-  const allProjects = data?.workspace?.projects ?? [];
   const standaloneProjects = allProjects.filter((p) => !p.initiativeId);
 
   return (

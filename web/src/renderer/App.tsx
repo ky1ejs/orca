@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GraphQLProvider } from './graphql/provider.js';
 import { NavigationProvider } from './navigation/context.js';
 import { WorkspaceProvider } from './workspace/context.js';
+import { WorkspaceDataProvider } from './workspace/workspace-data-context.js';
 import { PreferencesProvider } from './preferences/context.js';
 import { AppShell } from './components/layout/AppShell.js';
 import { LoginScreen } from './components/auth/LoginScreen.js';
@@ -85,13 +86,15 @@ function App() {
     <GraphQLProvider key={clientKey}>
       <PreferencesProvider>
         <WorkspaceProvider>
-          <NavigationProvider>
-            <SessionActivityProvider>
-              <ToastProvider>
-                <AuthenticatedApp onLogout={handleLogout} />
-              </ToastProvider>
-            </SessionActivityProvider>
-          </NavigationProvider>
+          <WorkspaceDataProvider>
+            <NavigationProvider>
+              <SessionActivityProvider>
+                <ToastProvider>
+                  <AuthenticatedApp onLogout={handleLogout} />
+                </ToastProvider>
+              </SessionActivityProvider>
+            </NavigationProvider>
+          </WorkspaceDataProvider>
         </WorkspaceProvider>
       </PreferencesProvider>
     </GraphQLProvider>
