@@ -7,6 +7,7 @@ import { SerializeAddon } from '@xterm/addon-serialize';
 import { SearchAddon } from '@xterm/addon-search';
 import { usePreferences } from '../../preferences/context.js';
 import { TerminalSearchBar } from './TerminalSearchBar.js';
+import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
 import '@xterm/xterm/css/xterm.css';
 
 function readTerminalTheme() {
@@ -113,6 +114,9 @@ export const AgentTerminal = memo(function AgentTerminal({
     let disposed = false;
     let unsubData: (() => void) | null = null;
     let lastRefreshAt = -REFRESH_THROTTLE_MS;
+    let firstDataLogged = false;
+
+    const mark = createPerfTimer(`terminal(${sessionId})`, rendererPerfLog);
 
     const terminal = new Terminal({
       theme: readTerminalTheme(),
@@ -131,6 +135,7 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(container);
+    mark('xterm-opened');
 
     // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
     // plain \r so Claude Code can distinguish it and insert a newline.
@@ -184,8 +189,10 @@ export const AgentTerminal = memo(function AgentTerminal({
       if (!initialFitDone) {
         initialFitDone = true;
         fitAndResize(fitAddon, terminal, sessionId);
+        mark('fit-complete');
         window.orca.pty.replay(sessionId).then((output) => {
           if (disposed) return;
+          mark('replay-complete');
           if (output) {
             terminal.write(output, () => {
               window.orca.pty.ack(sessionId, output.length);
@@ -196,6 +203,10 @@ export const AgentTerminal = memo(function AgentTerminal({
           // promise resolution and this synchronous listener registration.
           unsubData = window.orca.pty.onData(sessionId, (data) => {
             if (disposed) return;
+            if (!firstDataLogged) {
+              firstDataLogged = true;
+              mark('first-data');
+            }
             pendingData += data;
             if (writeRafId === null) {
               writeRafId = requestAnimationFrame(() => {
@@ -264,6 +275,9 @@ export const AgentTerminal = memo(function AgentTerminal({
 
     return () => {
       disposed = true;
+      if (!firstDataLogged) {
+        mark('disposed-before-data');
+      }
       setSearchVisible(false);
       clearInterval(snapshotTimer);
       sendSnapshot();

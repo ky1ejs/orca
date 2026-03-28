@@ -69,6 +69,9 @@ export interface OrcaAPI {
     ) => Promise<{ project_id: string; directory: string }>;
     delete: (projectId: string) => Promise<void>;
   };
+  perf: {
+    log: (msg: string) => void;
+  };
   daemon: {
     getStatus: () => Promise<DaemonStatusResult>;
   };
@@ -163,6 +166,9 @@ const api: OrcaAPI = {
     get: (projectId) => ipcRenderer.invoke('projectDir:get', projectId),
     set: (projectId, directory) => ipcRenderer.invoke('projectDir:set', projectId, directory),
     delete: (projectId) => ipcRenderer.invoke('projectDir:delete', projectId),
+  },
+  perf: {
+    log: (msg) => ipcRenderer.send('perf:log', msg),
   },
   daemon: {
     getStatus: () => ipcRenderer.invoke('daemon:status'),

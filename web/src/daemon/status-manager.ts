@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import type { DaemonPtyManager, BroadcastFn } from './pty-manager.js';
 import { getDefaultShell, getLoginShellArgs } from '../shared/shell.js';
 import { findClaudePath, buildOrcaSystemPrompt } from '../shared/claude.js';
+import { createPerfTimer } from '../shared/perf.js';
 import { createSession, getSession, updateSession } from './sessions.js';
 import { SessionStatus, isActiveSessionStatus } from '../shared/session-status.js';
 import {
@@ -104,15 +105,19 @@ export class DaemonStatusManager {
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     try {
+      const mark = createPerfTimer('agent.launch', (msg) => logger.info(msg));
+
       if (!existsSync(workingDirectory)) {
         throw new InvalidWorkingDirectoryError(workingDirectory);
       }
+      mark('dir-validated');
 
       const session = createSession({
         taskId,
         status: SessionStatus.Starting,
         workingDirectory,
       });
+      mark('session-created');
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
@@ -138,6 +143,7 @@ export class DaemonStatusManager {
           if (!claudePath) {
             throw new ClaudeNotFoundError();
           }
+          mark('command-resolved');
           const args = ['--permission-mode', 'plan'];
           if (this.hookPort) {
             args.push('--mcp-config', DAEMON_MCP_CONFIG_FILE);
@@ -156,12 +162,14 @@ export class DaemonStatusManager {
             env.PATH = `${DAEMON_CLI_DIR}:${process.env.PATH ?? ''}`;
           }
           const shell = getDefaultShell();
+          mark('shell-resolved');
           this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory, env);
         }
       } catch (err) {
         if (err instanceof ClaudeNotFoundError) throw err;
         throw new PtySpawnError(err);
       }
+      mark('pty-spawned');
 
       // Update task to IN_PROGRESS and assign to current user
       const userId = this.getUserIdFromToken();
@@ -169,8 +177,10 @@ export class DaemonStatusManager {
         status: 'IN_PROGRESS',
         ...(userId && { assigneeId: userId }),
       });
+      mark('task-updated');
 
       this.startMonitoring(session.id, taskId, workingDirectory);
+      mark('monitoring-started');
 
       return { success: true, sessionId: session.id };
     } catch (err) {

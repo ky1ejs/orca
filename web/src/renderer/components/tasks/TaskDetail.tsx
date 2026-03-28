@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
 import {
   Pencil,
   Trash2,
@@ -185,12 +186,14 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
     }
     setLaunching(true);
     setAgentError(null);
+    const mark = createPerfTimer('agent-launch', rendererPerfLog);
     const result = await window.orca.agent.launch(
       taskId,
       projectDirectory,
       options,
       buildMetadata(),
     );
+    mark('ipc-complete');
     if (!result.success && result.error) {
       setAgentError({ message: result.error.message, suggestion: result.error.suggestion });
     }
