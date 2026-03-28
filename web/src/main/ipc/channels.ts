@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   PTY_KILL: 'pty:kill',
   PTY_REPLAY: 'pty:replay',
   PTY_SNAPSHOT: 'pty:snapshot',
+  PTY_ACK: 'pty:ack',
   AGENT_LAUNCH: 'agent:launch',
   AGENT_STOP: 'agent:stop',
   AGENT_RESTART: 'agent:restart',

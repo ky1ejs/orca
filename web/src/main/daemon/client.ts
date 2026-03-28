@@ -100,6 +100,19 @@ export class DaemonClient {
   }
 
   /**
+   * Fire-and-forget: send a message to the daemon without waiting for a response.
+   * No UUID, no timeout, no pending entry — suitable for high-frequency signals like ACKs.
+   */
+  notify(method: string, params?: unknown): void {
+    if (!this.socket || !this._connected) return;
+    try {
+      this.socket.write(JSON.stringify({ method, params }) + '\n');
+    } catch {
+      // Disconnected — ignore
+    }
+  }
+
+  /**
    * Subscribe to daemon events. Returns an unsubscribe function.
    */
   subscribe(event: string, handler: (params: unknown) => void): () => void {

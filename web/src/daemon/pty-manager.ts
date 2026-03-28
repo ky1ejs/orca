@@ -115,6 +115,10 @@ export class DaemonPtyManager {
     });
   }
 
+  ack(sessionId: string, bytes: number): void {
+    this.batcher.ack(sessionId, bytes);
+  }
+
   write(sessionId: string, data: string): void {
     const proc = this.processes.get(sessionId);
     if (proc) proc.pty.write(data);
@@ -148,6 +152,11 @@ export class DaemonPtyManager {
   }
 
   replay(sessionId: string): string {
+    // Prefer the serialized snapshot (clean terminal state captured by
+    // SerializeAddon) over the raw ring buffer which replays all intermediate
+    // escape sequences and can break if eviction splits a sequence.
+    const snapshot = this.snapshots.get(sessionId);
+    if (snapshot) return snapshot;
     return this.buffers.get(sessionId)?.replay() ?? '';
   }
 

@@ -141,84 +141,115 @@ describe('DataBatcher', () => {
     batcher.dispose();
   });
 
-  // --- Flow control ---
+  // --- Flow control (end-to-end: pause on unacked high watermark, resume on ack) ---
 
-  it('calls pause at high watermark', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 200 });
-    const paused: string[] = [];
-    batcher.onPause((sessionId) => paused.push(sessionId));
-
-    batcher.push('s1', 'x'.repeat(100));
-
-    expect(paused).toEqual(['s1']);
-    batcher.dispose();
-  });
-
-  it('calls pause when a single push exceeds highWatermark even with lower sizeThreshold', () => {
-    // Validates that watermark check fires before size-threshold flush
+  it('calls pause when unacked bytes exceed high watermark after flush', () => {
     const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
     const paused: string[] = [];
-    const flushed: string[] = [];
+    batcher.onFlush(() => {});
     batcher.onPause((sessionId) => paused.push(sessionId));
-    batcher.onFlush((_, data) => flushed.push(data));
 
-    batcher.push('s1', 'x'.repeat(100));
+    batcher.push('s1', 'x'.repeat(100)); // >= sizeThreshold → flush → unacked=100 → pause
 
     expect(paused).toEqual(['s1']);
-    expect(flushed).toHaveLength(1); // also flushed due to size threshold
     batcher.dispose();
   });
 
-  it('does not call pause below high watermark', () => {
+  it('calls pause after timer flush when unacked exceeds watermark', () => {
     const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 200 });
     const paused: string[] = [];
+    batcher.onFlush(() => {});
     batcher.onPause((sessionId) => paused.push(sessionId));
 
-    batcher.push('s1', 'x'.repeat(99));
+    batcher.push('s1', 'x'.repeat(100)); // below sizeThreshold, no immediate flush
+    expect(paused).toHaveLength(0);
+
+    vi.advanceTimersByTime(4); // timer flushes → unacked=100 → pause
+    expect(paused).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('does not call pause when unacked bytes stay below high watermark', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const paused: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause((sessionId) => paused.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(99)); // >= sizeThreshold → flush → unacked=99 < 100
 
     expect(paused).toHaveLength(0);
     batcher.dispose();
   });
 
   it('calls pause only once while paused', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 500 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
     const paused: string[] = [];
+    batcher.onFlush(() => {});
     batcher.onPause((sessionId) => paused.push(sessionId));
 
-    batcher.push('s1', 'x'.repeat(100));
-    batcher.push('s1', 'x'.repeat(100));
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=200, already paused
 
     expect(paused).toEqual(['s1']);
     batcher.dispose();
   });
 
-  it('calls resume after flush drops below low watermark', () => {
+  it('calls resume when ack brings unacked below low watermark', () => {
     const batcher = new DataBatcher({
       highWatermark: 100,
       lowWatermark: 50,
-      sizeThreshold: 500,
+      sizeThreshold: 50,
+    });
+    const paused: string[] = [];
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause((sessionId) => paused.push(sessionId));
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    expect(paused).toEqual(['s1']);
+    expect(resumed).toHaveLength(0);
+
+    batcher.ack('s1', 60); // unacked=40 < lowWatermark=50 → resume
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('does not resume if ack does not bring unacked below low watermark', () => {
+    const batcher = new DataBatcher({
+      highWatermark: 100,
+      lowWatermark: 50,
+      sizeThreshold: 50,
     });
     const resumed: string[] = [];
     batcher.onFlush(() => {});
     batcher.onResume((sessionId) => resumed.push(sessionId));
 
-    batcher.push('s1', 'x'.repeat(100)); // triggers pause
-    batcher.flushAll(); // pendingSize → 0 < lowWatermark → resume
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    batcher.ack('s1', 40); // unacked=60 >= lowWatermark=50 → still paused
 
-    expect(resumed).toEqual(['s1']);
+    expect(resumed).toHaveLength(0);
     batcher.dispose();
   });
 
   it('does not call resume if not paused', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, lowWatermark: 50 });
+    const batcher = new DataBatcher({ highWatermark: 100, lowWatermark: 50, sizeThreshold: 50 });
     const resumed: string[] = [];
     batcher.onFlush(() => {});
     batcher.onResume((sessionId) => resumed.push(sessionId));
 
-    batcher.push('s1', 'x'.repeat(10));
-    batcher.flushAll();
+    batcher.push('s1', 'x'.repeat(10)); // flush → unacked=10 < highWatermark → not paused
+    batcher.ack('s1', 10); // unacked=0, but not paused → no resume
 
     expect(resumed).toHaveLength(0);
+    batcher.dispose();
+  });
+
+  it('ack on unknown session is a no-op', () => {
+    const batcher = new DataBatcher();
+    batcher.onFlush(() => {});
+
+    expect(() => batcher.ack('nonexistent', 100)).not.toThrow();
     batcher.dispose();
   });
 
@@ -237,16 +268,60 @@ describe('DataBatcher', () => {
     batcher.dispose();
   });
 
+  it('calls resume on remove when session is paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    expect(resumed).toHaveLength(0);
+
+    batcher.remove('s1'); // should resume before deleting
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('calls resume on flushAndRemove when session is paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    batcher.push('s1', 'more');
+    batcher.flushAndRemove('s1'); // flush remaining + resume + delete
+
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('does not call resume on remove when session is not paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(10)); // flush → unacked=10 < 100 → not paused
+    batcher.remove('s1');
+
+    expect(resumed).toHaveLength(0);
+    batcher.dispose();
+  });
+
   it('clears paused state on remove so re-added session starts unpaused', () => {
-    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 500 });
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
     const paused: string[] = [];
+    batcher.onFlush(() => {});
     batcher.onPause((sessionId) => paused.push(sessionId));
 
-    batcher.push('s1', 'x'.repeat(100)); // pause
+    batcher.push('s1', 'x'.repeat(100)); // >= sizeThreshold → flush → unacked=100 → pause
     expect(paused).toEqual(['s1']);
 
     batcher.remove('s1');
-    batcher.push('s1', 'y'.repeat(100)); // new session state → pause again
+    batcher.push('s1', 'y'.repeat(100)); // new session (unacked=0) → flush → unacked=100 → pause
     expect(paused).toEqual(['s1', 's1']);
     batcher.dispose();
   });

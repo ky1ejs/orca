@@ -48,6 +48,7 @@ export interface OrcaAPI {
     kill: (sessionId: string) => Promise<void>;
     replay: (sessionId: string) => Promise<string>;
     snapshot: (sessionId: string, content: string) => Promise<void>;
+    ack: (sessionId: string, bytes: number) => void;
     onData: (sessionId: string, cb: (data: string) => void) => () => void;
     onExit: (sessionId: string, cb: (exitCode: number) => void) => () => void;
   };
@@ -132,6 +133,7 @@ const api: OrcaAPI = {
     kill: (sessionId) => ipcRenderer.invoke('pty:kill', sessionId),
     replay: (sessionId) => ipcRenderer.invoke('pty:replay', sessionId),
     snapshot: (sessionId, content) => ipcRenderer.invoke('pty:snapshot', sessionId, content),
+    ack: (sessionId, bytes) => ipcRenderer.send('pty:ack', sessionId, bytes),
     onData: (sessionId, cb) => {
       const channel = `pty:data:${sessionId}`;
       const listener = (_event: unknown, data: string) => cb(data);

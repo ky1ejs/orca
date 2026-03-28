@@ -175,7 +175,15 @@ export const AgentTerminal = memo(function AgentTerminal({
     // Subscribing immediately would write data at wrong dimensions (default 80x24)
     // and duplicate content when replay() returns the full buffer.
     let initialFitDone = false;
-    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let resizeRafId: number | null = null;
+
+    // Write coalescing: buffer incoming PTY data and flush via rAF so
+    // xterm.js processes one batched write per frame instead of many small
+    // ones. The write callback ACKs back to the daemon for end-to-end
+    // flow control (daemon pauses PTY when unacked data exceeds watermark).
+    let pendingData = '';
+    let writeRafId: number | null = null;
+
     // ResizeObserver fires after layout completes, guaranteeing correct container
     // dimensions — unlike rAF which can fire before flex layout stabilizes.
     const resizeObserver = new ResizeObserver((entries) => {
@@ -190,23 +198,34 @@ export const AgentTerminal = memo(function AgentTerminal({
         fitAndResize(fitAddon, terminal, sessionId);
         window.orca.pty.replay(sessionId).then((output) => {
           if (disposed) return;
-          if (output) terminal.write(output);
+          if (output) {
+            terminal.write(output, () => {
+              window.orca.pty.ack(sessionId, output.length);
+            });
+          }
           // Subscribe to live PTY output AFTER fit + replay completes.
           // JS event loop guarantees no IPC events dispatch between the
           // promise resolution and this synchronous listener registration.
           unsubData = window.orca.pty.onData(sessionId, (data) => {
             if (disposed) return;
-            terminal.write(data);
-            // Throttled full re-render to clear accumulated WebGL rendering
-            // artifacts. Data events fire hundreds of times per second; the
-            // renderer already redraws per-frame, so more than 1 Hz yields
-            // no visible benefit. fitAndResize refreshes unthrottled because
-            // it runs infrequently (resize/visibility events only).
-            // Skip for hidden terminals — only visible ones need GPU refresh.
-            const now = performance.now();
-            if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
-              lastRefreshAt = now;
-              terminal.refresh(0, terminal.rows - 1);
+            pendingData += data;
+            if (writeRafId === null) {
+              writeRafId = requestAnimationFrame(() => {
+                writeRafId = null;
+                const batch = pendingData;
+                pendingData = '';
+                terminal.write(batch, () => {
+                  window.orca.pty.ack(sessionId, batch.length);
+                });
+                // Throttled full re-render to clear accumulated WebGL rendering
+                // artifacts. The rAF coalescing already limits this to once per
+                // frame; the 1 Hz throttle avoids unnecessary GPU work beyond that.
+                const now = performance.now();
+                if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+                  lastRefreshAt = now;
+                  terminal.refresh(0, terminal.rows - 1);
+                }
+              });
             }
           });
         });
@@ -215,10 +234,11 @@ export const AgentTerminal = memo(function AgentTerminal({
       // Skip resize IPC for hidden terminals — only the visible one needs to
       // refit and sync PTY dimensions. Hidden terminals refit when they become visible.
       if (!visibleRef.current) return;
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
+      if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+      resizeRafId = requestAnimationFrame(() => {
+        resizeRafId = null;
         fitAndResize(fitAddon, terminal, sessionId);
-      }, 100);
+      });
     });
     resizeObserver.observe(container);
 
@@ -259,7 +279,17 @@ export const AgentTerminal = memo(function AgentTerminal({
       setSearchVisible(false);
       clearInterval(snapshotTimer);
       sendSnapshot();
-      if (resizeTimeout) clearTimeout(resizeTimeout);
+      if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+      if (writeRafId !== null) cancelAnimationFrame(writeRafId);
+      // Flush any remaining buffered data before disposal and ACK it
+      // so the daemon's unackedSize doesn't stay inflated.
+      if (pendingData) {
+        const flushed = pendingData;
+        pendingData = '';
+        terminal.write(flushed, () => {
+          window.orca.pty.ack(sessionId, flushed.length);
+        });
+      }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
       classObserver.disconnect();

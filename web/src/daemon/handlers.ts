@@ -29,6 +29,7 @@ import type {
   PtyReplayParams,
   PtyClearParams,
   PtySnapshotParams,
+  PtyAckParams,
   PtySubscribeParams,
   PtyUnsubscribeParams,
   AgentLaunchParams,
@@ -123,6 +124,12 @@ export function createHandler(deps: HandlerDeps) {
       case DAEMON_METHODS.PTY_SNAPSHOT: {
         const p = params as PtySnapshotParams;
         ptyManager.setSnapshot(p.sessionId, p.content);
+        return { ok: true };
+      }
+
+      case DAEMON_METHODS.PTY_ACK: {
+        const p = params as PtyAckParams;
+        ptyManager.ack(p.sessionId, p.bytes);
         return { ok: true };
       }
 
