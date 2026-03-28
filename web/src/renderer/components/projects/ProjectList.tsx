@@ -1,26 +1,21 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import {
-  useWorkspaceBySlug,
-  useCreateProject,
-  useProjectSubscription,
-} from '../../hooks/useGraphQL.js';
+import { useCreateProject } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { ProjectListSkeleton } from '../layout/Skeleton.js';
 import { EmptyProjectList } from '../layout/EmptyState.js';
 
 export function ProjectList() {
   const { currentWorkspace } = useWorkspace();
-  const { data, fetching, error } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const { projects, fetching } = useWorkspaceData();
   const { createProject } = useCreateProject();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-
-  useProjectSubscription(currentWorkspace?.id ?? '');
 
   const handleCreate = async () => {
     if (!name.trim() || !currentWorkspace) return;
@@ -34,19 +29,9 @@ export function ProjectList() {
     setShowCreate(false);
   };
 
-  if (fetching && !data) {
+  if (fetching && projects.length === 0) {
     return <ProjectListSkeleton />;
   }
-
-  if (error) {
-    return (
-      <div className="p-6 text-error">
-        <p>Error loading projects: {error.message}</p>
-      </div>
-    );
-  }
-
-  const projects = data?.workspace?.projects ?? [];
 
   return (
     <div className="p-6">

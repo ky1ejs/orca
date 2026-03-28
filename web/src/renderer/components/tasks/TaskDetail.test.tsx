@@ -38,18 +38,6 @@ vi.mock('../../hooks/useGraphQL.js', () => ({
   }),
   useUpdateTask: () => ({ updateTask: mockUpdateTask }),
   useArchiveTask: () => ({ archiveTask: mockArchiveTask }),
-  useTaskSubscription: vi.fn(),
-  useWorkspaceBySlug: () => ({
-    data: {
-      workspace: {
-        projects: [
-          { id: 'proj-1', name: 'Test Project' },
-          { id: 'proj-2', name: 'Other Project' },
-        ],
-      },
-    },
-    fetching: false,
-  }),
   useWorkspaceMembers: () => ({
     data: {
       workspace: {
@@ -95,6 +83,20 @@ vi.mock('../../navigation/context.js', () => ({
 
 vi.mock('../../workspace/context.js', () => ({
   useWorkspace: () => ({ currentWorkspace: { id: 'ws-1', slug: 'test-ws' } }),
+}));
+
+vi.mock('../../workspace/workspace-data-context.js', () => ({
+  useWorkspaceData: () => ({
+    workspace: undefined,
+    projects: [
+      { id: 'proj-1', name: 'Test Project' },
+      { id: 'proj-2', name: 'Other Project' },
+    ],
+    initiatives: [],
+    inboxTasks: [],
+    fetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useProjectDirectory.js', () => ({

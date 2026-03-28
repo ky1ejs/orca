@@ -7,6 +7,7 @@ import { fromValue, never } from 'wonka';
 import { ProjectList } from './ProjectList.js';
 import { NavigationProvider } from '../../navigation/context.js';
 import { WorkspaceProvider } from '../../workspace/context.js';
+import { WorkspaceDataProvider } from '../../workspace/workspace-data-context.js';
 
 afterEach(cleanup);
 
@@ -36,9 +37,11 @@ function renderWithProviders(client: Client) {
   return render(
     <Provider value={client}>
       <WorkspaceProvider>
-        <NavigationProvider>
-          <ProjectList />
-        </NavigationProvider>
+        <WorkspaceDataProvider>
+          <NavigationProvider>
+            <ProjectList />
+          </NavigationProvider>
+        </WorkspaceDataProvider>
       </WorkspaceProvider>
     </Provider>,
   );

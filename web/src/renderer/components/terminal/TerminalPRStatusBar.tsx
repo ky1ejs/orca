@@ -1,23 +1,21 @@
 import { ExternalLink, Plus, Link, Loader2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import { type TaskQuery } from '../../graphql/__generated__/generated.js';
+import { useTask } from '../../hooks/useGraphQL.js';
 import { PullRequestBadge } from '../tasks/PullRequestBadge.js';
 import { CIStatusBadge } from '../tasks/CIStatusBadge.js';
 import { PullRequestIcon } from '../tasks/PullRequestIcon.js';
 import { ReviewIndicator } from '../tasks/ReviewIndicator.js';
 import { useLinkPrForm } from '../../hooks/useLinkPrForm.js';
 
-type PullRequestItem = NonNullable<TaskQuery['task']>['pullRequests'][number];
-
 interface TerminalPRStatusBarProps {
-  pullRequests: PullRequestItem[];
   taskId: string;
-  onMutate?: () => void;
 }
 
-export function TerminalPRStatusBar({ pullRequests, taskId, onMutate }: TerminalPRStatusBarProps) {
+export function TerminalPRStatusBar({ taskId }: TerminalPRStatusBarProps) {
+  const { data, refetch } = useTask(taskId);
+  const pullRequests = data?.task?.pullRequests ?? [];
   const { showForm, setShowForm, url, setUrl, linkError, linking, handleCancel, handleLink } =
-    useLinkPrForm({ taskId, onSuccess: onMutate });
+    useLinkPrForm({ taskId, onSuccess: () => refetch({ requestPolicy: 'network-only' }) });
 
   return (
     <div className="bg-surface-raised border-b border-edge px-3 py-1.5 flex items-center gap-3 overflow-x-auto">

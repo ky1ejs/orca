@@ -10,14 +10,9 @@ import {
   Target,
   User,
 } from 'lucide-react';
-import {
-  useWorkspaceBySlug,
-  useInitiativeSubscription,
-  useProjectSubscription,
-  useTaskSubscription,
-} from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useMyTasks } from '../../hooks/useMyTasks.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { SidebarSkeleton } from './Skeleton.js';
@@ -174,25 +169,24 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps) {
   const { currentWorkspace } = useWorkspace();
-  const { data, fetching } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const {
+    workspace,
+    projects: allProjects,
+    initiatives,
+    inboxTasks,
+    fetching,
+  } = useWorkspaceData();
   const { navigate, current } = useNavigation();
   const [expandedInitiatives, setExpandedInitiatives] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [inboxExpanded, setInboxExpanded] = useState(false);
-
-  useInitiativeSubscription(currentWorkspace?.id ?? '');
-  useProjectSubscription(currentWorkspace?.id ?? '');
-  useTaskSubscription(currentWorkspace?.id ?? '');
 
   const toggleInitiative = (id: string) =>
     setExpandedInitiatives((prev) => toggleSetItem(prev, id));
 
   const toggleProject = (id: string) => setExpandedProjects((prev) => toggleSetItem(prev, id));
 
-  const initiatives = data?.workspace?.initiatives ?? [];
-  const allProjects = data?.workspace?.projects ?? [];
   const standaloneProjects = allProjects.filter((p) => !p.initiativeId);
-  const inboxTasks = data?.workspace?.tasks ?? [];
   const activeTaskId = current.view === 'task' ? current.id : undefined;
   const { count: myTaskCount } = useMyTasks();
 
@@ -202,7 +196,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const prevProjectsRef = useRef(allProjects);
   const prevInboxTasksRef = useRef(inboxTasks);
   const prevSlugRef = useRef(currentWorkspace?.slug);
-  const hasWorkspaceData = !!data?.workspace;
+  const hasWorkspaceData = !!workspace;
   const sameWorkspace = currentWorkspace?.slug === prevSlugRef.current;
   if (hasWorkspaceData) {
     prevProjectsRef.current = allProjects;

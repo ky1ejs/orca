@@ -11,8 +11,8 @@ import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
 import { MyTasksView } from '../tasks/MyTasksView.js';
 import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
-import { useWorkspaceBySlug, useTask } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useTerminalSessions, type TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
@@ -92,12 +92,9 @@ const TerminalPanel = memo(function TerminalPanel({
 
 export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate } = useNavigation();
-  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
-  const { data: workspaceData, fetching: projectsFetching } = useWorkspaceBySlug(
-    currentWorkspace?.slug ?? '',
-  );
+  const { loading: workspaceLoading } = useWorkspace();
+  const { projects, fetching: projectsFetching } = useWorkspaceData();
   const taskId = current.view === 'task' ? current.id : undefined;
-  const { data: taskData, refetch: refetchTask } = useTask(taskId ?? '');
   const { sessions, loading: sessionsLoading, refresh } = useTerminalSessions(taskId);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -165,7 +162,6 @@ export function AppShell({ onLogout }: AppShellProps) {
   );
 
   // Determine if we should show the onboarding flow
-  const projects = workspaceData?.workspace?.projects ?? [];
   if (projects.length > 0) hasEverHadProjects.current = true;
   const showOnboarding =
     !workspaceLoading &&
@@ -353,11 +349,7 @@ export function AppShell({ onLogout }: AppShellProps) {
               className="shrink-0 flex flex-col overflow-hidden"
               style={{ height: terminalPanelHeight }}
             >
-              <TerminalPRStatusBar
-                pullRequests={taskData?.task?.pullRequests ?? []}
-                taskId={taskId}
-                onMutate={() => refetchTask({ requestPolicy: 'network-only' })}
-              />
+              <TerminalPRStatusBar taskId={taskId} />
               {sessionsLoading ? (
                 <div
                   className="flex-1 flex items-center justify-center"

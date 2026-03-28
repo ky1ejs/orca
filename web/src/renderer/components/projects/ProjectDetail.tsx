@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import {
-  useProject,
-  useUpdateProject,
-  useArchiveProject,
-  useProjectSubscription,
-  useTaskSubscription,
-  useWorkspaceBySlug,
-} from '../../hooks/useGraphQL.js';
+import { useProject, useUpdateProject, useArchiveProject } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
-import { useWorkspace } from '../../workspace/context.js';
+import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { TaskTable } from '../tasks/TaskTable.js';
 import { ProjectDetailSkeleton } from '../layout/Skeleton.js';
 import { ProjectActivityFeed } from '../activity/ProjectActivityFeed.js';
@@ -24,16 +17,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const { updateProject } = useUpdateProject();
   const { archiveProject } = useArchiveProject();
   const { navigate, goToParent } = useNavigation();
-  const { currentWorkspace } = useWorkspace();
-  const { data: workspaceData } = useWorkspaceBySlug(currentWorkspace?.slug ?? '');
+  const { workspace: workspaceData } = useWorkspaceData();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [defaultDirectory, setDefaultDirectory] = useState('');
   const [initiativeId, setInitiativeId] = useState('');
-
-  useProjectSubscription(currentWorkspace?.id ?? '');
-  useTaskSubscription(currentWorkspace?.id ?? '');
 
   if (fetching && !data) {
     return <ProjectDetailSkeleton />;
@@ -60,7 +49,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     );
   }
 
-  const initiatives = workspaceData?.workspace?.initiatives ?? [];
+  const initiatives = workspaceData?.initiatives ?? [];
 
   const startEditing = () => {
     setName(project.name);
