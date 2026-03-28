@@ -9,7 +9,7 @@ import { ProjectListSkeleton } from '../layout/Skeleton.js';
 
 export function InitiativeList() {
   const { currentWorkspace } = useWorkspace();
-  const { initiatives, projects: allProjects, fetching } = useWorkspaceData();
+  const { initiatives, projects: allProjects, fetching, error } = useWorkspaceData();
   const { createInitiative } = useCreateInitiative();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
@@ -30,6 +30,14 @@ export function InitiativeList() {
 
   if (fetching && initiatives.length === 0 && allProjects.length === 0) {
     return <ProjectListSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-error">
+        <p>Error loading workspace: {error.message}</p>
+      </div>
+    );
   }
 
   const standaloneProjects = allProjects.filter((p) => !p.initiativeId);

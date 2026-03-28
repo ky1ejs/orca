@@ -90,14 +90,14 @@ const staticActions: ActionItem[] = [
 ];
 
 export function useCommandPalette(query: string, isOpen: boolean): PaletteResults {
-  const { projects, inboxTasks, initiatives, refetch } = useWorkspaceData();
+  const { workspace, projects, inboxTasks, initiatives, refetch } = useWorkspaceData();
 
   // Refetch workspace data when the palette opens so tasks created outside
   // the urql pipeline (e.g. via MCP / CLI) are picked up immediately.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !workspace) return;
     refetch({ requestPolicy: 'network-only' });
-  }, [isOpen, refetch]);
+  }, [isOpen, workspace, refetch]);
 
   const allItems = useMemo((): PaletteItem[] => {
     const items: PaletteItem[] = [...staticActions];

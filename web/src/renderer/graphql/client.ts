@@ -195,12 +195,22 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 | { id: string; initiativeId: string | null }
                 | undefined;
               if (project) {
+                // Read old initiativeId before invalidating so we can update
+                // both old and new initiative when a project moves between them.
+                const oldInitiativeId = cache.resolve(
+                  { __typename: 'Project', id: project.id },
+                  'initiativeId',
+                ) as string | null;
+
                 cache.invalidate({ __typename: 'Project', id: project.id });
                 if (project.initiativeId) {
                   cache.invalidate(
                     { __typename: 'Initiative', id: project.initiativeId },
                     'projects',
                   );
+                }
+                if (oldInitiativeId && oldInitiativeId !== project.initiativeId) {
+                  cache.invalidate({ __typename: 'Initiative', id: oldInitiativeId }, 'projects');
                 }
               }
             },
@@ -222,6 +232,15 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 }
                 if (oldProjectId && oldProjectId !== task.projectId) {
                   cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
+                }
+
+                // If the task moved to/from the inbox (projectId null), invalidate
+                // the workspace's unassociated task list so sidebar/command palette update.
+                const workspaceId = (_args as { workspaceId?: string }).workspaceId;
+                if (workspaceId && oldProjectId !== task.projectId) {
+                  cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
+                    unassociatedOnly: true,
+                  });
                 }
               }
             },

@@ -10,7 +10,7 @@ import { EmptyProjectList } from '../layout/EmptyState.js';
 
 export function ProjectList() {
   const { currentWorkspace } = useWorkspace();
-  const { projects, fetching } = useWorkspaceData();
+  const { projects, fetching, error } = useWorkspaceData();
   const { createProject } = useCreateProject();
   const { navigate } = useNavigation();
   const [showCreate, setShowCreate] = useState(false);
@@ -31,6 +31,14 @@ export function ProjectList() {
 
   if (fetching && projects.length === 0) {
     return <ProjectListSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-error">
+        <p>Error loading projects: {error.message}</p>
+      </div>
+    );
   }
 
   return (

@@ -7,6 +7,7 @@ import {
 } from '../hooks/useGraphQL.js';
 import { useWorkspace } from './context.js';
 import type { WorkspaceQuery } from '../graphql/__generated__/generated.js';
+import type { CombinedError } from 'urql';
 
 type WorkspaceData = NonNullable<WorkspaceQuery['workspace']>;
 
@@ -16,6 +17,7 @@ interface WorkspaceDataContextValue {
   initiatives: WorkspaceData['initiatives'];
   inboxTasks: WorkspaceData['tasks'];
   fetching: boolean;
+  error: CombinedError | undefined;
   refetch: ReturnType<typeof useWorkspaceBySlug>['refetch'];
 }
 
@@ -28,7 +30,7 @@ const WorkspaceDataContext = createContext<WorkspaceDataContextValue | null>(nul
 export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
   const { currentWorkspace } = useWorkspace();
   const slug = currentWorkspace?.slug ?? '';
-  const { data, fetching, refetch } = useWorkspaceBySlug(slug);
+  const { data, fetching, error, refetch } = useWorkspaceBySlug(slug);
 
   // Centralise subscriptions so they run exactly once per workspace
   useInitiativeSubscription(currentWorkspace?.id ?? '');
@@ -44,9 +46,10 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
       initiatives: workspace?.initiatives ?? EMPTY_INITIATIVES,
       inboxTasks: workspace?.tasks ?? EMPTY_TASKS,
       fetching,
+      error,
       refetch,
     }),
-    [workspace, fetching, refetch],
+    [workspace, fetching, error, refetch],
   );
 
   return <WorkspaceDataContext.Provider value={value}>{children}</WorkspaceDataContext.Provider>;

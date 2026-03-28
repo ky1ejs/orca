@@ -88,6 +88,7 @@ vi.mock('../../workspace/context.js', () => ({
 vi.mock('../../workspace/workspace-data-context.js', () => ({
   useWorkspaceData: () => ({
     workspace: undefined,
+    error: undefined,
     projects: [
       { id: 'proj-1', name: 'Test Project' },
       { id: 'proj-2', name: 'Other Project' },

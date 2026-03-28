@@ -22,7 +22,8 @@ vi.mock('../../workspace/context.js', () => ({
 const mockRefetch = vi.fn();
 vi.mock('../../workspace/workspace-data-context.js', () => ({
   useWorkspaceData: () => ({
-    workspace: undefined,
+    workspace: { slug: 'test-ws' },
+    error: undefined,
     projects: [
       {
         id: 'p-1',
