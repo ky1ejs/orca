@@ -93,13 +93,20 @@ export class DataBatcher {
   /** Flush any pending data for a session and remove it. */
   flushAndRemove(sessionId: string): void {
     const state = this.sessions.get(sessionId);
-    if (state && state.chunks.length > 0) {
-      this.flushSession(sessionId, state);
+    if (state) {
+      if (state.chunks.length > 0) {
+        this.flushSession(sessionId, state);
+      }
+      // Unpause PTY before removing state — otherwise a paused PTY stays
+      // paused forever if the renderer disconnects without ACKing.
+      if (state.paused) this.resumeCb?.(sessionId);
     }
     this.sessions.delete(sessionId);
   }
 
   remove(sessionId: string): void {
+    const state = this.sessions.get(sessionId);
+    if (state?.paused) this.resumeCb?.(sessionId);
     this.sessions.delete(sessionId);
   }
 

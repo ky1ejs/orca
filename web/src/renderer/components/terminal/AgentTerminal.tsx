@@ -281,10 +281,14 @@ export const AgentTerminal = memo(function AgentTerminal({
       sendSnapshot();
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       if (writeRafId !== null) cancelAnimationFrame(writeRafId);
-      // Flush any remaining buffered data before disposal
+      // Flush any remaining buffered data before disposal and ACK it
+      // so the daemon's unackedSize doesn't stay inflated.
       if (pendingData) {
-        terminal.write(pendingData);
+        const flushed = pendingData;
         pendingData = '';
+        terminal.write(flushed, () => {
+          window.orca.pty.ack(sessionId, flushed.length);
+        });
       }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);

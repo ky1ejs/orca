@@ -268,6 +268,49 @@ describe('DataBatcher', () => {
     batcher.dispose();
   });
 
+  it('calls resume on remove when session is paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    expect(resumed).toHaveLength(0);
+
+    batcher.remove('s1'); // should resume before deleting
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('calls resume on flushAndRemove when session is paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    batcher.push('s1', 'more');
+    batcher.flushAndRemove('s1'); // flush remaining + resume + delete
+
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('does not call resume on remove when session is not paused', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(10)); // flush → unacked=10 < 100 → not paused
+    batcher.remove('s1');
+
+    expect(resumed).toHaveLength(0);
+    batcher.dispose();
+  });
+
   it('clears paused state on remove so re-added session starts unpaused', () => {
     const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
     const paused: string[] = [];
