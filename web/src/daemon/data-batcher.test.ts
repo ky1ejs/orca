@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DataBatcher } from './data-batcher.js';
 
+vi.mock('./logger.js', () => ({
+  logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+
 describe('DataBatcher', () => {
   beforeEach(() => {
     vi.useFakeTimers();

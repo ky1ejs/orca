@@ -4,6 +4,7 @@
  * when unacknowledged downstream bytes exceed HIGH watermark, resumes
  * when renderer ACKs bring them below LOW watermark.
  */
+import { logger } from './logger.js';
 
 interface DataBatcherOptions {
   /** Flush interval in milliseconds. Default: 4. */
@@ -139,6 +140,9 @@ export class DataBatcher {
       // Normal pauses last < 1 flush cycle (~4ms). A pause lasting 30+ seconds
       // means ACKs were lost (e.g. renderer unmounted with in-flight IPC data).
       if (state.paused && now - state.pausedAt >= STUCK_PAUSE_TIMEOUT_MS) {
+        logger.warn(
+          `Safety valve: auto-resuming session ${sessionId} stuck paused for ${Math.round((now - state.pausedAt) / 1000)}s (unacked=${state.unackedSize})`,
+        );
         state.unackedSize = 0;
         state.paused = false;
         state.pausedAt = 0;
