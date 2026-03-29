@@ -269,6 +269,41 @@ describe('TaskDetail', () => {
     });
   });
 
+  describe('inline editing', () => {
+    it('saves title on Enter', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Test Task'));
+      const input = screen.getByDisplayValue('Test Task');
+      fireEvent.change(input, { target: { value: 'Updated Title' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await vi.waitFor(() => {
+        expect(mockUpdateTask).toHaveBeenCalledWith('task-1', { title: 'Updated Title' });
+      });
+    });
+
+    it('cancels title edit on Escape without saving', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Test Task'));
+      const input = screen.getByDisplayValue('Test Task');
+      fireEvent.change(input, { target: { value: 'Changed' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+    });
+
+    it('enters description edit mode on click', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('A test description'));
+
+      expect(screen.getByDisplayValue('A test description')).toBeInTheDocument();
+    });
+  });
+
   describe('back navigation', () => {
     it('no inline back button (breadcrumbs handle navigation)', async () => {
       await importAndRender();

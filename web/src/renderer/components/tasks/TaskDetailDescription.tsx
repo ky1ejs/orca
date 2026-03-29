@@ -16,6 +16,7 @@ export function TaskDetailDescription({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(description ?? '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const keyActionRef = useRef(false);
 
   useEffect(() => {
     setValue(description ?? '');
@@ -34,7 +35,7 @@ export function TaskDetailDescription({
   const save = () => {
     const trimmed = value.trim();
     if (trimmed !== (description ?? '').trim()) {
-      updateTask(taskId, { description: trimmed || undefined });
+      updateTask(taskId, { description: trimmed === '' ? null : trimmed });
     }
     setEditing(false);
   };
@@ -51,10 +52,19 @@ export function TaskDetailDescription({
           ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
+          onBlur={() => {
+            if (!keyActionRef.current) save();
+            keyActionRef.current = false;
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save();
-            if (e.key === 'Escape') cancel();
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              keyActionRef.current = true;
+              save();
+            }
+            if (e.key === 'Escape') {
+              keyActionRef.current = true;
+              cancel();
+            }
           }}
           placeholder="Add a description (Markdown supported)"
           className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-accent resize-y min-h-[120px]"
@@ -69,7 +79,15 @@ export function TaskDetailDescription({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => setEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setEditing(true);
+        }
+      }}
       className="rounded-md px-3 py-2 -mx-3 cursor-text hover:bg-surface-hover transition-colors border border-transparent hover:border-edge-subtle"
     >
       {description ? (

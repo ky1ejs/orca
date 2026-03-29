@@ -20,7 +20,7 @@ interface TaskAgentLauncherProps {
     projectName: string | null;
     workspaceSlug: string;
   };
-  onError: (error: { message: string; suggestion: string }) => void;
+  onError: (error: { message: string; suggestion: string } | null) => void;
 }
 
 export function TaskAgentLauncher({
@@ -64,19 +64,23 @@ export function TaskAgentLauncher({
       return;
     }
     setLaunching(true);
-    const mark = createPerfTimer('agent-launch', rendererPerfLog);
-    const result = await window.orca.agent.launch(
-      taskId,
-      projectDirectory,
-      options,
-      buildMetadata(),
-    );
-    mark('ipc-complete');
-    if (!result.success && result.error) {
-      onError({ message: result.error.message, suggestion: result.error.suggestion });
+    onError(null);
+    try {
+      const mark = createPerfTimer('agent-launch', rendererPerfLog);
+      const result = await window.orca.agent.launch(
+        taskId,
+        projectDirectory,
+        options,
+        buildMetadata(),
+      );
+      mark('ipc-complete');
+      if (!result.success && result.error) {
+        onError({ message: result.error.message, suggestion: result.error.suggestion });
+      }
+      refreshSessions();
+    } finally {
+      setLaunching(false);
     }
-    refreshSessions();
-    setLaunching(false);
   };
 
   const handleRestartAgent = async () => {
@@ -89,18 +93,22 @@ export function TaskAgentLauncher({
       return;
     }
     setLaunching(true);
-    const result = await window.orca.agent.restart(
-      taskId,
-      errorSession.id,
-      projectDirectory,
-      undefined,
-      buildMetadata(),
-    );
-    if (!result.success && result.error) {
-      onError({ message: result.error.message, suggestion: result.error.suggestion });
+    onError(null);
+    try {
+      const result = await window.orca.agent.restart(
+        taskId,
+        errorSession.id,
+        projectDirectory,
+        undefined,
+        buildMetadata(),
+      );
+      if (!result.success && result.error) {
+        onError({ message: result.error.message, suggestion: result.error.suggestion });
+      }
+      refreshSessions();
+    } finally {
+      setLaunching(false);
     }
-    refreshSessions();
-    setLaunching(false);
   };
 
   if (launching) {

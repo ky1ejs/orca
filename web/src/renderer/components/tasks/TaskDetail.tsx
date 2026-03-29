@@ -160,7 +160,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
           workspaceProjects={workspaceProjects}
           workspaceMembers={workspaceMembers}
           currentWorkspaceId={currentWorkspace?.id ?? null}
-          projectDirectory={projectDirectory}
+          projectDirectory={projectDirectory ?? null}
           dirLoading={dirLoading}
           updateDirectory={updateDirectory}
           activeSession={activeSession}

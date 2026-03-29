@@ -44,7 +44,7 @@ interface TaskDetailSidebarProps {
     projectName: string | null;
     workspaceSlug: string;
   };
-  onAgentError: (error: { message: string; suggestion: string }) => void;
+  onAgentError: (error: { message: string; suggestion: string } | null) => void;
 }
 
 export function TaskDetailSidebar({
@@ -206,9 +206,18 @@ export function TaskDetailSidebar({
           <p
             className="text-fg-muted text-body-sm font-mono cursor-pointer hover:text-fg transition-colors truncate"
             title={projectDirectory}
+            role="button"
+            tabIndex={0}
             onClick={() => {
               setEditingDirectory(projectDirectory);
               setIsEditingDir(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setEditingDirectory(projectDirectory);
+                setIsEditingDir(true);
+              }
             }}
           >
             {projectDirectory}

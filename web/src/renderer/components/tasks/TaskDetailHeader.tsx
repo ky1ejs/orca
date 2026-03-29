@@ -12,6 +12,7 @@ export function TaskDetailHeader({ displayId, title, taskId, updateTask }: TaskD
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const keyActionRef = useRef(false);
 
   useEffect(() => {
     setValue(title);
@@ -47,16 +48,33 @@ export function TaskDetailHeader({ displayId, title, taskId, updateTask }: TaskD
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
+          onBlur={() => {
+            if (!keyActionRef.current) save();
+            keyActionRef.current = false;
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') save();
-            if (e.key === 'Escape') cancel();
+            if (e.key === 'Enter') {
+              keyActionRef.current = true;
+              save();
+            }
+            if (e.key === 'Escape') {
+              keyActionRef.current = true;
+              cancel();
+            }
           }}
           className="w-full text-heading-lg font-bold text-fg bg-surface-inset border border-edge-subtle rounded-md px-2 py-1 -mx-2 focus:outline-none focus:border-accent"
         />
       ) : (
         <h1
+          role="button"
+          tabIndex={0}
           onClick={() => setEditing(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setEditing(true);
+            }
+          }}
           className="text-heading-lg font-bold text-fg cursor-text rounded px-2 py-1 -mx-2 hover:bg-surface-hover transition-colors"
         >
           {title}
