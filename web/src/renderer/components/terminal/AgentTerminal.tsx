@@ -225,6 +225,18 @@ export const AgentTerminal = memo(function AgentTerminal({
     // any output produced during the gap.
     const unsubReconnect = window.orca.lifecycle.onDaemonReconnected(() => {
       if (disposed || !initialFitDone) return;
+      // Cancel any pending write rAF and ACK buffered data before resetting.
+      // Without this, the stale rAF callback could fire after reset and write
+      // pre-reconnect data into the freshly cleared terminal.
+      if (writeRafId !== null) {
+        cancelAnimationFrame(writeRafId);
+        writeRafId = null;
+      }
+      if (pendingData) {
+        const batch = pendingData;
+        pendingData = '';
+        window.orca.pty.ack(sessionId, batch.length);
+      }
       terminal.reset();
       void replayAndSubscribe();
     });
