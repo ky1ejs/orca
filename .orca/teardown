@@ -9,4 +9,4 @@
 
 set -euo pipefail
 
-exec "$ORCA_REPO_ROOT/scripts/teardown" "$ORCA_WORKTREE_PATH"
+exec "$ORCA_WORKTREE_PATH/scripts/teardown" "$ORCA_WORKTREE_PATH"

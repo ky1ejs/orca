@@ -9,4 +9,4 @@
 
 set -euo pipefail
 
-exec "$ORCA_REPO_ROOT/scripts/bootstrap" "$ORCA_WORKTREE_PATH"
+exec "$ORCA_WORKTREE_PATH/scripts/bootstrap" "$ORCA_WORKTREE_PATH"
