@@ -51,7 +51,7 @@ echo "Generating Prisma client..."
 echo "Running web setup (codegen + native modules)..."
 (cd web && bun run setup) 2>&1
 
-# 9. Run Prisma migrations
+# 8. Run Prisma migrations
 echo "Running migrations..."
 (cd backend && bunx prisma migrate deploy) 2>&1
 

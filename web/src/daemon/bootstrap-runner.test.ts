@@ -78,6 +78,7 @@ describe('runBootstrap', () => {
 
     expect(result.success).toBe(true);
     expect(result.exitCode).toBe(0);
+    expect(result.timedOut).toBe(false);
     expect(result.output).toContain('hello bootstrap');
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
@@ -108,6 +109,7 @@ describe('runBootstrap', () => {
 
     expect(result.success).toBe(false);
     expect(result.exitCode).toBe(1);
+    expect(result.timedOut).toBe(false);
     expect(result.output).toContain('failing');
   });
 
@@ -155,6 +157,7 @@ describe('runBootstrap', () => {
     });
 
     expect(result.success).toBe(false);
+    expect(result.timedOut).toBe(true);
     expect(result.exitCode).toBeNull();
   }, 30000);
 });

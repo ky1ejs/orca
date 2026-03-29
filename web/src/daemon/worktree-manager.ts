@@ -95,7 +95,7 @@ export class WorktreeManager {
     taskId: string,
     workingDirectory: string,
     metadata: TaskMetadata,
-  ): Promise<{ path: string; created: boolean }> {
+  ): Promise<{ path: string; created: boolean; repoPath: string }> {
     // Resolve the canonical repo root so locking, naming, and storage are
     // consistent regardless of whether workingDirectory is a subdirectory.
     const repoPath = await resolveRepoRoot(workingDirectory);
@@ -108,7 +108,7 @@ export class WorktreeManager {
         // Validate that the existing worktree belongs to the same repo
         if (existing.repo_path === repoPath && existsSync(existing.worktree_path)) {
           logger.info(`worktree.reused taskId=${taskId} path=${existing.worktree_path}`);
-          return { path: existing.worktree_path, created: false };
+          return { path: existing.worktree_path, created: false, repoPath };
         }
         // Stale row — directory was deleted externally or repo changed
         logger.info(`worktree.stale-row-cleaned taskId=${taskId} path=${existing.worktree_path}`);
@@ -174,7 +174,7 @@ export class WorktreeManager {
         `worktree.created taskId=${taskId} branch=${branchName} path=${worktreePath} baseBranch=${baseBranch} durationMs=${durationMs}`,
       );
 
-      return { path: worktreePath, created: true };
+      return { path: worktreePath, created: true, repoPath };
     });
   }
 

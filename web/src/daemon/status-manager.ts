@@ -122,6 +122,7 @@ export class DaemonStatusManager {
       // Create or reuse a worktree for task isolation
       let effectiveWorkingDirectory = workingDirectory;
       let worktreeCreated = false;
+      let resolvedRepoPath = workingDirectory;
       if (metadata && (await isGitRepo(workingDirectory))) {
         const worktree = await this.worktreeManager.ensureWorktree(
           taskId,
@@ -130,6 +131,7 @@ export class DaemonStatusManager {
         );
         effectiveWorkingDirectory = worktree.path;
         worktreeCreated = worktree.created;
+        resolvedRepoPath = worktree.repoPath;
         mark('worktree-ensured');
       }
 
@@ -153,14 +155,14 @@ export class DaemonStatusManager {
           const result = await runBootstrap({
             scriptPath,
             worktreePath: effectiveWorkingDirectory,
-            repoPath: workingDirectory,
+            repoPath: resolvedRepoPath,
             metadata: metadata!,
           });
           mark('bootstrap-finished');
 
           if (!result.success) {
             this.updateStatusAndNotify(session.id, SessionStatus.Error);
-            throw new BootstrapError(result.exitCode, result.output);
+            throw new BootstrapError(result.exitCode, result.output, result.timedOut);
           }
         }
       }

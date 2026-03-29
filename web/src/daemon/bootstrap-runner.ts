@@ -10,13 +10,14 @@ import { logger } from './logger.js';
 
 const BOOTSTRAP_SCRIPT_PATH = join('.orca', 'bootstrap');
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_OUTPUT_BYTES = 64 * 1024; // 64 KB retained for error reporting
+const MAX_OUTPUT_CHARS = 64 * 1024; // 64K characters retained for error reporting
 
 interface BootstrapResult {
   success: boolean;
   durationMs: number;
   output: string;
   exitCode: number | null;
+  timedOut: boolean;
 }
 
 /**
@@ -50,6 +51,7 @@ export function runBootstrap(opts: {
   return new Promise((resolve) => {
     const start = Date.now();
     let output = '';
+    let timedOut = false;
 
     const child = spawn(scriptPath, [], {
       cwd: worktreePath,
@@ -70,12 +72,11 @@ export function runBootstrap(opts: {
     const collectOutput = (data: Buffer) => {
       const text = data.toString();
       output += text;
-      // Cap retained output to avoid unbounded memory growth on verbose scripts
-      if (output.length > MAX_OUTPUT_BYTES) {
-        output = output.slice(output.length - MAX_OUTPUT_BYTES);
+      if (output.length > MAX_OUTPUT_CHARS) {
+        output = output.slice(output.length - MAX_OUTPUT_CHARS);
       }
       for (const line of text.split('\n')) {
-        if (line.trim()) logger.info(`bootstrap: ${line}`);
+        if (line.trim()) logger.debug(`bootstrap: ${line}`);
       }
     };
 
@@ -94,6 +95,7 @@ export function runBootstrap(opts: {
     let sigkillTimer: ReturnType<typeof setTimeout> | null = null;
 
     const timer = setTimeout(() => {
+      timedOut = true;
       killProcessGroup('SIGTERM');
       sigkillTimer = setTimeout(() => killProcessGroup('SIGKILL'), 5000);
     }, timeoutMs);
@@ -103,21 +105,26 @@ export function runBootstrap(opts: {
       if (sigkillTimer) clearTimeout(sigkillTimer);
     };
 
-    child.on('close', (exitCode) => {
+    child.on('close', (exitCode, signal) => {
       cleanup();
       const durationMs = Date.now() - start;
 
-      if (exitCode === null) {
+      if (timedOut) {
         logger.warn(`bootstrap.timeout worktreePath=${worktreePath} durationMs=${durationMs}`);
-        resolve({ success: false, durationMs, output, exitCode: null });
+        resolve({ success: false, durationMs, output, exitCode: null, timedOut: true });
+      } else if (signal) {
+        logger.warn(
+          `bootstrap.killed worktreePath=${worktreePath} signal=${signal} durationMs=${durationMs}`,
+        );
+        resolve({ success: false, durationMs, output, exitCode: null, timedOut: false });
       } else if (exitCode !== 0) {
         logger.warn(
           `bootstrap.failed worktreePath=${worktreePath} exitCode=${exitCode} durationMs=${durationMs}`,
         );
-        resolve({ success: false, durationMs, output, exitCode });
+        resolve({ success: false, durationMs, output, exitCode, timedOut: false });
       } else {
         logger.info(`bootstrap.success worktreePath=${worktreePath} durationMs=${durationMs}`);
-        resolve({ success: true, durationMs, output, exitCode: 0 });
+        resolve({ success: true, durationMs, output, exitCode: 0, timedOut: false });
       }
     });
 
@@ -125,7 +132,13 @@ export function runBootstrap(opts: {
       cleanup();
       const durationMs = Date.now() - start;
       logger.error(`bootstrap.error worktreePath=${worktreePath} error=${err.message}`);
-      resolve({ success: false, durationMs, output: err.message, exitCode: null });
+      resolve({
+        success: false,
+        durationMs,
+        output: err.message,
+        exitCode: null,
+        timedOut: false,
+      });
     });
   });
 }
