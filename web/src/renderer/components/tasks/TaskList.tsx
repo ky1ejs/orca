@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
+import { TaskBranchBadge } from './TaskBranchBadge.js';
 import { useCreateTask } from '../../hooks/useGraphQL.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { EmptyTaskList } from '../layout/EmptyState.js';
@@ -83,6 +84,7 @@ export function TaskList({ projectId, tasks, onTaskClick }: TaskListProps) {
                 <span className="text-fg-faint text-code-sm font-mono">{task.displayId}</span>
                 <span className="text-fg text-body-sm">{task.title}</span>
               </span>
+              <TaskBranchBadge taskId={task.id} />
               <TaskStatusBadge status={task.status} />
             </button>
           ))}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TaskTable } from './TaskTable.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
@@ -55,6 +55,15 @@ const mockTasks = [
     updatedAt: '2026-03-06T00:00:00Z',
   },
 ];
+
+beforeEach(() => {
+  (window as unknown as Record<string, unknown>).orca = {
+    worktree: {
+      get: vi.fn().mockResolvedValue(null),
+      remove: vi.fn().mockResolvedValue({ ok: true }),
+    },
+  };
+});
 
 afterEach(cleanup);
 

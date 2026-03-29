@@ -5,6 +5,7 @@ import { TaskStatus } from '../../graphql/__generated__/generated.js';
 import { StatusIcon } from '../shared/StatusIcon.js';
 import { PriorityIcon } from '../shared/PriorityIcon.js';
 import { PullRequestIndicator } from './PullRequestIndicator.js';
+import { TaskBranchBadge } from './TaskBranchBadge.js';
 import { EmptyState } from '../layout/EmptyState.js';
 import { useMyTasks, type MyTask } from '../../hooks/useMyTasks.js';
 import { useNavigation } from '../../navigation/context.js';
@@ -250,6 +251,9 @@ function MyTaskRow({
           </span>
         </div>
       )}
+      <div role="gridcell" className="flex-shrink-0">
+        <TaskBranchBadge taskId={task.id} />
+      </div>
       {task.pullRequestCount != null && task.pullRequestCount > 0 && (
         <div role="gridcell" className="flex-shrink-0">
           <PullRequestIndicator count={task.pullRequestCount} />

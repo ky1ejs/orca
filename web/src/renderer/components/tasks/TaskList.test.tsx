@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { Provider, Client } from 'urql';
@@ -7,6 +7,15 @@ import { never, fromValue } from 'wonka';
 import { TaskList } from './TaskList.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
 import { WorkspaceProvider } from '../../workspace/context.js';
+
+beforeEach(() => {
+  (window as unknown as Record<string, unknown>).orca = {
+    worktree: {
+      get: vi.fn().mockResolvedValue(null),
+      remove: vi.fn().mockResolvedValue({ ok: true }),
+    },
+  };
+});
 
 afterEach(cleanup);
 
