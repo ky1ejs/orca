@@ -210,7 +210,7 @@ describe('daemon integration', () => {
       command: '/bin/sh',
       args: [
         '-c',
-        'echo "ORCA_SESSION_ID=$ORCA_SESSION_ID"; echo "ORCA_TASK_ID=$ORCA_TASK_ID"; echo "ORCA_TASK_UUID=$ORCA_TASK_UUID"; echo "ORCA_TASK_TITLE=$ORCA_TASK_TITLE"; echo "ELECTRON_RUN_AS_NODE=${ELECTRON_RUN_AS_NODE:-NOT_SET}"',
+        'echo "ORCA_SESSION_ID=$ORCA_SESSION_ID"; echo "ORCA_TASK_ID=$ORCA_TASK_ID"; echo "ORCA_TASK_UUID=$ORCA_TASK_UUID"; echo "ORCA_TASK_TITLE=$ORCA_TASK_TITLE"; echo "ELECTRON_RUN_AS_NODE=${ELECTRON_RUN_AS_NODE:-NOT_SET}"; echo "COLORTERM=$COLORTERM"; echo "TERM_PROGRAM=$TERM_PROGRAM"',
       ],
       cwd: tempDir,
       env: {
@@ -230,6 +230,9 @@ describe('daemon integration', () => {
     expect(output).toContain('ORCA_TASK_TITLE=Test Task');
     // ELECTRON_RUN_AS_NODE should be filtered out — not inherited by the PTY
     expect(output).toContain('ELECTRON_RUN_AS_NODE=NOT_SET');
+    // Terminal capability vars injected by pty-manager
+    expect(output).toContain('COLORTERM=truecolor');
+    expect(output).toContain('TERM_PROGRAM=ghostty');
   });
 
   it('subscription filtering — only subscribed client receives data', async () => {
