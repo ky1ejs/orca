@@ -122,6 +122,12 @@ export class DaemonPtyManager {
     this.batcher.ack(sessionId, bytes);
   }
 
+  /** Reset flow control state after a client reconnect so stale unacked
+   *  bytes from the disconnect gap don't permanently pause the PTY. */
+  resetFlowControl(sessionId: string): void {
+    this.batcher.resetUnacked(sessionId);
+  }
+
   write(sessionId: string, data: string): void {
     const proc = this.processes.get(sessionId);
     if (proc) proc.pty.write(data);

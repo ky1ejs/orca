@@ -316,14 +316,13 @@ export const AgentTerminal = memo(function AgentTerminal({
       sendSnapshot();
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       if (writeRafId !== null) cancelAnimationFrame(writeRafId);
-      // Flush any remaining buffered data before disposal and ACK it
-      // so the daemon's unackedSize doesn't stay inflated.
+      // ACK any buffered data directly so the daemon's unackedSize doesn't
+      // stay inflated. We can't rely on terminal.write()'s async callback
+      // because terminal.dispose() below would prevent it from firing.
       if (pendingData) {
         const flushed = pendingData;
         pendingData = '';
-        terminal.write(flushed, () => {
-          window.orca.pty.ack(sessionId, flushed.length);
-        });
+        window.orca.pty.ack(sessionId, flushed.length);
       }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);

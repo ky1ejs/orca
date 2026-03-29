@@ -554,7 +554,7 @@ describe('AgentTerminal', () => {
     });
   });
 
-  it('flushes pending data on unmount', async () => {
+  it('ACKs pending data directly on unmount', async () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
 
@@ -563,18 +563,15 @@ describe('AgentTerminal', () => {
     });
 
     const onDataCallback = mockPtyOnData.mock.calls[0][1];
-    mockWrite.mockClear();
+    mockPtyAck.mockClear();
 
     // Push data but don't wait for rAF
     onDataCallback('pending');
 
-    // Unmount should flush the pending data
+    // Unmount should ACK the pending data directly (not via terminal.write callback)
     unmount();
 
-    const dataWrites = mockWrite.mock.calls.filter(
-      (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('pending'),
-    );
-    expect(dataWrites).toHaveLength(1);
+    expect(mockPtyAck).toHaveBeenCalledWith('test-session', 'pending'.length);
   });
 
   it('uses rAF for resize debounce instead of setTimeout', async () => {

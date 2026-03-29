@@ -229,6 +229,9 @@ export function createHandler(deps: HandlerDeps) {
         for (const session of sessions) {
           if (isActiveSessionStatus(session.status)) {
             server.subscribeClient(client.id, session.id);
+            // Reset flow control so stale unacked bytes accumulated during
+            // the disconnect don't permanently pause the PTY.
+            ptyManager.resetFlowControl(session.id);
           }
         }
         const result: SessionsRestoreAllResult = { sessions };

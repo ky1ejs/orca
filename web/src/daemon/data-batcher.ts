@@ -90,6 +90,17 @@ export class DataBatcher {
     }
   }
 
+  /** Reset unacked state for a session (e.g. after client reconnect). */
+  resetUnacked(sessionId: string): void {
+    const state = this.sessions.get(sessionId);
+    if (!state) return;
+    state.unackedSize = 0;
+    if (state.paused) {
+      state.paused = false;
+      this.resumeCb?.(sessionId);
+    }
+  }
+
   /** Flush any pending data for a session and remove it. */
   flushAndRemove(sessionId: string): void {
     const state = this.sessions.get(sessionId);

@@ -57,15 +57,14 @@ export function useTerminalSessions(taskId?: string) {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Clear stale sessions immediately when navigating to a different task.
-  // We intentionally do NOT set loading=true here — that would unmount the
-  // TerminalPanel and destroy all xterm instances, forcing a full replay cycle
-  // on remount. Instead, clearing sessions lets the panel show an empty state
-  // briefly while the (near-instant) fetch completes.
+  // Reset perf timer for each new task. Don't clear sessions — the next
+  // fetchSessions (triggered by the dependency chain) will atomically replace
+  // them via the fingerprint check. Clearing to [] would unmount all
+  // AgentTerminal instances, destroying xterm state and leaking unACKed
+  // bytes in the daemon's flow control.
   useEffect(() => {
     if (!taskId) return;
     initialFetchDone.current = false;
-    setSessions([]);
   }, [taskId]);
 
   useEffect(() => {
