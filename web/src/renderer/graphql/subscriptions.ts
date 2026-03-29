@@ -93,6 +93,7 @@ export const TaskChangedDocument = /* GraphQL */ `
         }
         createdAt
       }
+      branchName
       archivedAt
       createdAt
       updatedAt

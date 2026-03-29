@@ -171,6 +171,7 @@ export const taskResolvers = {
       if (args.input.description !== undefined) data.description = args.input.description;
       if (args.input.status != null) data.status = args.input.status;
       if (args.input.priority != null) data.priority = args.input.priority;
+      if (args.input.branchName !== undefined) data.branchName = args.input.branchName;
       if (args.input.projectId !== undefined) {
         if (args.input.projectId) {
           const { project: targetProject } = await requireProjectAccess(
@@ -242,8 +243,9 @@ export const taskResolvers = {
           ...(args.input.description !== undefined && { description: args.input.description }),
           ...(args.input.status != null && { status: args.input.status }),
           ...(args.input.priority != null && { priority: args.input.priority }),
+          ...(args.input.branchName !== undefined && { branchName: args.input.branchName }),
         },
-        ['title', 'description', 'status', 'priority'],
+        ['title', 'description', 'status', 'priority', 'branchName'],
       );
       auditChanges.push(...scalarDiff);
 

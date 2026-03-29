@@ -202,6 +202,7 @@ type Task {
   pullRequestCount: Int!
   relationships: [TaskRelationship!]!
   activity(first: Int = 20, after: String): AuditEventConnection!
+  branchName: String
   archivedAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -276,6 +277,7 @@ input UpdateTaskInput {
   projectId: ID
   assigneeId: ID
   labelIds: [ID!]
+  branchName: String
 }
 
 input CreateLabelInput {

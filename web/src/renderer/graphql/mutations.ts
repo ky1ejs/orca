@@ -162,6 +162,7 @@ export const UpdateTaskDocument = /* GraphQL */ `
         name
         color
       }
+      branchName
       createdAt
       updatedAt
     }

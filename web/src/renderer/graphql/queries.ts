@@ -322,6 +322,7 @@ export const TaskQueryDocument = /* GraphQL */ `
         }
         createdAt
       }
+      branchName
       archivedAt
       createdAt
       updatedAt

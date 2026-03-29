@@ -193,6 +193,7 @@ model Task {
   workspace        Workspace    @relation(fields: [workspaceId], references: [id])
   assigneeId       String?
   assignee         User?        @relation("assignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+  branchName       String?
   labels           Label[]      @relation("TaskLabels")
   pullRequests          PullRequest[]
   sourceRelationships   TaskRelationship[] @relation("sourceRelationships")
