@@ -92,7 +92,7 @@ const TerminalPanel = memo(function TerminalPanel({
 });
 
 export function AppShell({ onLogout }: AppShellProps) {
-  const { current, navigate } = useNavigation();
+  const { current, navigate, goBack, goForward } = useNavigation();
   const { loading: workspaceLoading } = useWorkspace();
   const { projects, fetching: projectsFetching } = useWorkspaceData();
   const taskId = current.view === 'task' ? current.id : undefined;
@@ -262,6 +262,42 @@ export function AppShell({ onLogout }: AppShellProps) {
         },
       },
       {
+        key: ',',
+        metaKey: true,
+        label: 'Settings',
+        description: 'Open settings',
+        action: () => {
+          navigate({ view: 'settings' });
+        },
+      },
+      {
+        key: '[',
+        metaKey: true,
+        label: 'Back',
+        description: 'Go back',
+        action: () => {
+          goBack();
+        },
+      },
+      {
+        key: ']',
+        metaKey: true,
+        label: 'Forward',
+        description: 'Go forward',
+        action: () => {
+          goForward();
+        },
+      },
+      {
+        key: 'p',
+        metaKey: true,
+        label: 'Command Palette',
+        description: 'Open command palette',
+        action: () => {
+          setShowCommandPalette(true);
+        },
+      },
+      {
         key: '/',
         metaKey: true,
         label: 'Help',
@@ -279,15 +315,17 @@ export function AppShell({ onLogout }: AppShellProps) {
         },
       },
     ],
-    [current, navigate, activeSessionId, handleCloseSession],
+    [current, navigate, activeSessionId, handleCloseSession, goBack, goForward],
   );
 
   useKeyboardShortcuts({ shortcuts });
 
-  // Filter shortcuts for the help modal (exclude duplicate "?" and tab 2-9)
+  // Filter shortcuts for the help modal (exclude duplicate "?", tab 2-9, and Cmd+P alias)
   const displayShortcuts = shortcuts.filter(
     (s) =>
-      s.key !== '?' && !(s.metaKey && ['2', '3', '4', '5', '6', '7', '8', '9'].includes(s.key)),
+      s.key !== '?' &&
+      !(s.metaKey && ['2', '3', '4', '5', '6', '7', '8', '9'].includes(s.key)) &&
+      !(s.key === 'p' && s.metaKey),
   );
 
   const hasActiveSessions = sessions.length > 0;

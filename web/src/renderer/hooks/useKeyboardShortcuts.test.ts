@@ -141,6 +141,60 @@ describe('useKeyboardShortcuts', () => {
     expect(action).toHaveBeenCalledTimes(1);
   });
 
+  it('fires Cmd+, shortcut', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      { key: ',', metaKey: true, label: 'Settings', description: 'Open settings', action },
+    ];
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: ',', metaKey: true });
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires Cmd+[ shortcut', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      { key: '[', metaKey: true, label: 'Back', description: 'Go back', action },
+    ];
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: '[', metaKey: true });
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires Cmd+] shortcut', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      { key: ']', metaKey: true, label: 'Forward', description: 'Go forward', action },
+    ];
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: ']', metaKey: true });
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires Cmd+P shortcut', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutDefinition[] = [
+      {
+        key: 'p',
+        metaKey: true,
+        label: 'Command Palette',
+        description: 'Open command palette',
+        action,
+      },
+    ];
+
+    renderHook(() => useKeyboardShortcuts({ shortcuts }));
+
+    fireKeydown({ key: 'p', metaKey: true });
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
   it('fires ? shortcut without modifier', () => {
     const action = vi.fn();
     const shortcuts: ShortcutDefinition[] = [
