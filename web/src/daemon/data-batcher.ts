@@ -4,6 +4,7 @@
  * when unacknowledged downstream bytes exceed HIGH watermark, resumes
  * when renderer ACKs bring them below LOW watermark.
  */
+import { logger } from './logger.js';
 
 interface DataBatcherOptions {
   /** Flush interval in milliseconds. Default: 4. */
@@ -16,11 +17,16 @@ interface DataBatcherOptions {
   lowWatermark?: number;
 }
 
+/** Maximum time (ms) a session can stay paused before the safety valve resets it. */
+const STUCK_PAUSE_TIMEOUT_MS = 30_000;
+
 interface SessionBatchState {
   chunks: string[];
   pendingSize: number;
   unackedSize: number;
   paused: boolean;
+  /** Timestamp when the session was paused, or 0 if not paused. */
+  pausedAt: number;
 }
 
 type FlushCallback = (sessionId: string, data: string) => void;
@@ -65,7 +71,7 @@ export class DataBatcher {
 
     let state = this.sessions.get(sessionId);
     if (!state) {
-      state = { chunks: [], pendingSize: 0, unackedSize: 0, paused: false };
+      state = { chunks: [], pendingSize: 0, unackedSize: 0, paused: false, pausedAt: 0 };
       this.sessions.set(sessionId, state);
     }
 
@@ -86,17 +92,19 @@ export class DataBatcher {
 
     if (state.paused && state.unackedSize < this.lowWatermark) {
       state.paused = false;
+      state.pausedAt = 0;
       this.resumeCb?.(sessionId);
     }
   }
 
-  /** Reset unacked state for a session (e.g. after client reconnect). */
+  /** Reset unacked state for a session (e.g. after client reconnect or replay). */
   resetUnacked(sessionId: string): void {
     const state = this.sessions.get(sessionId);
     if (!state) return;
     state.unackedSize = 0;
     if (state.paused) {
       state.paused = false;
+      state.pausedAt = 0;
       this.resumeCb?.(sessionId);
     }
   }
@@ -122,9 +130,23 @@ export class DataBatcher {
   }
 
   flushAll(): void {
+    const now = Date.now();
     for (const [sessionId, state] of this.sessions) {
       if (state.chunks.length > 0) {
         this.flushSession(sessionId, state);
+      }
+
+      // Safety valve: auto-resume sessions stuck in paused state.
+      // Normal pauses last < 1 flush cycle (~4ms). A pause lasting 30+ seconds
+      // means ACKs were lost (e.g. renderer unmounted with in-flight IPC data).
+      if (state.paused && now - state.pausedAt >= STUCK_PAUSE_TIMEOUT_MS) {
+        logger.warn(
+          `Safety valve: auto-resuming session ${sessionId} stuck paused for ${Math.round((now - state.pausedAt) / 1000)}s (unacked=${state.unackedSize})`,
+        );
+        state.unackedSize = 0;
+        state.paused = false;
+        state.pausedAt = 0;
+        this.resumeCb?.(sessionId);
       }
     }
   }
@@ -151,6 +173,7 @@ export class DataBatcher {
     // Pause PTY when unacked downstream data exceeds the high watermark.
     if (!state.paused && state.unackedSize >= this.highWatermark) {
       state.paused = true;
+      state.pausedAt = Date.now();
       this.pauseCb?.(sessionId);
     }
   }

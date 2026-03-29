@@ -270,12 +270,25 @@ describe('OutputPersistence', () => {
 
   it('setSnapshot triggers dirty marking via onData callback', () => {
     const sessionId = createTestSession();
+    ptyManager.restoreBuffer(sessionId, '');
     const dirtySpy = vi.fn();
     ptyManager.setOnData(dirtySpy);
 
     ptyManager.setSnapshot(sessionId, 'snapshot content');
 
     expect(dirtySpy).toHaveBeenCalledWith(sessionId);
+  });
+
+  it('setSnapshot is ignored for killed sessions (no buffer)', () => {
+    const sessionId = createTestSession();
+    // No restoreBuffer — simulates a session that was killed
+    const dirtySpy = vi.fn();
+    ptyManager.setOnData(dirtySpy);
+
+    ptyManager.setSnapshot(sessionId, 'late snapshot');
+
+    expect(dirtySpy).not.toHaveBeenCalled();
+    expect(ptyManager.getSnapshot(sessionId)).toBeUndefined();
   });
 
   it('removeSession prevents flush from persisting a deleted session', () => {

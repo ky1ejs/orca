@@ -143,15 +143,22 @@ export class DaemonPtyManager {
     if (proc) {
       this.onExitCallback?.(sessionId);
       proc.pty.kill();
-      this.batcher.remove(sessionId);
-      this.processes.delete(sessionId);
-      this.buffers.delete(sessionId);
-      this.snapshots.delete(sessionId);
-      this.lastDataAt.delete(sessionId);
     }
+    // Always clean up state even when the process already exited naturally.
+    // shell.onExit removes the process entry but intentionally leaves buffers
+    // for replay. When the session is later deleted via the UI, we must clear
+    // everything so late-arriving snapshots don't trigger persistence for a
+    // deleted DB row.
+    this.batcher.remove(sessionId);
+    this.processes.delete(sessionId);
+    this.buffers.delete(sessionId);
+    this.snapshots.delete(sessionId);
+    this.lastDataAt.delete(sessionId);
   }
 
   setSnapshot(sessionId: string, content: string): void {
+    // Renderer may send a final snapshot during cleanup after the session is deleted.
+    if (!this.buffers.has(sessionId)) return;
     this.snapshots.set(sessionId, content);
     this.onDataCallback?.(sessionId);
   }
