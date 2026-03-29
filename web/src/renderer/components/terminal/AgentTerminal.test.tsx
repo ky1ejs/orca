@@ -29,7 +29,7 @@ const mockScrollToBottom = vi.fn();
 const mockRefresh = vi.fn();
 const mockFocus = vi.fn();
 const mockTerminalReset = vi.fn();
-const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
+const mockBuffer = { active: { viewportY: 0, baseY: 0, length: 100 } };
 const mockPaste = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
@@ -733,6 +733,22 @@ describe('AgentTerminal', () => {
 
       expect(mockPaste).not.toHaveBeenCalled();
     });
+  });
+
+  it('includes scrollback in periodic snapshots', () => {
+    vi.useFakeTimers();
+    try {
+      // Mock buffer with 100 lines total, 24 visible rows → 76 scrollback
+      mockBuffer.active.length = 100;
+      render(<AgentTerminal sessionId="test-session" visible={true} />);
+      triggerInitialResize();
+
+      vi.advanceTimersByTime(5_000);
+
+      expect(mockSerialize).toHaveBeenCalledWith({ scrollback: 76 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
