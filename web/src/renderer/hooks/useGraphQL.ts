@@ -452,7 +452,7 @@ export function useProjectSubscription(workspaceId: string) {
 }
 
 export function useTaskSubscription(workspaceId: string) {
-  useSubscription({
+  return useSubscription({
     query: TaskChangedDocument,
     variables: { workspaceId },
     pause: !workspaceId,

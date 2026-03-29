@@ -3,6 +3,7 @@
  * Used across main process (DB, PTY management) and renderer (UI components).
  */
 export enum SessionStatus {
+  Bootstrapping = 'BOOTSTRAPPING',
   Starting = 'STARTING',
   Running = 'RUNNING',
   WaitingForInput = 'WAITING_FOR_INPUT',
@@ -13,6 +14,7 @@ export enum SessionStatus {
 
 /** Statuses that indicate the session's process is still alive. */
 export const ACTIVE_SESSION_STATUSES: readonly SessionStatus[] = [
+  SessionStatus.Bootstrapping,
   SessionStatus.Starting,
   SessionStatus.Running,
   SessionStatus.WaitingForInput,
@@ -32,6 +34,7 @@ export function isNeedsAttentionStatus(status: string): boolean {
 
 /** CSS classes for status indicator dots. */
 const statusDotClass: Record<SessionStatus, string> = {
+  [SessionStatus.Bootstrapping]: 'bg-info animate-pulse',
   [SessionStatus.Running]: 'bg-success',
   [SessionStatus.Exited]: 'bg-fg-faint',
   [SessionStatus.Error]: 'bg-error',
@@ -42,6 +45,7 @@ const statusDotClass: Record<SessionStatus, string> = {
 
 /** CSS glow class applied when a session has recent PTY output activity. */
 const statusGlowClass: Record<SessionStatus, string> = {
+  [SessionStatus.Bootstrapping]: 'glow-info',
   [SessionStatus.Running]: 'glow-success',
   [SessionStatus.Starting]: 'glow-info',
   [SessionStatus.WaitingForInput]: '',

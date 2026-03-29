@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Bootstrap the web (Electron) package.
+# Called by the repo-level scripts/bootstrap after environment is set up.
+#
+# Expects:
+#   - CWD is the worktree root (or repo root)
+#   - web/.env exists with VITE_BACKEND_PORT
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "Installing dependencies..."
+bun install 2>&1
+
+echo "Running web setup (codegen + native modules)..."
+bun run setup 2>&1
+
+echo "Web bootstrap complete."

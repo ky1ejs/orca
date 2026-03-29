@@ -4,17 +4,15 @@
  * Each task gets its own worktree at ~/.orca/worktrees/<repo-name>/<branch-name>/.
  * Worktrees are created on demand at agent launch time, not on task creation.
  */
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { existsSync, mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { getWorktree, insertWorktree, deleteWorktree } from './worktrees.js';
+import { findTeardownScript, runTeardown } from './bootstrap-runner.js';
+import { git } from './git.js';
 import { WorktreeError } from '../shared/errors.js';
 import { ORCA_DIR } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
-
-const execFileAsync = promisify(execFile);
 
 const DEFAULT_WORKTREES_DIR = join(ORCA_DIR, 'worktrees');
 
@@ -36,21 +34,11 @@ function sanitizePathComponent(value: string): string {
 /** Check whether a directory is inside a git work tree. */
 export async function isGitRepo(dir: string): Promise<boolean> {
   try {
-    const { stdout } = await execFileAsync('git', [
-      '-C',
-      dir,
-      'rev-parse',
-      '--is-inside-work-tree',
-    ]);
-    return stdout.trim() === 'true';
+    const result = await git(dir, ['rev-parse', '--is-inside-work-tree']);
+    return result === 'true';
   } catch {
     return false;
   }
-}
-
-async function git(repoPath: string, args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['-C', repoPath, ...args]);
-  return stdout.trim();
 }
 
 /** Resolve the git repo root from any directory inside the repo. */
@@ -89,13 +77,13 @@ export class WorktreeManager {
    * Ensure a worktree exists for the given task. Creates one if needed,
    * reuses an existing one if the row + directory are intact.
    *
-   * @returns The absolute path to the worktree directory.
+   * @returns The worktree path and whether it was newly created.
    */
   async ensureWorktree(
     taskId: string,
     workingDirectory: string,
     metadata: TaskMetadata,
-  ): Promise<string> {
+  ): Promise<{ path: string; created: boolean; repoPath: string }> {
     // Resolve the canonical repo root so locking, naming, and storage are
     // consistent regardless of whether workingDirectory is a subdirectory.
     const repoPath = await resolveRepoRoot(workingDirectory);
@@ -108,7 +96,7 @@ export class WorktreeManager {
         // Validate that the existing worktree belongs to the same repo
         if (existing.repo_path === repoPath && existsSync(existing.worktree_path)) {
           logger.info(`worktree.reused taskId=${taskId} path=${existing.worktree_path}`);
-          return existing.worktree_path;
+          return { path: existing.worktree_path, created: false, repoPath };
         }
         // Stale row — directory was deleted externally or repo changed
         logger.info(`worktree.stale-row-cleaned taskId=${taskId} path=${existing.worktree_path}`);
@@ -174,19 +162,35 @@ export class WorktreeManager {
         `worktree.created taskId=${taskId} branch=${branchName} path=${worktreePath} baseBranch=${baseBranch} durationMs=${durationMs}`,
       );
 
-      return worktreePath;
+      return { path: worktreePath, created: true, repoPath };
     });
   }
 
   /**
    * Remove a worktree for the given task.
-   * Runs `git worktree remove`, deletes the branch, and removes the DB row.
+   * Runs teardown script (if present), then `git worktree remove`, deletes the branch,
+   * and removes the DB row.
    */
   async removeWorktree(taskId: string, force?: boolean): Promise<void> {
     const row = getWorktree(taskId);
     if (!row) return;
 
     if (existsSync(row.worktree_path)) {
+      // Run teardown script before git removal (best-effort — failure doesn't block removal)
+      const teardownScript = await findTeardownScript(row.worktree_path);
+      if (teardownScript) {
+        const result = await runTeardown({
+          scriptPath: teardownScript,
+          worktreePath: row.worktree_path,
+          repoPath: row.repo_path,
+        });
+        if (!result.success) {
+          logger.warn(
+            `worktree.teardown-failed taskId=${taskId} exitCode=${result.exitCode} — proceeding with removal`,
+          );
+        }
+      }
+
       try {
         const args = ['worktree', 'remove', row.worktree_path];
         if (force) args.push('--force');

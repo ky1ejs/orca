@@ -363,6 +363,7 @@ export const WorkspaceIntegrationsQueryDocument = /* GraphQL */ `
         id
         autoCloseOnMerge
         autoInReviewOnPrOpen
+        autoCleanupWorktree
       }
     }
   }

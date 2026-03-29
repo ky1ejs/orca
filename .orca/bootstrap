@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Worktree bootstrap hook — invoked by the Orca daemon after creating
+# a new git worktree for a task. Delegates to the repo's bootstrap script.
+#
+# Environment variables provided by the daemon:
+#   ORCA_WORKTREE_PATH  — absolute path to the worktree (same as CWD)
+#   ORCA_REPO_ROOT      — absolute path to the original repo root
+
+set -euo pipefail
+
+exec ./scripts/bootstrap

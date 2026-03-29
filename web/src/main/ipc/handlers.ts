@@ -15,6 +15,9 @@ import type { AgentLaunchOptions, TaskMetadata } from '../../shared/daemon-proto
 import { createPerfTimer } from '../../shared/perf.js';
 import { logger } from '../logger.js';
 
+/** Extended timeout for agent launch/restart to accommodate bootstrap scripts. */
+const AGENT_LAUNCH_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
 export function registerIpcHandlers(client: DaemonClient, connector: DaemonConnector): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
   ipcMain.handle(IPC_CHANNELS.DB_GET_SESSIONS, () => {
@@ -70,6 +73,14 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
 
   ipcMain.handle(IPC_CHANNELS.WORKTREE_REMOVE, (_event, taskId: string, force?: boolean) => {
     return client.request(DAEMON_METHODS.WORKTREE_REMOVE, { taskId, force });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_SAFETY, (_event, taskId: string) => {
+    return client.request(DAEMON_METHODS.WORKTREE_SAFETY, { taskId });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_LIST, () => {
+    return client.request(DAEMON_METHODS.WORKTREE_LIST);
   });
 
   // ── Settings handlers (local — not proxied to daemon) ────────────────
@@ -170,13 +181,17 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
         mark('daemon-already-connected');
       }
 
-      const result = await client.request(DAEMON_METHODS.AGENT_LAUNCH, {
-        taskId,
-        workingDirectory,
-        options,
-        metadata,
-        colorScheme: resolveColorScheme(),
-      });
+      const result = await client.request(
+        DAEMON_METHODS.AGENT_LAUNCH,
+        {
+          taskId,
+          workingDirectory,
+          options,
+          metadata,
+          colorScheme: resolveColorScheme(),
+        },
+        AGENT_LAUNCH_TIMEOUT_MS,
+      );
       mark('daemon-response-received');
 
       return result;
@@ -198,14 +213,18 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
       metadata?: TaskMetadata,
     ) => {
       if (!client.connected) await connector.ensureRunning();
-      return client.request(DAEMON_METHODS.AGENT_RESTART, {
-        taskId,
-        sessionId,
-        workingDirectory,
-        options,
-        metadata,
-        colorScheme: resolveColorScheme(),
-      });
+      return client.request(
+        DAEMON_METHODS.AGENT_RESTART,
+        {
+          taskId,
+          sessionId,
+          workingDirectory,
+          options,
+          metadata,
+          colorScheme: resolveColorScheme(),
+        },
+        AGENT_LAUNCH_TIMEOUT_MS,
+      );
     },
   );
 

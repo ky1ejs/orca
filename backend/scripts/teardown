@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# Tear down backend-specific resources.
+# Called by scripts/teardown before database is dropped.
+
+set -euo pipefail
+
+# No backend-specific teardown needed currently.
+# The database is dropped by the parent teardown script.

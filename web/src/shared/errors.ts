@@ -52,6 +52,25 @@ export class WorktreeError extends AgentError {
   }
 }
 
+export class BootstrapError extends AgentError {
+  constructor(exitCode: number | null, output: string, timedOut: boolean) {
+    let reason: string;
+    if (timedOut) {
+      reason = 'Worktree bootstrap timed out';
+    } else if (exitCode !== null) {
+      reason = `Worktree bootstrap failed (exit code ${exitCode})`;
+    } else {
+      reason = 'Worktree bootstrap failed to start';
+    }
+    const lastLines = output.split('\n').filter(Boolean).slice(-10).join('\n');
+    const suggestion = lastLines
+      ? `Fix .orca/bootstrap, remove the worktree, and relaunch.\n\nLast output:\n${lastLines}`
+      : 'Fix .orca/bootstrap, remove the worktree, and relaunch.';
+    super(reason, suggestion);
+    this.name = 'BootstrapError';
+  }
+}
+
 export class AuthNotConfiguredError extends AgentError {
   constructor() {
     super('Auth token not configured', 'Run the Orca setup to configure your authentication token');

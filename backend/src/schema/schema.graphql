@@ -49,6 +49,7 @@ type WorkspaceSettings {
   id: ID!
   autoCloseOnMerge: Boolean!
   autoInReviewOnPrOpen: Boolean!
+  autoCleanupWorktree: Boolean!
 }
 
 type Workspace {
@@ -292,6 +293,7 @@ input UpdateLabelInput {
 input UpdateWorkspaceSettingsInput {
   autoCloseOnMerge: Boolean
   autoInReviewOnPrOpen: Boolean
+  autoCleanupWorktree: Boolean
 }
 
 input LinkPullRequestInput {

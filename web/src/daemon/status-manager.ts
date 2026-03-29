@@ -10,6 +10,7 @@ import { createPerfTimer } from '../shared/perf.js';
 import { createSession, getSession, updateSession } from './sessions.js';
 import { SessionStatus, isActiveSessionStatus } from '../shared/session-status.js';
 import {
+  BootstrapError,
   ClaudeNotFoundError,
   InvalidWorkingDirectoryError,
   PtySpawnError,
@@ -17,6 +18,7 @@ import {
   type SerializedAgentError,
 } from '../shared/errors.js';
 import { WorktreeManager, isGitRepo } from './worktree-manager.js';
+import { findBootstrapScript, runBootstrap } from './bootstrap-runner.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
 import { logger } from './logger.js';
@@ -105,6 +107,7 @@ export class DaemonStatusManager {
     options?: AgentLaunchOptions,
     metadata?: TaskMetadata,
     colorScheme?: 'light' | 'dark',
+    onSessionCreated?: (sessionId: string) => void,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
@@ -118,12 +121,17 @@ export class DaemonStatusManager {
 
       // Create or reuse a worktree for task isolation
       let effectiveWorkingDirectory = workingDirectory;
+      let worktreeCreated = false;
+      let resolvedRepoPath = workingDirectory;
       if (metadata && (await isGitRepo(workingDirectory))) {
-        effectiveWorkingDirectory = await this.worktreeManager.ensureWorktree(
+        const worktree = await this.worktreeManager.ensureWorktree(
           taskId,
           workingDirectory,
           metadata,
         );
+        effectiveWorkingDirectory = worktree.path;
+        worktreeCreated = worktree.created;
+        resolvedRepoPath = worktree.repoPath;
         mark('worktree-ensured');
       }
 
@@ -133,6 +141,31 @@ export class DaemonStatusManager {
         workingDirectory: effectiveWorkingDirectory,
       });
       mark('session-created');
+
+      // Subscribe the caller early so they receive status events during bootstrap
+      onSessionCreated?.(session.id);
+
+      // Run bootstrap script if this is a newly created worktree
+      if (worktreeCreated) {
+        const scriptPath = await findBootstrapScript(effectiveWorkingDirectory);
+        if (scriptPath) {
+          this.updateStatusAndNotify(session.id, SessionStatus.Bootstrapping);
+          mark('bootstrap-started');
+
+          const result = await runBootstrap({
+            scriptPath,
+            worktreePath: effectiveWorkingDirectory,
+            repoPath: resolvedRepoPath,
+            metadata: metadata!,
+          });
+          mark('bootstrap-finished');
+
+          if (!result.success) {
+            this.updateStatusAndNotify(session.id, SessionStatus.Error);
+            throw new BootstrapError(result.exitCode, result.output, result.timedOut);
+          }
+        }
+      }
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       if (effectiveWorkingDirectory !== workingDirectory) {
@@ -224,11 +257,12 @@ export class DaemonStatusManager {
     options?: AgentLaunchOptions,
     metadata?: TaskMetadata,
     colorScheme?: 'light' | 'dark',
+    onSessionCreated?: (sessionId: string) => void,
   ): Promise<
     { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
-    return this.launch(taskId, workingDirectory, options, metadata, colorScheme);
+    return this.launch(taskId, workingDirectory, options, metadata, colorScheme, onSessionCreated);
   }
 
   getStatus(sessionId: string): string | null {

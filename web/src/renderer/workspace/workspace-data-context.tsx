@@ -5,6 +5,7 @@ import {
   useProjectSubscription,
   useTaskSubscription,
 } from '../hooks/useGraphQL.js';
+import { useWorktreeAutoCleanup } from '../hooks/useWorktreeAutoCleanup.js';
 import { useWorkspace } from './context.js';
 import type { WorkspaceQuery } from '../graphql/__generated__/generated.js';
 import type { CombinedError } from 'urql';
@@ -35,9 +36,15 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
   // Centralise subscriptions so they run exactly once per workspace
   useInitiativeSubscription(currentWorkspace?.id ?? '');
   useProjectSubscription(currentWorkspace?.id ?? '');
-  useTaskSubscription(currentWorkspace?.id ?? '');
+  const [{ data: taskSubData }] = useTaskSubscription(currentWorkspace?.id ?? '');
 
   const workspace = data?.workspace ?? undefined;
+
+  // Auto-cleanup worktrees when tasks move to DONE (if setting enabled)
+  useWorktreeAutoCleanup(
+    workspace?.settings?.autoCleanupWorktree ?? false,
+    taskSubData?.taskChanged ?? undefined,
+  );
 
   const value = useMemo(
     () => ({

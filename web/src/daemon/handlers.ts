@@ -20,7 +20,8 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from './project-directories.js';
-import { getWorktree } from './worktrees.js';
+import { getWorktree, listWorktrees } from './worktrees.js';
+import { checkWorktreeSafety } from './worktree-safety.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
@@ -49,6 +50,8 @@ import type {
   ProjectDirDeleteParams,
   WorktreeGetParams,
   WorktreeRemoveParams,
+  WorktreeSafetyParams,
+  WorktreeListResult,
   DaemonStatusResult,
   SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
@@ -167,9 +170,10 @@ export function createHandler(deps: HandlerDeps) {
           p.options,
           p.metadata,
           p.colorScheme,
+          (sessionId) => server.subscribeClient(client.id, sessionId),
         );
         if (result.success) {
-          // Auto-subscribe the caller
+          // Ensure subscription (in case callback wasn't called)
           server.subscribeClient(client.id, result.sessionId);
         }
         return result;
@@ -190,6 +194,7 @@ export function createHandler(deps: HandlerDeps) {
           p.options,
           p.metadata,
           p.colorScheme,
+          (sessionId) => server.subscribeClient(client.id, sessionId),
         );
         if (result.success) {
           server.subscribeClient(client.id, result.sessionId);
@@ -276,6 +281,33 @@ export function createHandler(deps: HandlerDeps) {
         const p = params as WorktreeRemoveParams;
         await worktreeManager.removeWorktree(p.taskId, p.force);
         return { ok: true };
+      }
+
+      case DAEMON_METHODS.WORKTREE_SAFETY: {
+        const p = params as WorktreeSafetyParams;
+        const row = getWorktree(p.taskId);
+        if (!row) return null;
+        return checkWorktreeSafety(
+          row.worktree_path,
+          row.repo_path,
+          row.branch_name,
+          row.base_branch,
+        );
+      }
+
+      case DAEMON_METHODS.WORKTREE_LIST: {
+        const rows = listWorktrees();
+        const results: WorktreeListResult[] = [];
+        for (const row of rows) {
+          const safety = await checkWorktreeSafety(
+            row.worktree_path,
+            row.repo_path,
+            row.branch_name,
+            row.base_branch,
+          );
+          results.push({ ...row, safety });
+        }
+        return results;
       }
 
       // ── Daemon lifecycle ───────────────────────────

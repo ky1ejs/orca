@@ -132,66 +132,70 @@ describe('WorktreeManager', () => {
 
   describe('ensureWorktree', () => {
     it('creates a new worktree and returns its path', async () => {
-      const path = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result = await manager.ensureWorktree('task-1', repoDir, metadata);
 
-      expect(path).toContain(tempWorktreesDir);
-      expect(path).toContain('feat/ORCA-42-add-user-authentication');
-      expect(existsSync(path)).toBe(true);
+      expect(result.created).toBe(true);
+      expect(result.path).toContain(tempWorktreesDir);
+      expect(result.path).toContain('feat/ORCA-42-add-user-authentication');
+      expect(existsSync(result.path)).toBe(true);
 
       // Verify DB row was created
       const { getWorktree } = await import('./worktrees.js');
       const row = getWorktree('task-1');
       expect(row).toBeDefined();
-      expect(row!.worktree_path).toBe(path);
+      expect(row!.worktree_path).toBe(result.path);
       expect(row!.branch_name).toBe('feat/ORCA-42-add-user-authentication');
       expect(row!.repo_path).toBe(repoDir);
 
       // Clean up the worktree
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result.path, '--force'], {
         stdio: 'pipe',
       });
     });
 
     it('reuses an existing worktree when row and dir exist', async () => {
-      const path1 = await manager.ensureWorktree('task-1', repoDir, metadata);
-      const path2 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result1 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result2 = await manager.ensureWorktree('task-1', repoDir, metadata);
 
-      expect(path1).toBe(path2);
+      expect(result1.path).toBe(result2.path);
+      expect(result1.created).toBe(true);
+      expect(result2.created).toBe(false);
 
       // Clean up
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path1, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result1.path, '--force'], {
         stdio: 'pipe',
       });
     });
 
     it('cleans stale row and creates fresh when directory is missing', async () => {
-      const path1 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result1 = await manager.ensureWorktree('task-1', repoDir, metadata);
 
       // Simulate directory being deleted externally
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path1, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result1.path, '--force'], {
         stdio: 'pipe',
       });
 
       // ensureWorktree should detect the stale row, clean it, and create fresh
-      const path2 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result2 = await manager.ensureWorktree('task-1', repoDir, metadata);
 
-      expect(existsSync(path2)).toBe(true);
+      expect(result2.created).toBe(true);
+      expect(existsSync(result2.path)).toBe(true);
 
       // Clean up
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path2, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result2.path, '--force'], {
         stdio: 'pipe',
       });
     });
 
     it('reuses an existing branch when it already exists', async () => {
       // Create the worktree first, then remove just the directory (not the branch)
-      const path1 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const result1 = await manager.ensureWorktree('task-1', repoDir, metadata);
       const { getWorktree, deleteWorktree } = await import('./worktrees.js');
       const row = getWorktree('task-1')!;
       const branchName = row.branch_name;
 
       // Remove worktree but keep the branch
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path1, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result1.path, '--force'], {
         stdio: 'pipe',
       });
       deleteWorktree('task-1');
@@ -205,26 +209,27 @@ describe('WorktreeManager', () => {
       expect(branchCheck.trim()).toBeTruthy();
 
       // ensureWorktree should detect the existing branch and reuse it
-      const path2 = await manager.ensureWorktree('task-1', repoDir, metadata);
-      expect(existsSync(path2)).toBe(true);
+      const result2 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      expect(result2.created).toBe(true);
+      expect(existsSync(result2.path)).toBe(true);
 
       // Clean up
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path2, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result2.path, '--force'], {
         stdio: 'pipe',
       });
     });
 
     it('handles empty slug gracefully', async () => {
       const emptyTitleMeta = { ...metadata, title: '' };
-      const path = await manager.ensureWorktree('task-empty', repoDir, emptyTitleMeta);
+      const result = await manager.ensureWorktree('task-empty', repoDir, emptyTitleMeta);
 
-      expect(path).toContain('feat/ORCA-42');
+      expect(result.path).toContain('feat/ORCA-42');
       // Branch name should not have a trailing hyphen
       const { getWorktree } = await import('./worktrees.js');
       const row = getWorktree('task-empty')!;
       expect(row.branch_name).toBe('feat/ORCA-42');
 
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result.path, '--force'], {
         stdio: 'pipe',
       });
     });
@@ -234,21 +239,21 @@ describe('WorktreeManager', () => {
       const meta2 = { ...metadata, displayId: 'ORCA-2', title: 'Second task' };
 
       // Launch both concurrently
-      const [path1, path2] = await Promise.all([
+      const [result1, result2] = await Promise.all([
         manager.ensureWorktree('task-a', repoDir, meta1),
         manager.ensureWorktree('task-b', repoDir, meta2),
       ]);
 
       // Both should succeed without git lock contention
-      expect(existsSync(path1)).toBe(true);
-      expect(existsSync(path2)).toBe(true);
-      expect(path1).not.toBe(path2);
+      expect(existsSync(result1.path)).toBe(true);
+      expect(existsSync(result2.path)).toBe(true);
+      expect(result1.path).not.toBe(result2.path);
 
       // Clean up
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path1, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result1.path, '--force'], {
         stdio: 'pipe',
       });
-      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path2, '--force'], {
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result2.path, '--force'], {
         stdio: 'pipe',
       });
     });
@@ -256,7 +261,7 @@ describe('WorktreeManager', () => {
 
   describe('removeWorktree', () => {
     it('removes worktree, deletes branch, and cleans DB row', async () => {
-      const path = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const { path } = await manager.ensureWorktree('task-1', repoDir, metadata);
       expect(existsSync(path)).toBe(true);
 
       await manager.removeWorktree('task-1');

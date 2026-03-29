@@ -10,6 +10,8 @@ export const workspaceSettingsResolvers = {
       if (args.input.autoCloseOnMerge != null) data.autoCloseOnMerge = args.input.autoCloseOnMerge;
       if (args.input.autoInReviewOnPrOpen != null)
         data.autoInReviewOnPrOpen = args.input.autoInReviewOnPrOpen;
+      if (args.input.autoCleanupWorktree != null)
+        data.autoCleanupWorktree = args.input.autoCleanupWorktree;
 
       return context.prisma.workspaceSettings.upsert({
         where: { workspaceId: args.workspaceId },

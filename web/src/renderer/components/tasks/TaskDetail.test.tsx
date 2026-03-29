@@ -122,6 +122,7 @@ const mockRemoveWorktree = vi.fn().mockResolvedValue(undefined);
 vi.mock('../../hooks/useWorktree.js', () => ({
   useWorktree: () => ({
     worktree: mockWorktreeData,
+    safety: null,
     loading: false,
     removeWorktree: mockRemoveWorktree,
     refetch: vi.fn(),
@@ -169,6 +170,12 @@ vi.mock('./TaskRelationshipList.js', () => ({
   settings: {
     getAll: vi.fn().mockResolvedValue({}),
     set: vi.fn().mockResolvedValue(undefined),
+  },
+  worktree: {
+    get: vi.fn().mockResolvedValue(null),
+    remove: vi.fn().mockResolvedValue({ ok: true }),
+    safety: vi.fn().mockResolvedValue(null),
+    list: vi.fn().mockResolvedValue([]),
   },
 };
 

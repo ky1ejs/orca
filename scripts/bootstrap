@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# Bootstrap an Orca worktree with isolated resources.
+# Derives port and database name deterministically from the worktree path
+# via a hash, then delegates to per-package bootstrap scripts.
+#
+# Expects CWD to be the worktree root.
+
+set -euo pipefail
+
+WORKTREE_PATH="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# ─── Derive port and DB name from worktree path ──────────────────────
+
+HASH=$(echo -n "$WORKTREE_PATH" | shasum -a 256 | cut -c1-8)
+HASH_INT=$((16#${HASH}))
+
+PORT=$(( 4010 + (HASH_INT % 990) ))
+DB_NAME="orca_wt_${HASH}"
+
+echo "Worktree: $(basename "$WORKTREE_PATH")"
+echo "Port: $PORT, Database: $DB_NAME (hash: $HASH)"
+
+# ─── Ensure Postgres is running ──────────────────────────────────────
+
+if ! docker compose -f "$REPO_ROOT/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
+  echo "Starting Postgres..."
+  docker compose -f "$REPO_ROOT/docker-compose.yml" up -d 2>&1
+fi
+
+# ─── Create database ─────────────────────────────────────────────────
+
+docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T postgres \
+  psql -U postgres -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
+echo "Database ready: $DB_NAME"
+
+# ─── Generate .env files ─────────────────────────────────────────────
+
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/${DB_NAME}"
+
+# Backend .env
+BACKEND_ENV="backend/.env"
+if [[ -f "$REPO_ROOT/backend/.env" ]]; then
+  cp "$REPO_ROOT/backend/.env" "$BACKEND_ENV"
+else
+  touch "$BACKEND_ENV"
+fi
+
+if grep -q '^PORT=' "$BACKEND_ENV" 2>/dev/null; then
+  sed -i '' "s|^PORT=.*|PORT=${PORT}|" "$BACKEND_ENV"
+else
+  echo "PORT=${PORT}" >> "$BACKEND_ENV"
+fi
+
+if grep -q '^DATABASE_URL=' "$BACKEND_ENV" 2>/dev/null; then
+  sed -i '' "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" "$BACKEND_ENV"
+else
+  echo "DATABASE_URL=${DATABASE_URL}" >> "$BACKEND_ENV"
+fi
+
+if ! grep -q '^JWT_SECRET=' "$BACKEND_ENV" 2>/dev/null; then
+  JWT_SECRET="dev-jwt-secret-$(openssl rand -hex 16)"
+  echo "JWT_SECRET=${JWT_SECRET}" >> "$BACKEND_ENV"
+fi
+
+echo "VITE_BACKEND_PORT=${PORT}" > web/.env
+
+echo "Environment files generated."
+
+# ─── Package-specific bootstrap ──────────────────────────────────────
+
+echo "Bootstrapping backend..."
+backend/scripts/bootstrap
+
+echo "Bootstrapping web..."
+web/scripts/bootstrap
+
+echo "Bootstrap complete! Port: $PORT, DB: $DB_NAME"
