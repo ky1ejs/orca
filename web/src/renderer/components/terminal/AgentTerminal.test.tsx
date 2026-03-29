@@ -27,10 +27,10 @@ const mockOnData = vi.fn().mockReturnValue({ dispose: vi.fn() });
 const mockAttachCustomKeyEventHandler = vi.fn();
 const mockScrollToBottom = vi.fn();
 const mockRefresh = vi.fn();
-const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
-const mockPaste = vi.fn();
 const mockFocus = vi.fn();
 const mockTerminalReset = vi.fn();
+const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
+const mockPaste = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
@@ -43,9 +43,9 @@ vi.mock('@xterm/xterm', () => ({
     scrollToBottom: mockScrollToBottom,
     refresh: mockRefresh,
     reset: mockTerminalReset,
+    focus: mockFocus,
     buffer: mockBuffer,
     paste: mockPaste,
-    focus: mockFocus,
     options: {},
     cols: 80,
     rows: 24,
@@ -112,6 +112,7 @@ const mockPtyWrite = vi.fn();
 const mockPtyResize = vi.fn();
 const mockPtySnapshot = vi.fn().mockResolvedValue(undefined);
 const mockPtyAck = vi.fn();
+const mockOnDaemonReconnected = vi.fn().mockReturnValue(vi.fn());
 
 // Capture the ResizeObserver callback so we can invoke it in tests
 let resizeObserverCallback: ResizeObserverCallback | null = null;
@@ -133,7 +134,7 @@ beforeEach(() => {
       resize: mockPtyResize,
     },
     lifecycle: {
-      onDaemonReconnected: vi.fn().mockReturnValue(vi.fn()),
+      onDaemonReconnected: mockOnDaemonReconnected,
     },
   };
   // Mock ResizeObserver — capture the callback to simulate layout completion
@@ -243,25 +244,41 @@ describe('AgentTerminal', () => {
     expect(handler(otherKey)).toBe(true);
   });
 
-  it('loads WebGL addon when visible and registers context loss handler', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
-    expect(mockLoadAddon).toHaveBeenCalledWith(
-      expect.objectContaining({ dispose: mockWebglDispose }),
-    );
-    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
-  });
-
-  it('does not load WebGL addon when not visible', () => {
+  it('does not load WebGL addon on mount when hidden', () => {
     render(<AgentTerminal sessionId="test-session" visible={false} />);
-    expect(mockLoadAddon).not.toHaveBeenCalledWith(
-      expect.objectContaining({ dispose: mockWebglDispose }),
-    );
     expect(mockWebglOnContextLoss).not.toHaveBeenCalled();
   });
 
-  it('disposes WebGL addon when becoming hidden', () => {
+  it('loads WebGL addon when terminal becomes visible', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
+    expect(mockWebglOnContextLoss).not.toHaveBeenCalled();
+
+    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('disposes WebGL addon on context loss', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
+    onContextLossCallback();
+    expect(mockWebglDispose).toHaveBeenCalled();
+  });
+
+  it('recreates WebGL after context loss on next visibility change', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
-    expect(mockWebglOnContextLoss).toHaveBeenCalled();
+    // Trigger context loss
+    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
+    onContextLossCallback();
+    mockWebglOnContextLoss.mockClear();
+
+    // Hide then show — should recreate WebGL
+    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('disposes WebGL when terminal becomes hidden', () => {
+    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     mockWebglDispose.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
@@ -283,20 +300,6 @@ describe('AgentTerminal', () => {
     );
   });
 
-  it('disposes WebGL addon on context loss', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
-    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
-    onContextLossCallback();
-    expect(mockWebglDispose).toHaveBeenCalled();
-  });
-
-  it('disposes WebGL addon when terminal becomes hidden', () => {
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
-    mockWebglDispose.mockClear();
-    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    expect(mockWebglDispose).toHaveBeenCalled();
-  });
-
   it('disposes terminal and WebGL addon on unmount', () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     unmount();
@@ -315,57 +318,63 @@ describe('AgentTerminal', () => {
     });
   });
 
-  it('re-replays session data on daemon reconnection', async () => {
+  it('re-replays and re-subscribes on daemon reconnection', async () => {
     render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
 
-    // Wait for initial replay + subscribe to complete
     await vi.waitFor(() => {
-      expect(mockPtyOnData).toHaveBeenCalled();
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
     });
 
-    const onReconnected = (
-      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
-    ).onDaemonReconnected;
-    const reconnectCallback = onReconnected.mock.calls[0][0];
+    // Capture the reconnection callback
+    expect(mockOnDaemonReconnected).toHaveBeenCalled();
+    const reconnectCallback = mockOnDaemonReconnected.mock.calls[0][0];
 
-    // Simulate daemon reconnection with new output
-    mockReplay.mockResolvedValueOnce('reconnected output');
+    // Reset mocks to track reconnection behavior
+    mockReplay.mockClear();
+    mockPtyOnData.mockClear();
     mockTerminalReset.mockClear();
-    mockWrite.mockClear();
+    mockReplay.mockResolvedValueOnce('reconnected output');
 
+    // Simulate daemon reconnection
     reconnectCallback();
 
+    expect(mockTerminalReset).toHaveBeenCalled();
+    expect(mockReplay).toHaveBeenCalledWith('test-session');
+
     await vi.waitFor(() => {
-      expect(mockTerminalReset).toHaveBeenCalled();
-      expect(mockWrite).toHaveBeenCalledWith('reconnected output', expect.any(Function));
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
     });
   });
 
-  it('handles replay failure gracefully on daemon reconnection', async () => {
+  it('still re-subscribes when reconnection replay fails', async () => {
     render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
-      expect(mockPtyOnData).toHaveBeenCalled();
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
     });
 
-    const onReconnected = (
-      window.orca.lifecycle as { onDaemonReconnected: ReturnType<typeof vi.fn> }
-    ).onDaemonReconnected;
-    const reconnectCallback = onReconnected.mock.calls[0][0];
-
-    // Simulate daemon reconnection where session no longer exists
-    mockReplay.mockRejectedValueOnce(new Error('Session not found'));
-    mockTerminalReset.mockClear();
+    const reconnectCallback = mockOnDaemonReconnected.mock.calls[0][0];
+    mockReplay.mockRejectedValueOnce(new Error('timeout'));
+    mockPtyOnData.mockClear();
 
     reconnectCallback();
 
-    // Should not throw or reset terminal — failure is swallowed
+    // Even if replay fails, onData subscription should be re-established
     await vi.waitFor(() => {
-      expect(mockReplay).toHaveBeenCalledTimes(2); // initial + reconnect
+      expect(mockPtyOnData).toHaveBeenCalledWith('test-session', expect.any(Function));
     });
-    expect(mockTerminalReset).not.toHaveBeenCalled();
+  });
+
+  it('cleans up daemon reconnection listener on unmount', () => {
+    const mockUnsubReconnect = vi.fn();
+    mockOnDaemonReconnected.mockReturnValueOnce(mockUnsubReconnect);
+
+    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    unmount();
+
+    expect(mockUnsubReconnect).toHaveBeenCalled();
   });
 
   it('disconnects ResizeObserver on unmount', () => {
@@ -424,7 +433,6 @@ describe('AgentTerminal', () => {
     mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
     render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
-    // proposeDimensions returns 80x24 which matches terminal.cols/rows — fit should be skipped
     expect(mockFit).not.toHaveBeenCalled();
     expect(mockPtyResize).not.toHaveBeenCalled();
   });
@@ -451,7 +459,6 @@ describe('AgentTerminal', () => {
     mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
     render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
-    // fit should be skipped (dimensions match) but refresh should still fire
     expect(mockFit).not.toHaveBeenCalled();
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
   });
