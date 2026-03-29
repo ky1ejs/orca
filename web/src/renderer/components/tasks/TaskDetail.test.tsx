@@ -260,12 +260,12 @@ describe('TaskDetail', () => {
       expect(screen.getByText('A test description')).toBeInTheDocument();
     });
 
-    it('does not render description section when absent', async () => {
+    it('shows placeholder when description is absent', async () => {
       mockTask!.description = null;
 
       await importAndRender();
 
-      expect(screen.queryByText('Description:')).not.toBeInTheDocument();
+      expect(screen.getByText('Add a description...')).toBeInTheDocument();
     });
   });
 
@@ -279,7 +279,7 @@ describe('TaskDetail', () => {
     it('delete calls goToParent', async () => {
       await importAndRender();
 
-      fireEvent.click(screen.getByText('Delete'));
+      fireEvent.click(screen.getByText('Delete Task'));
 
       await vi.waitFor(() => {
         expect(mockArchiveTask).toHaveBeenCalledWith('task-1');
