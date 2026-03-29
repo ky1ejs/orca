@@ -23,6 +23,8 @@ describe('drizzle migrations', () => {
     const tableNames = tables.map((t) => t.name);
     expect(tableNames).toContain('terminal_session');
     expect(tableNames).toContain('terminal_output_buffer');
+    expect(tableNames).toContain('project_directory');
+    expect(tableNames).toContain('task_worktree');
     expect(tableNames).toContain('auth_token');
     expect(tableNames).toContain('__drizzle_migrations');
   });
@@ -119,6 +121,21 @@ describe('drizzle migrations', () => {
     }>;
     const bufferColNames = bufferCols.map((c) => c.name);
     expect(bufferColNames).toEqual(['session_id', 'chunk', 'sequence', 'created_at']);
+
+    // Check task_worktree columns
+    const worktreeCols = sqlite.prepare('PRAGMA table_info(task_worktree)').all() as Array<{
+      name: string;
+    }>;
+    const worktreeColNames = worktreeCols.map((c) => c.name);
+    expect(worktreeColNames).toEqual([
+      'task_id',
+      'worktree_path',
+      'branch_name',
+      'base_branch',
+      'repo_path',
+      'created_at',
+      'updated_at',
+    ]);
 
     // Check auth_token columns
     const authCols = sqlite.prepare('PRAGMA table_info(auth_token)').all() as Array<{

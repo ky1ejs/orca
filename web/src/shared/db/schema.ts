@@ -40,6 +40,20 @@ export const projectDirectory = sqliteTable('project_directory', {
     .default(sql`(datetime('now'))`),
 });
 
+export const taskWorktree = sqliteTable('task_worktree', {
+  task_id: text('task_id').primaryKey(),
+  worktree_path: text('worktree_path').notNull(),
+  branch_name: text('branch_name').notNull(),
+  base_branch: text('base_branch').notNull(),
+  repo_path: text('repo_path').notNull(),
+  created_at: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updated_at: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const authToken = sqliteTable('auth_token', {
   id: text('id').primaryKey(),
   token: text('token').notNull(),
