@@ -75,6 +75,14 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     return client.request(DAEMON_METHODS.WORKTREE_REMOVE, { taskId, force });
   });
 
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_SAFETY, (_event, taskId: string) => {
+    return client.request(DAEMON_METHODS.WORKTREE_SAFETY, { taskId });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_LIST, () => {
+    return client.request(DAEMON_METHODS.WORKTREE_LIST);
+  });
+
   // ── Settings handlers (local — not proxied to daemon) ────────────────
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, key: string) => {
     return getSetting(key);

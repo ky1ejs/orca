@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DaemonStatusResult, WorktreeGetResult } from '../shared/daemon-protocol.js';
+import type {
+  DaemonStatusResult,
+  WorktreeGetResult,
+  WorktreeSafetyResult,
+  WorktreeListResult,
+} from '../shared/daemon-protocol.js';
 
 export interface AgentLaunchOptions {
   planMode?: boolean;
@@ -73,6 +78,8 @@ export interface OrcaAPI {
   worktree: {
     get: (taskId: string) => Promise<WorktreeGetResult | null>;
     remove: (taskId: string, force?: boolean) => Promise<{ ok: boolean }>;
+    safety: (taskId: string) => Promise<WorktreeSafetyResult | null>;
+    list: () => Promise<WorktreeListResult[]>;
   };
   perf: {
     log: (msg: string) => void;
@@ -176,6 +183,8 @@ const api: OrcaAPI = {
   worktree: {
     get: (taskId) => ipcRenderer.invoke('worktree:get', taskId),
     remove: (taskId, force) => ipcRenderer.invoke('worktree:remove', taskId, force),
+    safety: (taskId) => ipcRenderer.invoke('worktree:safety', taskId),
+    list: () => ipcRenderer.invoke('worktree:list'),
   },
   perf: {
     log: (msg) => ipcRenderer.send('perf:log', msg),

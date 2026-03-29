@@ -1,6 +1,6 @@
 /**
- * Bootstrap runner — discovers and executes `.orca/bootstrap` scripts
- * after a new worktree is created, before the agent PTY is spawned.
+ * Script runner — discovers and executes `.orca/bootstrap` and `.orca/teardown`
+ * scripts for worktree lifecycle management.
  */
 import { spawn } from 'node:child_process';
 import { access, constants } from 'node:fs/promises';
@@ -9,10 +9,12 @@ import type { TaskMetadata } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
 
 const BOOTSTRAP_SCRIPT_PATH = join('.orca', 'bootstrap');
+const TEARDOWN_SCRIPT_PATH = join('.orca', 'teardown');
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const TEARDOWN_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const MAX_OUTPUT_CHARS = 64 * 1024; // 64K characters retained for error reporting
 
-interface BootstrapResult {
+interface ScriptResult {
   success: boolean;
   durationMs: number;
   output: string;
@@ -20,12 +22,10 @@ interface BootstrapResult {
   timedOut: boolean;
 }
 
-/**
- * Check for an executable `.orca/bootstrap` script in the worktree.
- * Returns the absolute path if found and executable, null otherwise.
- */
-export async function findBootstrapScript(worktreePath: string): Promise<string | null> {
-  const scriptPath = join(worktreePath, BOOTSTRAP_SCRIPT_PATH);
+// ─── Script Discovery ──────────────────────────────────────────────
+
+async function findScript(worktreePath: string, relativePath: string): Promise<string | null> {
+  const scriptPath = join(worktreePath, relativePath);
   try {
     await access(scriptPath, constants.X_OK);
     return scriptPath;
@@ -34,19 +34,25 @@ export async function findBootstrapScript(worktreePath: string): Promise<string 
   }
 }
 
-/**
- * Execute a bootstrap script in the worktree directory.
- * Captures stdout/stderr and enforces a timeout.
- */
-export function runBootstrap(opts: {
+export function findBootstrapScript(worktreePath: string): Promise<string | null> {
+  return findScript(worktreePath, BOOTSTRAP_SCRIPT_PATH);
+}
+
+export function findTeardownScript(worktreePath: string): Promise<string | null> {
+  return findScript(worktreePath, TEARDOWN_SCRIPT_PATH);
+}
+
+// ─── Script Execution ──────────────────────────────────────────────
+
+function runScript(opts: {
   scriptPath: string;
   worktreePath: string;
   repoPath: string;
-  metadata: TaskMetadata;
-  timeoutMs?: number;
-}): Promise<BootstrapResult> {
-  const { scriptPath, worktreePath, repoPath, metadata } = opts;
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  env?: Record<string, string>;
+  timeoutMs: number;
+  logPrefix: string;
+}): Promise<ScriptResult> {
+  const { scriptPath, worktreePath, repoPath, timeoutMs, logPrefix } = opts;
 
   return new Promise((resolve) => {
     const start = Date.now();
@@ -56,16 +62,12 @@ export function runBootstrap(opts: {
     const child = spawn(scriptPath, [], {
       cwd: worktreePath,
       stdio: ['ignore', 'pipe', 'pipe'],
-      // Create a new process group so we can kill the entire tree on timeout
       detached: true,
       env: {
         ...process.env,
         ORCA_WORKTREE_PATH: worktreePath,
         ORCA_REPO_ROOT: repoPath,
-        ORCA_TASK_ID: metadata.displayId,
-        ORCA_TASK_TITLE: metadata.title,
-        ORCA_PROJECT_NAME: metadata.projectName ?? '',
-        ORCA_WORKSPACE_SLUG: metadata.workspaceSlug,
+        ...opts.env,
       },
     });
 
@@ -76,7 +78,7 @@ export function runBootstrap(opts: {
         output = output.slice(output.length - MAX_OUTPUT_CHARS);
       }
       for (const line of text.split('\n')) {
-        if (line.trim()) logger.debug(`bootstrap: ${line}`);
+        if (line.trim()) logger.debug(`${logPrefix}: ${line}`);
       }
     };
 
@@ -85,7 +87,6 @@ export function runBootstrap(opts: {
 
     const killProcessGroup = (signal: NodeJS.Signals) => {
       try {
-        // Kill the entire process group (negative PID) so child processes are included
         process.kill(-child.pid!, signal);
       } catch {
         // Process may already be dead
@@ -110,20 +111,20 @@ export function runBootstrap(opts: {
       const durationMs = Date.now() - start;
 
       if (timedOut) {
-        logger.warn(`bootstrap.timeout worktreePath=${worktreePath} durationMs=${durationMs}`);
+        logger.warn(`${logPrefix}.timeout worktreePath=${worktreePath} durationMs=${durationMs}`);
         resolve({ success: false, durationMs, output, exitCode: null, timedOut: true });
       } else if (signal) {
         logger.warn(
-          `bootstrap.killed worktreePath=${worktreePath} signal=${signal} durationMs=${durationMs}`,
+          `${logPrefix}.killed worktreePath=${worktreePath} signal=${signal} durationMs=${durationMs}`,
         );
         resolve({ success: false, durationMs, output, exitCode: null, timedOut: false });
       } else if (exitCode !== 0) {
         logger.warn(
-          `bootstrap.failed worktreePath=${worktreePath} exitCode=${exitCode} durationMs=${durationMs}`,
+          `${logPrefix}.failed worktreePath=${worktreePath} exitCode=${exitCode} durationMs=${durationMs}`,
         );
         resolve({ success: false, durationMs, output, exitCode, timedOut: false });
       } else {
-        logger.info(`bootstrap.success worktreePath=${worktreePath} durationMs=${durationMs}`);
+        logger.info(`${logPrefix}.success worktreePath=${worktreePath} durationMs=${durationMs}`);
         resolve({ success: true, durationMs, output, exitCode: 0, timedOut: false });
       }
     });
@@ -131,7 +132,7 @@ export function runBootstrap(opts: {
     child.on('error', (err) => {
       cleanup();
       const durationMs = Date.now() - start;
-      logger.error(`bootstrap.error worktreePath=${worktreePath} error=${err.message}`);
+      logger.error(`${logPrefix}.error worktreePath=${worktreePath} error=${err.message}`);
       resolve({
         success: false,
         durationMs,
@@ -140,5 +141,44 @@ export function runBootstrap(opts: {
         timedOut: false,
       });
     });
+  });
+}
+
+// ─── Public API ─────────────────────────────────────────────────────
+
+export function runBootstrap(opts: {
+  scriptPath: string;
+  worktreePath: string;
+  repoPath: string;
+  metadata: TaskMetadata;
+  timeoutMs?: number;
+}): Promise<ScriptResult> {
+  return runScript({
+    scriptPath: opts.scriptPath,
+    worktreePath: opts.worktreePath,
+    repoPath: opts.repoPath,
+    env: {
+      ORCA_TASK_ID: opts.metadata.displayId,
+      ORCA_TASK_TITLE: opts.metadata.title,
+      ORCA_PROJECT_NAME: opts.metadata.projectName ?? '',
+      ORCA_WORKSPACE_SLUG: opts.metadata.workspaceSlug,
+    },
+    timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    logPrefix: 'bootstrap',
+  });
+}
+
+export function runTeardown(opts: {
+  scriptPath: string;
+  worktreePath: string;
+  repoPath: string;
+  timeoutMs?: number;
+}): Promise<ScriptResult> {
+  return runScript({
+    scriptPath: opts.scriptPath,
+    worktreePath: opts.worktreePath,
+    repoPath: opts.repoPath,
+    timeoutMs: opts.timeoutMs ?? TEARDOWN_TIMEOUT_MS,
+    logPrefix: 'teardown',
   });
 }

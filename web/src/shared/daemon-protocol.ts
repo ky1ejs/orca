@@ -181,6 +181,27 @@ export interface WorktreeRemoveParams {
   force?: boolean;
 }
 
+export interface WorktreeSafetyParams {
+  taskId: string;
+}
+
+export interface WorktreeSafetyResult {
+  dirty: boolean;
+  unpushedCommits: boolean;
+  branchMerged: boolean;
+}
+
+export interface WorktreeListResult {
+  task_id: string;
+  worktree_path: string;
+  branch_name: string;
+  base_branch: string;
+  repo_path: string;
+  created_at: string;
+  updated_at: string;
+  safety: WorktreeSafetyResult;
+}
+
 export interface DaemonStatusResult {
   version: string;
   protocolVersion: number;
@@ -286,6 +307,8 @@ export const DAEMON_METHODS = {
   PROJECT_DIR_DELETE: 'projectDir.delete',
   WORKTREE_GET: 'worktree.get',
   WORKTREE_REMOVE: 'worktree.remove',
+  WORKTREE_SAFETY: 'worktree.safety',
+  WORKTREE_LIST: 'worktree.list',
   DAEMON_PING: 'daemon.ping',
   DAEMON_STATUS: 'daemon.status',
   DAEMON_SHUTDOWN: 'daemon.shutdown',

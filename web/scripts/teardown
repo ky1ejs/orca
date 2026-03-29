@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# Tear down web-specific resources.
+# Called by scripts/teardown.
+
+set -euo pipefail
+
+# No web-specific teardown needed currently.
+# node_modules and build artifacts are removed with the worktree directory.

@@ -274,8 +274,9 @@ model WorkspaceSettings {
   id                   String    @id @default(cuid())
   workspaceId          String    @unique
   workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  autoCloseOnMerge     Boolean   @default(true)
-  autoInReviewOnPrOpen Boolean   @default(false)
+  autoCloseOnMerge        Boolean   @default(true)
+  autoInReviewOnPrOpen    Boolean   @default(false)
+  autoCleanupWorktree     Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 }

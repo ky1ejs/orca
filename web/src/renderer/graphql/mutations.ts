@@ -282,6 +282,7 @@ export const UpdateWorkspaceSettingsDocument = /* GraphQL */ `
       id
       autoCloseOnMerge
       autoInReviewOnPrOpen
+      autoCleanupWorktree
     }
   }
 `;

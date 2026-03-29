@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Worktree teardown hook — invoked by the Orca daemon before removing
+# a git worktree. Delegates to the repo's teardown script.
+#
+# Environment variables provided by the daemon:
+#   ORCA_WORKTREE_PATH  — absolute path to the worktree
+#   ORCA_REPO_ROOT      — absolute path to the original repo root
+
+set -euo pipefail
+
+exec "$ORCA_REPO_ROOT/scripts/teardown" "$ORCA_WORKTREE_PATH"

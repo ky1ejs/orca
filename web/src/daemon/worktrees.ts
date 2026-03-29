@@ -22,6 +22,11 @@ export function insertWorktree(
   return getWorktree(input.task_id)!;
 }
 
+export function listWorktrees(): TaskWorktree[] {
+  const db = getDb();
+  return db.select().from(taskWorktree).all();
+}
+
 export function deleteWorktree(taskId: string): void {
   const db = getDb();
   db.delete(taskWorktree).where(eq(taskWorktree.task_id, taskId)).run();

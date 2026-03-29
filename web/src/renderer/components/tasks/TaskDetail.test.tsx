@@ -170,6 +170,12 @@ vi.mock('./TaskRelationshipList.js', () => ({
     getAll: vi.fn().mockResolvedValue({}),
     set: vi.fn().mockResolvedValue(undefined),
   },
+  worktree: {
+    get: vi.fn().mockResolvedValue(null),
+    remove: vi.fn().mockResolvedValue({ ok: true }),
+    safety: vi.fn().mockResolvedValue(null),
+    list: vi.fn().mockResolvedValue([]),
+  },
 };
 
 beforeEach(() => {

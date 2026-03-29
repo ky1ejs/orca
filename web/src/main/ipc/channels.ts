@@ -13,6 +13,8 @@ export const IPC_CHANNELS = {
   PROJECT_DIR_DELETE: 'projectDir:delete',
   WORKTREE_GET: 'worktree:get',
   WORKTREE_REMOVE: 'worktree:remove',
+  WORKTREE_SAFETY: 'worktree:safety',
+  WORKTREE_LIST: 'worktree:list',
   PTY_SPAWN: 'pty:spawn',
   PTY_WRITE: 'pty:write',
   PTY_RESIZE: 'pty:resize',

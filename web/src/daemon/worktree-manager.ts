@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { existsSync, mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { getWorktree, insertWorktree, deleteWorktree } from './worktrees.js';
+import { findTeardownScript, runTeardown } from './bootstrap-runner.js';
 import { WorktreeError } from '../shared/errors.js';
 import { ORCA_DIR } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
@@ -180,13 +181,29 @@ export class WorktreeManager {
 
   /**
    * Remove a worktree for the given task.
-   * Runs `git worktree remove`, deletes the branch, and removes the DB row.
+   * Runs teardown script (if present), then `git worktree remove`, deletes the branch,
+   * and removes the DB row.
    */
   async removeWorktree(taskId: string, force?: boolean): Promise<void> {
     const row = getWorktree(taskId);
     if (!row) return;
 
     if (existsSync(row.worktree_path)) {
+      // Run teardown script before git removal (best-effort — failure doesn't block removal)
+      const teardownScript = await findTeardownScript(row.worktree_path);
+      if (teardownScript) {
+        const result = await runTeardown({
+          scriptPath: teardownScript,
+          worktreePath: row.worktree_path,
+          repoPath: row.repo_path,
+        });
+        if (!result.success) {
+          logger.warn(
+            `worktree.teardown-failed taskId=${taskId} exitCode=${result.exitCode} — proceeding with removal`,
+          );
+        }
+      }
+
       try {
         const args = ['worktree', 'remove', row.worktree_path];
         if (force) args.push('--force');
