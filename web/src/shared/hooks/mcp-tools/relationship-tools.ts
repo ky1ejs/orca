@@ -12,11 +12,10 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
   server.registerTool(
     'link_tasks',
     {
-      description:
-        'Create a relationship (link) between two tasks. For example, "ORCA-10 blocks ORCA-11".',
+      description: 'Create a relationship (link) between two tasks.',
       inputSchema: {
-        sourceTaskId: z.string().describe('The source task ID'),
-        targetTaskId: z.string().describe('The target task ID'),
+        sourceTaskId: z.string().describe('The source task UUID'),
+        targetTaskId: z.string().describe('The target task UUID'),
         type: z
           .enum(['BLOCKS', 'RELATES_TO', 'DUPLICATES'])
           .describe(
@@ -95,7 +94,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
     {
       description: 'List all relationships (links) for a given task.',
       inputSchema: {
-        taskId: z.string().describe('The task ID to list relationships for'),
+        taskId: z.string().describe('The task UUID to list relationships for'),
       },
     },
     async ({ taskId }) => {
