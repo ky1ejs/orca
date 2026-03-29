@@ -38,9 +38,7 @@ const TaskHeaderContext = createContext<TaskHeaderContextValue | null>(null);
 export function TaskHeaderProvider({ children }: { children: ReactNode }) {
   const [controls, setControls] = useState<TaskHeaderControls | null>(null);
   const value = useMemo(() => ({ controls, setControls }), [controls]);
-  return (
-    <TaskHeaderContext.Provider value={value}>{children}</TaskHeaderContext.Provider>
-  );
+  return <TaskHeaderContext.Provider value={value}>{children}</TaskHeaderContext.Provider>;
 }
 
 export function useTaskHeaderControls(): TaskHeaderControls | null {

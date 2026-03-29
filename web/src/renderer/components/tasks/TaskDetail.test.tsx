@@ -202,11 +202,7 @@ async function importAndRender(taskId = 'task-1') {
   return render(
     <PreferencesProvider>
       <TaskHeaderProvider>
-        <TaskDetail
-          taskId={taskId}
-          sessions={mockSessions}
-          refreshSessions={mockRefreshSessions}
-        />
+        <TaskDetail taskId={taskId} sessions={mockSessions} refreshSessions={mockRefreshSessions} />
       </TaskHeaderProvider>
     </PreferencesProvider>,
   );

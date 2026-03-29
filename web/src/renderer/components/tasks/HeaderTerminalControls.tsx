@@ -28,7 +28,15 @@ export function HeaderTerminalControls() {
 
   if (!controls) return null;
 
-  const { activeSession, errorSession, projectDirectory, refreshSessions, buildMetadata, onAgentError, taskId } = controls;
+  const {
+    activeSession,
+    errorSession,
+    projectDirectory,
+    refreshSessions,
+    buildMetadata,
+    onAgentError,
+    taskId,
+  } = controls;
 
   const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
     if (!projectDirectory) {
