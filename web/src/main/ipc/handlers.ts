@@ -21,6 +21,10 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     return client.request(DAEMON_METHODS.DB_GET_SESSIONS);
   });
 
+  ipcMain.handle(IPC_CHANNELS.DB_GET_SESSIONS_BY_TASK, (_event, taskId: string) => {
+    return client.request(DAEMON_METHODS.DB_GET_SESSIONS_BY_TASK, { taskId });
+  });
+
   ipcMain.handle(IPC_CHANNELS.DB_GET_SESSION, (_event, id: string) => {
     return client.request(DAEMON_METHODS.DB_GET_SESSION, { id });
   });

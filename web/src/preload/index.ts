@@ -23,6 +23,7 @@ export interface OrcaAPI {
   platform: string;
   db: {
     getSessions: () => Promise<unknown[]>;
+    getSessionsByTask: (taskId: string) => Promise<unknown[]>;
     getSession: (id: string) => Promise<unknown | undefined>;
     createSession: (input: {
       taskId?: string;
@@ -118,6 +119,7 @@ const api: OrcaAPI = {
   platform: process.platform,
   db: {
     getSessions: () => ipcRenderer.invoke('db:getSessions'),
+    getSessionsByTask: (taskId) => ipcRenderer.invoke('db:getSessionsByTask', taskId),
     getSession: (id) => ipcRenderer.invoke('db:getSession', id),
     createSession: (input) => ipcRenderer.invoke('db:createSession', input),
     updateSession: (id, input) => ipcRenderer.invoke('db:updateSession', id, input),

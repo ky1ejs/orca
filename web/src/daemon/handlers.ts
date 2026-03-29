@@ -8,6 +8,7 @@ import type { DaemonStatusManager } from './status-manager.js';
 import type { OutputPersistence } from './output-persistence.js';
 import {
   getSessions,
+  getSessionsByTaskId,
   getSession,
   createSession,
   updateSession,
@@ -37,6 +38,7 @@ import type {
   AgentRestartParams,
   AgentStatusParams,
   DbGetSessionParams,
+  DbGetSessionsByTaskParams,
   DbCreateSessionParams,
   DbUpdateSessionParams,
   DbDeleteSessionParams,
@@ -192,6 +194,11 @@ export function createHandler(deps: HandlerDeps) {
       // ── DB Sessions ────────────────────────────────
       case DAEMON_METHODS.DB_GET_SESSIONS: {
         return getSessions();
+      }
+
+      case DAEMON_METHODS.DB_GET_SESSIONS_BY_TASK: {
+        const p = params as DbGetSessionsByTaskParams;
+        return getSessionsByTaskId(p.taskId);
       }
 
       case DAEMON_METHODS.DB_GET_SESSION: {

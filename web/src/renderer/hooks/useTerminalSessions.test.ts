@@ -33,6 +33,11 @@ beforeEach(() => {
     orca: {
       db: {
         getSessions: vi.fn().mockResolvedValue(mockSessions),
+        getSessionsByTask: vi
+          .fn()
+          .mockImplementation((taskId: string) =>
+            Promise.resolve(mockSessions.filter((s) => s.task_id === taskId)),
+          ),
       },
       lifecycle: {
         onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
@@ -58,7 +63,7 @@ describe('useTerminalSessions', () => {
     expect(result.current.sessions).toHaveLength(2);
   });
 
-  it('filters sessions by taskId', async () => {
+  it('filters sessions by taskId using server-side query', async () => {
     const { result } = renderHook(() => useTerminalSessions('task-a'));
 
     await act(async () => {
@@ -67,6 +72,8 @@ describe('useTerminalSessions', () => {
 
     expect(result.current.sessions).toHaveLength(1);
     expect(result.current.sessions[0].id).toBe('session-1');
+    expect(window.orca.db.getSessionsByTask).toHaveBeenCalledWith('task-a');
+    expect(window.orca.db.getSessions).not.toHaveBeenCalled();
   });
 
   it('polls for updates', async () => {

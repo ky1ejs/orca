@@ -129,6 +129,10 @@ export interface DbGetSessionParams {
   id: string;
 }
 
+export interface DbGetSessionsByTaskParams {
+  taskId: string;
+}
+
 export interface DbCreateSessionParams {
   taskId?: string;
   pid?: number;
@@ -252,6 +256,7 @@ export const DAEMON_METHODS = {
   AGENT_RESTART: 'agent.restart',
   AGENT_STATUS: 'agent.status',
   DB_GET_SESSIONS: 'db.getSessions',
+  DB_GET_SESSIONS_BY_TASK: 'db.getSessionsByTask',
   DB_GET_SESSION: 'db.getSession',
   DB_CREATE_SESSION: 'db.createSession',
   DB_UPDATE_SESSION: 'db.updateSession',
