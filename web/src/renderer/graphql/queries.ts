@@ -336,6 +336,11 @@ export const TaskByDisplayIdQueryDocument = /* GraphQL */ `
       displayId
       title
       status
+      projectId
+      project {
+        id
+        name
+      }
     }
   }
 `;

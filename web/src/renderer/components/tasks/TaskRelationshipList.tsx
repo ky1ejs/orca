@@ -153,19 +153,29 @@ export function TaskRelationshipList({
                 {grouped.get(dt)!.map((rel) => (
                   <div
                     key={rel.id}
-                    className="group flex items-center gap-2 px-3 py-1.5 bg-surface-raised rounded-md border border-edge"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate({ view: 'task', id: rel.relatedTask.id })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate({ view: 'task', id: rel.relatedTask.id });
+                      }
+                    }}
+                    className="group flex items-center gap-2 px-3 py-1.5 bg-surface-raised rounded-md border border-edge cursor-pointer hover:bg-surface-hover transition-colors"
                   >
-                    <button
-                      onClick={() => navigate({ view: 'task', id: rel.relatedTask.id })}
-                      className="text-accent hover:text-accent-hover text-body-sm font-medium transition-colors flex-shrink-0"
-                    >
+                    <span className="text-accent text-body-sm font-medium flex-shrink-0">
                       {rel.relatedTask.displayId}
-                    </button>
+                    </span>
                     <span className="text-fg text-body-sm truncate">{rel.relatedTask.title}</span>
                     <div className="flex-1" />
                     <TaskStatusBadge status={rel.relatedTask.status} />
                     <button
-                      onClick={() => handleRemove(rel.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(rel.id);
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
                       disabled={removing}
                       className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
                       title="Remove relationship"
