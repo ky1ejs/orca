@@ -10,7 +10,7 @@ set -euo pipefail
 
 WORKTREE_PATH="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="${ORCA_REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 # ─── Derive port and DB name from worktree path ──────────────────────
 
