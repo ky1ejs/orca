@@ -2,11 +2,13 @@ import { execSync } from 'node:child_process';
 
 function orcaSystemPromptLines(taskId: string, title: string): string[] {
   return [
-    'You were launched by Orca to work on a task.',
-    `Task: ${taskId} — ${title}`,
+    'You were launched by Orca to work on a task (also referred to as ticket or issue).',
+    `Task ID: ${taskId}`,
+    `Task title: ${title}`,
     'Environment variables ORCA_TASK_ID, ORCA_TASK_TITLE, ORCA_TASK_DESCRIPTION, and ORCA_PROJECT_NAME contain task context.',
     'Use the get_current_task MCP tool to fetch full task details including description, status, priority, and labels.',
-    `If you create a branch, include the task ID in the name: feat/${taskId}-short-description.`,
+    `If you create a branch or worktree, include the task ID in the name: e.g. ${taskId}-short-description.`,
+    `If you create a PR, include the task ID in the title: e.g. ${taskId}: short description.`,
   ];
 }
 
