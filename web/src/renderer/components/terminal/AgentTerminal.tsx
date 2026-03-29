@@ -164,18 +164,76 @@ export const AgentTerminal = memo(function AgentTerminal({
       terminal.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
     });
 
-    // PTY output subscription is DEFERRED to after initial fit + replay.
-    // Subscribing immediately would write data at wrong dimensions (default 80x24)
-    // and duplicate content when replay() returns the full buffer.
-    let initialFitDone = false;
-    let resizeRafId: number | null = null;
-
     // Write coalescing: buffer incoming PTY data and flush via rAF so
     // xterm.js processes one batched write per frame instead of many small
     // ones. The write callback ACKs back to the daemon for end-to-end
     // flow control (daemon pauses PTY when unacked data exceeds watermark).
     let pendingData = '';
     let writeRafId: number | null = null;
+
+    /** Replay the session buffer and subscribe to live data. Idempotent. */
+    async function replayAndSubscribe(): Promise<void> {
+      unsubData?.();
+      unsubData = null;
+
+      try {
+        const output = await window.orca.pty.replay(sessionId);
+        if (disposed) return;
+        mark('replay-complete');
+        if (output) {
+          terminal.write(output, () => {
+            window.orca.pty.ack(sessionId, output.length);
+          });
+        }
+      } catch {
+        if (disposed) return;
+        // Replay failed (daemon busy/disconnected) — proceed without history.
+        // Live data will still flow once the subscription is established.
+      }
+
+      // Always subscribe regardless of replay success — subscribing synchronously
+      // after the await ensures no IPC gap between the buffer end and live stream.
+      unsubData = window.orca.pty.onData(sessionId, (data) => {
+        if (disposed) return;
+        if (!firstDataLogged) {
+          firstDataLogged = true;
+          mark('first-data');
+        }
+        pendingData += data;
+        if (writeRafId === null) {
+          writeRafId = requestAnimationFrame(() => {
+            writeRafId = null;
+            const batch = pendingData;
+            pendingData = '';
+            terminal.write(batch, () => {
+              window.orca.pty.ack(sessionId, batch.length);
+            });
+            // Throttled full re-render to clear accumulated WebGL rendering
+            // artifacts. The rAF coalescing already limits this to once per
+            // frame; the 1 Hz throttle avoids unnecessary GPU work beyond that.
+            const now = performance.now();
+            if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+              lastRefreshAt = now;
+              terminal.refresh(0, terminal.rows - 1);
+            }
+          });
+        }
+      });
+    }
+
+    // Re-replay and re-subscribe after daemon disconnect/reconnect to recover
+    // any output produced during the gap.
+    const unsubReconnect = window.orca.lifecycle.onDaemonReconnected(() => {
+      if (disposed || !initialFitDone) return;
+      terminal.reset();
+      void replayAndSubscribe();
+    });
+
+    // PTY output subscription is DEFERRED to after initial fit + replay.
+    // Subscribing immediately would write data at wrong dimensions (default 80x24)
+    // and duplicate content when replay() returns the full buffer.
+    let initialFitDone = false;
+    let resizeRafId: number | null = null;
 
     // ResizeObserver fires after layout completes, guaranteeing correct container
     // dimensions — unlike rAF which can fire before flex layout stabilizes.
@@ -190,53 +248,7 @@ export const AgentTerminal = memo(function AgentTerminal({
         initialFitDone = true;
         fitAndResize(fitAddon, terminal, sessionId);
         mark('fit-complete');
-        // Replay existing output, then subscribe to live data. The subscription
-        // MUST be established even if replay fails (daemon busy, IPC timeout,
-        // brief disconnection) — otherwise the terminal permanently freezes.
-        (async () => {
-          let output: string | undefined;
-          try {
-            output = await window.orca.pty.replay(sessionId);
-          } catch {
-            // Replay failed — subscribe to live data anyway so the terminal
-            // isn't permanently frozen. New output will still arrive.
-          }
-          if (disposed) return;
-          mark('replay-complete');
-          if (output) {
-            terminal.write(output, () => {
-              window.orca.pty.ack(sessionId, output.length);
-            });
-          }
-          // JS event loop guarantees no IPC events dispatch between the
-          // await resolution and this synchronous listener registration.
-          unsubData = window.orca.pty.onData(sessionId, (data) => {
-            if (disposed) return;
-            if (!firstDataLogged) {
-              firstDataLogged = true;
-              mark('first-data');
-            }
-            pendingData += data;
-            if (writeRafId === null) {
-              writeRafId = requestAnimationFrame(() => {
-                writeRafId = null;
-                const batch = pendingData;
-                pendingData = '';
-                terminal.write(batch, () => {
-                  window.orca.pty.ack(sessionId, batch.length);
-                });
-                // Throttled full re-render to clear accumulated WebGL rendering
-                // artifacts. The rAF coalescing already limits this to once per
-                // frame; the 1 Hz throttle avoids unnecessary GPU work beyond that.
-                const now = performance.now();
-                if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
-                  lastRefreshAt = now;
-                  terminal.refresh(0, terminal.rows - 1);
-                }
-              });
-            }
-          });
-        })();
+        void replayAndSubscribe();
         return;
       }
       // Skip resize IPC for hidden terminals — only the visible one needs to
@@ -311,6 +323,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       onDataDisposable.dispose();
       unsubData?.();
       unsubExit();
+      unsubReconnect();
       terminal.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
@@ -345,8 +358,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     };
 
     if (visible) {
-      // Guard: skip if addon already loaded (avoids expensive context churn
-      // when the effect re-runs due to sessionId changes while still visible).
+      // Create WebGL renderer before refit so the GPU context is active for the
+      // refresh pass inside fitAndResize, avoiding a wasted canvas render.
       if (!webglAddonRef.current) {
         try {
           const addon = new WebglAddon();
@@ -361,39 +374,13 @@ export const AgentTerminal = memo(function AgentTerminal({
 
       fitAndResize(fitAddon, terminal, sessionId);
       terminal.focus();
+    } else {
+      // Release WebGL context when hidden so other terminals can use it.
+      disposeWebgl();
     }
 
     return () => disposeWebgl();
   }, [visible, sessionId]);
-
-  // Re-replay session data after daemon reconnection to fill any gap in
-  // output that occurred while the socket was down. The ring buffer on the
-  // daemon side still has the full history, so a reset + replay restores
-  // the terminal to an accurate state.
-  useEffect(() => {
-    if (!window.orca?.lifecycle) return;
-    const unsub = window.orca.lifecycle.onDaemonReconnected(() => {
-      const terminal = terminalRef.current;
-      if (!terminal) return;
-      window.orca.pty
-        .replay(sessionId)
-        .then((output) => {
-          if (!terminalRef.current) return; // unmounted during IPC
-          terminal.reset();
-          if (output) {
-            terminal.write(output, () => {
-              // ACK replayed bytes so daemon flow control can resume the PTY.
-              window.orca.pty.ack(sessionId, output.length);
-            });
-          }
-        })
-        .catch(() => {
-          // Session may no longer exist after daemon restart — that's fine,
-          // the status indicator will show it as exited.
-        });
-    });
-    return unsub;
-  }, [sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('Files')) {
