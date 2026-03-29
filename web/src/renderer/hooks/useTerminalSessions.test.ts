@@ -73,8 +73,8 @@ describe('useTerminalSessions', () => {
 
     expect(result.current.sessions).toHaveLength(1);
     expect(result.current.sessions[0].id).toBe('session-1');
-    // Should use the server-side filtered query, not getSessions
     expect(window.orca.db.getSessionsByTask).toHaveBeenCalledWith('task-a');
+    expect(window.orca.db.getSessions).not.toHaveBeenCalled();
   });
 
   it('polls for updates', async () => {
