@@ -1,4 +1,12 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 
 interface TaskHeaderControls {
@@ -18,9 +26,11 @@ interface TaskHeaderControls {
   onAgentError: (error: { message: string; suggestion: string } | null) => void;
 }
 
+type SetTaskHeaderControls = Dispatch<SetStateAction<TaskHeaderControls | null>>;
+
 interface TaskHeaderContextValue {
   controls: TaskHeaderControls | null;
-  setControls: (controls: TaskHeaderControls | null) => void;
+  setControls: SetTaskHeaderControls;
 }
 
 const TaskHeaderContext = createContext<TaskHeaderContextValue | null>(null);
@@ -38,7 +48,7 @@ export function useTaskHeaderControls(): TaskHeaderControls | null {
   return ctx?.controls ?? null;
 }
 
-export function useSetTaskHeaderControls(): (controls: TaskHeaderControls | null) => void {
+export function useSetTaskHeaderControls(): SetTaskHeaderControls {
   const ctx = useContext(TaskHeaderContext);
   if (!ctx) {
     throw new Error('useSetTaskHeaderControls must be used within a TaskHeaderProvider');

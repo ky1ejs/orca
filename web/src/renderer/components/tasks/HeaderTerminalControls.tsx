@@ -118,6 +118,7 @@ export function HeaderTerminalControls() {
           className="p-1.5 bg-error-muted hover:bg-error-strong text-error rounded-md transition-colors"
           data-testid="close-terminal-button"
           title="Close Terminal"
+          aria-label="Close Terminal"
         >
           <Square className={iconSize.xs} />
         </button>
@@ -163,6 +164,9 @@ export function HeaderTerminalControls() {
           onClick={() => setLaunchMenuOpen((prev) => !prev)}
           className={`px-1 py-1 ${colorBg} border-l ${chevronBorder} text-label-sm rounded-r-md transition-colors`}
           data-testid="agent-menu-toggle"
+          aria-label="Terminal options"
+          aria-expanded={launchMenuOpen}
+          aria-haspopup="menu"
         >
           <ChevronDown className={iconSize.xs} />
         </button>

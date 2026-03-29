@@ -78,7 +78,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
       setHeaderControls(null);
       return;
     }
-    setHeaderControls({
+    const next = {
       displayId: task.displayId,
       taskId,
       activeSession,
@@ -87,6 +87,19 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
       refreshSessions,
       buildMetadata,
       onAgentError: setAgentError,
+    };
+    setHeaderControls((prev) => {
+      if (
+        prev &&
+        prev.displayId === next.displayId &&
+        prev.taskId === next.taskId &&
+        prev.activeSession === next.activeSession &&
+        prev.errorSession === next.errorSession &&
+        prev.projectDirectory === next.projectDirectory
+      ) {
+        return prev;
+      }
+      return next;
     });
     return () => setHeaderControls(null);
   }, [
