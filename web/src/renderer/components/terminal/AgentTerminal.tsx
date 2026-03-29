@@ -56,11 +56,13 @@ const REFRESH_THROTTLE_MS = 1_000;
 
 /** Try loading CanvasAddon as intermediate fallback between WebGL and DOM. */
 function tryLoadCanvas(terminal: Terminal, ref: MutableRefObject<CanvasAddon | null>): void {
+  let canvas: CanvasAddon | null = null;
   try {
-    const canvas = new CanvasAddon();
-    ref.current = canvas;
+    canvas = new CanvasAddon();
     terminal.loadAddon(canvas);
+    ref.current = canvas;
   } catch {
+    canvas?.dispose();
     ref.current = null;
   }
 }
