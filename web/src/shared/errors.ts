@@ -45,6 +45,13 @@ export class ProcessCrashError extends AgentError {
   }
 }
 
+export class WorktreeError extends AgentError {
+  constructor(message: string) {
+    super(message, 'Check git status and try again. You may need to commit or stash changes.');
+    this.name = 'WorktreeError';
+  }
+}
+
 export class AuthNotConfiguredError extends AgentError {
   constructor() {
     super('Auth token not configured', 'Run the Orca setup to configure your authentication token');

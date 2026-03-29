@@ -162,6 +162,25 @@ export interface ProjectDirDeleteParams {
   projectId: string;
 }
 
+export interface WorktreeGetParams {
+  taskId: string;
+}
+
+export interface WorktreeGetResult {
+  task_id: string;
+  worktree_path: string;
+  branch_name: string;
+  base_branch: string;
+  repo_path: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorktreeRemoveParams {
+  taskId: string;
+  force?: boolean;
+}
+
 export interface DaemonStatusResult {
   version: string;
   protocolVersion: number;
@@ -265,6 +284,8 @@ export const DAEMON_METHODS = {
   PROJECT_DIR_GET: 'projectDir.get',
   PROJECT_DIR_SET: 'projectDir.set',
   PROJECT_DIR_DELETE: 'projectDir.delete',
+  WORKTREE_GET: 'worktree.get',
+  WORKTREE_REMOVE: 'worktree.remove',
   DAEMON_PING: 'daemon.ping',
   DAEMON_STATUS: 'daemon.status',
   DAEMON_SHUTDOWN: 'daemon.shutdown',

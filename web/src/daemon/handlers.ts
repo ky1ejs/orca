@@ -5,6 +5,7 @@
 import type { ClientConnection, DaemonServer } from './server.js';
 import type { DaemonPtyManager } from './pty-manager.js';
 import type { DaemonStatusManager } from './status-manager.js';
+import type { WorktreeManager } from './worktree-manager.js';
 import type { OutputPersistence } from './output-persistence.js';
 import {
   getSessions,
@@ -19,6 +20,7 @@ import {
   setProjectDirectory,
   deleteProjectDirectory,
 } from './project-directories.js';
+import { getWorktree } from './worktrees.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
@@ -45,6 +47,8 @@ import type {
   ProjectDirGetParams,
   ProjectDirSetParams,
   ProjectDirDeleteParams,
+  WorktreeGetParams,
+  WorktreeRemoveParams,
   DaemonStatusResult,
   SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
@@ -52,6 +56,7 @@ import type {
 interface HandlerDeps {
   ptyManager: DaemonPtyManager;
   statusManager: DaemonStatusManager;
+  worktreeManager: WorktreeManager;
   server: DaemonServer;
   outputPersistence: OutputPersistence;
   setToken: (token: string | null) => void;
@@ -67,6 +72,7 @@ export function createHandler(deps: HandlerDeps) {
   const {
     ptyManager,
     statusManager,
+    worktreeManager,
     outputPersistence,
     setToken,
     getVersion,
@@ -257,6 +263,18 @@ export function createHandler(deps: HandlerDeps) {
       case DAEMON_METHODS.PROJECT_DIR_DELETE: {
         const p = params as ProjectDirDeleteParams;
         deleteProjectDirectory(p.projectId);
+        return { ok: true };
+      }
+
+      // ── Worktrees ─────────────────────────────────
+      case DAEMON_METHODS.WORKTREE_GET: {
+        const p = params as WorktreeGetParams;
+        return getWorktree(p.taskId) ?? null;
+      }
+
+      case DAEMON_METHODS.WORKTREE_REMOVE: {
+        const p = params as WorktreeRemoveParams;
+        await worktreeManager.removeWorktree(p.taskId, p.force);
         return { ok: true };
       }
 

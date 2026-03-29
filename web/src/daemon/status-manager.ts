@@ -16,6 +16,7 @@ import {
   serializeError,
   type SerializedAgentError,
 } from '../shared/errors.js';
+import { WorktreeManager, isGitRepo } from './worktree-manager.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
 import { logger } from './logger.js';
@@ -71,6 +72,7 @@ interface DaemonStatusManagerOptions {
   hookServer: HookServer | null;
   hookPort: number | null;
   broadcast: BroadcastFn;
+  worktreeManager: WorktreeManager;
 }
 
 interface AgentLaunchOptions {
@@ -85,6 +87,7 @@ export class DaemonStatusManager {
   private hookServer: HookServer | null;
   private hookPort: number | null;
   private broadcast: BroadcastFn;
+  private worktreeManager: WorktreeManager;
 
   constructor(manager: DaemonPtyManager, options: DaemonStatusManagerOptions) {
     this.manager = manager;
@@ -93,6 +96,7 @@ export class DaemonStatusManager {
     this.hookServer = options.hookServer;
     this.hookPort = options.hookPort;
     this.broadcast = options.broadcast;
+    this.worktreeManager = options.worktreeManager;
   }
 
   async launch(
@@ -112,14 +116,28 @@ export class DaemonStatusManager {
       }
       mark('dir-validated');
 
+      // Create or reuse a worktree for task isolation
+      let effectiveWorkingDirectory = workingDirectory;
+      if (metadata && (await isGitRepo(workingDirectory))) {
+        effectiveWorkingDirectory = await this.worktreeManager.ensureWorktree(
+          taskId,
+          workingDirectory,
+          metadata,
+        );
+        mark('worktree-ensured');
+      }
+
       const session = createSession({
         taskId,
         status: SessionStatus.Starting,
-        workingDirectory,
+        workingDirectory: effectiveWorkingDirectory,
       });
       mark('session-created');
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
+      if (effectiveWorkingDirectory !== workingDirectory) {
+        env.ORCA_WORKTREE_PATH = effectiveWorkingDirectory;
+      }
       // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
       if (colorScheme === 'light') {
         env.COLORFGBG = '0;15'; // dark fg on light bg
@@ -155,7 +173,7 @@ export class DaemonStatusManager {
               buildOrcaSystemPrompt(metadata.displayId, metadata.title),
             );
           }
-          this.manager.spawn(session.id, claudePath, args, workingDirectory, env);
+          this.manager.spawn(session.id, claudePath, args, effectiveWorkingDirectory, env);
         } else {
           // Prepend ~/.orca/bin to PATH so the `orca` CLI wrapper is available in the shell
           if (this.hookPort) {
@@ -163,7 +181,13 @@ export class DaemonStatusManager {
           }
           const shell = getDefaultShell();
           mark('shell-resolved');
-          this.manager.spawn(session.id, shell, getLoginShellArgs(), workingDirectory, env);
+          this.manager.spawn(
+            session.id,
+            shell,
+            getLoginShellArgs(),
+            effectiveWorkingDirectory,
+            env,
+          );
         }
       } catch (err) {
         if (err instanceof ClaudeNotFoundError) throw err;
@@ -179,7 +203,7 @@ export class DaemonStatusManager {
       });
       mark('task-update-dispatched');
 
-      this.startMonitoring(session.id, taskId, workingDirectory);
+      this.startMonitoring(session.id, taskId, effectiveWorkingDirectory);
       mark('monitoring-started');
 
       return { success: true, sessionId: session.id };

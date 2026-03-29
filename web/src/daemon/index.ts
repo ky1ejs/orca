@@ -19,6 +19,7 @@ import { sweepStaleSessions } from './sessions.js';
 import { DaemonServer } from './server.js';
 import { DaemonPtyManager, type BroadcastFn } from './pty-manager.js';
 import { DaemonStatusManager } from './status-manager.js';
+import { WorktreeManager } from './worktree-manager.js';
 import { HookServer } from '../shared/hooks/server.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { IdleManager } from './idle.js';
@@ -187,6 +188,7 @@ async function main(): Promise<void> {
   }
 
   // Create components
+  const worktreeManager = new WorktreeManager();
   const ptyManager = new DaemonPtyManager(broadcast);
 
   // Output persistence — flush dirty ring buffers to SQLite periodically.
@@ -203,6 +205,7 @@ async function main(): Promise<void> {
     hookServer: hookServerPort ? hookServer : null,
     hookPort: hookServerPort,
     broadcast,
+    worktreeManager,
   });
   const pidSweepManager = new DaemonPidSweepManager(broadcast);
 
@@ -254,6 +257,7 @@ async function main(): Promise<void> {
   const handler = createHandler({
     ptyManager,
     statusManager,
+    worktreeManager,
     outputPersistence,
     get server() {
       return server;
