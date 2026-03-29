@@ -29,7 +29,7 @@ const mockScrollToBottom = vi.fn();
 const mockRefresh = vi.fn();
 const mockFocus = vi.fn();
 const mockTerminalReset = vi.fn();
-const mockBuffer = { active: { viewportY: 0, baseY: 0 } };
+const mockBuffer = { active: { viewportY: 0, baseY: 0, length: 100 } };
 const mockPaste = vi.fn();
 
 vi.mock('@xterm/xterm', () => ({
@@ -266,38 +266,50 @@ describe('AgentTerminal', () => {
 
   it('recreates WebGL after context loss on next visibility change', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
-    // Trigger context loss
+    // Trigger context loss — addon disposed, ref cleared
     const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
     onContextLossCallback();
     mockWebglOnContextLoss.mockClear();
 
-    // Hide then show — should recreate WebGL
+    // Hide then show — should recreate WebGL since context was lost
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it('disposes WebGL when terminal becomes hidden', () => {
+  it('keeps WebGL alive briefly when terminal becomes hidden', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     mockWebglDispose.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    expect(mockWebglDispose).toHaveBeenCalled();
+    // WebGL stays alive immediately (delayed disposal)
+    expect(mockWebglDispose).not.toHaveBeenCalled();
   });
 
-  it('creates new WebGL addon when becoming visible again', async () => {
+  it('disposes WebGL after delay when terminal stays hidden', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      mockWebglDispose.mockClear();
+
+      rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+      vi.advanceTimersByTime(5_000);
+      expect(mockWebglDispose).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reuses existing WebGL addon on quick tab switch', async () => {
     const { WebglAddon } = await import('@xterm/addon-webgl');
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     const initialCallCount = (WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length;
 
-    // Hide — disposes WebGL
+    // Hide briefly then show — WebGL stays alive, no new creation
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    // Show again — creates a new WebGL addon
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
 
-    expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
-      initialCallCount,
-    );
+    expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBe(initialCallCount);
   });
 
   it('disposes terminal and WebGL addon on unmount', () => {
@@ -554,7 +566,7 @@ describe('AgentTerminal', () => {
     });
   });
 
-  it('flushes pending data on unmount', async () => {
+  it('ACKs pending data directly on unmount', async () => {
     const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     triggerInitialResize();
 
@@ -563,18 +575,15 @@ describe('AgentTerminal', () => {
     });
 
     const onDataCallback = mockPtyOnData.mock.calls[0][1];
-    mockWrite.mockClear();
+    mockPtyAck.mockClear();
 
     // Push data but don't wait for rAF
     onDataCallback('pending');
 
-    // Unmount should flush the pending data
+    // Unmount should ACK the pending data directly (not via terminal.write callback)
     unmount();
 
-    const dataWrites = mockWrite.mock.calls.filter(
-      (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('pending'),
-    );
-    expect(dataWrites).toHaveLength(1);
+    expect(mockPtyAck).toHaveBeenCalledWith('test-session', 'pending'.length);
   });
 
   it('uses rAF for resize debounce instead of setTimeout', async () => {
@@ -724,6 +733,22 @@ describe('AgentTerminal', () => {
 
       expect(mockPaste).not.toHaveBeenCalled();
     });
+  });
+
+  it('includes scrollback in periodic snapshots', () => {
+    vi.useFakeTimers();
+    try {
+      // Mock buffer with 100 lines total, 24 visible rows → 76 scrollback
+      mockBuffer.active.length = 100;
+      render(<AgentTerminal sessionId="test-session" visible={true} />);
+      triggerInitialResize();
+
+      vi.advanceTimersByTime(5_000);
+
+      expect(mockSerialize).toHaveBeenCalledWith({ scrollback: 76 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

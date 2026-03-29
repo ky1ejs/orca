@@ -115,6 +115,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     let unsubData: (() => void) | null = null;
     let lastRefreshAt = -REFRESH_THROTTLE_MS;
     let firstDataLogged = false;
+    /** Bytes passed to terminal.write() whose ACK callback hasn't fired yet. */
+    let inFlightBytes = 0;
 
     const mark = createPerfTimer(`terminal(${sessionId})`, rendererPerfLog);
 
@@ -205,7 +207,9 @@ export const AgentTerminal = memo(function AgentTerminal({
             writeRafId = null;
             const batch = pendingData;
             pendingData = '';
+            inFlightBytes += batch.length;
             terminal.write(batch, () => {
+              inFlightBytes -= batch.length;
               window.orca.pty.ack(sessionId, batch.length);
             });
             // Throttled full re-render to clear accumulated WebGL rendering
@@ -232,10 +236,11 @@ export const AgentTerminal = memo(function AgentTerminal({
         cancelAnimationFrame(writeRafId);
         writeRafId = null;
       }
-      if (pendingData) {
-        const batch = pendingData;
-        pendingData = '';
-        window.orca.pty.ack(sessionId, batch.length);
+      const unleaked = pendingData.length + inFlightBytes;
+      pendingData = '';
+      inFlightBytes = 0;
+      if (unleaked > 0) {
+        window.orca.pty.ack(sessionId, unleaked);
       }
       terminal.reset();
       void replayAndSubscribe();
@@ -280,7 +285,13 @@ export const AgentTerminal = memo(function AgentTerminal({
     let lastSnapshot = '';
     const sendSnapshot = () => {
       try {
-        const serialized = serializeAddon.serialize();
+        // Include scrollback so the full output history survives unmount/remount
+        // (e.g. navigating away from a task and back). Without this, only the
+        // visible viewport (~30 rows) would be restored on replay.
+        const scrollback = terminal.buffer.active.length - terminal.rows;
+        const serialized = serializeAddon.serialize({
+          scrollback: Math.max(0, scrollback),
+        });
         if (serialized && serialized !== lastSnapshot) {
           lastSnapshot = serialized;
           window.orca.pty.snapshot(sessionId, serialized);
@@ -316,14 +327,15 @@ export const AgentTerminal = memo(function AgentTerminal({
       sendSnapshot();
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       if (writeRafId !== null) cancelAnimationFrame(writeRafId);
-      // Flush any remaining buffered data before disposal and ACK it
-      // so the daemon's unackedSize doesn't stay inflated.
-      if (pendingData) {
-        const flushed = pendingData;
-        pendingData = '';
-        terminal.write(flushed, () => {
-          window.orca.pty.ack(sessionId, flushed.length);
-        });
+      // ACK any buffered or in-flight data directly so the daemon's
+      // unackedSize doesn't stay inflated. We can't rely on
+      // terminal.write()'s async callback because terminal.dispose()
+      // below would prevent it from firing.
+      const unleakedBytes = pendingData.length + inFlightBytes;
+      pendingData = '';
+      inFlightBytes = 0;
+      if (unleakedBytes > 0) {
+        window.orca.pty.ack(sessionId, unleakedBytes);
       }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
@@ -349,10 +361,14 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
-  // Manage WebGL addon lifecycle based on visibility. Only the active terminal
-  // gets a WebGL context — hidden terminals fall back to the default renderer.
-  // This prevents "Too many active WebGL contexts" warnings when many sessions
-  // are mounted simultaneously (browsers limit to ~8-16 contexts).
+  // WebGL lifecycle: create on visibility, release after a delay when hidden.
+  // Immediate creation avoids the 5-20ms latency of recreating on every tab
+  // switch. The 5s delay before disposal means rapid switching tends to keep
+  // contexts alive, while idle hidden terminals eventually free GPU resources —
+  // helping stay within the browser's ~8-16 context limit in typical workloads,
+  // but without a strict global cap across all sessions. Context loss falls back
+  // to DOM renderer gracefully.
+  //
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
   useEffect(() => {
@@ -360,24 +376,17 @@ export const AgentTerminal = memo(function AgentTerminal({
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
 
-    const disposeWebgl = (addonToDispose?: WebglAddon | null) => {
-      const addon = addonToDispose ?? webglAddonRef.current;
-      if (!addon) return;
-      if (webglAddonRef.current === addon) {
-        webglAddonRef.current = null;
-      }
-      addon.dispose();
-    };
-
     if (visible) {
-      // Create WebGL renderer before refit so the GPU context is active for the
-      // refresh pass inside fitAndResize, avoiding a wasted canvas render.
       if (!webglAddonRef.current) {
         try {
           const addon = new WebglAddon();
-          // Set the ref before loading so context loss during load can still dispose it.
           webglAddonRef.current = addon;
-          addon.onContextLoss(() => disposeWebgl(addon));
+          addon.onContextLoss(() => {
+            if (webglAddonRef.current === addon) {
+              webglAddonRef.current = null;
+            }
+            addon.dispose();
+          });
           terminal.loadAddon(addon);
         } catch {
           webglAddonRef.current = null;
@@ -386,12 +395,19 @@ export const AgentTerminal = memo(function AgentTerminal({
 
       fitAndResize(fitAddon, terminal, sessionId);
       terminal.focus();
-    } else {
-      // Release WebGL context when hidden so other terminals can use it.
-      disposeWebgl();
+      return;
     }
 
-    return () => disposeWebgl();
+    // Release WebGL context after a delay so rapid tab switching doesn't
+    // pay the creation cost, but idle hidden terminals free GPU resources.
+    const disposeTimer = setTimeout(() => {
+      const addon = webglAddonRef.current;
+      if (addon) {
+        webglAddonRef.current = null;
+        addon.dispose();
+      }
+    }, 5_000);
+    return () => clearTimeout(disposeTimer);
   }, [visible, sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
