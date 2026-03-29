@@ -74,7 +74,11 @@ function computeParent(current: NavigationState): NavigationState | null {
 
 function pushEntry(state: HistoryState, entry: NavigationState): HistoryState {
   const current = state.entries[state.index];
-  if (isSameEntry(current, entry)) return state;
+  if (isSameEntry(current, entry)) {
+    const entries = state.entries.slice();
+    entries[state.index] = entry;
+    return { entries, index: state.index };
+  }
 
   const truncated = state.entries.slice(0, state.index + 1);
   truncated.push(entry);
