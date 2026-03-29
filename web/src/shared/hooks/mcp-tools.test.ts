@@ -1155,4 +1155,144 @@ describe('MCP tools', () => {
       });
     });
   });
+
+  // ── Relationship tools ────────────────────────────────────────────────
+
+  describe('link_tasks', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('link_tasks', {
+        sourceTaskId: 'task-1',
+        targetTaskId: 'task-2',
+        type: 'BLOCKS',
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('creates relationship and returns result', async () => {
+      const created = {
+        id: 'rel-1',
+        type: 'BLOCKS',
+        displayType: 'BLOCKS',
+        relatedTask: { id: 'task-2', displayId: 'ORCA-2', title: 'Target task', status: 'TODO' },
+        createdAt: '2026-03-28T00:00:00.000Z',
+      };
+
+      await withMockBackend({ createTaskRelationship: created }, async (received) => {
+        const result = await callTool('link_tasks', {
+          sourceTaskId: 'task-1',
+          targetTaskId: 'task-2',
+          type: 'BLOCKS',
+        });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.id).toBe('rel-1');
+        expect(parsed.type).toBe('BLOCKS');
+        expect(parsed.relatedTask.displayId).toBe('ORCA-2');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.input.sourceTaskId).toBe('task-1');
+        expect(sentVars.input.targetTaskId).toBe('task-2');
+        expect(sentVars.input.type).toBe('BLOCKS');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend(
+        { raw: { errors: [{ message: 'Tasks must be in the same workspace' }] } },
+        async () => {
+          const result = await callTool('link_tasks', {
+            sourceTaskId: 'task-1',
+            targetTaskId: 'task-2',
+            type: 'BLOCKS',
+          });
+          expect(result.isError).toBe(true);
+          expect(result.content[0].text).toContain('Failed to create task relationship');
+        },
+      );
+    });
+  });
+
+  describe('unlink_tasks', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('unlink_tasks', { id: 'rel-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('removes relationship and returns success message', async () => {
+      await withMockBackend({ removeTaskRelationship: true }, async (received) => {
+        const result = await callTool('unlink_tasks', { id: 'rel-1' });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0].text).toContain('Task relationship removed');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('rel-1');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend(
+        { raw: { errors: [{ message: 'Relationship not found' }] } },
+        async () => {
+          const result = await callTool('unlink_tasks', { id: 'rel-1' });
+          expect(result.isError).toBe(true);
+          expect(result.content[0].text).toContain('Failed to remove task relationship');
+        },
+      );
+    });
+  });
+
+  describe('list_task_links', () => {
+    it('returns error when no token', async () => {
+      deps.getToken = () => null;
+      const result = await callTool('list_task_links', { taskId: 'task-1' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Not authenticated');
+    });
+
+    it('returns task with relationships from backend', async () => {
+      const mockTask = {
+        id: 'task-1',
+        displayId: 'ORCA-1',
+        relationships: [
+          {
+            id: 'rel-1',
+            type: 'BLOCKS',
+            displayType: 'BLOCKS',
+            relatedTask: {
+              id: 'task-2',
+              displayId: 'ORCA-2',
+              title: 'Blocked task',
+              status: 'TODO',
+            },
+            createdAt: '2026-03-28T00:00:00.000Z',
+          },
+        ],
+      };
+
+      await withMockBackend({ task: mockTask }, async (received) => {
+        const result = await callTool('list_task_links', { taskId: 'task-1' });
+        expect(result.isError).toBeUndefined();
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.displayId).toBe('ORCA-1');
+        expect(parsed.relationships).toHaveLength(1);
+        expect(parsed.relationships[0].type).toBe('BLOCKS');
+        expect(parsed.relationships[0].relatedTask.displayId).toBe('ORCA-2');
+
+        const sentVars = JSON.parse(received.body()).variables;
+        expect(sentVars.id).toBe('task-1');
+      });
+    });
+
+    it('returns error on GraphQL errors', async () => {
+      await withMockBackend({ raw: { errors: [{ message: 'Not found' }] } }, async () => {
+        const result = await callTool('list_task_links', { taskId: 'task-1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Failed to list task relationships');
+      });
+    });
+  });
 });
