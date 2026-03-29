@@ -55,10 +55,12 @@ User clicks "Open Terminal" on task ORCA-42
 #### Worktree Location
 
 ```
-<repo-parent>/<repo-name>-worktrees/<branch-name>/
+~/.orca/worktrees/<repo-name>/<branch-name>/
 ```
 
-Example: `/Users/kyle/projects/my-app-worktrees/feat/ORCA-42-add-auth/`
+Example: `~/.orca/worktrees/my-app/feat/ORCA-42-add-auth/`
+
+Default base directory is `~/.orca/worktrees/`. In the future, users can override this per-project or globally.
 
 Since `feat/ORCA-42-slug` contains a `/`, this creates a nested directory. WorktreeManager must `mkdir -p` the parent before `git worktree add`.
 
@@ -156,6 +158,7 @@ Structured logging for all worktree operations:
 
 **Task Detail**:
 - When worktree exists: show worktree path + branch name (sourced from local SQLite `task_worktree` table via daemon IPC)
+- "Open in Finder" button — opens the worktree directory via `shell.openPath(worktreePath)`
 - "Remove worktree" button with confirmation dialog
 
 **Task List**:
