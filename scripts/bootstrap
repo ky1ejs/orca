@@ -69,12 +69,6 @@ echo "VITE_BACKEND_PORT=${PORT}" > web/.env
 
 echo "Environment files generated."
 
-# ─── Install dependencies ────────────────────────────────────────────
-
-echo "Installing dependencies..."
-(cd backend && bun install) 2>&1
-(cd web && bun install) 2>&1
-
 # ─── Package-specific bootstrap ──────────────────────────────────────
 
 echo "Bootstrapping backend..."

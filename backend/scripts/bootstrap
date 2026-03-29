@@ -11,6 +11,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "Installing dependencies..."
+bun install 2>&1
+
 echo "Generating Prisma client..."
 bunx prisma generate 2>&1
 

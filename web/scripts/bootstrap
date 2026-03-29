@@ -11,6 +11,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "Installing dependencies..."
+bun install 2>&1
+
 echo "Running web setup (codegen + native modules)..."
 bun run setup 2>&1
 
