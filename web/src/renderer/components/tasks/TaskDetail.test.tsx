@@ -108,6 +108,26 @@ vi.mock('../../hooks/useProjectDirectory.js', () => ({
   }),
 }));
 
+let mockWorktreeData: {
+  task_id: string;
+  worktree_path: string;
+  branch_name: string;
+  base_branch: string;
+  repo_path: string;
+  created_at: string;
+  updated_at: string;
+} | null = null;
+const mockRemoveWorktree = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('../../hooks/useWorktree.js', () => ({
+  useWorktree: () => ({
+    worktree: mockWorktreeData,
+    loading: false,
+    removeWorktree: mockRemoveWorktree,
+    refetch: vi.fn(),
+  }),
+}));
+
 // No longer mock useTerminalSessions — sessions are now passed as props
 
 vi.mock('../../hooks/useSessionActivity.js', () => ({
@@ -168,6 +188,7 @@ beforeEach(() => {
   mockSessions = [];
   mockFetching = false;
   mockError = null;
+  mockWorktreeData = null;
   vi.clearAllMocks();
 });
 
@@ -301,6 +322,88 @@ describe('TaskDetail', () => {
       fireEvent.click(screen.getByText('A test description'));
 
       expect(screen.getByDisplayValue('A test description')).toBeInTheDocument();
+    });
+  });
+
+  describe('worktree info', () => {
+    it('does not show worktree section when no worktree exists', async () => {
+      mockWorktreeData = null;
+      await importAndRender();
+
+      expect(screen.queryByText('Worktree')).not.toBeInTheDocument();
+    });
+
+    it('shows worktree branch and path when worktree exists', async () => {
+      mockWorktreeData = {
+        task_id: 'task-1',
+        worktree_path: '/Users/test/.orca/worktrees/app/feat/TST-1-test',
+        branch_name: 'feat/TST-1-test',
+        base_branch: 'main',
+        repo_path: '/Users/test/projects/app',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+      await importAndRender();
+
+      expect(screen.getByText('Worktree')).toBeInTheDocument();
+      expect(screen.getByText('feat/TST-1-test')).toBeInTheDocument();
+      expect(
+        screen.getByText('/Users/test/.orca/worktrees/app/feat/TST-1-test'),
+      ).toBeInTheDocument();
+    });
+
+    it('shows remove worktree button when worktree exists', async () => {
+      mockWorktreeData = {
+        task_id: 'task-1',
+        worktree_path: '/tmp/wt',
+        branch_name: 'feat/TST-1-test',
+        base_branch: 'main',
+        repo_path: '/tmp/repo',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+      await importAndRender();
+
+      expect(screen.getByText('Remove worktree')).toBeInTheDocument();
+    });
+
+    it('opens confirmation dialog when remove is clicked', async () => {
+      mockWorktreeData = {
+        task_id: 'task-1',
+        worktree_path: '/tmp/wt',
+        branch_name: 'feat/TST-1-test',
+        base_branch: 'main',
+        repo_path: '/tmp/repo',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Remove worktree'));
+
+      expect(screen.getByText(/This will permanently remove/)).toBeInTheDocument();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByText('Confirm')).toBeInTheDocument();
+    });
+
+    it('calls removeWorktree on confirm', async () => {
+      mockWorktreeData = {
+        task_id: 'task-1',
+        worktree_path: '/tmp/wt',
+        branch_name: 'feat/TST-1-test',
+        base_branch: 'main',
+        repo_path: '/tmp/repo',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Remove worktree'));
+      fireEvent.click(screen.getByText('Confirm'));
+
+      await vi.waitFor(() => {
+        expect(mockRemoveWorktree).toHaveBeenCalledWith(false);
+      });
     });
   });
 

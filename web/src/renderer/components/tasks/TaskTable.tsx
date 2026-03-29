@@ -8,6 +8,7 @@ import { formatRelativeDate } from '../../utils/formatRelativeDate.js';
 import { TaskTableInlineCreate } from './TaskTableInlineCreate.js';
 import { EmptyTaskList } from '../layout/EmptyState.js';
 import { PullRequestIndicator } from './PullRequestIndicator.js';
+import { TaskBranchBadge } from './TaskBranchBadge.js';
 import {
   STATUS_ORDER,
   STATUS_LABELS,
@@ -263,6 +264,9 @@ function TaskTableRow({ task, isFocused, onClick }: TaskTableRowProps) {
             title={label.name}
           />
         ))}
+      </div>
+      <div role="gridcell" className="flex-shrink-0">
+        <TaskBranchBadge taskId={task.id} />
       </div>
       {task.pullRequestCount != null && task.pullRequestCount > 0 && (
         <div role="gridcell" className="flex-shrink-0">

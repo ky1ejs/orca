@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trash2, FolderOpen } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Trash2, FolderOpen, GitBranch } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
@@ -8,6 +8,7 @@ import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { TaskAgentLauncher } from './TaskAgentLauncher.js';
+import { useWorktree } from '../../hooks/useWorktree.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
@@ -66,6 +67,27 @@ export function TaskDetailSidebar({
 }: TaskDetailSidebarProps) {
   const [editingDirectory, setEditingDirectory] = useState('');
   const [isEditingDir, setIsEditingDir] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const { worktree, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
+
+  const handleRemove = useCallback(
+    async (force: boolean) => {
+      setRemoving(true);
+      try {
+        await removeWorktree(force);
+        setConfirmRemove(false);
+        setRemoveError(null);
+      } catch (err) {
+        setRemoveError(err instanceof Error ? err.message : 'Failed to remove worktree');
+      } finally {
+        setRemoving(false);
+      }
+    },
+    [removeWorktree],
+  );
 
   const selectClass =
     'w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-accent';
@@ -235,6 +257,89 @@ export function TaskDetailSidebar({
           </button>
         )}
       </div>
+
+      {!worktreeLoading && worktree && (
+        <div className="border-t border-edge-subtle pt-5">
+          <label className="text-fg-faint text-label-sm block mb-1.5">Worktree</label>
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <GitBranch className={`${iconSize.xs} text-fg-faint flex-shrink-0`} />
+              <span
+                className="text-fg-muted text-code-sm font-mono truncate"
+                title={worktree.branch_name}
+              >
+                {worktree.branch_name}
+              </span>
+            </div>
+            <p
+              className="text-fg-faint text-body-sm font-mono truncate"
+              title={worktree.worktree_path}
+            >
+              {worktree.worktree_path}
+            </p>
+            <button
+              onClick={() => {
+                setConfirmRemove(true);
+                setRemoveError(null);
+              }}
+              className="px-2 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded transition-colors inline-flex items-center"
+            >
+              <Trash2 className={`${iconSize.xs} mr-1`} />
+              Remove worktree
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmRemove && worktree && (
+        <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-modal-backdrop animate-fade-in">
+          <div className="bg-surface-raised border border-edge-subtle rounded-lg p-6 max-w-md mx-4 shadow-modal animate-scale-in">
+            <p className="text-fg text-body-sm mb-4">
+              This will permanently remove the worktree at{' '}
+              <code className="text-fg-muted font-mono bg-surface-inset px-1 rounded">
+                {worktree.worktree_path}
+              </code>{' '}
+              and delete the local branch{' '}
+              <code className="text-fg-muted font-mono bg-surface-inset px-1 rounded">
+                {worktree.branch_name}
+              </code>
+              . This cannot be undone.
+            </p>
+            {removeError && <p className="text-error text-body-sm mb-4">{removeError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setConfirmRemove(false);
+                  setRemoveError(null);
+                }}
+                disabled={removing}
+                className="px-3 py-1.5 text-label-md text-fg-muted hover:text-fg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              {removeError &&
+                (removeError.includes('modified') || removeError.includes('untracked')) && (
+                  <button
+                    onClick={() => handleRemove(true)}
+                    disabled={removing}
+                    className="px-3 py-1.5 text-label-md bg-error-muted hover:bg-error-strong text-error rounded transition-colors disabled:opacity-50"
+                  >
+                    {removing ? 'Removing...' : 'Force remove'}
+                  </button>
+                )}
+              {!removeError && (
+                <button
+                  onClick={() => handleRemove(false)}
+                  disabled={removing}
+                  className="px-3 py-1.5 text-label-md bg-error-muted hover:bg-error-strong text-error rounded transition-colors disabled:opacity-50"
+                >
+                  {removing ? 'Removing...' : 'Confirm'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="text-fg-faint text-label-sm block mb-1.5">Terminal</label>
