@@ -29,6 +29,16 @@ export function getSessions(): TerminalSession[] {
   return db.select().from(terminalSession).orderBy(desc(terminalSession.created_at)).all();
 }
 
+export function getSessionsByTaskId(taskId: string): TerminalSession[] {
+  const db = getDb();
+  return db
+    .select()
+    .from(terminalSession)
+    .where(eq(terminalSession.task_id, taskId))
+    .orderBy(desc(terminalSession.created_at))
+    .all();
+}
+
 export function getSession(id: string): TerminalSession | undefined {
   const db = getDb();
   return db.select().from(terminalSession).where(eq(terminalSession.id, id)).get();

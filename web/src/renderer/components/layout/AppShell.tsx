@@ -114,6 +114,14 @@ export function AppShell({ onLogout }: AppShellProps) {
   // Prevents transient flash when cache invalidation temporarily clears workspace data.
   const hasEverHadProjects = useRef(false);
 
+  // Only mount xterm for active sessions + the most recent non-active session.
+  // Dead historical sessions don't need xterm instances (WebGL, addons, ResizeObserver).
+  const mountableSessions = useMemo(() => {
+    const active = sessions.filter((s) => isActiveSessionStatus(s.status));
+    const firstInactive = sessions.find((s) => !isActiveSessionStatus(s.status));
+    return firstInactive ? [...active, firstInactive] : active;
+  }, [sessions]);
+
   // Ref for sessions used in shortcut actions — avoids recreating shortcuts on every session change
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
@@ -365,7 +373,7 @@ export function AppShell({ onLogout }: AppShellProps) {
                     onSelectSession={setActiveSessionId}
                     onCloseSession={handleCloseSession}
                   />
-                  <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
+                  <TerminalPanel sessions={mountableSessions} activeSessionId={activeSessionId} />
                 </>
               ) : (
                 <EmptyTerminalArea />

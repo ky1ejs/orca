@@ -39,9 +39,10 @@ export function useTerminalSessions(taskId?: string) {
     const isFirst = !initialFetchDone.current;
     const mark = isFirst ? createPerfTimer('sessions-fetch', rendererPerfLog) : null;
     try {
-      const all = (await window.orca.db.getSessions()) as TerminalSessionInfo[];
+      const filtered = taskId
+        ? ((await window.orca.db.getSessionsByTask(taskId)) as TerminalSessionInfo[])
+        : ((await window.orca.db.getSessions()) as TerminalSessionInfo[]);
       if (!mountedRef.current) return;
-      const filtered = taskId ? all.filter((s) => s.task_id === taskId) : all;
       setSessions((prev) => {
         if (sessionsFingerprint(prev) === sessionsFingerprint(filtered)) return prev;
         return filtered;

@@ -171,13 +171,13 @@ export class DaemonStatusManager {
       }
       mark('pty-spawned');
 
-      // Update task to IN_PROGRESS and assign to current user
+      // Fire-and-forget: avoid blocking the launch response on a non-critical mutation
       const userId = this.getUserIdFromToken();
-      await this.updateTask(taskId, {
+      void this.updateTask(taskId, {
         status: 'IN_PROGRESS',
         ...(userId && { assigneeId: userId }),
       });
-      mark('task-updated');
+      mark('task-update-dispatched');
 
       this.startMonitoring(session.id, taskId, workingDirectory);
       mark('monitoring-started');
