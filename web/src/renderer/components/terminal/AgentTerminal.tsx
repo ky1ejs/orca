@@ -280,7 +280,13 @@ export const AgentTerminal = memo(function AgentTerminal({
     let lastSnapshot = '';
     const sendSnapshot = () => {
       try {
-        const serialized = serializeAddon.serialize();
+        // Include scrollback so the full output history survives unmount/remount
+        // (e.g. navigating away from a task and back). Without this, only the
+        // visible viewport (~30 rows) would be restored on replay.
+        const scrollback = terminal.buffer.active.length - terminal.rows;
+        const serialized = serializeAddon.serialize({
+          scrollback: Math.max(0, scrollback),
+        });
         if (serialized && serialized !== lastSnapshot) {
           lastSnapshot = serialized;
           window.orca.pty.snapshot(sessionId, serialized);
