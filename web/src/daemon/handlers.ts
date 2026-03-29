@@ -114,6 +114,11 @@ export function createHandler(deps: HandlerDeps) {
 
       case DAEMON_METHODS.PTY_REPLAY: {
         const p = params as PtyReplayParams;
+        // Reset flow control — the replay contains the full buffer so any
+        // previously unacked bytes (leaked from IPC pipeline during unmount)
+        // are now stale. Without this, unacked bytes accumulate across
+        // mount/unmount cycles until they permanently pause the PTY.
+        ptyManager.resetFlowControl(p.sessionId);
         return ptyManager.replay(p.sessionId);
       }
 

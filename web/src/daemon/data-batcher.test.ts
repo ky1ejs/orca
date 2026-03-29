@@ -394,6 +394,69 @@ describe('DataBatcher', () => {
     expect(flushed).toHaveLength(0);
   });
 
+  // --- Safety valve for stuck pauses ---
+
+  it('auto-resumes a session stuck in paused state for 30+ seconds', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const paused: string[] = [];
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause((sessionId) => paused.push(sessionId));
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    expect(paused).toEqual(['s1']);
+    expect(resumed).toHaveLength(0);
+
+    // Advance 29 seconds — not yet expired
+    vi.advanceTimersByTime(29_000);
+    expect(resumed).toHaveLength(0);
+
+    // Advance past 30 seconds — safety valve kicks in
+    vi.advanceTimersByTime(1_001);
+    expect(resumed).toEqual(['s1']);
+    batcher.dispose();
+  });
+
+  it('does not trigger safety valve if session is resumed by ack before timeout', () => {
+    const batcher = new DataBatcher({
+      highWatermark: 100,
+      lowWatermark: 50,
+      sizeThreshold: 50,
+    });
+    const resumed: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause(() => {});
+    batcher.onResume((sessionId) => resumed.push(sessionId));
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    batcher.ack('s1', 60); // unacked=40 < lowWatermark → resume
+    expect(resumed).toEqual(['s1']);
+
+    // Advance past 30 seconds — should NOT trigger again
+    vi.advanceTimersByTime(31_000);
+    expect(resumed).toEqual(['s1']); // still just the one resume
+    batcher.dispose();
+  });
+
+  it('resets unackedSize to 0 when safety valve triggers', () => {
+    const batcher = new DataBatcher({ highWatermark: 100, sizeThreshold: 50 });
+    const paused: string[] = [];
+    batcher.onFlush(() => {});
+    batcher.onPause((sessionId) => paused.push(sessionId));
+    batcher.onResume(() => {});
+
+    batcher.push('s1', 'x'.repeat(100)); // flush → unacked=100 → pause
+    vi.advanceTimersByTime(31_000); // safety valve triggers
+
+    // Push more data — should flush normally without immediately re-pausing
+    // because unackedSize was reset to 0
+    paused.length = 0; // clear previous pauses
+    batcher.push('s1', 'y'.repeat(50)); // flush → unacked=50 < 100 → no pause
+    expect(paused).toHaveLength(0);
+    batcher.dispose();
+  });
+
   // --- Single chunk optimization ---
 
   it('passes single chunk directly without join', () => {

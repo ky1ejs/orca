@@ -152,6 +152,8 @@ export class DaemonPtyManager {
   }
 
   setSnapshot(sessionId: string, content: string): void {
+    // Renderer may send a final snapshot during cleanup after the session is deleted.
+    if (!this.buffers.has(sessionId)) return;
     this.snapshots.set(sessionId, content);
     this.onDataCallback?.(sessionId);
   }
