@@ -277,22 +277,36 @@ describe('AgentTerminal', () => {
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it('keeps WebGL alive when terminal becomes hidden', () => {
+  it('keeps WebGL alive briefly when terminal becomes hidden', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     mockWebglDispose.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    // WebGL stays alive immediately (delayed disposal)
     expect(mockWebglDispose).not.toHaveBeenCalled();
   });
 
-  it('reuses existing WebGL addon when becoming visible again', async () => {
+  it('disposes WebGL after delay when terminal stays hidden', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      mockWebglDispose.mockClear();
+
+      rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+      vi.advanceTimersByTime(5_000);
+      expect(mockWebglDispose).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reuses existing WebGL addon on quick tab switch', async () => {
     const { WebglAddon } = await import('@xterm/addon-webgl');
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     const initialCallCount = (WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length;
 
-    // Hide — WebGL stays alive
+    // Hide briefly then show — WebGL stays alive, no new creation
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    // Show again — reuses existing WebGL (no new creation)
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
 
     expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBe(initialCallCount);

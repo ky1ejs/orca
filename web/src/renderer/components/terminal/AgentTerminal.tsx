@@ -348,39 +348,52 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
-  // Load WebGL on first visibility and keep it alive across tab switches.
-  // Destroying/recreating the context on every switch adds 5-20ms of latency;
-  // keeping it alive makes tab switching instant. With typically 3-5 sessions
-  // per task this stays well within the browser's ~8-16 context limit.
-  // Context loss is handled gracefully (fallback to DOM renderer).
-  // Cleanup on component unmount is handled by the main useEffect above.
+  // WebGL lifecycle: create on visibility, release after a delay when hidden.
+  // Immediate creation avoids the 5-20ms latency of recreating on every tab
+  // switch. The 5s delay before disposal means rapid switching keeps contexts
+  // alive, while idle hidden terminals eventually free GPU resources — staying
+  // within the browser's ~8-16 context limit even with many sessions.
+  // Context loss falls back to DOM renderer gracefully.
   //
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
   useEffect(() => {
-    if (!visible) return;
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
 
-    if (!webglAddonRef.current) {
-      try {
-        const addon = new WebglAddon();
-        webglAddonRef.current = addon;
-        addon.onContextLoss(() => {
-          if (webglAddonRef.current === addon) {
-            webglAddonRef.current = null;
-          }
-          addon.dispose();
-        });
-        terminal.loadAddon(addon);
-      } catch {
-        webglAddonRef.current = null;
+    if (visible) {
+      if (!webglAddonRef.current) {
+        try {
+          const addon = new WebglAddon();
+          webglAddonRef.current = addon;
+          addon.onContextLoss(() => {
+            if (webglAddonRef.current === addon) {
+              webglAddonRef.current = null;
+            }
+            addon.dispose();
+          });
+          terminal.loadAddon(addon);
+        } catch {
+          webglAddonRef.current = null;
+        }
       }
+
+      fitAndResize(fitAddon, terminal, sessionId);
+      terminal.focus();
+      return;
     }
 
-    fitAndResize(fitAddon, terminal, sessionId);
-    terminal.focus();
+    // Release WebGL context after a delay so rapid tab switching doesn't
+    // pay the creation cost, but idle hidden terminals free GPU resources.
+    const disposeTimer = setTimeout(() => {
+      const addon = webglAddonRef.current;
+      if (addon) {
+        webglAddonRef.current = null;
+        addon.dispose();
+      }
+    }, 5_000);
+    return () => clearTimeout(disposeTimer);
   }, [visible, sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
