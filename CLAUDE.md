@@ -8,7 +8,7 @@ The main services/apps are the backend server (`backend/`) and the Electron desk
 
 ### Worktrees
 
-You must NEVER make changes on main and must always be on a worktree. Always create a worktree before starting any work using the /create-worktree skill.
+You must NEVER make changes on main and must always be on a worktree. Orca creates worktrees automatically when you launch an agent on a task. The `.orca/bootstrap` script runs after worktree creation to set up isolated resources (port, database, dependencies).
 
 ### Run simplifier
 
