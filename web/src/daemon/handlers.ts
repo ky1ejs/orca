@@ -51,6 +51,7 @@ import type {
   WorktreeGetParams,
   WorktreeRemoveParams,
   WorktreeSafetyParams,
+  WorktreeListResult,
   DaemonStatusResult,
   SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
@@ -296,7 +297,7 @@ export function createHandler(deps: HandlerDeps) {
 
       case DAEMON_METHODS.WORKTREE_LIST: {
         const rows = listWorktrees();
-        const results = [];
+        const results: WorktreeListResult[] = [];
         for (const row of rows) {
           const safety = await checkWorktreeSafety(
             row.worktree_path,

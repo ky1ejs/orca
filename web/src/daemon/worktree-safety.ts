@@ -42,7 +42,8 @@ export async function checkWorktreeSafety(
 
   try {
     const merged = await git(repoPath, ['branch', '--merged', baseBranch]);
-    branchMerged = merged.split('\n').some((b) => b.trim() === branchName);
+    // git branch --merged prefixes the current branch with "* ", so strip it
+    branchMerged = merged.split('\n').some((b) => b.replace(/^\*\s*/, '').trim() === branchName);
   } catch (err) {
     logger.warn(`worktree-safety: failed to check merge status: ${err}`);
     branchMerged = false;

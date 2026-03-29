@@ -28,14 +28,17 @@ export function useWorktreeAutoCleanup(
     if (changedTask.status !== TaskStatus.Done) return;
     if (cleanedRef.current.has(changedTask.id)) return;
 
-    cleanedRef.current.add(changedTask.id);
-
     void (async () => {
-      const safety = await window.orca.worktree.safety(changedTask.id);
-      if (!safety) return;
-      if (safety.dirty || safety.unpushedCommits || !safety.branchMerged) return;
+      try {
+        const safety = await window.orca.worktree.safety(changedTask.id);
+        if (!safety) return;
+        if (safety.dirty || safety.unpushedCommits || !safety.branchMerged) return;
 
-      await window.orca.worktree.remove(changedTask.id);
+        await window.orca.worktree.remove(changedTask.id);
+        cleanedRef.current.add(changedTask.id);
+      } catch {
+        // Transient failure — don't mark as cleaned so it retries next event
+      }
     })();
   }, [changedTask, autoCleanupWorktree]);
 }
