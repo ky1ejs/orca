@@ -198,9 +198,16 @@ afterEach(cleanup);
 async function importAndRender(taskId = 'task-1') {
   const { TaskDetail } = await import('./TaskDetail.js');
   const { PreferencesProvider } = await import('../../preferences/context.js');
+  const { TaskHeaderProvider } = await import('./TaskHeaderContext.js');
   return render(
     <PreferencesProvider>
-      <TaskDetail taskId={taskId} sessions={mockSessions} refreshSessions={mockRefreshSessions} />
+      <TaskHeaderProvider>
+        <TaskDetail
+          taskId={taskId}
+          sessions={mockSessions}
+          refreshSessions={mockRefreshSessions}
+        />
+      </TaskHeaderProvider>
     </PreferencesProvider>,
   );
 }

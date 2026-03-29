@@ -7,9 +7,7 @@ import { STATUS_ORDER, STATUS_LABELS, PRIORITY_LABELS } from '../../utils/task-s
 import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
-import { TaskAgentLauncher } from './TaskAgentLauncher.js';
 import { useWorktree } from '../../hooks/useWorktree.js';
-import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
@@ -35,17 +33,6 @@ interface TaskDetailSidebarProps {
   projectDirectory: string | null;
   dirLoading: boolean;
   updateDirectory: (dir: string) => void;
-  activeSession: TerminalSessionInfo | undefined;
-  errorSession: TerminalSessionInfo | undefined;
-  refreshSessions: () => void;
-  buildMetadata: () => {
-    displayId: string;
-    title: string;
-    description: string | null;
-    projectName: string | null;
-    workspaceSlug: string;
-  };
-  onAgentError: (error: { message: string; suggestion: string } | null) => void;
 }
 
 export function TaskDetailSidebar({
@@ -59,11 +46,6 @@ export function TaskDetailSidebar({
   projectDirectory,
   dirLoading,
   updateDirectory,
-  activeSession,
-  errorSession,
-  refreshSessions,
-  buildMetadata,
-  onAgentError,
 }: TaskDetailSidebarProps) {
   const [editingDirectory, setEditingDirectory] = useState('');
   const [isEditingDir, setIsEditingDir] = useState(false);
@@ -340,19 +322,6 @@ export function TaskDetailSidebar({
           </div>
         </div>
       )}
-
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Terminal</label>
-        <TaskAgentLauncher
-          taskId={task.id}
-          activeSession={activeSession}
-          errorSession={errorSession}
-          projectDirectory={projectDirectory}
-          refreshSessions={refreshSessions}
-          buildMetadata={buildMetadata}
-          onError={onAgentError}
-        />
-      </div>
 
       <div className="border-t border-edge-subtle pt-5">
         <button

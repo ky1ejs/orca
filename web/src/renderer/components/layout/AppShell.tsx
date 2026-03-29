@@ -20,7 +20,8 @@ import { TerminalPRStatusBar } from '../terminal/TerminalPRStatusBar.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
 import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
-import { Breadcrumbs } from './Breadcrumbs.js';
+import { PageHeader } from './PageHeader.js';
+import { TaskHeaderProvider } from '../tasks/TaskHeaderContext.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
 import { CommandPalette } from '../command-palette/CommandPalette.js';
@@ -369,37 +370,39 @@ export function AppShell({ onLogout }: AppShellProps) {
             </button>
           </div>
         )}
-        <main className="flex-1 overflow-y-auto">
-          <Breadcrumbs />
-          <MainContent sessions={sessions} refreshSessions={refresh} />
-        </main>
-        {current.view === 'task' && taskId && (
-          <>
-            <div
-              {...resizeHandleProps}
-              className={`h-1.5 shrink-0 cursor-row-resize border-t border-edge hover:bg-accent-muted active:bg-accent-muted${isResizingTerminal ? ' bg-accent-muted' : ''}`}
-            />
-            <div
-              className="shrink-0 flex flex-col overflow-hidden"
-              style={{ height: terminalPanelHeight }}
-            >
-              <TerminalPRStatusBar taskId={taskId} />
-              {hasActiveSessions ? (
-                <>
-                  <TerminalTabs
-                    sessions={sessions}
-                    activeSessionId={activeSessionId}
-                    onSelectSession={setActiveSessionId}
-                    onCloseSession={handleCloseSession}
-                  />
-                  <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
-                </>
-              ) : (
-                <EmptyTerminalArea />
-              )}
-            </div>
-          </>
-        )}
+        <TaskHeaderProvider>
+          <PageHeader />
+          <main className="flex-1 overflow-y-auto">
+            <MainContent sessions={sessions} refreshSessions={refresh} />
+          </main>
+          {current.view === 'task' && taskId && (
+            <>
+              <div
+                {...resizeHandleProps}
+                className={`h-1.5 shrink-0 cursor-row-resize border-t border-edge hover:bg-accent-muted active:bg-accent-muted${isResizingTerminal ? ' bg-accent-muted' : ''}`}
+              />
+              <div
+                className="shrink-0 flex flex-col overflow-hidden"
+                style={{ height: terminalPanelHeight }}
+              >
+                <TerminalPRStatusBar taskId={taskId} />
+                {hasActiveSessions ? (
+                  <>
+                    <TerminalTabs
+                      sessions={sessions}
+                      activeSessionId={activeSessionId}
+                      onSelectSession={setActiveSessionId}
+                      onCloseSession={handleCloseSession}
+                    />
+                    <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
+                  </>
+                ) : (
+                  <EmptyTerminalArea />
+                )}
+              </div>
+            </>
+          )}
+        </TaskHeaderProvider>
       </div>
       <KeyboardShortcutHelp
         shortcuts={displayShortcuts}
