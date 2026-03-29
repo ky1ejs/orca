@@ -8,6 +8,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import { usePreferences } from '../../preferences/context.js';
 import { TerminalSearchBar } from './TerminalSearchBar.js';
 import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
+import { isActiveSessionStatus } from '../../../shared/session-status.js';
 import '@xterm/xterm/css/xterm.css';
 
 function readTerminalTheme() {
@@ -55,6 +56,8 @@ interface AgentTerminalProps {
   sessionId: string;
   /** Whether this terminal is the active/visible tab. */
   visible: boolean;
+  /** Session status — used to defer xterm init for dead sessions until viewed. */
+  status: string;
 }
 
 /** Fit the terminal to its container and sync the PTY dimensions. */
@@ -94,6 +97,7 @@ function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string)
 export const AgentTerminal = memo(function AgentTerminal({
   sessionId,
   visible,
+  status,
 }: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -107,7 +111,19 @@ export const AgentTerminal = memo(function AgentTerminal({
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
+  // Lazy initialization latch: defer xterm creation for dead sessions that
+  // aren't visible. Once initialized, stays true for the component's lifetime
+  // — no teardown-and-recreate cycle that would leak unACKed flow control bytes.
+  const [initialized, setInitialized] = useState(() => visible || isActiveSessionStatus(status));
+
   useEffect(() => {
+    if (visible || isActiveSessionStatus(status)) {
+      setInitialized(true);
+    }
+  }, [visible, status]);
+
+  useEffect(() => {
+    if (!initialized) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -353,7 +369,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       fitAddonRef.current = null;
       searchAddonRef.current = null;
     };
-  }, [sessionId]);
+  }, [sessionId, initialized]);
 
   const handleSearchClose = () => {
     setSearchVisible(false);
@@ -362,6 +378,9 @@ export const AgentTerminal = memo(function AgentTerminal({
   };
 
   // WebGL lifecycle: create on visibility, release after a delay when hidden.
+  // Must be declared after the main xterm effect — on first initialization both
+  // effects fire in the same commit and this one reads terminalRef.current.
+  //
   // Immediate creation avoids the 5-20ms latency of recreating on every tab
   // switch. The 5s delay before disposal means rapid switching tends to keep
   // contexts alive, while idle hidden terminals eventually free GPU resources —
@@ -372,6 +391,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
   useEffect(() => {
+    if (!initialized) return;
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
@@ -408,7 +428,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       }
     }, 5_000);
     return () => clearTimeout(disposeTimer);
-  }, [visible, sessionId]);
+  }, [visible, sessionId, initialized]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('Files')) {
@@ -449,6 +469,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   // Apply font changes live
   useEffect(() => {
     fontRef.current = terminalFontFamily;
+    if (!initialized) return;
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     if (terminal) {
@@ -457,7 +478,7 @@ export const AgentTerminal = memo(function AgentTerminal({
         fitAndResize(fitAddon, terminal, sessionId);
       }
     }
-  }, [terminalFontFamily, sessionId]);
+  }, [terminalFontFamily, sessionId, initialized]);
 
   return (
     <div

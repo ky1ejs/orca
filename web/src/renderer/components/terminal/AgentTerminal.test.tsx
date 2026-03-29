@@ -166,12 +166,14 @@ const { AgentTerminal, escapeFilePath } = await import('./AgentTerminal.js');
 
 describe('AgentTerminal', () => {
   it('renders the terminal container', () => {
-    const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { getByTestId } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     expect(getByTestId('agent-terminal')).toBeInTheDocument();
   });
 
   it('calls replay after ResizeObserver fires (not rAF)', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     // Before ResizeObserver fires, replay should not have been called
     expect(mockReplay).not.toHaveBeenCalled();
 
@@ -186,14 +188,14 @@ describe('AgentTerminal', () => {
   });
 
   it('resizes PTY after fit on initial ResizeObserver callback', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockPtyResize).toHaveBeenCalledWith('test-session', 80, 24);
   });
 
   it('defers onData subscription until after fit + replay', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     // onData should NOT be subscribed before ResizeObserver fires
     expect(mockPtyOnData).not.toHaveBeenCalled();
 
@@ -207,12 +209,12 @@ describe('AgentTerminal', () => {
   });
 
   it('subscribes to onExit', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockPtyOnExit).toHaveBeenCalledWith('test-session', expect.any(Function));
   });
 
   it('connects terminal onData to pty.write for user input', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockOnData).toHaveBeenCalled();
 
     // Simulate user typing
@@ -222,7 +224,7 @@ describe('AgentTerminal', () => {
   });
 
   it('intercepts Shift+Enter to send CSI u escape sequence', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockAttachCustomKeyEventHandler).toHaveBeenCalled();
 
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
@@ -245,43 +247,49 @@ describe('AgentTerminal', () => {
   });
 
   it('does not load WebGL addon on mount when hidden', () => {
-    render(<AgentTerminal sessionId="test-session" visible={false} />);
+    render(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
     expect(mockWebglOnContextLoss).not.toHaveBeenCalled();
   });
 
   it('loads WebGL addon when terminal becomes visible', () => {
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
+    const { rerender } = render(
+      <AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />,
+    );
     expect(mockWebglOnContextLoss).not.toHaveBeenCalled();
 
-    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('disposes WebGL addon on context loss', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
     onContextLossCallback();
     expect(mockWebglDispose).toHaveBeenCalled();
   });
 
   it('recreates WebGL after context loss on next visibility change', () => {
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { rerender } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     // Trigger context loss — addon disposed, ref cleared
     const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
     onContextLossCallback();
     mockWebglOnContextLoss.mockClear();
 
     // Hide then show — should recreate WebGL since context was lost
-    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+    rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('keeps WebGL alive briefly when terminal becomes hidden', () => {
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { rerender } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     mockWebglDispose.mockClear();
 
-    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
     // WebGL stays alive immediately (delayed disposal)
     expect(mockWebglDispose).not.toHaveBeenCalled();
   });
@@ -289,10 +297,12 @@ describe('AgentTerminal', () => {
   it('disposes WebGL after delay when terminal stays hidden', () => {
     vi.useFakeTimers();
     try {
-      const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
       mockWebglDispose.mockClear();
 
-      rerender(<AgentTerminal sessionId="test-session" visible={false} />);
+      rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
       vi.advanceTimersByTime(5_000);
       expect(mockWebglDispose).toHaveBeenCalled();
     } finally {
@@ -302,18 +312,22 @@ describe('AgentTerminal', () => {
 
   it('reuses existing WebGL addon on quick tab switch', async () => {
     const { WebglAddon } = await import('@xterm/addon-webgl');
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { rerender } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     const initialCallCount = (WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length;
 
     // Hide briefly then show — WebGL stays alive, no new creation
-    rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+    rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
 
     expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBe(initialCallCount);
   });
 
   it('disposes terminal and WebGL addon on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     unmount();
     expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
@@ -321,7 +335,7 @@ describe('AgentTerminal', () => {
 
   it('subscribes to onData even when replay fails', async () => {
     mockReplay.mockRejectedValueOnce(new Error('Daemon disconnected'));
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     // Despite replay rejection, onData should still be subscribed
@@ -331,7 +345,7 @@ describe('AgentTerminal', () => {
   });
 
   it('re-replays and re-subscribes on daemon reconnection', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -360,7 +374,7 @@ describe('AgentTerminal', () => {
   });
 
   it('still re-subscribes when reconnection replay fails', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -383,14 +397,18 @@ describe('AgentTerminal', () => {
     const mockUnsubReconnect = vi.fn();
     mockOnDaemonReconnected.mockReturnValueOnce(mockUnsubReconnect);
 
-    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     unmount();
 
     expect(mockUnsubReconnect).toHaveBeenCalled();
   });
 
   it('disconnects ResizeObserver on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     const observer = (globalThis as unknown as { ResizeObserver: ReturnType<typeof vi.fn> })
       .ResizeObserver;
     const instance = observer.mock.results[0].value;
@@ -399,20 +417,22 @@ describe('AgentTerminal', () => {
   });
 
   it('loads SearchAddon', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockLoadAddon).toHaveBeenCalledWith(
       expect.objectContaining({ findNext: mockSearchFindNext }),
     );
   });
 
   it('disposes SearchAddon on unmount', () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     unmount();
     expect(mockSearchDispose).toHaveBeenCalled();
   });
 
   it('intercepts Cmd+F to open search', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
     const cmdF = {
       type: 'keydown',
@@ -427,7 +447,7 @@ describe('AgentTerminal', () => {
   });
 
   it('intercepts Ctrl+F to open search', () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
     const ctrlF = {
       type: 'keydown',
@@ -443,7 +463,7 @@ describe('AgentTerminal', () => {
 
   it('skips fit when proposed dimensions match current terminal dimensions', () => {
     mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).not.toHaveBeenCalled();
     expect(mockPtyResize).not.toHaveBeenCalled();
@@ -452,7 +472,7 @@ describe('AgentTerminal', () => {
   it('scrolls to bottom after fit when viewport was at bottom', () => {
     mockBuffer.active.viewportY = 100;
     mockBuffer.active.baseY = 100;
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).toHaveBeenCalled();
@@ -461,7 +481,7 @@ describe('AgentTerminal', () => {
   it('does not scroll to bottom after fit when viewport was scrolled up', () => {
     mockBuffer.active.viewportY = 50;
     mockBuffer.active.baseY = 100;
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).not.toHaveBeenCalled();
@@ -469,7 +489,7 @@ describe('AgentTerminal', () => {
 
   it('calls refresh after fitAndResize even when dimensions match', () => {
     mockProposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).not.toHaveBeenCalled();
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
@@ -478,14 +498,14 @@ describe('AgentTerminal', () => {
   it('scrolls to bottom when viewport is within 1 row of bottom', () => {
     mockBuffer.active.viewportY = 99;
     mockBuffer.active.baseY = 100;
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     expect(mockFit).toHaveBeenCalled();
     expect(mockScrollToBottom).toHaveBeenCalled();
   });
 
   it('throttles refresh calls during active output', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -512,7 +532,7 @@ describe('AgentTerminal', () => {
   });
 
   it('coalesces multiple onData events into a single write per frame', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -539,7 +559,7 @@ describe('AgentTerminal', () => {
   });
 
   it('sends ACK after xterm.js processes a write', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -558,7 +578,7 @@ describe('AgentTerminal', () => {
 
   it('sends ACK after replay write completes', async () => {
     mockReplay.mockResolvedValue('replayed output');
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -567,7 +587,9 @@ describe('AgentTerminal', () => {
   });
 
   it('ACKs pending data directly on unmount', async () => {
-    const { unmount } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
     triggerInitialResize();
 
     await vi.waitFor(() => {
@@ -587,7 +609,7 @@ describe('AgentTerminal', () => {
   });
 
   it('uses rAF for resize debounce instead of setTimeout', async () => {
-    render(<AgentTerminal sessionId="test-session" visible={true} />);
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     triggerInitialResize();
     mockFit.mockClear();
     mockPtyResize.mockClear();
@@ -604,13 +626,15 @@ describe('AgentTerminal', () => {
   });
 
   it('calls refresh, loads WebGL, and focuses when terminal becomes visible', () => {
-    const { rerender } = render(<AgentTerminal sessionId="test-session" visible={false} />);
+    const { rerender } = render(
+      <AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />,
+    );
     triggerInitialResize();
     mockRefresh.mockClear();
     mockWebglOnContextLoss.mockClear();
     mockFocus.mockClear();
 
-    rerender(<AgentTerminal sessionId="test-session" visible={true} />);
+    rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
     expect(mockRefresh).toHaveBeenCalledWith(0, 23);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
     expect(mockFocus).toHaveBeenCalled();
@@ -619,7 +643,7 @@ describe('AgentTerminal', () => {
   describe('drag and drop', () => {
     it('shows drop overlay on dragOver with files', () => {
       const { getByTestId, getByText } = render(
-        <AgentTerminal sessionId="test-session" visible={true} />,
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
       );
       const container = getByTestId('agent-terminal');
 
@@ -632,7 +656,7 @@ describe('AgentTerminal', () => {
 
     it('does not show drop overlay for non-file drags', () => {
       const { getByTestId, queryByText } = render(
-        <AgentTerminal sessionId="test-session" visible={true} />,
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
       );
       const container = getByTestId('agent-terminal');
 
@@ -645,7 +669,7 @@ describe('AgentTerminal', () => {
 
     it('hides overlay on dragLeave', () => {
       const { getByTestId, queryByText } = render(
-        <AgentTerminal sessionId="test-session" visible={true} />,
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
       );
       const container = getByTestId('agent-terminal');
 
@@ -660,7 +684,9 @@ describe('AgentTerminal', () => {
     });
 
     it('pastes single file path on drop', () => {
-      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const { getByTestId } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
       const container = getByTestId('agent-terminal');
 
       fireEvent.drop(container, {
@@ -674,7 +700,9 @@ describe('AgentTerminal', () => {
     });
 
     it('quotes paths with spaces', () => {
-      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const { getByTestId } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
       const container = getByTestId('agent-terminal');
 
       fireEvent.drop(container, {
@@ -688,7 +716,9 @@ describe('AgentTerminal', () => {
     });
 
     it('pastes multiple file paths space-separated', () => {
-      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const { getByTestId } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
       const container = getByTestId('agent-terminal');
 
       fireEvent.drop(container, {
@@ -703,7 +733,7 @@ describe('AgentTerminal', () => {
 
     it('hides overlay after drop', () => {
       const { getByTestId, queryByText } = render(
-        <AgentTerminal sessionId="test-session" visible={true} />,
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
       );
       const container = getByTestId('agent-terminal');
 
@@ -721,7 +751,9 @@ describe('AgentTerminal', () => {
     });
 
     it('does not paste when no files are dropped', () => {
-      const { getByTestId } = render(<AgentTerminal sessionId="test-session" visible={true} />);
+      const { getByTestId } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
       const container = getByTestId('agent-terminal');
 
       fireEvent.drop(container, {
@@ -740,7 +772,7 @@ describe('AgentTerminal', () => {
     try {
       // Mock buffer with 100 lines total, 24 visible rows → 76 scrollback
       mockBuffer.active.length = 100;
-      render(<AgentTerminal sessionId="test-session" visible={true} />);
+      render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
       triggerInitialResize();
 
       vi.advanceTimersByTime(5_000);
@@ -749,6 +781,65 @@ describe('AgentTerminal', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe('lazy initialization', () => {
+    it('does not initialize xterm for hidden exited sessions', () => {
+      render(<AgentTerminal sessionId="test-session" visible={false} status="EXITED" />);
+      expect(mockOpen).not.toHaveBeenCalled();
+      expect(mockReplay).not.toHaveBeenCalled();
+      expect(mockPtyOnExit).not.toHaveBeenCalled();
+    });
+
+    it('initializes xterm when a dormant session becomes visible', () => {
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={false} status="EXITED" />,
+      );
+      expect(mockOpen).not.toHaveBeenCalled();
+
+      rerender(<AgentTerminal sessionId="test-session" visible={true} status="EXITED" />);
+      expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('initializes xterm for hidden sessions with active status', () => {
+      render(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+      expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('does not tear down xterm when status goes inactive', () => {
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
+      expect(mockOpen).toHaveBeenCalled();
+      mockDispose.mockClear();
+
+      rerender(<AgentTerminal sessionId="test-session" visible={false} status="EXITED" />);
+      expect(mockDispose).not.toHaveBeenCalled();
+    });
+
+    it('initializes xterm for hidden sessions with STARTING status', () => {
+      render(<AgentTerminal sessionId="test-session" visible={false} status="STARTING" />);
+      expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('initializes xterm for hidden sessions with AWAITING_PERMISSION status', () => {
+      render(
+        <AgentTerminal sessionId="test-session" visible={false} status="AWAITING_PERMISSION" />,
+      );
+      expect(mockOpen).toHaveBeenCalled();
+    });
+
+    it('does not initialize xterm for hidden ERROR sessions', () => {
+      render(<AgentTerminal sessionId="test-session" visible={false} status="ERROR" />);
+      expect(mockOpen).not.toHaveBeenCalled();
+    });
+
+    it('renders the container div even when dormant', () => {
+      const { getByTestId } = render(
+        <AgentTerminal sessionId="test-session" visible={false} status="EXITED" />,
+      );
+      expect(getByTestId('agent-terminal')).toBeInTheDocument();
+    });
   });
 });
 

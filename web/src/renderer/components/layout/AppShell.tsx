@@ -84,6 +84,7 @@ const TerminalPanel = memo(function TerminalPanel({
           key={session.id}
           sessionId={session.id}
           visible={session.id === activeSessionId}
+          status={session.status}
         />
       ))}
     </div>
