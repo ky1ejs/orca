@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Bootstrap the backend package.
+# Called by the repo-level scripts/bootstrap after environment is set up.
+#
+# Expects:
+#   - CWD is the worktree root (or repo root)
+#   - backend/.env exists with PORT, DATABASE_URL, JWT_SECRET
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "Generating Prisma client..."
+bunx prisma generate 2>&1
+
+echo "Running Prisma migrations..."
+bunx prisma migrate deploy 2>&1
+
+echo "Backend bootstrap complete."

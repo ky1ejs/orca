@@ -1,34 +1,27 @@
 # Create Worktree
 
-Create an isolated worktree for parallel development with its own backend port and database.
+Worktrees are managed automatically by Orca. When you launch an agent on a task, the daemon creates a git worktree and runs `.orca/bootstrap` to set up isolated resources (port, database, dependencies).
 
-## Usage
+## Manual worktree creation
 
-```
-/create-worktree <name> [--base <branch>]
-```
-
-## What it does
-
-1. Creates a git worktree at `../worktrees/orca/<name>`
-2. Allocates a resource slot (port + database)
-3. Creates the Postgres database
-4. Generates `.env` files for backend and web
-5. Installs dependencies and runs Prisma migrations
-
-## Instructions
-
-Run the worktree creation script:
+If you need to create a worktree outside of Orca (e.g. for development on Orca itself), use the bootstrap script directly:
 
 ```bash
-./scripts/worktree create <name>
+# 1. Create the git worktree
+git worktree add ../worktrees/orca/<name> -b <branch> main
+
+# 2. Bootstrap it
+./scripts/bootstrap ../worktrees/orca/<name>
 ```
 
-Options:
+The bootstrap script derives a deterministic port and database name from the worktree path (via hash), installs dependencies, and runs package-specific setup.
 
-- `--base <branch>` — base branch (default: main)
-- `--branch <name>` — branch name (default: same as worktree name)
-- `--no-bootstrap` — skip `bun install` and migrations
-- `-v` — verbose output
+## What bootstrap does
 
-After creation, `cd` to the worktree path and run `bun run dev`.
+1. Derives port (4010–4999) and DB name from worktree path hash
+2. Ensures Postgres is running
+3. Creates the database
+4. Generates `.env` files for backend and web
+5. Installs dependencies (`bun install`)
+6. Runs `backend/scripts/bootstrap` (Prisma generate + migrate)
+7. Runs `web/scripts/bootstrap` (codegen + native module rebuild)

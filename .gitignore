@@ -28,8 +28,6 @@ Thumbs.db
 *.tsbuildinfo
 dist-electron/
 
-# Worktree registry
-.worktree-registry.json
 
 # Claude
 .claude/settings.local.json

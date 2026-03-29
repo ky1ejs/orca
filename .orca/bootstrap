@@ -1,58 +1,12 @@
 #!/usr/bin/env bash
 #
-# Bootstrap a new Orca worktree with isolated resources.
-# Runs automatically after the daemon creates a git worktree for a task.
+# Worktree bootstrap hook — invoked by the Orca daemon after creating
+# a new git worktree for a task. Delegates to the repo's bootstrap script.
 #
 # Environment variables provided by the daemon:
 #   ORCA_WORKTREE_PATH  — absolute path to the worktree (same as CWD)
 #   ORCA_REPO_ROOT      — absolute path to the original repo root
-#   ORCA_TASK_ID        — task display ID (e.g. ORCA-42)
-#   ORCA_TASK_TITLE     — task title
-#   ORCA_PROJECT_NAME   — project name
-#   ORCA_WORKSPACE_SLUG — workspace slug
 
 set -euo pipefail
 
-SCRIPTS="${ORCA_REPO_ROOT}/scripts"
-WT_NAME="$(basename "$ORCA_WORKTREE_PATH")"
-
-echo "Bootstrapping worktree: $WT_NAME"
-
-# 1. Allocate resource slot (port + database)
-SLOT=$("$SCRIPTS/allocate-slot.sh" "$WT_NAME")
-PORT=$((4000 + SLOT * 10))
-DB_NAME="orca_wt_${SLOT}"
-echo "Allocated slot $SLOT (port: $PORT, db: $DB_NAME)"
-
-# 2. Ensure Postgres is running
-if ! docker compose -f "$ORCA_REPO_ROOT/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
-  echo "Starting Postgres..."
-  docker compose -f "$ORCA_REPO_ROOT/docker-compose.yml" up -d 2>&1
-fi
-
-# 3. Create database
-docker compose -f "$ORCA_REPO_ROOT/docker-compose.yml" exec -T postgres \
-  psql -U postgres -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
-echo "Database ready: $DB_NAME"
-
-# 4. Generate .env files
-"$SCRIPTS/generate-worktree-env.sh" "$SLOT" "$ORCA_WORKTREE_PATH" 2>&1
-
-# 5. Install dependencies
-echo "Installing dependencies..."
-(cd backend && bun install) 2>&1
-(cd web && bun install) 2>&1
-
-# 6. Generate Prisma client
-echo "Generating Prisma client..."
-(cd backend && bunx prisma generate) 2>&1
-
-# 7. Setup web (codegen + rebuild native modules for Electron)
-echo "Running web setup (codegen + native modules)..."
-(cd web && bun run setup) 2>&1
-
-# 8. Run Prisma migrations
-echo "Running migrations..."
-(cd backend && bunx prisma migrate deploy) 2>&1
-
-echo "Bootstrap complete! Slot: $SLOT, Port: $PORT, DB: $DB_NAME"
+exec "$ORCA_REPO_ROOT/scripts/bootstrap" "$ORCA_WORKTREE_PATH"
