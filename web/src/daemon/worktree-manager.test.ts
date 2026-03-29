@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import Database from 'better-sqlite3';
@@ -36,8 +36,13 @@ vi.mock('./logger.js', () => ({
 const { WorktreeManager } = await import('./worktree-manager.js');
 
 function createTempGitRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'orca-wt-test-'));
+  // realpathSync resolves macOS /var → /private/var symlink to match git's --show-toplevel
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orca-wt-test-')));
   execFileSync('git', ['init', '-b', 'main', dir], { stdio: 'pipe' });
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 'orca-test@example.com'], {
+    stdio: 'pipe',
+  });
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 'Orca Test'], { stdio: 'pipe' });
   execFileSync('git', ['-C', dir, 'commit', '--allow-empty', '-m', 'init'], { stdio: 'pipe' });
   return dir;
 }
@@ -107,26 +112,29 @@ describe('isGitRepo', () => {
 describe('WorktreeManager', () => {
   let manager: InstanceType<typeof WorktreeManager>;
   let repoDir: string;
+  let tempWorktreesDir: string;
 
   beforeEach(() => {
     sqlite = new Database(':memory:');
     sqlite.pragma('foreign_keys = ON');
     testDb = drizzle(sqlite, { schema });
     migrate(testDb, { migrationsFolder });
-    manager = new WorktreeManager();
+    tempWorktreesDir = mkdtempSync(join(tmpdir(), 'orca-wt-dir-'));
+    manager = new WorktreeManager(tempWorktreesDir);
     repoDir = createTempGitRepo();
   });
 
   afterEach(() => {
     sqlite.close();
     rmSync(repoDir, { recursive: true, force: true });
+    rmSync(tempWorktreesDir, { recursive: true, force: true });
   });
 
   describe('ensureWorktree', () => {
     it('creates a new worktree and returns its path', async () => {
       const path = await manager.ensureWorktree('task-1', repoDir, metadata);
 
-      expect(path).toContain('worktrees');
+      expect(path).toContain(tempWorktreesDir);
       expect(path).toContain('feat/ORCA-42-add-user-authentication');
       expect(existsSync(path)).toBe(true);
 
@@ -202,6 +210,21 @@ describe('WorktreeManager', () => {
 
       // Clean up
       execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path2, '--force'], {
+        stdio: 'pipe',
+      });
+    });
+
+    it('handles empty slug gracefully', async () => {
+      const emptyTitleMeta = { ...metadata, title: '' };
+      const path = await manager.ensureWorktree('task-empty', repoDir, emptyTitleMeta);
+
+      expect(path).toContain('feat/ORCA-42');
+      // Branch name should not have a trailing hyphen
+      const { getWorktree } = await import('./worktrees.js');
+      const row = getWorktree('task-empty')!;
+      expect(row.branch_name).toBe('feat/ORCA-42');
+
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', path, '--force'], {
         stdio: 'pipe',
       });
     });

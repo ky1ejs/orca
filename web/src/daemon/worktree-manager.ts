@@ -16,7 +16,7 @@ import { logger } from './logger.js';
 
 const execFileAsync = promisify(execFile);
 
-const WORKTREES_DIR = join(ORCA_DIR, 'worktrees');
+const DEFAULT_WORKTREES_DIR = join(ORCA_DIR, 'worktrees');
 
 /** Convert a task title into a URL-safe slug for branch naming. */
 export function slugify(title: string): string {
@@ -26,6 +26,11 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
     .replace(/-+$/, '');
+}
+
+/** Strip path separators and `..` segments from a string to prevent path traversal. */
+function sanitizePathComponent(value: string): string {
+  return value.replace(/[/\\]/g, '-').replace(/\.\./g, '-');
 }
 
 /** Check whether a directory is inside a git work tree. */
@@ -46,6 +51,11 @@ export async function isGitRepo(dir: string): Promise<boolean> {
 async function git(repoPath: string, args: string[]): Promise<string> {
   const { stdout } = await execFileAsync('git', ['-C', repoPath, ...args]);
   return stdout.trim();
+}
+
+/** Resolve the git repo root from any directory inside the repo. */
+async function resolveRepoRoot(dir: string): Promise<string> {
+  return git(dir, ['rev-parse', '--show-toplevel']);
 }
 
 async function detectBaseBranch(repoPath: string): Promise<string> {
@@ -69,6 +79,11 @@ async function branchExists(repoPath: string, branch: string): Promise<boolean> 
 
 export class WorktreeManager {
   private repoLocks = new Map<string, Promise<void>>();
+  private worktreesDir: string;
+
+  constructor(worktreesDir?: string) {
+    this.worktreesDir = worktreesDir ?? DEFAULT_WORKTREES_DIR;
+  }
 
   /**
    * Ensure a worktree exists for the given task. Creates one if needed,
@@ -76,29 +91,39 @@ export class WorktreeManager {
    *
    * @returns The absolute path to the worktree directory.
    */
-  async ensureWorktree(taskId: string, repoPath: string, metadata: TaskMetadata): Promise<string> {
+  async ensureWorktree(
+    taskId: string,
+    workingDirectory: string,
+    metadata: TaskMetadata,
+  ): Promise<string> {
+    // Resolve the canonical repo root so locking, naming, and storage are
+    // consistent regardless of whether workingDirectory is a subdirectory.
+    const repoPath = await resolveRepoRoot(workingDirectory);
+
     return this.withRepoLock(repoPath, async () => {
       const start = Date.now();
 
       const existing = getWorktree(taskId);
       if (existing) {
-        if (existsSync(existing.worktree_path)) {
+        // Validate that the existing worktree belongs to the same repo
+        if (existing.repo_path === repoPath && existsSync(existing.worktree_path)) {
           logger.info(`worktree.reused taskId=${taskId} path=${existing.worktree_path}`);
           return existing.worktree_path;
         }
-        // Stale row — directory was deleted externally
+        // Stale row — directory was deleted externally or repo changed
         logger.info(`worktree.stale-row-cleaned taskId=${taskId} path=${existing.worktree_path}`);
         deleteWorktree(taskId);
       }
 
       const baseBranch = await detectBaseBranch(repoPath);
       const slug = slugify(metadata.title);
-      const branchName = `feat/${metadata.displayId}-${slug}`;
+      const safeDisplayId = sanitizePathComponent(metadata.displayId);
+      const branchName = slug ? `feat/${safeDisplayId}-${slug}` : `feat/${safeDisplayId}`;
       const repoName = basename(repoPath);
-      const worktreePath = join(WORKTREES_DIR, repoName, branchName);
+      const worktreePath = join(this.worktreesDir, repoName, branchName);
 
       // Branch name contains `/`, so ensure parent directory exists
-      mkdirSync(join(WORKTREES_DIR, repoName, 'feat'), { recursive: true });
+      mkdirSync(join(this.worktreesDir, repoName, 'feat'), { recursive: true });
 
       // Fetch latest from origin so worktree starts from up-to-date state.
       // Prefer origin/<baseBranch> if available, else local branch.
