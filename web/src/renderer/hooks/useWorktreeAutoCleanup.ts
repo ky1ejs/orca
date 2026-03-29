@@ -1,35 +1,41 @@
 import { useEffect, useRef } from 'react';
-import { useSubscription } from 'urql';
-import { TaskChangedDocument, TaskStatus } from '../graphql/__generated__/generated.js';
+import { TaskStatus } from '../graphql/__generated__/generated.js';
 
 /**
  * Watches for tasks moving to DONE and auto-removes their worktree
  * if autoCleanupWorktree is enabled and the worktree is safe to clean.
+ *
+ * Receives the latest changed task from the existing TaskChanged subscription
+ * to avoid opening a duplicate subscription.
  */
-export function useWorktreeAutoCleanup(workspaceId: string, autoCleanupWorktree: boolean): void {
+export function useWorktreeAutoCleanup(
+  autoCleanupWorktree: boolean,
+  changedTask: { id: string; status: string } | undefined,
+): void {
   const cleanedRef = useRef(new Set<string>());
+  const prevAutoCleanup = useRef(autoCleanupWorktree);
 
-  const [{ data }] = useSubscription({
-    query: TaskChangedDocument,
-    variables: { workspaceId },
-    pause: !workspaceId || !autoCleanupWorktree,
-  });
+  // Reset cleaned set when the setting changes (e.g., workspace switch)
+  useEffect(() => {
+    if (prevAutoCleanup.current !== autoCleanupWorktree) {
+      cleanedRef.current.clear();
+      prevAutoCleanup.current = autoCleanupWorktree;
+    }
+  }, [autoCleanupWorktree]);
 
   useEffect(() => {
-    if (!data?.taskChanged || !autoCleanupWorktree) return;
+    if (!changedTask || !autoCleanupWorktree) return;
+    if (changedTask.status !== TaskStatus.Done) return;
+    if (cleanedRef.current.has(changedTask.id)) return;
 
-    const task = data.taskChanged;
-    if (task.status !== TaskStatus.Done) return;
-    if (cleanedRef.current.has(task.id)) return;
-
-    cleanedRef.current.add(task.id);
+    cleanedRef.current.add(changedTask.id);
 
     void (async () => {
-      const safety = await window.orca.worktree.safety(task.id);
+      const safety = await window.orca.worktree.safety(changedTask.id);
       if (!safety) return;
       if (safety.dirty || safety.unpushedCommits || !safety.branchMerged) return;
 
-      await window.orca.worktree.remove(task.id);
+      await window.orca.worktree.remove(changedTask.id);
     })();
-  }, [data, autoCleanupWorktree]);
+  }, [changedTask, autoCleanupWorktree]);
 }

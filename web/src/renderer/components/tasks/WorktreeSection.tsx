@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, Trash2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import type { WorktreeSafetyResult } from '../../../shared/daemon-protocol.js';
-
-interface WorktreeInfo {
-  task_id: string;
-  worktree_path: string;
-  branch_name: string;
-  base_branch: string;
-  repo_path: string;
-}
+import type { WorktreeGetResult, WorktreeSafetyResult } from '../../../shared/daemon-protocol.js';
 
 interface WorktreeSectionProps {
   taskId: string;
@@ -17,19 +9,19 @@ interface WorktreeSectionProps {
 }
 
 export function WorktreeSection({ taskId, hasActiveSession }: WorktreeSectionProps) {
-  const [worktree, setWorktree] = useState<WorktreeInfo | null>(null);
+  const [worktree, setWorktree] = useState<WorktreeGetResult | null>(null);
   const [safety, setSafety] = useState<WorktreeSafetyResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const refresh = useCallback(async () => {
-    const wt = await window.orca.worktree.get(taskId);
+    const [wt, s] = await Promise.all([
+      window.orca.worktree.get(taskId),
+      window.orca.worktree.safety(taskId),
+    ]);
     setWorktree(wt);
-    if (wt) {
-      const s = await window.orca.worktree.safety(taskId);
-      setSafety(s);
-    }
+    setSafety(wt ? s : null);
     setLoading(false);
   }, [taskId]);
 

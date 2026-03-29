@@ -1,21 +1,13 @@
 /**
  * Worktree safety checks — determines whether a worktree is safe to auto-clean.
  */
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { git } from './git.js';
 import { logger } from './logger.js';
-
-const execFileAsync = promisify(execFile);
 
 interface WorktreeSafetyStatus {
   dirty: boolean;
   unpushedCommits: boolean;
   branchMerged: boolean;
-}
-
-async function git(cwd: string, args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['-C', cwd, ...args]);
-  return stdout.trim();
 }
 
 /**
@@ -58,4 +50,3 @@ export async function checkWorktreeSafety(
 
   return { dirty, unpushedCommits, branchMerged };
 }
-

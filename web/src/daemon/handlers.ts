@@ -296,17 +296,16 @@ export function createHandler(deps: HandlerDeps) {
 
       case DAEMON_METHODS.WORKTREE_LIST: {
         const rows = listWorktrees();
-        const results = await Promise.all(
-          rows.map(async (row) => {
-            const safety = await checkWorktreeSafety(
-              row.worktree_path,
-              row.repo_path,
-              row.branch_name,
-              row.base_branch,
-            );
-            return { ...row, safety };
-          }),
-        );
+        const results = [];
+        for (const row of rows) {
+          const safety = await checkWorktreeSafety(
+            row.worktree_path,
+            row.repo_path,
+            row.branch_name,
+            row.base_branch,
+          );
+          results.push({ ...row, safety });
+        }
         return results;
       }
 

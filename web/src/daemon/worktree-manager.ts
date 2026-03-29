@@ -4,18 +4,15 @@
  * Each task gets its own worktree at ~/.orca/worktrees/<repo-name>/<branch-name>/.
  * Worktrees are created on demand at agent launch time, not on task creation.
  */
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { existsSync, mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { getWorktree, insertWorktree, deleteWorktree } from './worktrees.js';
 import { findTeardownScript, runTeardown } from './bootstrap-runner.js';
+import { git } from './git.js';
 import { WorktreeError } from '../shared/errors.js';
 import { ORCA_DIR } from '../shared/daemon-protocol.js';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
-
-const execFileAsync = promisify(execFile);
 
 const DEFAULT_WORKTREES_DIR = join(ORCA_DIR, 'worktrees');
 
@@ -37,21 +34,11 @@ function sanitizePathComponent(value: string): string {
 /** Check whether a directory is inside a git work tree. */
 export async function isGitRepo(dir: string): Promise<boolean> {
   try {
-    const { stdout } = await execFileAsync('git', [
-      '-C',
-      dir,
-      'rev-parse',
-      '--is-inside-work-tree',
-    ]);
-    return stdout.trim() === 'true';
+    const result = await git(dir, ['rev-parse', '--is-inside-work-tree']);
+    return result === 'true';
   } catch {
     return false;
   }
-}
-
-async function git(repoPath: string, args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['-C', repoPath, ...args]);
-  return stdout.trim();
 }
 
 /** Resolve the git repo root from any directory inside the repo. */

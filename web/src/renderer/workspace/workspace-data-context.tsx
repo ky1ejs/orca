@@ -36,14 +36,14 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
   // Centralise subscriptions so they run exactly once per workspace
   useInitiativeSubscription(currentWorkspace?.id ?? '');
   useProjectSubscription(currentWorkspace?.id ?? '');
-  useTaskSubscription(currentWorkspace?.id ?? '');
+  const [{ data: taskSubData }] = useTaskSubscription(currentWorkspace?.id ?? '');
 
   const workspace = data?.workspace ?? undefined;
 
   // Auto-cleanup worktrees when tasks move to DONE (if setting enabled)
   useWorktreeAutoCleanup(
-    currentWorkspace?.id ?? '',
     workspace?.settings?.autoCleanupWorktree ?? false,
+    taskSubData?.taskChanged ?? undefined,
   );
 
   const value = useMemo(
