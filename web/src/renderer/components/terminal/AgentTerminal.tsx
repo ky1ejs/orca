@@ -115,6 +115,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     let unsubData: (() => void) | null = null;
     let lastRefreshAt = -REFRESH_THROTTLE_MS;
     let firstDataLogged = false;
+    /** Bytes passed to terminal.write() whose ACK callback hasn't fired yet. */
+    let inFlightBytes = 0;
 
     const mark = createPerfTimer(`terminal(${sessionId})`, rendererPerfLog);
 
@@ -205,7 +207,9 @@ export const AgentTerminal = memo(function AgentTerminal({
             writeRafId = null;
             const batch = pendingData;
             pendingData = '';
+            inFlightBytes += batch.length;
             terminal.write(batch, () => {
+              inFlightBytes -= batch.length;
               window.orca.pty.ack(sessionId, batch.length);
             });
             // Throttled full re-render to clear accumulated WebGL rendering
@@ -232,10 +236,11 @@ export const AgentTerminal = memo(function AgentTerminal({
         cancelAnimationFrame(writeRafId);
         writeRafId = null;
       }
-      if (pendingData) {
-        const batch = pendingData;
-        pendingData = '';
-        window.orca.pty.ack(sessionId, batch.length);
+      const unleaked = pendingData.length + inFlightBytes;
+      pendingData = '';
+      inFlightBytes = 0;
+      if (unleaked > 0) {
+        window.orca.pty.ack(sessionId, unleaked);
       }
       terminal.reset();
       void replayAndSubscribe();
@@ -322,13 +327,15 @@ export const AgentTerminal = memo(function AgentTerminal({
       sendSnapshot();
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       if (writeRafId !== null) cancelAnimationFrame(writeRafId);
-      // ACK any buffered data directly so the daemon's unackedSize doesn't
-      // stay inflated. We can't rely on terminal.write()'s async callback
-      // because terminal.dispose() below would prevent it from firing.
-      if (pendingData) {
-        const flushed = pendingData;
-        pendingData = '';
-        window.orca.pty.ack(sessionId, flushed.length);
+      // ACK any buffered or in-flight data directly so the daemon's
+      // unackedSize doesn't stay inflated. We can't rely on
+      // terminal.write()'s async callback because terminal.dispose()
+      // below would prevent it from firing.
+      const unleakedBytes = pendingData.length + inFlightBytes;
+      pendingData = '';
+      inFlightBytes = 0;
+      if (unleakedBytes > 0) {
+        window.orca.pty.ack(sessionId, unleakedBytes);
       }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
@@ -356,10 +363,11 @@ export const AgentTerminal = memo(function AgentTerminal({
 
   // WebGL lifecycle: create on visibility, release after a delay when hidden.
   // Immediate creation avoids the 5-20ms latency of recreating on every tab
-  // switch. The 5s delay before disposal means rapid switching keeps contexts
-  // alive, while idle hidden terminals eventually free GPU resources — staying
-  // within the browser's ~8-16 context limit even with many sessions.
-  // Context loss falls back to DOM renderer gracefully.
+  // switch. The 5s delay before disposal means rapid switching tends to keep
+  // contexts alive, while idle hidden terminals eventually free GPU resources —
+  // helping stay within the browser's ~8-16 context limit in typical workloads,
+  // but without a strict global cap across all sessions. Context loss falls back
+  // to DOM renderer gracefully.
   //
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
