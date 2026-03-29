@@ -21,14 +21,23 @@ export function TaskBranchBadge({ taskId }: TaskBranchBadgeProps) {
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(worktree.branch_name).then(() => {
-      setCopied(true);
-    });
+    navigator.clipboard.writeText(worktree.branch_name).then(
+      () => setCopied(true),
+      () => {},
+    );
   };
 
   return (
-    <button
+    <span
+      role="button"
+      tabIndex={0}
       onClick={handleCopy}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCopy(e as unknown as React.MouseEvent);
+        }
+      }}
       title={copied ? 'Copied!' : `Copy branch: ${worktree.branch_name}`}
       className="inline-flex items-center gap-0.5 max-w-[140px] text-fg-faint text-label-sm font-mono hover:text-fg-muted transition-colors cursor-pointer"
     >
@@ -38,6 +47,6 @@ export function TaskBranchBadge({ taskId }: TaskBranchBadgeProps) {
         <GitBranch className={`${iconSize.xs} flex-shrink-0`} />
       )}
       <span className="truncate">{worktree.branch_name}</span>
-    </button>
+    </span>
   );
 }
