@@ -15,6 +15,13 @@
       "when": 1772979530436,
       "tag": "0001_green_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1774743938794,
+      "tag": "0002_dazzling_human_cannonball",
+      "breakpoints": true
     }
   ]
 }
