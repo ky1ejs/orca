@@ -49,6 +49,7 @@ vi.mock('@xterm/xterm', () => ({
     options: {},
     cols: 80,
     rows: 24,
+    unicode: { activeVersion: '' },
   })),
 }));
 
@@ -94,6 +95,17 @@ vi.mock('@xterm/addon-search', () => ({
     clearDecorations: mockSearchClearDecorations,
     dispose: mockSearchDispose,
   })),
+}));
+
+const mockCanvasDispose = vi.fn();
+vi.mock('@xterm/addon-canvas', () => ({
+  CanvasAddon: vi.fn().mockImplementation(() => ({
+    dispose: mockCanvasDispose,
+  })),
+}));
+
+vi.mock('@xterm/addon-unicode11', () => ({
+  Unicode11Addon: vi.fn(),
 }));
 
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
@@ -268,19 +280,27 @@ describe('AgentTerminal', () => {
     expect(mockWebglDispose).toHaveBeenCalled();
   });
 
-  it('recreates WebGL after context loss on next visibility change', () => {
-    const { rerender } = render(
-      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
-    );
-    // Trigger context loss — addon disposed, ref cleared
-    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
-    onContextLossCallback();
-    mockWebglOnContextLoss.mockClear();
+  it('recreates WebGL after context loss once Canvas is disposed', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
+      // Trigger context loss — WebGL disposed, Canvas loaded as fallback
+      const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
+      onContextLossCallback();
+      mockWebglOnContextLoss.mockClear();
 
-    // Hide then show — should recreate WebGL since context was lost
-    rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
-    rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
-    expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+      // Hide and let disposal timer fire — both WebGL and Canvas disposed
+      rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+      vi.advanceTimersByTime(5_000);
+
+      // Show — should recreate WebGL from scratch
+      rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+      expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps WebGL alive briefly when terminal becomes hidden', () => {
@@ -331,6 +351,136 @@ describe('AgentTerminal', () => {
     unmount();
     expect(mockWebglDispose).toHaveBeenCalled();
     expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it('falls back to Canvas when WebGL fails to load', async () => {
+    const { WebglAddon } = await import('@xterm/addon-webgl');
+    const { CanvasAddon } = await import('@xterm/addon-canvas');
+    (WebglAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('WebGL not supported');
+    });
+
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    expect(CanvasAddon as ReturnType<typeof vi.fn>).toHaveBeenCalled();
+  });
+
+  it('falls back to Canvas on WebGL context loss', async () => {
+    const { CanvasAddon } = await import('@xterm/addon-canvas');
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const initialCanvasCalls = (CanvasAddon as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    // Trigger context loss
+    const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
+    onContextLossCallback();
+
+    expect((CanvasAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      initialCanvasCalls + 1,
+    );
+  });
+
+  it('falls back to DOM when both WebGL and Canvas fail', async () => {
+    const { WebglAddon } = await import('@xterm/addon-webgl');
+    const { CanvasAddon } = await import('@xterm/addon-canvas');
+    (WebglAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('WebGL not supported');
+    });
+    (CanvasAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('Canvas not supported');
+    });
+
+    // Should not throw — falls back to DOM renderer
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('disposes Canvas addon on unmount when Canvas is active', async () => {
+    const { WebglAddon } = await import('@xterm/addon-webgl');
+    (WebglAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('WebGL not supported');
+    });
+    mockCanvasDispose.mockClear();
+
+    const { unmount } = render(
+      <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+    );
+    unmount();
+    expect(mockCanvasDispose).toHaveBeenCalled();
+  });
+
+  it('disposes Canvas addon after delay when hidden', async () => {
+    vi.useFakeTimers();
+    try {
+      const { WebglAddon } = await import('@xterm/addon-webgl');
+      (WebglAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+        throw new Error('WebGL not supported');
+      });
+      mockCanvasDispose.mockClear();
+
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
+
+      rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+      expect(mockCanvasDispose).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(5_000);
+      expect(mockCanvasDispose).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retries WebGL on next visibility after Canvas fallback', async () => {
+    vi.useFakeTimers();
+    try {
+      const { WebglAddon } = await import('@xterm/addon-webgl');
+      // First attempt: WebGL fails
+      (WebglAddon as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+        throw new Error('WebGL not supported');
+      });
+
+      const { rerender } = render(
+        <AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />,
+      );
+
+      // Hide and let disposal timer fire
+      rerender(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
+      vi.advanceTimersByTime(5_000);
+
+      // Clear to track new creation
+      mockWebglOnContextLoss.mockClear();
+
+      // Show again — should retry WebGL (now succeeds with default mock)
+      rerender(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+      expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('loads Unicode11 addon and sets activeVersion', async () => {
+    const { Unicode11Addon } = await import('@xterm/addon-unicode11');
+    const { Terminal } = await import('@xterm/xterm');
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+
+    expect(Unicode11Addon).toHaveBeenCalled();
+    // Verify the addon was loaded via loadAddon
+    expect(mockLoadAddon).toHaveBeenCalledWith(expect.any(Object));
+    // Verify activeVersion was set on the terminal instance
+    const terminalInstance = (Terminal as ReturnType<typeof vi.fn>).mock.results[0].value;
+    expect(terminalInstance.unicode.activeVersion).toBe('11');
+  });
+
+  it('includes production terminal options', async () => {
+    const { Terminal } = await import('@xterm/xterm');
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const opts = (Terminal as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(opts).toMatchObject({
+      scrollback: 5_000,
+      minimumContrastRatio: 4.5,
+      allowProposedApi: true,
+      allowTransparency: false,
+    });
   });
 
   it('subscribes to onData even when replay fails', async () => {
