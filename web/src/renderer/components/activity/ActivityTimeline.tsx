@@ -8,6 +8,7 @@ import {
 import { Skeleton } from '../layout/Skeleton.js';
 import { formatRelativeTime } from '../../utils/formatRelativeTime.js';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../../utils/task-status.js';
+import { linkifyTaskIds } from '../../utils/linkifyTaskIds.js';
 
 type ActivityEdge = AuditEventConnection['edges'][number];
 type ActivityNode = ActivityEdge['node'];
@@ -147,7 +148,7 @@ export function ActivityTimeline({
                   >
                     {getActorName(edge.node)}
                   </span>{' '}
-                  {describeEvent(edge.node)}
+                  {linkifyTaskIds(describeEvent(edge.node))}
                 </p>
                 <p className="text-label-sm text-fg-faint">
                   {formatRelativeTime(edge.node.createdAt)}
