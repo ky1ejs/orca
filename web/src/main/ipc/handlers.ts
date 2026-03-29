@@ -63,6 +63,15 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     return client.request(DAEMON_METHODS.PROJECT_DIR_DELETE, { projectId });
   });
 
+  // ── Worktree handlers (proxy to daemon) ─────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_GET, (_event, taskId: string) => {
+    return client.request(DAEMON_METHODS.WORKTREE_GET, { taskId });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.WORKTREE_REMOVE, (_event, taskId: string, force?: boolean) => {
+    return client.request(DAEMON_METHODS.WORKTREE_REMOVE, { taskId, force });
+  });
+
   // ── Settings handlers (local — not proxied to daemon) ────────────────
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, key: string) => {
     return getSetting(key);

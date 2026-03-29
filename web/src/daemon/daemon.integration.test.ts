@@ -13,6 +13,7 @@ import { DaemonPtyManager, type BroadcastFn } from './pty-manager.js';
 import { DaemonStatusManager } from './status-manager.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
 import { OutputPersistence } from './output-persistence.js';
+import { WorktreeManager } from './worktree-manager.js';
 import { createHandler } from './handlers.js';
 import { createSession, updateSession } from './sessions.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
@@ -45,12 +46,15 @@ beforeEach(async () => {
     broadcastFn(event, params);
   });
 
+  const worktreeManager = new WorktreeManager();
+
   statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl: 'http://localhost:9999',
     getToken: () => null,
     hookServer: null,
     hookPort: null,
     broadcast: (event, params) => broadcastFn(event, params),
+    worktreeManager,
   });
 
   pidSweepManager = new DaemonPidSweepManager((event, params) => {
@@ -62,6 +66,7 @@ beforeEach(async () => {
   const handler = createHandler({
     ptyManager,
     statusManager,
+    worktreeManager,
     outputPersistence,
     get server() {
       return server;
