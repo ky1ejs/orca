@@ -1,41 +1,28 @@
 # Orca
 
-Orca is a work management tool for orchestrating AI agents (starting with Claude Code). See `backend/CLAUDE.md` and `web/CLAUDE.md` for package-specific setup, commands, and structure.
+This is the Orca monorepo. Orca is a work management tool for orchestrating AI agents (starting with Claude Code).
+
+The main services/apps are the backend server (`backend/`) and the Electron desktop app (`web/`).
 
 ## Workflow
 
 ### Worktrees
 
-You must NEVER make changes on main or in the main worktree. Always create a worktree before starting any work using the /create-worktree skill.
-
-### Task Context (Orca-managed sessions)
-
-When launched by Orca, the following environment variables are set:
-
-- `ORCA_TASK_ID` — Task display ID (e.g. `ORCA-42`)
-- `ORCA_TASK_TITLE` — Task title
-- `ORCA_PROJECT_NAME` — Project name (may be empty)
-- `ORCA_TASK_DESCRIPTION` — Task description (max 1000 chars, may be empty)
-
-When `ORCA_TASK_ID` is set, follow these conventions:
-
-- **Branch name**: `feat/$ORCA_TASK_ID-short-description` (e.g. `feat/ORCA-42-add-user-auth`)
-- **PR title**: `$ORCA_TASK_ID: Short description`
-- **Commit messages**: Reference `$ORCA_TASK_ID` where relevant
+You must NEVER make changes on main and must always be on a worktree. Always create a worktree before starting any work using the /create-worktree skill.
 
 ### Run simplifier
 
 When you've finished a coding pass, use the `/simplify` skill to refactor and simplify your code. This will help keep the codebase clean and maintainable.
 
-### Commands
-
-- Never chain shell commands with `&&` or `;` in Bash tool calls. Run each command as a separate Bash call.
-- Never chain calls with `cd` and `git` as this causes permissions requesets to me, which slows us down. Instead, cd into the directory first and then run git commands in separate calls.
-- Alternatively, you can use `git -C path/to/repo <command>` to run git commands without changing directories.
-
 ### Keep documentation up to date
 
 When making changes, always check for documentation that may need updating (e.g., README files, CLAUDE.md, inline docs, code comments). Update any documentation that is affected by your changes.
+
+### Pre-PR checks
+Before creating a PR, ensure that:
+- All tests are passing
+- Build passes
+- Linting and formatting checks are passing
 
 ### End with a PR
 
@@ -49,7 +36,7 @@ Run the validation/testing steps as per the instructions in the relevant CLAUDE.
 
 Split-state client/server architecture:
 
-- **Server (`backend/`)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (projects, tasks)
+- **Server (`backend/`)**: Bun + GraphQL (graphql-yoga) + Prisma + Postgres — shared collaborative state (workspaces, projects, tasks)
 - **Client (`web/`)**: Electron + React (via electron-vite) — local agent/terminal state in SQLite (better-sqlite3), PTY management (node-pty), terminal rendering (xterm.js)
 
 The server holds data multiple users need. The client holds local-only data (terminal sessions, PIDs, output buffers).
@@ -63,18 +50,14 @@ Two independent packages, each with its own `bun install` (no workspaces):
 
 GraphQL schema lives in `backend/src/schema/schema.graphql` and is the source of truth. Both packages run `graphql-codegen` to generate types from it.
 
+Never commit generated code. If it seems that the generated code is stale, you can just re-generate it using the commands sepecified by each package's CLAUDE.md.
+
 ## Auth
 
 - JWT-based auth with per-user email/password accounts
 - `JWT_SECRET` and `INVITE_CODE` env vars required in `backend/.env`
 - Local dev: `bun run seed:dev` in `backend/` creates a default dev user (`dev@orca.local` / `dev-password`)
 - Electron stores JWT via `safeStorage`; browser dev uses `VITE_AUTH_TOKEN` env var
-
-## Deployment
-
-- **Backend**: Fly.io (`orca-api.fly.dev`), auto-deploys on push to `main` via `.github/workflows/deploy-backend.yml`
-- **Database**: Neon Postgres in production, Docker Compose locally (`docker compose up -d` from repo root)
-- **Electron app**: `bun run build:mac` in `web/`
 
 ## UI Validation in Browser
 
@@ -105,9 +88,3 @@ You can visually validate the UI by opening the Vite dev server in Chrome using 
 - Local session state (SQLite via better-sqlite3)
 
 These features require Electron's main process and cannot run in a plain browser.
-
-## PR Workflow
-
-- Branch naming: `<type>/<short-description>` (e.g., `feat/task-crud`). When `ORCA_TASK_ID` is set, include it: `feat/ORCA-42-short-description`
-- All PRs target `main`
-- CI must pass (lint, format, knip, typecheck, test)
