@@ -1,10 +1,12 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { type MutableRefObject, memo, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { CanvasAddon } from '@xterm/addon-canvas';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { SearchAddon } from '@xterm/addon-search';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { usePreferences } from '../../preferences/context.js';
 import { TerminalSearchBar } from './TerminalSearchBar.js';
 import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
@@ -51,6 +53,19 @@ export function escapeFilePath(p: string): string {
 
 /** How often (ms) to force a full re-render during active PTY output. */
 const REFRESH_THROTTLE_MS = 1_000;
+
+/** Try loading CanvasAddon as intermediate fallback between WebGL and DOM. */
+function tryLoadCanvas(terminal: Terminal, ref: MutableRefObject<CanvasAddon | null>): void {
+  let canvas: CanvasAddon | null = null;
+  try {
+    canvas = new CanvasAddon();
+    terminal.loadAddon(canvas);
+    ref.current = canvas;
+  } catch {
+    canvas?.dispose();
+    ref.current = null;
+  }
+}
 
 interface AgentTerminalProps {
   sessionId: string;
@@ -104,6 +119,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
+  const canvasAddonRef = useRef<CanvasAddon | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const { terminalFontFamily } = usePreferences();
@@ -141,7 +157,13 @@ export const AgentTerminal = memo(function AgentTerminal({
       fontFamily: fontRef.current,
       fontSize: 13,
       cursorBlink: true,
+      // PTY onlcr covers live stream, but direct writes and serialized snapshots
+      // may contain lone \n — convertEol handles those edge cases safely.
       convertEol: true,
+      scrollback: 5_000,
+      minimumContrastRatio: 4.5, // WCAG AA — ensures dim ANSI colors remain readable
+      allowProposedApi: true, // Required by CanvasAddon and SearchAddon decorations
+      allowTransparency: false,
     });
 
     const fitAddon = new FitAddon();
@@ -151,6 +173,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminal.loadAddon(serializeAddon);
     terminal.loadAddon(searchAddon);
     terminal.loadAddon(new WebLinksAddon());
+    terminal.loadAddon(new Unicode11Addon());
+    terminal.unicode.activeVersion = '11';
 
     terminal.open(container);
     mark('xterm-opened');
@@ -358,6 +382,8 @@ export const AgentTerminal = memo(function AgentTerminal({
       classObserver.disconnect();
       webglAddonRef.current?.dispose();
       webglAddonRef.current = null;
+      canvasAddonRef.current?.dispose();
+      canvasAddonRef.current = null;
       serializeAddon.dispose();
       searchAddon.dispose();
       onDataDisposable.dispose();
@@ -377,7 +403,7 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
-  // WebGL lifecycle: create on visibility, release after a delay when hidden.
+  // Renderer lifecycle: WebGL → Canvas → DOM fallback cascade.
   // Must be declared after the main xterm effect — on first initialization both
   // effects fire in the same commit and this one reads terminalRef.current.
   //
@@ -385,8 +411,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   // switch. The 5s delay before disposal means rapid switching tends to keep
   // contexts alive, while idle hidden terminals eventually free GPU resources —
   // helping stay within the browser's ~8-16 context limit in typical workloads,
-  // but without a strict global cap across all sessions. Context loss falls back
-  // to DOM renderer gracefully.
+  // but without a strict global cap across all sessions.
   //
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
@@ -397,7 +422,7 @@ export const AgentTerminal = memo(function AgentTerminal({
     if (!terminal || !fitAddon) return;
 
     if (visible) {
-      if (!webglAddonRef.current) {
+      if (!webglAddonRef.current && !canvasAddonRef.current) {
         try {
           const addon = new WebglAddon();
           webglAddonRef.current = addon;
@@ -406,10 +431,14 @@ export const AgentTerminal = memo(function AgentTerminal({
               webglAddonRef.current = null;
             }
             addon.dispose();
+            // Immediately try Canvas so the user doesn't see a flash to DOM
+            tryLoadCanvas(terminal, canvasAddonRef);
           });
           terminal.loadAddon(addon);
         } catch {
           webglAddonRef.current = null;
+          // WebGL failed — try Canvas as intermediate fallback before DOM
+          tryLoadCanvas(terminal, canvasAddonRef);
         }
       }
 
@@ -418,13 +447,18 @@ export const AgentTerminal = memo(function AgentTerminal({
       return;
     }
 
-    // Release WebGL context after a delay so rapid tab switching doesn't
-    // pay the creation cost, but idle hidden terminals free GPU resources.
+    // Release GPU renderers after a delay so rapid tab switching doesn't
+    // pay the creation cost, but idle hidden terminals free resources.
     const disposeTimer = setTimeout(() => {
-      const addon = webglAddonRef.current;
-      if (addon) {
+      const webgl = webglAddonRef.current;
+      if (webgl) {
         webglAddonRef.current = null;
-        addon.dispose();
+        webgl.dispose();
+      }
+      const canvas = canvasAddonRef.current;
+      if (canvas) {
+        canvasAddonRef.current = null;
+        canvas.dispose();
       }
     }, 5_000);
     return () => clearTimeout(disposeTimer);
