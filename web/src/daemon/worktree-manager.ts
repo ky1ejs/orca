@@ -89,13 +89,13 @@ export class WorktreeManager {
    * Ensure a worktree exists for the given task. Creates one if needed,
    * reuses an existing one if the row + directory are intact.
    *
-   * @returns The absolute path to the worktree directory.
+   * @returns The worktree path and whether it was newly created.
    */
   async ensureWorktree(
     taskId: string,
     workingDirectory: string,
     metadata: TaskMetadata,
-  ): Promise<string> {
+  ): Promise<{ path: string; created: boolean }> {
     // Resolve the canonical repo root so locking, naming, and storage are
     // consistent regardless of whether workingDirectory is a subdirectory.
     const repoPath = await resolveRepoRoot(workingDirectory);
@@ -108,7 +108,7 @@ export class WorktreeManager {
         // Validate that the existing worktree belongs to the same repo
         if (existing.repo_path === repoPath && existsSync(existing.worktree_path)) {
           logger.info(`worktree.reused taskId=${taskId} path=${existing.worktree_path}`);
-          return existing.worktree_path;
+          return { path: existing.worktree_path, created: false };
         }
         // Stale row — directory was deleted externally or repo changed
         logger.info(`worktree.stale-row-cleaned taskId=${taskId} path=${existing.worktree_path}`);
@@ -174,7 +174,7 @@ export class WorktreeManager {
         `worktree.created taskId=${taskId} branch=${branchName} path=${worktreePath} baseBranch=${baseBranch} durationMs=${durationMs}`,
       );
 
-      return worktreePath;
+      return { path: worktreePath, created: true };
     });
   }
 

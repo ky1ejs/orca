@@ -1,6 +1,10 @@
 import { SessionStatus, getStatusDotClasses } from '../../../shared/session-status.js';
 
 const statusConfig: Record<SessionStatus, { label: string; badgeClass: string }> = {
+  [SessionStatus.Bootstrapping]: {
+    label: 'Bootstrapping',
+    badgeClass: 'bg-info-muted text-info',
+  },
   [SessionStatus.Starting]: {
     label: 'Starting',
     badgeClass: 'bg-info-muted text-info',

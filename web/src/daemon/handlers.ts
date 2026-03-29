@@ -167,9 +167,10 @@ export function createHandler(deps: HandlerDeps) {
           p.options,
           p.metadata,
           p.colorScheme,
+          (sessionId) => server.subscribeClient(client.id, sessionId),
         );
         if (result.success) {
-          // Auto-subscribe the caller
+          // Ensure subscription (in case callback wasn't called)
           server.subscribeClient(client.id, result.sessionId);
         }
         return result;
@@ -190,6 +191,7 @@ export function createHandler(deps: HandlerDeps) {
           p.options,
           p.metadata,
           p.colorScheme,
+          (sessionId) => server.subscribeClient(client.id, sessionId),
         );
         if (result.success) {
           server.subscribeClient(client.id, result.sessionId);

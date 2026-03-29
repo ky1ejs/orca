@@ -3,6 +3,7 @@ import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
 import { SquareTerminal, RotateCcw, ChevronDown, Sparkles, Check, Square } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
+import { SessionStatus } from '../../../shared/session-status.js';
 import { useTaskHeaderControls } from './TaskHeaderContext.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { usePreferences } from '../../preferences/context.js';
@@ -108,7 +109,9 @@ export function HeaderTerminalControls() {
           className="px-2.5 py-1 bg-surface-hover text-fg-muted text-label-sm rounded-md cursor-not-allowed"
           data-testid="agent-button"
         >
-          Opening...
+          {activeSession?.status === SessionStatus.Bootstrapping
+            ? 'Bootstrapping...'
+            : 'Opening...'}
         </button>
       </div>
     );

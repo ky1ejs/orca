@@ -79,7 +79,7 @@ export class DaemonClient {
     }
   }
 
-  async request(method: string, params?: unknown): Promise<unknown> {
+  async request(method: string, params?: unknown, timeoutMs?: number): Promise<unknown> {
     if (!this.socket || !this._connected) {
       throw new Error('Not connected to daemon');
     }
@@ -91,7 +91,7 @@ export class DaemonClient {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`Request timed out: ${method}`));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs ?? REQUEST_TIMEOUT_MS);
 
       this.pending.set(id, { resolve, reject, timer });
 

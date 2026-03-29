@@ -8,6 +8,15 @@ import { SessionStatus } from '../../../shared/session-status.js';
 afterEach(cleanup);
 
 describe('AgentStatus', () => {
+  it('renders "Bootstrapping" with blue styling and pulse', () => {
+    render(<AgentStatus status={SessionStatus.Bootstrapping} />);
+    const badge = screen.getByTestId('agent-status-badge');
+    expect(badge).toHaveTextContent('Bootstrapping');
+    expect(badge.className).toContain('bg-info-muted');
+    const dot = badge.querySelector('span');
+    expect(dot?.className).toContain('animate-pulse');
+  });
+
   it('renders "Starting" with blue styling', () => {
     render(<AgentStatus status={SessionStatus.Starting} />);
     const badge = screen.getByTestId('agent-status-badge');
