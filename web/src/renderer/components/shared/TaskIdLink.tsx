@@ -59,7 +59,8 @@ export function TaskIdLink({ displayId, className }: TaskIdLinkProps) {
     <button
       onClick={handleClick}
       className={`${
-        className ?? 'text-accent hover:text-accent-hover hover:underline font-medium transition-colors'
+        className ??
+        'text-accent hover:text-accent-hover hover:underline font-medium transition-colors'
       } ${resolving ? 'cursor-wait' : ''} ${notFound ? 'text-error' : ''}`.trim()}
       title={notFound ? `Task ${displayId} not found` : `Go to ${displayId}`}
     >
