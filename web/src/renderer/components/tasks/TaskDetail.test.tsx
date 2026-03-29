@@ -260,12 +260,47 @@ describe('TaskDetail', () => {
       expect(screen.getByText('A test description')).toBeInTheDocument();
     });
 
-    it('does not render description section when absent', async () => {
+    it('shows placeholder when description is absent', async () => {
       mockTask!.description = null;
 
       await importAndRender();
 
-      expect(screen.queryByText('Description:')).not.toBeInTheDocument();
+      expect(screen.getByText('Add a description...')).toBeInTheDocument();
+    });
+  });
+
+  describe('inline editing', () => {
+    it('saves title on Enter', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Test Task'));
+      const input = screen.getByDisplayValue('Test Task');
+      fireEvent.change(input, { target: { value: 'Updated Title' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await vi.waitFor(() => {
+        expect(mockUpdateTask).toHaveBeenCalledWith('task-1', { title: 'Updated Title' });
+      });
+    });
+
+    it('cancels title edit on Escape without saving', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('Test Task'));
+      const input = screen.getByDisplayValue('Test Task');
+      fireEvent.change(input, { target: { value: 'Changed' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+    });
+
+    it('enters description edit mode on click', async () => {
+      await importAndRender();
+
+      fireEvent.click(screen.getByText('A test description'));
+
+      expect(screen.getByDisplayValue('A test description')).toBeInTheDocument();
     });
   });
 
@@ -279,7 +314,7 @@ describe('TaskDetail', () => {
     it('delete calls goToParent', async () => {
       await importAndRender();
 
-      fireEvent.click(screen.getByText('Delete'));
+      fireEvent.click(screen.getByText('Delete Task'));
 
       await vi.waitFor(() => {
         expect(mockArchiveTask).toHaveBeenCalledWith('task-1');
