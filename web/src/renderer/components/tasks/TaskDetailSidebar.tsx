@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Trash2, FolderOpen, GitBranch } from 'lucide-react';
+import { Trash2, FolderOpen, GitBranch, AlertTriangle, CheckCircle } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
@@ -53,7 +53,7 @@ export function TaskDetailSidebar({
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  const { worktree, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
+  const { worktree, safety, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
 
   const handleRemove = useCallback(
     async (force: boolean) => {
@@ -259,6 +259,29 @@ export function TaskDetailSidebar({
             >
               {worktree.worktree_path}
             </p>
+            {safety && (
+              <div className="flex items-center gap-1.5 text-body-xs">
+                {!safety.dirty && !safety.unpushedCommits && safety.branchMerged ? (
+                  <>
+                    <CheckCircle className={`${iconSize.xs} text-success`} />
+                    <span className="text-success">Clean and merged</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className={`${iconSize.xs} text-warning`} />
+                    <span className="text-warning">
+                      {[
+                        safety.dirty && 'Uncommitted changes',
+                        safety.unpushedCommits && 'Unpushed commits',
+                        !safety.branchMerged && 'Branch not merged',
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
             <button
               onClick={() => {
                 setConfirmRemove(true);

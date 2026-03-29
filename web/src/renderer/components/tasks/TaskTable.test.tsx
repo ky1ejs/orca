@@ -61,6 +61,7 @@ beforeEach(() => {
     worktree: {
       get: vi.fn().mockResolvedValue(null),
       remove: vi.fn().mockResolvedValue({ ok: true }),
+      safety: vi.fn().mockResolvedValue(null),
     },
   };
 });

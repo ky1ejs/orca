@@ -21,6 +21,7 @@ beforeEach(() => {
     worktree: {
       get: mockGet,
       remove: vi.fn().mockResolvedValue({ ok: true }),
+      safety: vi.fn().mockResolvedValue(null),
     },
   };
   mockGet.mockResolvedValue(null);

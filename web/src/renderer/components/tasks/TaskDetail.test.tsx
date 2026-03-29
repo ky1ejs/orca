@@ -122,6 +122,7 @@ const mockRemoveWorktree = vi.fn().mockResolvedValue(undefined);
 vi.mock('../../hooks/useWorktree.js', () => ({
   useWorktree: () => ({
     worktree: mockWorktreeData,
+    safety: null,
     loading: false,
     removeWorktree: mockRemoveWorktree,
     refetch: vi.fn(),

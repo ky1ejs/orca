@@ -15,6 +15,7 @@ const mockWorktree: WorktreeGetResult = {
 
 const mockGet = vi.fn();
 const mockRemove = vi.fn();
+const mockSafety = vi.fn();
 
 beforeEach(() => {
   (globalThis as unknown as { window: { orca: unknown } }).window = {
@@ -22,11 +23,13 @@ beforeEach(() => {
       worktree: {
         get: mockGet,
         remove: mockRemove,
+        safety: mockSafety,
       },
     },
   };
   mockGet.mockResolvedValue(null);
   mockRemove.mockResolvedValue({ ok: true });
+  mockSafety.mockResolvedValue(null);
 });
 
 afterEach(() => {
