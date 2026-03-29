@@ -3,19 +3,13 @@
 # Tear down an Orca worktree's isolated resources.
 # Mirrors scripts/bootstrap — derives the same port/DB from the worktree path hash.
 #
-# Usage:
-#   scripts/teardown <worktree-path>
+# Expects CWD to be the worktree root.
 
 set -euo pipefail
 
-if [[ $# -lt 1 ]]; then
-  echo "Usage: scripts/teardown <worktree-path>" >&2
-  exit 1
-fi
-
-WORKTREE_PATH="$1"
+WORKTREE_PATH="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MAIN_REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ─── Derive DB name from worktree path (same hash as bootstrap) ──────
 
@@ -27,18 +21,18 @@ echo "Database: $DB_NAME (hash: $HASH)"
 
 # ─── Per-package teardown ────────────────────────────────────────────
 
-if [[ -x "$WORKTREE_PATH/backend/scripts/teardown" ]]; then
-  "$WORKTREE_PATH/backend/scripts/teardown"
+if [[ -x backend/scripts/teardown ]]; then
+  backend/scripts/teardown
 fi
 
-if [[ -x "$WORKTREE_PATH/web/scripts/teardown" ]]; then
-  "$WORKTREE_PATH/web/scripts/teardown"
+if [[ -x web/scripts/teardown ]]; then
+  web/scripts/teardown
 fi
 
 # ─── Drop database ──────────────────────────────────────────────────
 
-if docker compose -f "$MAIN_REPO/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
-  docker compose -f "$MAIN_REPO/docker-compose.yml" exec -T postgres \
+if docker compose -f "$REPO_ROOT/docker-compose.yml" ps --status running 2>/dev/null | grep -q postgres; then
+  docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T postgres \
     psql -U postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
   echo "Database dropped: $DB_NAME"
 else
