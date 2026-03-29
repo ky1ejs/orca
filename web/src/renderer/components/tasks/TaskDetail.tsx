@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
+import { useSetTaskHeaderControls } from './TaskHeaderContext.js';
 import {
   useTask,
   useUpdateTask,
@@ -49,6 +50,69 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   const { data: membersData } = useWorkspaceMembers(currentWorkspace?.slug ?? '');
   const workspaceMembers = membersData?.workspace?.members ?? [];
 
+  const task = data?.task;
+  const activeSession = useMemo(
+    () => sessions.find((s) => isActiveSessionStatus(s.status)),
+    [sessions],
+  );
+  const errorSession = useMemo(
+    () => sessions.find((s) => s.status === SessionStatus.Error),
+    [sessions],
+  );
+
+  const buildMetadata = useCallback(
+    () => ({
+      displayId: task?.displayId ?? '',
+      title: task?.title ?? '',
+      description: task?.description ?? null,
+      projectName: task?.project?.name ?? null,
+      workspaceSlug: currentWorkspace?.slug ?? '',
+    }),
+    [task?.displayId, task?.title, task?.description, task?.project?.name, currentWorkspace?.slug],
+  );
+
+  const setHeaderControls = useSetTaskHeaderControls();
+
+  useEffect(() => {
+    if (!task) {
+      setHeaderControls(null);
+      return;
+    }
+    const next = {
+      displayId: task.displayId,
+      taskId,
+      activeSession,
+      errorSession,
+      projectDirectory: projectDirectory ?? null,
+      refreshSessions,
+      buildMetadata,
+      onAgentError: setAgentError,
+    };
+    setHeaderControls((prev) => {
+      if (
+        prev &&
+        prev.displayId === next.displayId &&
+        prev.taskId === next.taskId &&
+        prev.activeSession === next.activeSession &&
+        prev.errorSession === next.errorSession &&
+        prev.projectDirectory === next.projectDirectory
+      ) {
+        return prev;
+      }
+      return next;
+    });
+    return () => setHeaderControls(null);
+  }, [
+    task,
+    taskId,
+    activeSession,
+    errorSession,
+    projectDirectory,
+    refreshSessions,
+    buildMetadata,
+    setHeaderControls,
+  ]);
+
   if (fetching && !data) {
     return <TaskDetailSkeleton />;
   }
@@ -61,8 +125,6 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
     );
   }
 
-  const task = data?.task;
-
   if (!task) {
     if (fetching) {
       return <TaskDetailSkeleton />;
@@ -73,9 +135,6 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
       </div>
     );
   }
-
-  const activeSession = sessions.find((s) => isActiveSessionStatus(s.status));
-  const errorSession = sessions.find((s) => s.status === SessionStatus.Error);
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     if (isTerminalStatus(newStatus) && activeSession) {
@@ -89,14 +148,6 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
     await archiveTask(taskId);
     goToParent();
   };
-
-  const buildMetadata = () => ({
-    displayId: task.displayId,
-    title: task.title,
-    description: task.description ?? null,
-    projectName: task.project?.name ?? null,
-    workspaceSlug: currentWorkspace?.slug ?? '',
-  });
 
   return (
     <div className="p-6 grid grid-cols-[1fr_320px] gap-8 items-start">
@@ -163,11 +214,6 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
           projectDirectory={projectDirectory ?? null}
           dirLoading={dirLoading}
           updateDirectory={updateDirectory}
-          activeSession={activeSession}
-          errorSession={errorSession}
-          refreshSessions={refreshSessions}
-          buildMetadata={buildMetadata}
-          onAgentError={setAgentError}
         />
       </div>
     </div>
