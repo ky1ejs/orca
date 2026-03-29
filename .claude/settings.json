@@ -1,5 +1,8 @@
 {
   "permissions": {
+    "allow": [
+      "mcp__orca__*"
+    ],
     "additionalDirectories": [
       "../worktrees/orca"
     ]
