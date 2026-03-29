@@ -39,8 +39,16 @@ export function TaskIdLink({ displayId, className }: TaskIdLinkProps) {
       })
       .toPromise();
 
+    if (result.error) {
+      setResolving(false);
+      setNotFound(true);
+      notFoundTimerRef.current = setTimeout(() => setNotFound(false), 2000);
+      return;
+    }
+
     const task = result.data?.taskByDisplayId;
     if (task) {
+      setResolving(false);
       navigate({
         view: 'task',
         id: task.id,
@@ -48,15 +56,15 @@ export function TaskIdLink({ displayId, className }: TaskIdLinkProps) {
         projectName: task.project?.name,
       });
     } else {
+      setResolving(false);
       setNotFound(true);
       notFoundTimerRef.current = setTimeout(() => setNotFound(false), 2000);
     }
-
-    setResolving(false);
   };
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       className={`${
         className ??

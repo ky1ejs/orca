@@ -175,6 +175,7 @@ export function TaskRelationshipList({
                         e.stopPropagation();
                         handleRemove(rel.id);
                       }}
+                      onKeyDown={(e) => e.stopPropagation()}
                       disabled={removing}
                       className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
                       title="Remove relationship"

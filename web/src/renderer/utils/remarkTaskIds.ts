@@ -5,7 +5,7 @@ import { TASK_ID_PATTERN } from './taskIdPattern.js';
 
 /**
  * Remark plugin that transforms task ID references (e.g. ORCA-123) into
- * link nodes with a `task://` scheme URL, which can be intercepted by
+ * link nodes with an `orca://task/` URL, which can be intercepted by
  * react-markdown's component overrides.
  */
 export function remarkTaskIds() {
@@ -33,7 +33,7 @@ export function remarkTaskIds() {
 
         const linkNode: Link = {
           type: 'link',
-          url: `task://${match[1]}`,
+          url: `orca://task/${match[1]}`,
           children: [{ type: 'text', value: match[1] }],
         };
         children.push(linkNode);
