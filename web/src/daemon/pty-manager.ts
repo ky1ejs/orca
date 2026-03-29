@@ -79,6 +79,9 @@ export class DaemonPtyManager {
         // Triggers Claude Code to push kitty keyboard mode, enabling Shift+Enter.
         // See kitty-keyboard.ts for the full protocol explanation.
         TERM_PROGRAM: KITTY_TERM_PROGRAM,
+        // Signal truecolor support so CLI tools (chalk, bat, vim, etc.) detect
+        // color capability. xterm.js supports full 24-bit RGB via SGR sequences.
+        COLORTERM: 'truecolor',
       },
     });
 
