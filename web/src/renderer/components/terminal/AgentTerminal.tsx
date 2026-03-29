@@ -348,49 +348,39 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminalRef.current?.focus();
   };
 
-  // Manage WebGL addon lifecycle based on visibility. Only the active terminal
-  // gets a WebGL context — hidden terminals fall back to the default renderer.
-  // This prevents "Too many active WebGL contexts" warnings when many sessions
-  // are mounted simultaneously (browsers limit to ~8-16 contexts).
+  // Load WebGL on first visibility and keep it alive across tab switches.
+  // Destroying/recreating the context on every switch adds 5-20ms of latency;
+  // keeping it alive makes tab switching instant. With typically 3-5 sessions
+  // per task this stays well within the browser's ~8-16 context limit.
+  // Context loss is handled gracefully (fallback to DOM renderer).
+  // Cleanup on component unmount is handled by the main useEffect above.
+  //
   // Also refits and focuses on visibility change since ResizeObserver won't fire
   // on visibility: hidden → visible (element size doesn't change).
   useEffect(() => {
+    if (!visible) return;
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     if (!terminal || !fitAddon) return;
 
-    const disposeWebgl = (addonToDispose?: WebglAddon | null) => {
-      const addon = addonToDispose ?? webglAddonRef.current;
-      if (!addon) return;
-      if (webglAddonRef.current === addon) {
+    if (!webglAddonRef.current) {
+      try {
+        const addon = new WebglAddon();
+        webglAddonRef.current = addon;
+        addon.onContextLoss(() => {
+          if (webglAddonRef.current === addon) {
+            webglAddonRef.current = null;
+          }
+          addon.dispose();
+        });
+        terminal.loadAddon(addon);
+      } catch {
         webglAddonRef.current = null;
       }
-      addon.dispose();
-    };
-
-    if (visible) {
-      // Create WebGL renderer before refit so the GPU context is active for the
-      // refresh pass inside fitAndResize, avoiding a wasted canvas render.
-      if (!webglAddonRef.current) {
-        try {
-          const addon = new WebglAddon();
-          // Set the ref before loading so context loss during load can still dispose it.
-          webglAddonRef.current = addon;
-          addon.onContextLoss(() => disposeWebgl(addon));
-          terminal.loadAddon(addon);
-        } catch {
-          webglAddonRef.current = null;
-        }
-      }
-
-      fitAndResize(fitAddon, terminal, sessionId);
-      terminal.focus();
-    } else {
-      // Release WebGL context when hidden so other terminals can use it.
-      disposeWebgl();
     }
 
-    return () => disposeWebgl();
+    fitAndResize(fitAddon, terminal, sessionId);
+    terminal.focus();
   }, [visible, sessionId]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {

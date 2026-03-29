@@ -266,38 +266,36 @@ describe('AgentTerminal', () => {
 
   it('recreates WebGL after context loss on next visibility change', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
-    // Trigger context loss
+    // Trigger context loss — addon disposed, ref cleared
     const onContextLossCallback = mockWebglOnContextLoss.mock.calls[0][0];
     onContextLossCallback();
     mockWebglOnContextLoss.mockClear();
 
-    // Hide then show — should recreate WebGL
+    // Hide then show — should recreate WebGL since context was lost
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
     expect(mockWebglOnContextLoss).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it('disposes WebGL when terminal becomes hidden', () => {
+  it('keeps WebGL alive when terminal becomes hidden', () => {
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     mockWebglDispose.mockClear();
 
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    expect(mockWebglDispose).toHaveBeenCalled();
+    expect(mockWebglDispose).not.toHaveBeenCalled();
   });
 
-  it('creates new WebGL addon when becoming visible again', async () => {
+  it('reuses existing WebGL addon when becoming visible again', async () => {
     const { WebglAddon } = await import('@xterm/addon-webgl');
     const { rerender } = render(<AgentTerminal sessionId="test-session" visible={true} />);
     const initialCallCount = (WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length;
 
-    // Hide — disposes WebGL
+    // Hide — WebGL stays alive
     rerender(<AgentTerminal sessionId="test-session" visible={false} />);
-    // Show again — creates a new WebGL addon
+    // Show again — reuses existing WebGL (no new creation)
     rerender(<AgentTerminal sessionId="test-session" visible={true} />);
 
-    expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
-      initialCallCount,
-    );
+    expect((WebglAddon as ReturnType<typeof vi.fn>).mock.calls.length).toBe(initialCallCount);
   });
 
   it('disposes terminal and WebGL addon on unmount', () => {
