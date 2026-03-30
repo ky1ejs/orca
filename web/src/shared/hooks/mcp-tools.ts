@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { McpToolsDeps } from './mcp-tools/helpers.js';
 import { registerDiscoveryTools } from './mcp-tools/discovery-tools.js';
+import { registerDocTools } from './mcp-tools/doc-tools.js';
 import { registerInitiativeTools } from './mcp-tools/initiative-tools.js';
 import { registerPerfTools } from './mcp-tools/perf-tools.js';
 import { registerProjectTools } from './mcp-tools/project-tools.js';
@@ -19,6 +20,7 @@ export function createMcpServer(deps: McpToolsDeps): McpServer {
 
   registerSessionTools(server, deps);
   registerDiscoveryTools(server, deps);
+  registerDocTools(server, deps);
   registerTaskTools(server, deps);
   registerProjectTools(server, deps);
   registerInitiativeTools(server, deps);

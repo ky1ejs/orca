@@ -155,6 +155,10 @@ Agent processes run in a separate daemon that survives Electron restarts (e.g. d
 - **Graceful shutdown:** On app close, sends SIGTERM to all managed PTY processes
 - **Idle timeout:** 5-minute safety net shuts down the daemon if no clients are connected and no sessions are active
 
+### Worktrees & Agent Isolation
+
+Each agent session runs in its own [git worktree](https://git-scm.com/docs/git-worktree), giving it an isolated working directory, port, and database. The daemon creates worktrees on agent launch and runs a repo-provided bootstrap hook to set up resources. See **[Worktrees & Bootstrapping](docs/worktrees.md)** for the full reference on lifecycle, hook setup, environment variables, and deterministic resource isolation.
+
 ## Tech Stack
 
 | Layer     | Technology                       |

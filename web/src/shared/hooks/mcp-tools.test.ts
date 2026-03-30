@@ -1295,4 +1295,42 @@ describe('MCP tools', () => {
       });
     });
   });
+
+  describe('get_docs', () => {
+    it('returns all topics when no topic specified', async () => {
+      const result = await callTool('get_docs', {});
+      expect(result.isError).toBeUndefined();
+      const text = result.content[0].text;
+      expect(text).toContain('Worktrees');
+      expect(text).toContain('.orca/bootstrap');
+      expect(text).toContain('ORCA_WORKTREE_PATH');
+    });
+
+    it('returns worktrees topic', async () => {
+      const result = await callTool('get_docs', { topic: 'worktrees' });
+      expect(result.isError).toBeUndefined();
+      const text = result.content[0].text;
+      expect(text).toContain('git worktree');
+      expect(text).toContain('Lifecycle');
+      expect(text).not.toContain('ORCA_SESSION_ID');
+    });
+
+    it('returns hooks topic', async () => {
+      const result = await callTool('get_docs', { topic: 'hooks' });
+      expect(result.isError).toBeUndefined();
+      const text = result.content[0].text;
+      expect(text).toContain('.orca/bootstrap');
+      expect(text).toContain('.orca/teardown');
+      expect(text).toContain('Deterministic Resource Isolation');
+    });
+
+    it('returns environment topic', async () => {
+      const result = await callTool('get_docs', { topic: 'environment' });
+      expect(result.isError).toBeUndefined();
+      const text = result.content[0].text;
+      expect(text).toContain('ORCA_WORKTREE_PATH');
+      expect(text).toContain('ORCA_REPO_ROOT');
+      expect(text).toContain('ORCA_SERVER_URL');
+    });
+  });
 });
