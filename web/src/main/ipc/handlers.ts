@@ -118,6 +118,11 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     await client.request(DAEMON_METHODS.AUTH_SET_TOKEN, { token: '' });
   });
 
+  // ── Bootstrap handlers (proxy to daemon) ────────────────────────────
+  ipcMain.handle(IPC_CHANNELS.BOOTSTRAP_STATUS, (_event, worktreePath: string) => {
+    return client.request(DAEMON_METHODS.BOOTSTRAP_STATUS, { worktreePath });
+  });
+
   // ── Daemon handlers (proxy to daemon) ──────────────────────────────
   ipcMain.handle(IPC_CHANNELS.DAEMON_STATUS, () => {
     return client.request(DAEMON_METHODS.DAEMON_STATUS);

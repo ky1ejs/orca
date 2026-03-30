@@ -7,6 +7,8 @@ import { SessionStatus } from '../../../shared/session-status.js';
 import { useTaskHeaderControls } from './TaskHeaderContext.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { usePreferences } from '../../preferences/context.js';
+import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
+import { BootstrapIndicator } from './BootstrapIndicator.js';
 
 export function HeaderTerminalControls() {
   const controls = useTaskHeaderControls();
@@ -15,6 +17,10 @@ export function HeaderTerminalControls() {
   const launchMenuRef = useRef<HTMLDivElement>(null);
   const { agentLaunchMode, setAgentLaunchMode } = usePreferences();
   const activeSessionIds = useSessionActivity();
+  const [worktreePath, setWorktreePath] = useState<string | null>(null);
+  // Use the active session's working directory as the worktree path if we don't have one yet
+  const effectiveWorktreePath = worktreePath ?? controls?.activeSession?.working_directory ?? null;
+  const bootstrapStatus = useBootstrapStatus(effectiveWorktreePath);
 
   useEffect(() => {
     if (!launchMenuOpen) return;
@@ -58,6 +64,9 @@ export function HeaderTerminalControls() {
         buildMetadata(),
       );
       mark('ipc-complete');
+      if (result.success && result.worktreePath) {
+        setWorktreePath(result.worktreePath);
+      }
       if (!result.success && result.error) {
         onAgentError({ message: result.error.message, suggestion: result.error.suggestion });
       }
@@ -124,6 +133,7 @@ export function HeaderTerminalControls() {
           status={activeSession.status}
           active={activeSessionIds.has(activeSession.id)}
         />
+        <BootstrapIndicator status={bootstrapStatus} />
         <button
           onClick={handleStopAgent}
           className="p-1.5 bg-error-muted hover:bg-error-strong text-error rounded-md transition-colors"

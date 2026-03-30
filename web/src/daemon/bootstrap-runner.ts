@@ -3,9 +3,12 @@
  * scripts for worktree lifecycle management.
  */
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { access, constants } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
+import { isPidAlive } from './sessions.js';
 import { logger } from './logger.js';
 
 const BOOTSTRAP_SCRIPT_PATH = join('.orca', 'bootstrap');
@@ -14,12 +17,75 @@ const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const TEARDOWN_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const MAX_OUTPUT_CHARS = 64 * 1024; // 64K characters retained for error reporting
 
-interface ScriptResult {
+export interface ScriptResult {
   success: boolean;
   durationMs: number;
   output: string;
   exitCode: number | null;
   timedOut: boolean;
+}
+
+// ─── Bootstrap Marker & Lock ──────────────────────────────────────
+
+function hashFile(filePath: string): string | null {
+  try {
+    const content = readFileSync(filePath);
+    return createHash('sha256').update(content).digest('hex').slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+
+/** Check if bootstrap has completed AND the script hasn't changed since. */
+export function isBootstrapped(worktreePath: string): boolean {
+  let storedHash: string;
+  try {
+    storedHash = readFileSync(join(worktreePath, '.orca', '.bootstrapped'), 'utf-8').trim();
+  } catch {
+    return false;
+  }
+  const currentHash = hashFile(join(worktreePath, '.orca', 'bootstrap'));
+  if (currentHash === null) return true; // no script = nothing to run
+  return storedHash === currentHash;
+}
+
+/** Mark bootstrap as complete, recording the script hash for change detection. */
+export function markBootstrapped(worktreePath: string): void {
+  const orcaDir = join(worktreePath, '.orca');
+  if (!existsSync(orcaDir)) mkdirSync(orcaDir, { recursive: true });
+  const hash = hashFile(join(orcaDir, 'bootstrap')) ?? 'none';
+  writeFileSync(join(orcaDir, '.bootstrapped'), hash);
+}
+
+/** Check if another bootstrap process is already running (survives daemon crashes). */
+export function isBootstrapLocked(worktreePath: string): boolean {
+  let pidStr: string;
+  try {
+    pidStr = readFileSync(join(worktreePath, '.orca', '.bootstrap.lock'), 'utf-8').trim();
+  } catch {
+    return false; // no lock file
+  }
+  const pid = parseInt(pidStr, 10);
+  if (isPidAlive(pid)) return true;
+  // Process is dead — stale lock
+  try {
+    unlinkSync(join(worktreePath, '.orca', '.bootstrap.lock'));
+  } catch {
+    // Ignore removal errors
+  }
+  return false;
+}
+
+export function acquireBootstrapLock(worktreePath: string, pid: number): void {
+  writeFileSync(join(worktreePath, '.orca', '.bootstrap.lock'), String(pid));
+}
+
+export function releaseBootstrapLock(worktreePath: string): void {
+  try {
+    unlinkSync(join(worktreePath, '.orca', '.bootstrap.lock'));
+  } catch {
+    // Ignore — file may already be gone
+  }
 }
 
 // ─── Script Discovery ──────────────────────────────────────────────
@@ -51,6 +117,8 @@ function runScript(opts: {
   env?: Record<string, string>;
   timeoutMs: number;
   logPrefix: string;
+  onOutput?: (line: string) => void;
+  onSpawned?: (pid: number) => void;
 }): Promise<ScriptResult> {
   const { scriptPath, worktreePath, repoPath, timeoutMs, logPrefix } = opts;
 
@@ -71,6 +139,8 @@ function runScript(opts: {
       },
     });
 
+    if (child.pid) opts.onSpawned?.(child.pid);
+
     const collectOutput = (data: Buffer) => {
       const text = data.toString();
       output += text;
@@ -78,7 +148,10 @@ function runScript(opts: {
         output = output.slice(output.length - MAX_OUTPUT_CHARS);
       }
       for (const line of text.split('\n')) {
-        if (line.trim()) logger.debug(`${logPrefix}: ${line}`);
+        if (line.trim()) {
+          logger.debug(`${logPrefix}: ${line}`);
+          opts.onOutput?.(line);
+        }
       }
     };
 
@@ -152,6 +225,8 @@ export function runBootstrap(opts: {
   repoPath: string;
   metadata: TaskMetadata;
   timeoutMs?: number;
+  onOutput?: (line: string) => void;
+  onSpawned?: (pid: number) => void;
 }): Promise<ScriptResult> {
   return runScript({
     scriptPath: opts.scriptPath,
@@ -165,6 +240,8 @@ export function runBootstrap(opts: {
     },
     timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     logPrefix: 'bootstrap',
+    onOutput: opts.onOutput,
+    onSpawned: opts.onSpawned,
   });
 }
 

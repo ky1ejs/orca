@@ -4,6 +4,7 @@ import type {
   WorktreeGetResult,
   WorktreeSafetyResult,
   WorktreeListResult,
+  BootstrapStatusResult,
 } from '../shared/daemon-protocol.js';
 
 export interface AgentLaunchOptions {
@@ -21,6 +22,7 @@ export interface TaskMetadata {
 export interface AgentLaunchResult {
   success: boolean;
   sessionId?: string;
+  worktreePath?: string;
   error?: { name: string; message: string; suggestion: string };
 }
 
@@ -104,11 +106,17 @@ export interface OrcaAPI {
     ) => Promise<AgentLaunchResult>;
     status: (sessionId: string) => Promise<string | null>;
   };
+  bootstrap: {
+    status: (worktreePath: string) => Promise<BootstrapStatusResult>;
+  };
   lifecycle: {
     onSessionsDied: (cb: (sessionIds: string[]) => void) => () => void;
     onInterruptedSessions: (cb: (count: number) => void) => () => void;
     onSessionStatusChanged: (cb: (sessionId: string, status: string) => void) => () => void;
     onSessionActivityChanged: (cb: (sessionId: string, active: boolean) => void) => () => void;
+    onBootstrapOutput: (cb: (worktreePath: string, lines: string[]) => void) => () => void;
+    onBootstrapCompleted: (cb: (worktreePath: string) => void) => () => void;
+    onBootstrapFailed: (cb: (worktreePath: string, error: string) => void) => () => void;
     onDaemonReconnected: (cb: () => void) => () => void;
     onDaemonDisconnected: (cb: () => void) => () => void;
     onProtocolUpdateRequired: (cb: (activeSessions: number) => void) => () => void;
@@ -200,6 +208,9 @@ const api: OrcaAPI = {
       ipcRenderer.invoke('agent:restart', taskId, sessionId, workingDirectory, options, metadata),
     status: (sessionId) => ipcRenderer.invoke('agent:status', sessionId),
   },
+  bootstrap: {
+    status: (worktreePath) => ipcRenderer.invoke('bootstrap:status', worktreePath),
+  },
   lifecycle: {
     onSessionsDied: (cb) => {
       const listener = (_event: unknown, sessionIds: string[]) => cb(sessionIds);
@@ -229,6 +240,29 @@ const api: OrcaAPI = {
       ipcRenderer.on('session:activity-changed', listener);
       return () => {
         ipcRenderer.removeListener('session:activity-changed', listener);
+      };
+    },
+    onBootstrapOutput: (cb) => {
+      const listener = (_event: unknown, data: { worktreePath: string; lines: string[] }) =>
+        cb(data.worktreePath, data.lines);
+      ipcRenderer.on('bootstrap:output', listener);
+      return () => {
+        ipcRenderer.removeListener('bootstrap:output', listener);
+      };
+    },
+    onBootstrapCompleted: (cb) => {
+      const listener = (_event: unknown, data: { worktreePath: string }) => cb(data.worktreePath);
+      ipcRenderer.on('bootstrap:completed', listener);
+      return () => {
+        ipcRenderer.removeListener('bootstrap:completed', listener);
+      };
+    },
+    onBootstrapFailed: (cb) => {
+      const listener = (_event: unknown, data: { worktreePath: string; error: string }) =>
+        cb(data.worktreePath, data.error);
+      ipcRenderer.on('bootstrap:failed', listener);
+      return () => {
+        ipcRenderer.removeListener('bootstrap:failed', listener);
       };
     },
     onDaemonReconnected: (cb) => {

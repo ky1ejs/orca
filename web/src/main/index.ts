@@ -16,6 +16,9 @@ import type {
   PidSweepSessionsDiedEvent,
   SessionStatusChangedEvent,
   SessionActivityChangedEvent,
+  BootstrapOutputEvent,
+  BootstrapCompletedEvent,
+  BootstrapFailedEvent,
   SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
 import { logger } from './logger.js';
@@ -149,12 +152,30 @@ function setupDaemonEventForwarding(client: DaemonClient): void {
     sendToAllWindows('session:activity-changed', { sessionId, active });
   });
 
+  const unsub6 = client.subscribe(DAEMON_EVENTS.BOOTSTRAP_OUTPUT, (params) => {
+    const p = params as BootstrapOutputEvent;
+    sendToAllWindows('bootstrap:output', p);
+  });
+
+  const unsub7 = client.subscribe(DAEMON_EVENTS.BOOTSTRAP_COMPLETED, (params) => {
+    const p = params as BootstrapCompletedEvent;
+    sendToAllWindows('bootstrap:completed', p);
+  });
+
+  const unsub8 = client.subscribe(DAEMON_EVENTS.BOOTSTRAP_FAILED, (params) => {
+    const p = params as BootstrapFailedEvent;
+    sendToAllWindows('bootstrap:failed', p);
+  });
+
   cleanupDaemonEvents = () => {
     unsub1();
     unsub2();
     unsub3();
     unsub4();
     unsub5();
+    unsub6();
+    unsub7();
+    unsub8();
   };
 }
 

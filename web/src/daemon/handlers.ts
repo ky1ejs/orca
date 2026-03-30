@@ -52,6 +52,7 @@ import type {
   WorktreeRemoveParams,
   WorktreeSafetyParams,
   WorktreeListResult,
+  BootstrapStatusParams,
   DaemonStatusResult,
   SessionsRestoreAllResult,
 } from '../shared/daemon-protocol.js';
@@ -308,6 +309,12 @@ export function createHandler(deps: HandlerDeps) {
           results.push({ ...row, safety });
         }
         return results;
+      }
+
+      // ── Bootstrap ───────────────────────────────────
+      case DAEMON_METHODS.BOOTSTRAP_STATUS: {
+        const p = params as BootstrapStatusParams;
+        return statusManager.getBootstrapStatus(p.worktreePath);
       }
 
       // ── Daemon lifecycle ───────────────────────────
