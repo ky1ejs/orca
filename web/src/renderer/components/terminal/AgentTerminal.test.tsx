@@ -258,6 +258,94 @@ describe('AgentTerminal', () => {
     expect(handler(otherKey)).toBe(true);
   });
 
+  it('intercepts CMD+Backspace to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const cmdBackspace = {
+      type: 'keydown',
+      key: 'Backspace',
+      metaKey: true,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+    };
+    expect(handler(cmdBackspace)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[127;9u');
+  });
+
+  it('intercepts Ctrl+Backspace to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const ctrlBackspace = {
+      type: 'keydown',
+      key: 'Backspace',
+      ctrlKey: true,
+      shiftKey: false,
+      metaKey: false,
+      altKey: false,
+    };
+    expect(handler(ctrlBackspace)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[127;5u');
+  });
+
+  it('intercepts Alt+Backspace to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const altBackspace = {
+      type: 'keydown',
+      key: 'Backspace',
+      altKey: true,
+      shiftKey: false,
+      metaKey: false,
+      ctrlKey: false,
+    };
+    expect(handler(altBackspace)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[127;3u');
+  });
+
+  it('intercepts CMD+Delete to send CSI u escape sequence', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const cmdDelete = {
+      type: 'keydown',
+      key: 'Delete',
+      metaKey: true,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+    };
+    expect(handler(cmdDelete)).toBe(false);
+    expect(mockPtyWrite).toHaveBeenCalledWith('test-session', '\x1b[57376;9u');
+  });
+
+  it('does not intercept plain Backspace', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const plainBackspace = {
+      type: 'keydown',
+      key: 'Backspace',
+      shiftKey: false,
+      metaKey: false,
+      ctrlKey: false,
+      altKey: false,
+    };
+    expect(handler(plainBackspace)).toBe(true);
+  });
+
+  it('ignores keyup events for CSI u keys', () => {
+    render(<AgentTerminal sessionId="test-session" visible={true} status="RUNNING" />);
+    const handler = mockAttachCustomKeyEventHandler.mock.calls[0][0];
+
+    const keyup = { type: 'keyup', key: 'Enter', shiftKey: true };
+    expect(handler(keyup)).toBe(true);
+    expect(mockPtyWrite).not.toHaveBeenCalled();
+  });
+
   it('does not load WebGL addon on mount when hidden', () => {
     render(<AgentTerminal sessionId="test-session" visible={false} status="RUNNING" />);
     expect(mockWebglOnContextLoss).not.toHaveBeenCalled();

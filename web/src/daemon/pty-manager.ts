@@ -6,8 +6,9 @@ import * as pty from 'node-pty';
 import { updateSession } from './sessions.js';
 import { SessionStatus } from '../shared/session-status.js';
 import { RingBuffer } from '../shared/ring-buffer.js';
-import { processKittyKeyboard, KITTY_TERM_PROGRAM } from './kitty-keyboard.js';
+import { processTerminalProtocol, KITTY_TERM_PROGRAM } from './kitty-keyboard.js';
 import { DataBatcher } from './data-batcher.js';
+import { logger } from './logger.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -93,8 +94,11 @@ export class DaemonPtyManager {
     shell.onData((data: string) => {
       if (this.disposed) return;
       this.lastDataAt.set(sessionId, Date.now());
-      const { output, response } = processKittyKeyboard(data);
-      if (response) shell.write(response);
+      const { output, response } = processTerminalProtocol(data);
+      if (response) {
+        logger.debug(`[kitty] query received, responding with flags=1`);
+        shell.write(response);
+      }
       this.batcher.push(sessionId, output);
     });
 
@@ -130,7 +134,12 @@ export class DaemonPtyManager {
 
   write(sessionId: string, data: string): void {
     const proc = this.processes.get(sessionId);
-    if (proc) proc.pty.write(data);
+    if (!proc) return;
+    // Log CSI u sequences (e.g. Shift+Enter, CMD+Backspace) for debugging
+    if (/^\x1b\[\d+;\d+u$/.test(data)) {
+      logger.debug(`[pty-write] CSI u → PTY: ${JSON.stringify(data)}`);
+    }
+    proc.pty.write(data);
   }
 
   resize(sessionId: string, cols: number, rows: number): void {
