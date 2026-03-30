@@ -4,7 +4,7 @@
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { access, constants } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { TaskMetadata } from '../shared/daemon-protocol.js';
@@ -51,8 +51,10 @@ export function isBootstrapped(worktreePath: string): boolean {
 
 /** Mark bootstrap as complete, recording the script hash for change detection. */
 export function markBootstrapped(worktreePath: string): void {
-  const hash = hashFile(join(worktreePath, '.orca', 'bootstrap')) ?? 'none';
-  writeFileSync(join(worktreePath, '.orca', '.bootstrapped'), hash);
+  const orcaDir = join(worktreePath, '.orca');
+  if (!existsSync(orcaDir)) mkdirSync(orcaDir, { recursive: true });
+  const hash = hashFile(join(orcaDir, 'bootstrap')) ?? 'none';
+  writeFileSync(join(orcaDir, '.bootstrapped'), hash);
 }
 
 /** Check if another bootstrap process is already running (survives daemon crashes). */

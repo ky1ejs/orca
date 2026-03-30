@@ -35,7 +35,7 @@ import {
   DAEMON_CLAUDE_SETTINGS_FILE,
   DAEMON_CLI_DIR,
 } from '../shared/daemon-protocol.js';
-import type { TaskMetadata } from '../shared/daemon-protocol.js';
+import type { TaskMetadata, BootstrapStatusResult } from '../shared/daemon-protocol.js';
 
 /**
  * Minimum additional *visible* characters before we consider Claude to have resumed after a
@@ -311,7 +311,7 @@ export class DaemonStatusManager {
   }
 
   /** Returns bootstrap status for the given worktree (used by the BOOTSTRAP_STATUS handler). */
-  getBootstrapStatus(worktreePath: string): { status: string; lines: string[] } {
+  getBootstrapStatus(worktreePath: string): BootstrapStatusResult {
     if (this.bootstrapTracker.isRunning(worktreePath)) {
       return { status: 'running', lines: [...this.bootstrapTracker.getOutput(worktreePath)] };
     }
@@ -369,6 +369,11 @@ export class DaemonStatusManager {
       await this.waitForLockRelease(worktreePath);
       mark('bootstrap-lock-released');
       if (isBootstrapped(worktreePath)) return;
+      // If the lock is still held after timeout, abort rather than risk two concurrent bootstraps
+      if (isBootstrapLocked(worktreePath)) {
+        this.updateStatusAndNotify(sessionId, SessionStatus.Error);
+        throw new BootstrapError(null, 'Bootstrap lock still held after timeout', true);
+      }
     }
 
     mark('bootstrap-started');

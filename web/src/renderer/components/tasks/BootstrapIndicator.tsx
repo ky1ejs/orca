@@ -52,6 +52,9 @@ export function BootstrapIndicator({ status }: BootstrapIndicatorProps) {
         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] ${textClass} hover:bg-surface-hover transition-colors`}
         onClick={() => setShowPopover((prev) => !prev)}
         onMouseEnter={() => setShowPopover(true)}
+        aria-expanded={showPopover}
+        aria-haspopup="true"
+        aria-label={label}
         onMouseLeave={() => {
           if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
           hoverTimerRef.current = setTimeout(() => {
