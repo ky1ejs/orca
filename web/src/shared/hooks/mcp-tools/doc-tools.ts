@@ -6,6 +6,8 @@ import { type McpToolsDeps, toolSuccess } from './helpers.js';
 
 const WORKTREES_DOC = `# Worktrees
 
+> The canonical, up-to-date reference is \`docs/worktrees.md\` in the Orca repository. If anything here conflicts with that document, \`docs/worktrees.md\` wins.
+
 When Orca launches an agent on a task, it creates a git worktree so the agent works in an isolated copy of the repository. Each worktree gets its own branch, working directory, and (via bootstrap hooks) its own port, database, and environment.
 
 ## Lifecycle
@@ -17,7 +19,7 @@ When Orca launches an agent on a task, it creates a git worktree so the agent wo
 
 ## Idempotency
 
-The daemon tracks a SHA-256 hash of the bootstrap script in \`.orca/.bootstrapped\`. If the hash matches, bootstrap is skipped on subsequent launches. If the script changes, bootstrap runs again.`;
+The daemon tracks a SHA-256 prefix (first 16 hex characters) of the bootstrap script in \`.orca/.bootstrapped\`. If the stored prefix matches, bootstrap is skipped on subsequent launches. If the script changes, bootstrap runs again.`;
 
 const HOOKS_DOC = `# Hook Scripts
 

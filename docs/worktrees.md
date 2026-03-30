@@ -29,11 +29,11 @@ git worktree remove       Remove worktree directory + delete branch
 1. **Worktree creation** — Orca fetches the latest from `origin/<base-branch>`, then runs `git worktree add -b feat/<TASK-ID>-<slug> <path> <start-point>`. If the branch already exists it reuses it. The worktree path and metadata are recorded in the daemon's SQLite database.
 2. **Bootstrap** — If `.orca/bootstrap` exists and is executable, the daemon runs it with environment variables injected (see below). The agent session shows a "Bootstrapping" status during this phase. If it fails, the session is marked as "Error".
 3. **Agent session** — Claude Code is spawned in the worktree directory with task context injected as environment variables.
-4. **Teardown** — When the worktree is removed, `.orca/teardown` runs first (best-effort — failure doesn't block removal). Then `git worktree remove` and `git branch -D` clean up.
+4. **Teardown** — When the worktree is removed, `.orca/teardown` runs first (best-effort — failure doesn't block removal). Then `git worktree remove` and `git branch -D` clean up. If the worktree directory was already deleted externally, teardown and git cleanup are skipped — only the daemon's DB record is removed.
 
 ### Idempotency
 
-The daemon tracks a SHA-256 hash of the `.orca/bootstrap` script in `.orca/.bootstrapped`. If the hash matches, bootstrap is skipped on subsequent launches for the same worktree. If the script changes, bootstrap runs again.
+The daemon tracks a SHA-256 prefix (first 16 hex characters) of the `.orca/bootstrap` script in `.orca/.bootstrapped`. If the stored prefix matches, bootstrap is skipped on subsequent launches for the same worktree. If the script changes, bootstrap runs again.
 
 ## Setting Up Hooks
 
@@ -123,6 +123,8 @@ These are set when Claude Code is spawned in the worktree:
 When multiple worktrees run simultaneously, each needs its own port, database, and config to avoid conflicts. The recommended pattern is to derive these deterministically from the worktree path using a hash — this way the same worktree always gets the same resources, and different worktrees never collide.
 
 ### The pattern
+
+> **Portability note**: The examples below use `shasum` and `sed -i ''` (macOS). On Linux, use `sha256sum` instead of `shasum -a 256`, and `sed -i` (no empty quotes) instead of `sed -i ''`.
 
 ```bash
 #!/usr/bin/env bash
