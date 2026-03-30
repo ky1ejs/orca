@@ -54,6 +54,50 @@ export function escapeFilePath(p: string): string {
 /** How often (ms) to force a full re-render during active PTY output. */
 const REFRESH_THROTTLE_MS = 1_000;
 
+/**
+ * CSI u key encoding table for modifier+key combinations that Claude Code
+ * supports via the kitty keyboard protocol. Format: `\x1b[keycode;modifiers u`
+ * where modifiers = 1 + (shift?1:0) + (alt?2:0) + (ctrl?4:0) + (super?8:0).
+ *
+ * Keys in this table are intercepted from xterm.js and sent directly as CSI u
+ * escape sequences so Claude Code can distinguish them from their unmodified
+ * counterparts (e.g. Shift+Enter vs Enter, CMD+Backspace vs Backspace).
+ */
+interface CsiUEntry {
+  keyCode: number;
+  modifierBits: number;
+}
+
+// Map from "key:modifiers" to CSI u encoding parameters.
+// Modifier flags: shift=1, alt=2, ctrl=4, super/cmd=8
+const CSI_U_MAP: Record<string, CsiUEntry> = {
+  'Enter:shift': { keyCode: 13, modifierBits: 1 },
+  'Backspace:meta': { keyCode: 127, modifierBits: 8 },
+  'Backspace:ctrl': { keyCode: 127, modifierBits: 4 },
+  'Backspace:alt': { keyCode: 127, modifierBits: 2 },
+  'Delete:meta': { keyCode: 57376, modifierBits: 8 },
+};
+
+/** Build a CSI u key lookup string from a KeyboardEvent. */
+function csiUKey(event: KeyboardEvent): string | null {
+  const mod = event.shiftKey
+    ? 'shift'
+    : event.metaKey
+      ? 'meta'
+      : event.ctrlKey
+        ? 'ctrl'
+        : event.altKey
+          ? 'alt'
+          : null;
+  if (!mod) return null;
+  return `${event.key}:${mod}`;
+}
+
+/** Encode a key+modifier as a CSI u escape sequence. */
+function encodeCsiU(entry: CsiUEntry): string {
+  return `\x1b[${entry.keyCode};${1 + entry.modifierBits}u`;
+}
+
 /** Try loading CanvasAddon as intermediate fallback between WebGL and DOM. */
 function tryLoadCanvas(terminal: Terminal, ref: MutableRefObject<CanvasAddon | null>): void {
   let canvas: CanvasAddon | null = null;
@@ -179,18 +223,29 @@ export const AgentTerminal = memo(function AgentTerminal({
     terminal.open(container);
     mark('xterm-opened');
 
-    // Intercept Shift+Enter to send CSI u encoding (\x1b[13;2u) instead of
-    // plain \r so Claude Code can distinguish it and insert a newline.
+    // Intercept modifier+key combinations and send CSI u encodings so Claude
+    // Code can distinguish them (e.g. Shift+Enter → newline, CMD+Backspace →
+    // delete-to-start). Also intercept Cmd/Ctrl+F for in-terminal search.
     terminal.attachCustomKeyEventHandler((event) => {
-      if (event.type === 'keydown' && event.key === 'Enter' && event.shiftKey) {
-        window.orca.pty.write(sessionId, '\x1b[13;2u');
-        return false;
+      if (event.type !== 'keydown') return true;
+
+      // CSI u key handling — send encoded escape sequences for modifier combos
+      const key = csiUKey(event);
+      if (key) {
+        const entry = CSI_U_MAP[key];
+        if (entry) {
+          window.orca.pty.write(sessionId, encodeCsiU(entry));
+          return false;
+        }
       }
-      if (event.type === 'keydown' && event.key === 'f' && (event.metaKey || event.ctrlKey)) {
+
+      // Cmd/Ctrl+F → open in-terminal search
+      if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         setSearchVisible(true);
         return false;
       }
+
       return true;
     });
 
