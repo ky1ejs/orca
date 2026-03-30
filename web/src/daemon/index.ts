@@ -273,10 +273,11 @@ async function main(): Promise<void> {
 
   server = new DaemonServer(handler);
 
-  // Idle manager
+  // Idle manager — include in-flight bootstraps as "active" to prevent
+  // premature shutdown while a background bootstrap is still running.
   idleManager = new IdleManager(
     () => server.clientCount,
-    () => ptyManager.activeCount,
+    () => ptyManager.activeCount + statusManager.bootstrapActiveCount(),
     () => {
       logger.info('Idle timeout — shutting down');
       shutdown();

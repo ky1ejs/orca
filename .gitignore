@@ -29,5 +29,9 @@ Thumbs.db
 dist-electron/
 
 
+# Bootstrap state
+.orca/.bootstrapped
+.orca/.bootstrap.lock
+
 # Claude
 .claude/settings.local.json

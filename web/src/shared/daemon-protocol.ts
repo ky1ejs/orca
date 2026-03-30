@@ -252,6 +252,29 @@ export interface SessionActivityChangedEvent {
   active: boolean;
 }
 
+export interface BootstrapOutputEvent {
+  worktreePath: string;
+  lines: string[];
+}
+
+export interface BootstrapCompletedEvent {
+  worktreePath: string;
+}
+
+export interface BootstrapFailedEvent {
+  worktreePath: string;
+  error: string;
+}
+
+export interface BootstrapStatusParams {
+  worktreePath: string;
+}
+
+export interface BootstrapStatusResult {
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  lines: string[];
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────
 
 import { join } from 'node:path';
@@ -309,6 +332,7 @@ export const DAEMON_METHODS = {
   WORKTREE_REMOVE: 'worktree.remove',
   WORKTREE_SAFETY: 'worktree.safety',
   WORKTREE_LIST: 'worktree.list',
+  BOOTSTRAP_STATUS: 'bootstrap.status',
   DAEMON_PING: 'daemon.ping',
   DAEMON_STATUS: 'daemon.status',
   DAEMON_SHUTDOWN: 'daemon.shutdown',
@@ -321,4 +345,7 @@ export const DAEMON_EVENTS = {
   PID_SWEEP_SESSIONS_DIED: 'pid-sweep.sessions-died',
   SESSION_STATUS_CHANGED: 'session.statusChanged',
   SESSION_ACTIVITY_CHANGED: 'session.activityChanged',
+  BOOTSTRAP_OUTPUT: 'bootstrap.output',
+  BOOTSTRAP_COMPLETED: 'bootstrap.completed',
+  BOOTSTRAP_FAILED: 'bootstrap.failed',
 } as const;

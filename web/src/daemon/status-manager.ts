@@ -18,7 +18,14 @@ import {
   type SerializedAgentError,
 } from '../shared/errors.js';
 import { WorktreeManager, isGitRepo } from './worktree-manager.js';
-import { findBootstrapScript, runBootstrap } from './bootstrap-runner.js';
+import {
+  findBootstrapScript,
+  runBootstrap,
+  isBootstrapped,
+  markBootstrapped,
+  isBootstrapLocked,
+} from './bootstrap-runner.js';
+import { BootstrapTracker } from './bootstrap-tracker.js';
 import { InputDetector } from '../shared/input-detection.js';
 import type { HookServer, HookEvent } from '../shared/hooks/server.js';
 import { logger } from './logger.js';
@@ -90,6 +97,7 @@ export class DaemonStatusManager {
   private hookPort: number | null;
   private broadcast: BroadcastFn;
   private worktreeManager: WorktreeManager;
+  private readonly bootstrapTracker: BootstrapTracker;
 
   constructor(manager: DaemonPtyManager, options: DaemonStatusManagerOptions) {
     this.manager = manager;
@@ -99,6 +107,7 @@ export class DaemonStatusManager {
     this.hookPort = options.hookPort;
     this.broadcast = options.broadcast;
     this.worktreeManager = options.worktreeManager;
+    this.bootstrapTracker = new BootstrapTracker();
   }
 
   async launch(
@@ -109,7 +118,8 @@ export class DaemonStatusManager {
     colorScheme?: 'light' | 'dark',
     onSessionCreated?: (sessionId: string) => void,
   ): Promise<
-    { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
+    | { success: true; sessionId: string; worktreePath?: string }
+    | { success: false; error: SerializedAgentError }
   > {
     try {
       const mark = createPerfTimer('agent.launch', (msg) => logger.info(msg));
@@ -145,26 +155,53 @@ export class DaemonStatusManager {
       // Subscribe the caller early so they receive status events during bootstrap
       onSessionCreated?.(session.id);
 
-      // Run bootstrap script if this is a newly created worktree
-      if (worktreeCreated) {
+      // Run bootstrap script if needed (new worktree or script has changed)
+      const needsBootstrap = worktreeCreated || !isBootstrapped(effectiveWorkingDirectory);
+
+      if (needsBootstrap) {
         const scriptPath = await findBootstrapScript(effectiveWorkingDirectory);
         if (scriptPath) {
-          this.updateStatusAndNotify(session.id, SessionStatus.Bootstrapping);
-          mark('bootstrap-started');
-
-          const result = await runBootstrap({
-            scriptPath,
-            worktreePath: effectiveWorkingDirectory,
-            repoPath: resolvedRepoPath,
-            metadata: metadata!,
-          });
-          mark('bootstrap-finished');
-
-          if (!result.success) {
-            this.updateStatusAndNotify(session.id, SessionStatus.Error);
-            throw new BootstrapError(result.exitCode, result.output, result.timedOut);
+          if (options?.planMode) {
+            // Plan mode: start bootstrap in the background, spawn Claude immediately.
+            // Claude only reads files (already in the worktree from git) so it doesn't
+            // need installed deps, a database, or env files to plan.
+            if (
+              !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
+              !isBootstrapLocked(effectiveWorkingDirectory)
+            ) {
+              this.bootstrapTracker.start({
+                scriptPath,
+                worktreePath: effectiveWorkingDirectory,
+                repoPath: resolvedRepoPath,
+                metadata: metadata!,
+                broadcast: this.broadcast,
+              });
+              mark('bootstrap-started-background');
+            }
+          } else {
+            // Terminal mode: must wait for bootstrap to complete before spawning shell.
+            await this.awaitBootstrap(
+              session.id,
+              scriptPath,
+              effectiveWorkingDirectory,
+              resolvedRepoPath,
+              metadata!,
+              mark,
+            );
           }
+        } else {
+          // No bootstrap script — mark as done so we don't check again
+          markBootstrapped(effectiveWorkingDirectory);
         }
+      } else if (!options?.planMode && this.bootstrapTracker.isRunning(effectiveWorkingDirectory)) {
+        // Background bootstrap still running — wait for it
+        this.updateStatusAndNotify(session.id, SessionStatus.Bootstrapping);
+        mark('bootstrap-joining');
+        this.assertBootstrapSuccess(
+          session.id,
+          await this.bootstrapTracker.waitFor(effectiveWorkingDirectory),
+        );
+        mark('bootstrap-finished');
       }
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
@@ -239,7 +276,9 @@ export class DaemonStatusManager {
       this.startMonitoring(session.id, taskId, effectiveWorkingDirectory);
       mark('monitoring-started');
 
-      return { success: true, sessionId: session.id };
+      const worktreePath =
+        effectiveWorkingDirectory !== workingDirectory ? effectiveWorkingDirectory : undefined;
+      return { success: true, sessionId: session.id, worktreePath };
     } catch (err) {
       return { success: false, error: serializeError(err) };
     }
@@ -259,7 +298,8 @@ export class DaemonStatusManager {
     colorScheme?: 'light' | 'dark',
     onSessionCreated?: (sessionId: string) => void,
   ): Promise<
-    { success: true; sessionId: string } | { success: false; error: SerializedAgentError }
+    | { success: true; sessionId: string; worktreePath?: string }
+    | { success: false; error: SerializedAgentError }
   > {
     this.stop(sessionId);
     return this.launch(taskId, workingDirectory, options, metadata, colorScheme, onSessionCreated);
@@ -270,10 +310,90 @@ export class DaemonStatusManager {
     return session?.status ?? null;
   }
 
+  /** Returns bootstrap status for the given worktree (used by the BOOTSTRAP_STATUS handler). */
+  getBootstrapStatus(worktreePath: string): { status: string; lines: string[] } {
+    if (this.bootstrapTracker.isRunning(worktreePath)) {
+      return { status: 'running', lines: [...this.bootstrapTracker.getOutput(worktreePath)] };
+    }
+    if (isBootstrapped(worktreePath)) return { status: 'completed', lines: [] };
+    if (isBootstrapLocked(worktreePath)) return { status: 'running', lines: [] };
+    return { status: 'pending', lines: [] };
+  }
+
+  /** Number of in-flight bootstraps (used by idle manager). */
+  bootstrapActiveCount(): number {
+    return this.bootstrapTracker.activeCount();
+  }
+
   dispose(): void {
     for (const sessionId of this.monitors.keys()) {
       this.stopMonitoring(sessionId);
     }
+    this.bootstrapTracker.dispose();
+  }
+
+  /** Throw BootstrapError if result indicates failure. */
+  private assertBootstrapSuccess(
+    sessionId: string,
+    result: import('./bootstrap-runner.js').ScriptResult | null,
+  ): void {
+    if (result && !result.success) {
+      this.updateStatusAndNotify(sessionId, SessionStatus.Error);
+      throw new BootstrapError(result.exitCode, result.output, result.timedOut);
+    }
+  }
+
+  /**
+   * Wait for bootstrap to complete in terminal mode. Handles three cases:
+   * joining an in-flight bootstrap, waiting for an orphaned lock, or running fresh.
+   */
+  private async awaitBootstrap(
+    sessionId: string,
+    scriptPath: string,
+    worktreePath: string,
+    repoPath: string,
+    metadata: TaskMetadata,
+    mark: (label: string) => void,
+  ): Promise<void> {
+    this.updateStatusAndNotify(sessionId, SessionStatus.Bootstrapping);
+
+    if (this.bootstrapTracker.isRunning(worktreePath)) {
+      mark('bootstrap-joining');
+      this.assertBootstrapSuccess(sessionId, await this.bootstrapTracker.waitFor(worktreePath));
+      mark('bootstrap-finished');
+      return;
+    }
+
+    if (isBootstrapLocked(worktreePath)) {
+      mark('bootstrap-waiting-lock');
+      await this.waitForLockRelease(worktreePath);
+      mark('bootstrap-lock-released');
+      if (isBootstrapped(worktreePath)) return;
+    }
+
+    mark('bootstrap-started');
+    const result = await runBootstrap({ scriptPath, worktreePath, repoPath, metadata });
+    mark('bootstrap-finished');
+    this.assertBootstrapSuccess(sessionId, result);
+    markBootstrapped(worktreePath);
+  }
+
+  /**
+   * Poll until the bootstrap lock file is released by an orphaned process.
+   * Falls back to a 10-minute timeout to prevent infinite blocking.
+   */
+  private waitForLockRelease(worktreePath: string, timeoutMs = 10 * 60 * 1000): Promise<void> {
+    const start = Date.now();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (!isBootstrapLocked(worktreePath) || Date.now() - start > timeoutMs) {
+          resolve();
+        } else {
+          setTimeout(check, 2000);
+        }
+      };
+      check();
+    });
   }
 
   private startMonitoring(sessionId: string, taskId: string, workingDirectory: string): void {
