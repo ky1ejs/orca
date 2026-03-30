@@ -55,13 +55,13 @@ export function escapeFilePath(p: string): string {
 const REFRESH_THROTTLE_MS = 1_000;
 
 /**
- * CSI u key encoding table for modifier+key combinations that Claude Code
- * supports via the kitty keyboard protocol. Format: `\x1b[keycode;modifiers u`
- * where modifiers = 1 + (shift?1:0) + (alt?2:0) + (ctrl?4:0) + (super?8:0).
+ * CSI u key encoding table for single-modifier+key combinations that Claude
+ * Code supports via the kitty keyboard protocol. Each entry maps a key with
+ * exactly one modifier to its CSI u escape sequence `\x1b[keycode;(1+bits)u`.
  *
- * Keys in this table are intercepted from xterm.js and sent directly as CSI u
- * escape sequences so Claude Code can distinguish them from their unmodified
- * counterparts (e.g. Shift+Enter vs Enter, CMD+Backspace vs Backspace).
+ * Only single-modifier chords are supported (e.g. Shift+Enter, CMD+Backspace).
+ * Multi-modifier combinations (e.g. Shift+Ctrl+Backspace) fall through to
+ * xterm.js default handling.
  */
 interface CsiUEntry {
   keyCode: number;

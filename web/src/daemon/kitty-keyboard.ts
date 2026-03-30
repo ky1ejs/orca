@@ -19,8 +19,6 @@
  * browser keydown events and write CSI u sequences to the PTY.
  */
 
-import { logger } from './logger.js';
-
 const CSI_PREFIX = '\x1b[';
 const QUERY = '\x1b[?u';
 const QUERY_RESPONSE = '\x1b[?1u';
@@ -57,13 +55,6 @@ export function processTerminalProtocol(data: string): FilterResult {
   const output = data.replace(PROTOCOL_RE, (match) => {
     if (match === QUERY) {
       response += QUERY_RESPONSE;
-      logger.debug('[kitty] query received, responding with flags=1');
-    } else if (match.startsWith('\x1b[>') && match.endsWith('u')) {
-      logger.debug(`[kitty] push mode: ${JSON.stringify(match)}`);
-    } else if (match.startsWith('\x1b[<') && match.endsWith('u')) {
-      logger.debug(`[kitty] pop mode: ${JSON.stringify(match)}`);
-    } else {
-      logger.debug(`[kitty] stripped: ${JSON.stringify(match)}`);
     }
     return '';
   });

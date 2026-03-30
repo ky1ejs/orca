@@ -95,7 +95,10 @@ export class DaemonPtyManager {
       if (this.disposed) return;
       this.lastDataAt.set(sessionId, Date.now());
       const { output, response } = processTerminalProtocol(data);
-      if (response) shell.write(response);
+      if (response) {
+        logger.debug(`[kitty] query received, responding with flags=1`);
+        shell.write(response);
+      }
       this.batcher.push(sessionId, output);
     });
 
