@@ -263,7 +263,7 @@ async function main(): Promise<void> {
       return server;
     },
     setToken: (token) => {
-      authToken = token;
+      authToken = token || null;
     },
     getVersion: () => version,
     getUptime: () => Date.now() - startTime,
