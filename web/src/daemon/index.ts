@@ -12,7 +12,7 @@
  */
 process.title = 'orca-daemon';
 
-import { chmodSync, mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { initDaemonDb, closeDaemonDb } from './db.js';
 import { sweepStaleSessions } from './sessions.js';
@@ -34,6 +34,7 @@ import {
   DAEMON_CLAUDE_SETTINGS_FILE,
   DAEMON_CLI_DIR,
   DAEMON_CLI_SCRIPT,
+  DAEMON_AUTH_TOKEN_FILE,
 } from '../shared/daemon-protocol.js';
 import { buildMcpConfigJson, buildHooksConfigJson } from '../shared/hooks/settings.js';
 import { buildShellOrcaSystemPrompt } from '../shared/claude.js';
@@ -65,9 +66,33 @@ process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection', reason);
 });
 
+// ── Auth token persistence ─────────────────────────────────────────────
+
+function loadAuthToken(): string | null {
+  try {
+    const t = readFileSync(DAEMON_AUTH_TOKEN_FILE, 'utf-8').trim();
+    return t || null;
+  } catch {
+    return null;
+  }
+}
+
+function persistAuthToken(token: string | null): void {
+  if (token) {
+    writeFileSync(DAEMON_AUTH_TOKEN_FILE, token, { mode: 0o600 });
+    chmodSync(DAEMON_AUTH_TOKEN_FILE, 0o600);
+  } else {
+    try {
+      unlinkSync(DAEMON_AUTH_TOKEN_FILE);
+    } catch {
+      // File may not exist
+    }
+  }
+}
+
 // ── State ───────────────────────────────────────────────────────────────
 
-let authToken: string | null = null;
+let authToken: string | null = loadAuthToken();
 const startTime = Date.now();
 let shuttingDown = false;
 
@@ -263,7 +288,8 @@ async function main(): Promise<void> {
       return server;
     },
     setToken: (token) => {
-      authToken = token;
+      authToken = token || null;
+      persistAuthToken(authToken);
     },
     getVersion: () => version,
     getUptime: () => Date.now() - startTime,

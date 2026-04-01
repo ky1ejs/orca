@@ -36,9 +36,10 @@ function App() {
 
   useEffect(() => {
     setOnAuthError(() => {
-      if (window.orca) {
-        window.orca.auth.clearToken();
-      }
+      // Do NOT clear the daemon's auth token here — it serves MCP sessions
+      // that run independently of the renderer. The daemon token is only
+      // cleared on explicit logout (handleLogout).
+      clearCachedToken();
       setAuthState('expired');
     });
   }, []);
