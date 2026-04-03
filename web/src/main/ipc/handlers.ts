@@ -2,7 +2,9 @@
  * IPC handlers — thin proxies to the PTY daemon for PTY/DB/agent operations.
  * Settings, fonts, and auth stay local in Electron.
  */
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { IPC_CHANNELS } from './channels.js';
 import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
 import { resolveColorScheme } from '../config/theme.js';
@@ -14,6 +16,8 @@ import { DAEMON_METHODS } from '../../shared/daemon-protocol.js';
 import type { AgentLaunchOptions, TaskMetadata } from '../../shared/daemon-protocol.js';
 import { createPerfTimer } from '../../shared/perf.js';
 import { logger } from '../logger.js';
+
+const execFileAsync = promisify(execFile);
 
 /** Extended timeout for agent launch/restart to accommodate bootstrap scripts. */
 const AGENT_LAUNCH_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
@@ -235,6 +239,29 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
 
   ipcMain.handle(IPC_CHANNELS.AGENT_STATUS, (_event, sessionId: string) => {
     return client.request(DAEMON_METHODS.AGENT_STATUS, { sessionId });
+  });
+
+  // ── Shell handlers (local — not proxied to daemon) ─────────────────
+  ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_PATH, async (_event, dirPath: string) => {
+    const errorMessage = await shell.openPath(dirPath);
+    if (errorMessage) throw new Error(errorMessage);
+  });
+
+  let vscodePath: string | null = null;
+
+  ipcMain.handle(IPC_CHANNELS.SHELL_HAS_VSCODE, async () => {
+    if (vscodePath !== null) return true;
+    try {
+      const { stdout } = await execFileAsync('which', ['code']);
+      vscodePath = stdout.trim();
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_IN_VSCODE, async (_event, dirPath: string) => {
+    await execFileAsync(vscodePath ?? 'code', [dirPath]);
   });
 
   // ── Perf logging (fire-and-forget from renderer → main.log) ─────────

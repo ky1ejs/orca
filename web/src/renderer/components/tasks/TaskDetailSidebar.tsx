@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Trash2, FolderOpen, GitBranch, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Trash2, FolderOpen, GitBranch, AlertTriangle, CheckCircle, Code } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
@@ -55,6 +55,12 @@ export function TaskDetailSidebar({
 
   const { worktree, safety, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
 
+  const [hasVscode, setHasVscode] = useState(false);
+
+  useEffect(() => {
+    window.orca.shell.hasVscode().then(setHasVscode).catch(() => setHasVscode(false));
+  }, []);
+
   const handleRemove = useCallback(
     async (force: boolean) => {
       setRemoving(true);
@@ -73,6 +79,8 @@ export function TaskDetailSidebar({
 
   const selectClass =
     'w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-accent';
+  const iconButtonClass =
+    'flex-shrink-0 p-0.5 text-fg-faint hover:text-fg rounded transition-colors';
 
   return (
     <div className="space-y-5">
@@ -253,12 +261,30 @@ export function TaskDetailSidebar({
                 {worktree.branch_name}
               </span>
             </div>
-            <p
-              className="text-fg-faint text-body-sm font-mono truncate"
-              title={worktree.worktree_path}
-            >
-              {worktree.worktree_path}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p
+                className="text-fg-faint text-body-sm font-mono truncate flex-1 min-w-0"
+                title={worktree.worktree_path}
+              >
+                {worktree.worktree_path}
+              </p>
+              <button
+                onClick={() => window.orca.shell.openPath(worktree.worktree_path)}
+                className={iconButtonClass}
+                title="Open in Finder"
+              >
+                <FolderOpen className={iconSize.xs} />
+              </button>
+              {hasVscode && (
+                <button
+                  onClick={() => window.orca.shell.openInVscode(worktree.worktree_path)}
+                  className={iconButtonClass}
+                  title="Open in VS Code"
+                >
+                  <Code className={iconSize.xs} />
+                </button>
+              )}
+            </div>
             {safety && (
               <div className="flex items-center gap-1.5 text-body-xs">
                 {!safety.dirty && !safety.unpushedCommits && safety.branchMerged ? (
