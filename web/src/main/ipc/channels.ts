@@ -35,5 +35,8 @@ export const IPC_CHANNELS = {
   BOOTSTRAP_STATUS: 'bootstrap:status',
   DAEMON_STATUS: 'daemon:status',
   GITHUB_INSTALLATION_CALLBACK: 'github:installation-callback',
+  SHELL_OPEN_PATH: 'shell:openPath',
+  SHELL_HAS_VSCODE: 'shell:hasVscode',
+  SHELL_OPEN_IN_VSCODE: 'shell:openInVscode',
   PERF_LOG: 'perf:log',
 } as const;

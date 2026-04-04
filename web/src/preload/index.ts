@@ -83,6 +83,11 @@ export interface OrcaAPI {
     safety: (taskId: string) => Promise<WorktreeSafetyResult | null>;
     list: () => Promise<WorktreeListResult[]>;
   };
+  shell: {
+    openPath: (dirPath: string) => Promise<void>;
+    hasVscode: () => Promise<boolean>;
+    openInVscode: (dirPath: string) => Promise<void>;
+  };
   perf: {
     log: (msg: string) => void;
   };
@@ -193,6 +198,11 @@ const api: OrcaAPI = {
     remove: (taskId, force) => ipcRenderer.invoke('worktree:remove', taskId, force),
     safety: (taskId) => ipcRenderer.invoke('worktree:safety', taskId),
     list: () => ipcRenderer.invoke('worktree:list'),
+  },
+  shell: {
+    openPath: (dirPath) => ipcRenderer.invoke('shell:openPath', dirPath),
+    hasVscode: () => ipcRenderer.invoke('shell:hasVscode'),
+    openInVscode: (dirPath) => ipcRenderer.invoke('shell:openInVscode', dirPath),
   },
   perf: {
     log: (msg) => ipcRenderer.send('perf:log', msg),

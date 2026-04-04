@@ -44,6 +44,11 @@ const mockOrca = {
     onProtocolUpdateRequired: vi.fn().mockReturnValue(() => {}),
     forceRestartDaemon: vi.fn().mockResolvedValue(undefined),
   },
+  shell: {
+    openPath: vi.fn().mockResolvedValue(undefined),
+    hasVscode: vi.fn().mockResolvedValue(false),
+    openInVscode: vi.fn().mockResolvedValue(undefined),
+  },
 };
 
 // Set on the jsdom window object directly

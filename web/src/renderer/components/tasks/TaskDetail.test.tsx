@@ -177,6 +177,11 @@ vi.mock('./TaskRelationshipList.js', () => ({
     safety: vi.fn().mockResolvedValue(null),
     list: vi.fn().mockResolvedValue([]),
   },
+  shell: {
+    openPath: vi.fn().mockResolvedValue(undefined),
+    hasVscode: vi.fn().mockResolvedValue(false),
+    openInVscode: vi.fn().mockResolvedValue(undefined),
+  },
 };
 
 beforeEach(() => {
