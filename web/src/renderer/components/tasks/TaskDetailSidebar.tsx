@@ -58,7 +58,10 @@ export function TaskDetailSidebar({
   const [hasVscode, setHasVscode] = useState(false);
 
   useEffect(() => {
-    window.orca.shell.hasVscode().then(setHasVscode).catch(() => setHasVscode(false));
+    window.orca.shell
+      .hasVscode()
+      .then(setHasVscode)
+      .catch(() => setHasVscode(false));
   }, []);
 
   const handleRemove = useCallback(
