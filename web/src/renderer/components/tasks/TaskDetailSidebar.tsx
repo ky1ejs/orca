@@ -272,17 +272,23 @@ export function TaskDetailSidebar({
                 {worktree.worktree_path}
               </p>
               <button
-                onClick={() => window.orca.shell.openPath(worktree.worktree_path)}
+                onClick={() =>
+                  void window.orca.shell.openPath(worktree.worktree_path).catch(() => {})
+                }
                 className={iconButtonClass}
                 title="Open in Finder"
+                aria-label="Open in Finder"
               >
                 <FolderOpen className={iconSize.xs} />
               </button>
               {hasVscode && (
                 <button
-                  onClick={() => window.orca.shell.openInVscode(worktree.worktree_path)}
+                  onClick={() =>
+                    void window.orca.shell.openInVscode(worktree.worktree_path).catch(() => {})
+                  }
                   className={iconButtonClass}
                   title="Open in VS Code"
+                  aria-label="Open in VS Code"
                 >
                   <Code className={iconSize.xs} />
                 </button>

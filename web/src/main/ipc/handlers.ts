@@ -253,7 +253,9 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
     if (vscodePath !== null) return true;
     try {
       const { stdout } = await execFileAsync('which', ['code']);
-      vscodePath = stdout.trim();
+      const resolved = stdout.trim();
+      if (!resolved) return false;
+      vscodePath = resolved;
       return true;
     } catch {
       return false;
