@@ -377,6 +377,15 @@ export const taskResolvers = {
       if (!parent.projectId) return null;
       return context.loaders.projectById.load(parent.projectId);
     },
+    workspace: async (parent, _args, context) => {
+      const ws = await context.loaders.workspaceById.load(parent.workspaceId);
+      if (!ws) {
+        throw new GraphQLError(`Workspace ${parent.workspaceId} not found`, {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+      return ws;
+    },
     assignee: (parent, _args, context) => {
       if (!parent.assigneeId) return null;
       return context.loaders.userById.load(parent.assigneeId);

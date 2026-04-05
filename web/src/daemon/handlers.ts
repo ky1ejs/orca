@@ -22,6 +22,7 @@ import {
 } from './project-directories.js';
 import { getWorktree, listWorktrees } from './worktrees.js';
 import { checkWorktreeSafety } from './worktree-safety.js';
+import { graphqlRequest } from './graphql-client.js';
 import { DAEMON_METHODS, DAEMON_PROTOCOL_VERSION } from '../shared/daemon-protocol.js';
 import { isActiveSessionStatus } from '../shared/session-status.js';
 import type {
@@ -64,6 +65,8 @@ interface HandlerDeps {
   server: DaemonServer;
   outputPersistence: OutputPersistence;
   setToken: (token: string | null) => void;
+  getToken: () => string | null;
+  backendUrl: string;
   getVersion: () => string;
   getUptime: () => number;
   getMcpServerPort: () => number | null;
@@ -79,6 +82,8 @@ export function createHandler(deps: HandlerDeps) {
     worktreeManager,
     outputPersistence,
     setToken,
+    getToken,
+    backendUrl,
     getVersion,
     getUptime,
     getMcpServerPort,
@@ -288,12 +293,24 @@ export function createHandler(deps: HandlerDeps) {
         const p = params as WorktreeSafetyParams;
         const row = getWorktree(p.taskId);
         if (!row) return null;
-        return checkWorktreeSafety(
+        const safety = await checkWorktreeSafety(
           row.worktree_path,
           row.repo_path,
           row.branch_name,
           row.base_branch,
         );
+        // Enrich with PR merge status from the backend
+        let prMerged = false;
+        const token = getToken();
+        if (token) {
+          const result = await graphqlRequest<{
+            data?: { task?: { pullRequests: Array<{ status: string }> } };
+          }>(backendUrl, token, `query($id:ID!){task(id:$id){pullRequests{status}}}`, {
+            id: p.taskId,
+          });
+          prMerged = result?.data?.task?.pullRequests.some((pr) => pr.status === 'MERGED') ?? false;
+        }
+        return { ...safety, prMerged };
       }
 
       case DAEMON_METHODS.WORKTREE_LIST: {
@@ -306,7 +323,7 @@ export function createHandler(deps: HandlerDeps) {
             row.branch_name,
             row.base_branch,
           );
-          results.push({ ...row, safety });
+          results.push({ ...row, safety: { ...safety, prMerged: false } });
         }
         return results;
       }

@@ -72,6 +72,8 @@ beforeEach(async () => {
       return server;
     },
     setToken: () => {},
+    getToken: () => null,
+    backendUrl: 'http://localhost:4000',
     getVersion: () => version,
     getUptime: () => 1000,
     getMcpServerPort: () => null,

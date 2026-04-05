@@ -32,7 +32,9 @@ export function useWorktreeAutoCleanup(
       try {
         const safety = await window.orca.worktree.safety(changedTask.id);
         if (!safety) return;
-        if (safety.dirty || safety.unpushedCommits || !safety.branchMerged) return;
+        if (safety.dirty) return;
+        const merged = safety.branchMerged || safety.prMerged;
+        if (!merged) return;
 
         await window.orca.worktree.remove(changedTask.id);
         cleanedRef.current.add(changedTask.id);

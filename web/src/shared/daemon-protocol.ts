@@ -189,6 +189,8 @@ export interface WorktreeSafetyResult {
   dirty: boolean;
   unpushedCommits: boolean;
   branchMerged: boolean;
+  /** True when the task has at least one PR with MERGED status on the backend. */
+  prMerged: boolean;
 }
 
 export interface WorktreeListResult {
