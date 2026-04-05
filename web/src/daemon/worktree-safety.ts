@@ -10,6 +10,10 @@ interface WorktreeSafetyStatus {
   branchMerged: boolean;
 }
 
+/** Cache of recent fetches to avoid redundant `git fetch` in loops. Keyed by "repo::branch". */
+const recentFetches = new Map<string, number>();
+const FETCH_TTL_MS = 60_000; // 1 minute
+
 /**
  * Check whether a worktree is safe to auto-clean.
  * Returns the safety status for the worktree's working directory.
@@ -51,11 +55,17 @@ export async function checkWorktreeSafety(
 
   // Check if the branch is merged into the base branch. Fetch the remote base
   // branch first so we detect PRs merged on GitHub even if the local branch
-  // hasn't been updated.
-  try {
-    await git(repoPath, ['fetch', 'origin', baseBranch]);
-  } catch {
-    // Offline or no remote — continue with whatever local state exists
+  // hasn't been updated. Skip fetch if we already fetched this repo recently
+  // (avoids redundant network calls when checking multiple worktrees in a loop).
+  const fetchKey = `${repoPath}::${baseBranch}`;
+  const lastFetch = recentFetches.get(fetchKey);
+  if (!lastFetch || Date.now() - lastFetch > FETCH_TTL_MS) {
+    try {
+      await git(repoPath, ['fetch', 'origin', baseBranch]);
+      recentFetches.set(fetchKey, Date.now());
+    } catch {
+      // Offline or no remote — continue with whatever local state exists
+    }
   }
 
   try {

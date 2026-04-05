@@ -45,6 +45,7 @@ const CLEANUP_INFO_QUERY = `
 `;
 
 export class WorktreeCleanupManager {
+  private initialTimeout: ReturnType<typeof setTimeout> | null = null;
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingChecks = new Map<string, ReturnType<typeof setTimeout>>();
   private worktreeManager: WorktreeManager;
@@ -60,11 +61,18 @@ export class WorktreeCleanupManager {
   start(): void {
     if (this.interval) return;
     // Run initial sweep shortly after daemon starts
-    setTimeout(() => void this.sweep(), 10_000);
+    this.initialTimeout = setTimeout(() => {
+      this.initialTimeout = null;
+      void this.sweep();
+    }, 10_000);
     this.interval = setInterval(() => void this.sweep(), SWEEP_INTERVAL_MS);
   }
 
   stop(): void {
+    if (this.initialTimeout) {
+      clearTimeout(this.initialTimeout);
+      this.initialTimeout = null;
+    }
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
