@@ -163,32 +163,15 @@ export class DaemonStatusManager {
         findPreTerminalScript(effectiveWorkingDirectory),
       ]);
 
-      // Fire-and-forget bootstrap — heavy setup runs in background after PTY spawn
-      if (needsBootstrap) {
-        if (bootstrapScriptPath) {
-          if (
-            !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
-            !isBootstrapLocked(effectiveWorkingDirectory)
-          ) {
-            this.bootstrapTracker.start({
-              scriptPath: bootstrapScriptPath,
-              worktreePath: effectiveWorkingDirectory,
-              repoPath: resolvedRepoPath,
-              metadata: metadata!,
-              broadcast: this.broadcast,
-            });
-            mark('bootstrap-started-background');
-          }
-        } else {
-          // No bootstrap script — mark as done so we don't check again
-          markBootstrapped(effectiveWorkingDirectory);
-        }
+      // Mark as bootstrapped early if there's no script, so we don't check again
+      if (needsBootstrap && !bootstrapScriptPath) {
+        markBootstrapped(effectiveWorkingDirectory);
       }
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       if (effectiveWorkingDirectory !== workingDirectory) {
         env.ORCA_WORKTREE_PATH = effectiveWorkingDirectory;
-        env.ORCA_REPO_ROOT = workingDirectory;
+        env.ORCA_REPO_ROOT = resolvedRepoPath;
       }
       // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
       if (colorScheme === 'light') {
@@ -262,6 +245,23 @@ export class DaemonStatusManager {
         throw new PtySpawnError(err);
       }
       mark('pty-spawned');
+
+      // Fire-and-forget bootstrap — heavy setup runs in background after PTY spawn
+      if (needsBootstrap && bootstrapScriptPath && metadata) {
+        if (
+          !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
+          !isBootstrapLocked(effectiveWorkingDirectory)
+        ) {
+          this.bootstrapTracker.start({
+            scriptPath: bootstrapScriptPath,
+            worktreePath: effectiveWorkingDirectory,
+            repoPath: resolvedRepoPath,
+            metadata,
+            broadcast: this.broadcast,
+          });
+          mark('bootstrap-started-background');
+        }
+      }
 
       // Fire-and-forget: avoid blocking the launch response on a non-critical mutation
       const userId = this.getUserIdFromToken();
