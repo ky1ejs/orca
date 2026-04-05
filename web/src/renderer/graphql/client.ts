@@ -15,6 +15,11 @@ export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
 export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 const WS_GRAPHQL_URL = GRAPHQL_URL.replace(/^http/, 'ws');
 
+// Track last-known projectId per task so we can detect project moves
+// in the taskChanged subscription handler (cache.resolve can't be used
+// because graphcache normalizes the subscription data before the handler runs).
+const taskProjectIds = new Map<string, string | null>();
+
 let cachedToken: string | null = null;
 let onAuthError: (() => void) | null = null;
 
@@ -219,28 +224,31 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 | { id: string; projectId: string | null }
                 | undefined;
               if (task) {
-                // Read old projectId before invalidating so we can update
-                // both old and new project when a task moves between projects.
-                const oldProjectId = cache.resolve(
-                  { __typename: 'Task', id: task.id },
-                  'projectId',
-                ) as string | null;
+                // graphcache auto-normalization already updated this task entity
+                // with the subscription data. Do NOT invalidate the entity — that
+                // destroys fresh data and forces a network refetch that causes the
+                // task detail and sidebar to flash.
 
-                cache.invalidate({ __typename: 'Task', id: task.id });
-                if (task.projectId) {
-                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
-                }
-                if (oldProjectId && oldProjectId !== task.projectId) {
-                  cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
-                }
+                // Detect project moves by comparing against the last-known
+                // projectId. We can't use cache.resolve here because graphcache
+                // has already normalized the subscription data by the time this
+                // handler runs, so the cached value is already the new one.
+                const oldProjectId = taskProjectIds.get(task.id);
+                taskProjectIds.set(task.id, task.projectId);
 
-                // If the task moved to/from the inbox (projectId null), invalidate
-                // the workspace's unassociated task list so sidebar/command palette update.
-                const workspaceId = (_args as { workspaceId?: string }).workspaceId;
-                if (workspaceId && oldProjectId !== task.projectId) {
-                  cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
-                    unassociatedOnly: true,
-                  });
+                if (oldProjectId !== undefined && oldProjectId !== task.projectId) {
+                  if (task.projectId) {
+                    cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                  }
+                  if (oldProjectId) {
+                    cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
+                  }
+                  const workspaceId = (_args as { workspaceId?: string }).workspaceId;
+                  if (workspaceId) {
+                    cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
+                      unassociatedOnly: true,
+                    });
+                  }
                 }
               }
             },

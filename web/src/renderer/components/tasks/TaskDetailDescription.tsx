@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
 
@@ -8,7 +8,7 @@ interface TaskDetailDescriptionProps {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<unknown>;
 }
 
-export function TaskDetailDescription({
+export const TaskDetailDescription = memo(function TaskDetailDescription({
   description,
   taskId,
   updateTask,
@@ -97,4 +97,4 @@ export function TaskDetailDescription({
       )}
     </div>
   );
-}
+});

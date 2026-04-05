@@ -60,9 +60,15 @@ export const TaskChangedDocument = /* GraphQL */ `
       status
       priority
       projectId
+      project {
+        id
+        name
+        defaultDirectory
+      }
       assignee {
         id
         name
+        email
       }
       labels {
         id
@@ -78,7 +84,10 @@ export const TaskChangedDocument = /* GraphQL */ `
         reviewStatus
         checkStatus
         repository
+        headBranch
+        author
         draft
+        createdAt
       }
       pullRequestCount
       relationships {

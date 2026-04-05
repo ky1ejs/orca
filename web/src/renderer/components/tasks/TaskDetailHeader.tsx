@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
 
 interface TaskDetailHeaderProps {
@@ -8,7 +8,12 @@ interface TaskDetailHeaderProps {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<unknown>;
 }
 
-export function TaskDetailHeader({ displayId, title, taskId, updateTask }: TaskDetailHeaderProps) {
+export const TaskDetailHeader = memo(function TaskDetailHeader({
+  displayId,
+  title,
+  taskId,
+  updateTask,
+}: TaskDetailHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,4 +87,4 @@ export function TaskDetailHeader({ displayId, title, taskId, updateTask }: TaskD
       )}
     </div>
   );
-}
+});
