@@ -15,6 +15,7 @@ import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useProjectDirectory } from '../../hooks/useProjectDirectory.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
+import type { TaskQuery, WorkspaceMembersQuery } from '../../graphql/__generated__/generated.js';
 import { isTerminalStatus } from '../../utils/task-status.js';
 import { TaskDetailSkeleton } from '../layout/Skeleton.js';
 import { PullRequestList } from './PullRequestList.js';
@@ -24,9 +25,13 @@ import { TaskDetailHeader } from './TaskDetailHeader.js';
 import { TaskDetailDescription } from './TaskDetailDescription.js';
 import { TaskDetailSidebar } from './TaskDetailSidebar.js';
 
-const EMPTY_PULL_REQUESTS: readonly unknown[] = [];
-const EMPTY_RELATIONSHIPS: readonly unknown[] = [];
-const EMPTY_MEMBERS: readonly unknown[] = [];
+type TaskPullRequests = NonNullable<TaskQuery['task']>['pullRequests'];
+type TaskRelationships = NonNullable<TaskQuery['task']>['relationships'];
+type WorkspaceMembers = NonNullable<WorkspaceMembersQuery['workspace']>['members'];
+
+const EMPTY_PULL_REQUESTS: TaskPullRequests = [];
+const EMPTY_RELATIONSHIPS: TaskRelationships = [];
+const EMPTY_MEMBERS: WorkspaceMembers = [];
 
 interface TaskDetailProps {
   taskId: string;

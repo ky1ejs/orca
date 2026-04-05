@@ -15,6 +15,11 @@ export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || __BACKEND_URL__;
 export const GRAPHQL_URL = `${BACKEND_URL}/graphql`;
 const WS_GRAPHQL_URL = GRAPHQL_URL.replace(/^http/, 'ws');
 
+// Track last-known projectId per task so we can detect project moves
+// in the taskChanged subscription handler (cache.resolve can't be used
+// because graphcache normalizes the subscription data before the handler runs).
+const taskProjectIds = new Map<string, string | null>();
+
 let cachedToken: string | null = null;
 let onAuthError: (() => void) | null = null;
 
@@ -224,14 +229,14 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 // destroys fresh data and forces a network refetch that causes the
                 // task detail and sidebar to flash.
 
-                // Only invalidate project task lists when the task moves between
-                // projects so the old/new project lists refetch.
-                const oldProjectId = cache.resolve(
-                  { __typename: 'Task', id: task.id },
-                  'projectId',
-                ) as string | null;
+                // Detect project moves by comparing against the last-known
+                // projectId. We can't use cache.resolve here because graphcache
+                // has already normalized the subscription data by the time this
+                // handler runs, so the cached value is already the new one.
+                const oldProjectId = taskProjectIds.get(task.id);
+                taskProjectIds.set(task.id, task.projectId);
 
-                if (oldProjectId !== task.projectId) {
+                if (oldProjectId !== undefined && oldProjectId !== task.projectId) {
                   if (task.projectId) {
                     cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
                   }
