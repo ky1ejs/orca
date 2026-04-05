@@ -12,10 +12,13 @@ ensureWorktree()          Create git worktree + DB row
   │                       Branch: feat/<TASK-ID>-<slug>
   │                       Path:   ~/.orca/worktrees/<repo>/<branch>/
   ▼
-.orca/bootstrap           Set up deps, ports, DB, env files
+.orca/pre-terminal        Fast blocking setup (symlinks, config)
   │
   ▼
 Agent session             Claude Code runs in the worktree
+  │
+  ▼ (concurrent)
+.orca/bootstrap           Heavy async setup (deps, ports, DB, migrations)
   │
   ... (agent works) ...
   │
@@ -27,9 +30,10 @@ git worktree remove       Remove worktree directory + delete branch
 ```
 
 1. **Worktree creation** — Orca fetches the latest from `origin/<base-branch>`, then runs `git worktree add -b feat/<TASK-ID>-<slug> <path> <start-point>`. If the branch already exists it reuses it. The worktree path and metadata are recorded in the daemon's SQLite database.
-2. **Bootstrap** — If `.orca/bootstrap` exists and is executable, the daemon runs it with environment variables injected (see below). The agent session shows a "Bootstrapping" status during this phase. If it fails, the session is marked as "Error".
-3. **Agent session** — Claude Code is spawned in the worktree directory with task context injected as environment variables.
-4. **Teardown** — When the worktree is removed, `.orca/teardown` runs first (best-effort — failure doesn't block removal). Then `git worktree remove` and `git branch -D` clean up. If the worktree directory was already deleted externally, teardown and git cleanup are skipped — only the daemon's DB record is removed.
+2. **Pre-terminal** — If `.orca/pre-terminal` exists and is executable, the daemon runs it synchronously before spawning the agent. Use this for fast setup the agent needs immediately, such as symlinking config files (e.g., `.claude/settings.local.json`). 30-second timeout. Failure marks the session as "Error".
+3. **Agent session** — Claude Code (or a shell) is spawned in the worktree directory with task context injected as environment variables.
+4. **Bootstrap** — If `.orca/bootstrap` exists and is executable, the daemon runs it asynchronously after the agent spawns. Use this for heavy setup: installing dependencies, creating databases, running migrations, etc. The UI shows a "Setting up..." indicator. 10-minute timeout.
+5. **Teardown** — When the worktree is removed, `.orca/teardown` runs first (best-effort — failure doesn't block removal). Then `git worktree remove` and `git branch -D` clean up. If the worktree directory was already deleted externally, teardown and git cleanup are skipped — only the daemon's DB record is removed.
 
 ### Idempotency
 
@@ -37,11 +41,23 @@ The daemon tracks a SHA-256 prefix (first 16 hex characters) of the `.orca/boots
 
 ## Setting Up Hooks
 
-To enable worktree bootstrapping in your repo, create two executable scripts:
+To enable worktree hooks in your repo, create executable scripts in `.orca/`:
+
+### `.orca/pre-terminal`
+
+Runs synchronously before the agent/terminal spawns. Use this for fast setup the agent needs immediately — e.g., symlinking config files like `.claude/settings.local.json`.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Symlink Claude settings from main repo so the agent has correct permissions
+ln -sf "$ORCA_REPO_ROOT/.claude/settings.local.json" .claude/settings.local.json
+```
 
 ### `.orca/bootstrap`
 
-Runs after worktree creation. Use this to install dependencies, create databases, generate config files, etc.
+Runs asynchronously after the agent/terminal spawns. Use this for heavy setup: installing dependencies, creating databases, running migrations, etc. The agent is already running when this executes.
 
 ```bash
 #!/usr/bin/env bash
@@ -72,26 +88,27 @@ echo "Cleaning up worktree at $ORCA_WORKTREE_PATH"
 # Drop the worktree's database, release resources, etc.
 ```
 
-Make both scripts executable:
+Make scripts executable:
 
 ```bash
-chmod +x .orca/bootstrap .orca/teardown
+chmod +x .orca/pre-terminal .orca/bootstrap .orca/teardown
 ```
 
 ### Hook Rules
 
-| Property | Bootstrap | Teardown |
-|----------|-----------|----------|
-| Timeout | 10 minutes | 2 minutes |
-| On failure | Session marked as Error | Warning logged, removal proceeds |
-| CWD | Worktree root | Worktree root |
-| Skipped if | `.orca/.bootstrapped` hash matches | Script not found or not executable |
+| Property | Pre-terminal | Bootstrap | Teardown |
+|----------|-------------|-----------|----------|
+| Timing | Before agent spawn (blocking) | After agent spawn (async) | Before worktree removal |
+| Timeout | 30 seconds | 10 minutes | 2 minutes |
+| On failure | Session marked as Error | Warning shown in UI | Warning logged, removal proceeds |
+| CWD | Worktree root | Worktree root | Worktree root |
+| Skipped if | Script not found or not executable | `.orca/.bootstrapped` hash matches | Script not found or not executable |
 
 ## Environment Variables
 
 ### Available to hook scripts
 
-These are set by the daemon when running `.orca/bootstrap` and `.orca/teardown`:
+These are set by the daemon when running `.orca/pre-terminal`, `.orca/bootstrap`, and `.orca/teardown`:
 
 | Variable | Description |
 |----------|-------------|
@@ -110,6 +127,7 @@ These are set when Claude Code is spawned in the worktree:
 |----------|-------------|
 | `ORCA_SESSION_ID` | Daemon session ID |
 | `ORCA_WORKTREE_PATH` | Worktree path (only set if different from working directory) |
+| `ORCA_REPO_ROOT` | Original repo root (only set if using a worktree) |
 | `ORCA_TASK_ID` | Task display ID (e.g. `PROJ-42`) |
 | `ORCA_TASK_UUID` | Task UUID |
 | `ORCA_TASK_TITLE` | Task title |
@@ -211,8 +229,9 @@ The `scripts/teardown` script mirrors the hash derivation, runs per-package tear
 
 | Script | Role |
 |--------|------|
-| `.orca/bootstrap` | Daemon hook entry point for worktree setup |
-| `.orca/teardown` | Daemon hook entry point for worktree cleanup |
+| `.orca/pre-terminal` | Daemon hook: fast blocking setup before agent spawn |
+| `.orca/bootstrap` | Daemon hook: heavy async setup after agent spawn |
+| `.orca/teardown` | Daemon hook: cleanup before worktree removal |
 | `scripts/bootstrap` | Main bootstrap logic (port/DB derivation, env generation, delegation) |
 | `scripts/teardown` | Main teardown logic (DB drop, delegation) |
 | `backend/scripts/bootstrap` | Backend deps, Prisma client generation, migrations |

@@ -13,9 +13,10 @@ When Orca launches an agent on a task, it creates a git worktree so the agent wo
 ## Lifecycle
 
 1. **Worktree creation** — Orca fetches the latest from origin/<base-branch>, then runs \`git worktree add -b feat/<TASK-ID>-<slug> <path> <start-point>\`. The worktree lives at \`~/.orca/worktrees/<repo>/<branch>/\`.
-2. **Bootstrap** — If \`.orca/bootstrap\` exists and is executable, the daemon runs it. The session shows "Bootstrapping" status. Failure marks the session as "Error".
-3. **Agent session** — Claude Code is spawned in the worktree with task context as environment variables.
-4. **Teardown** — On removal, \`.orca/teardown\` runs first (best-effort), then \`git worktree remove\` and \`git branch -D\`.
+2. **Pre-terminal** — If \`.orca/pre-terminal\` exists and is executable, the daemon runs it synchronously before spawning the agent. Use this for fast setup like symlinking config files. 30-second timeout.
+3. **Agent session** — Claude Code (or a shell) is spawned in the worktree with task context as environment variables.
+4. **Bootstrap** — If \`.orca/bootstrap\` exists and is executable, the daemon runs it asynchronously after the agent spawns. Use this for heavy setup (deps, DB, migrations). 10-minute timeout.
+5. **Teardown** — On removal, \`.orca/teardown\` runs first (best-effort), then \`git worktree remove\` and \`git branch -D\`.
 
 ## Idempotency
 
@@ -23,9 +24,20 @@ The daemon tracks a SHA-256 prefix (first 16 hex characters) of the bootstrap sc
 
 const HOOKS_DOC = `# Hook Scripts
 
+## .orca/pre-terminal
+
+Runs synchronously before the agent/terminal spawns. Use this for fast setup that the agent needs immediately — e.g., symlinking config files like \`.claude/settings.local.json\`. 30-second timeout.
+
+\`\`\`bash
+#!/usr/bin/env bash
+set -euo pipefail
+# Symlink Claude settings from main repo so the agent has correct permissions
+ln -sf "$ORCA_REPO_ROOT/.claude/settings.local.json" .claude/settings.local.json
+\`\`\`
+
 ## .orca/bootstrap
 
-Runs after worktree creation. Use this to install dependencies, create databases, generate config files, etc.
+Runs asynchronously after the agent/terminal spawns. Use this for heavy setup: installing dependencies, creating databases, running migrations, etc. The agent is already running when this executes. 10-minute timeout.
 
 \`\`\`bash
 #!/usr/bin/env bash
@@ -47,12 +59,12 @@ echo "Cleaning up worktree at $ORCA_WORKTREE_PATH"
 # Drop the worktree's database, release resources, etc.
 \`\`\`
 
-Both scripts must be executable (\`chmod +x .orca/bootstrap .orca/teardown\`).
+All scripts must be executable (\`chmod +x .orca/pre-terminal .orca/bootstrap .orca/teardown\`).
 
 ## Rules
 
-- Bootstrap timeout: 10 minutes. Teardown timeout: 2 minutes.
-- Bootstrap failure → session marked as Error. Teardown failure → warning logged, removal proceeds.
+- Pre-terminal timeout: 30 seconds. Bootstrap timeout: 10 minutes. Teardown timeout: 2 minutes.
+- Pre-terminal failure → session marked as Error. Bootstrap failure → warning shown in UI. Teardown failure → warning logged, removal proceeds.
 - CWD is set to the worktree root.
 - Bootstrap is skipped if \`.orca/.bootstrapped\` hash matches the script.
 
@@ -89,7 +101,7 @@ Mirror the hash derivation in teardown to find and clean up the same resources.`
 
 const ENVIRONMENT_DOC = `# Environment Variables
 
-## Available to hook scripts (.orca/bootstrap and .orca/teardown)
+## Available to hook scripts (.orca/pre-terminal, .orca/bootstrap, and .orca/teardown)
 
 | Variable             | Description                                          |
 |----------------------|------------------------------------------------------|
@@ -106,6 +118,7 @@ const ENVIRONMENT_DOC = `# Environment Variables
 |-----------------------|-----------------------------------------------------|
 | ORCA_SESSION_ID       | Daemon session ID                                   |
 | ORCA_WORKTREE_PATH    | Worktree path (only if different from working dir)   |
+| ORCA_REPO_ROOT        | Original repo root (only if using a worktree)        |
 | ORCA_TASK_ID          | Task display ID (e.g. PROJ-42)                      |
 | ORCA_TASK_UUID        | Task UUID                                           |
 | ORCA_TASK_TITLE       | Task title                                          |
@@ -129,13 +142,13 @@ export function registerDocTools(server: McpServer, _deps: McpToolsDeps): void {
     'get_docs',
     {
       description:
-        'Get Orca documentation for configuring worktrees, bootstrap hooks, and environment variables. Use this when you need to set up or troubleshoot `.orca/bootstrap` and `.orca/teardown` hooks in a repository.',
+        'Get Orca documentation for configuring worktrees, hook scripts, and environment variables. Use this when you need to set up or troubleshoot `.orca/pre-terminal`, `.orca/bootstrap`, and `.orca/teardown` hooks in a repository.',
       inputSchema: {
         topic: z
           .enum(['worktrees', 'hooks', 'environment'])
           .optional()
           .describe(
-            'Specific topic to retrieve. "worktrees" = lifecycle and idempotency, "hooks" = bootstrap/teardown setup and deterministic resource isolation, "environment" = env vars for hooks and agent sessions. Omit to get all topics.',
+            'Specific topic to retrieve. "worktrees" = lifecycle and idempotency, "hooks" = pre-terminal/bootstrap/teardown setup and deterministic resource isolation, "environment" = env vars for hooks and agent sessions. Omit to get all topics.',
           ),
       },
     },
