@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { X } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { SessionStatus, isActiveSessionStatus } from '../../../shared/session-status.js';
@@ -24,6 +24,10 @@ import { TaskDetailHeader } from './TaskDetailHeader.js';
 import { TaskDetailDescription } from './TaskDetailDescription.js';
 import { TaskDetailSidebar } from './TaskDetailSidebar.js';
 
+const EMPTY_PULL_REQUESTS: readonly unknown[] = [];
+const EMPTY_RELATIONSHIPS: readonly unknown[] = [];
+const EMPTY_MEMBERS: readonly unknown[] = [];
+
 interface TaskDetailProps {
   taskId: string;
   sessions: TerminalSessionInfo[];
@@ -48,7 +52,8 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
 
   const { projects: workspaceProjects } = useWorkspaceData();
   const { data: membersData } = useWorkspaceMembers(currentWorkspace?.slug ?? '');
-  const workspaceMembers = membersData?.workspace?.members ?? [];
+  const rawMembers = membersData?.workspace?.members;
+  const workspaceMembers = useMemo(() => rawMembers ?? EMPTY_MEMBERS, [rawMembers]);
 
   const task = data?.task;
   const activeSession = useMemo(
@@ -72,6 +77,33 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   );
 
   const setHeaderControls = useSetTaskHeaderControls();
+
+  const refreshSessionsRef = useRef(refreshSessions);
+  useEffect(() => {
+    refreshSessionsRef.current = refreshSessions;
+  }, [refreshSessions]);
+
+  const handleStatusChange = useCallback(
+    async (newStatus: TaskStatus) => {
+      if (isTerminalStatus(newStatus) && activeSession) {
+        await window.orca.agent.stop(activeSession.id);
+        refreshSessionsRef.current();
+      }
+      await updateTask(taskId, { status: newStatus });
+    },
+    [activeSession, updateTask, taskId],
+  );
+
+  const handleArchive = useCallback(async () => {
+    await archiveTask(taskId);
+    goToParent();
+  }, [archiveTask, taskId, goToParent]);
+
+  const handleMutate = useCallback(() => refetch({ requestPolicy: 'network-only' }), [refetch]);
+
+  const pullRequests = task?.pullRequests ?? EMPTY_PULL_REQUESTS;
+  const relationships = task?.relationships ?? EMPTY_RELATIONSHIPS;
+  const currentWorkspaceId = currentWorkspace?.id ?? '';
 
   useEffect(() => {
     if (!task) {
@@ -136,19 +168,6 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
     );
   }
 
-  const handleStatusChange = async (newStatus: TaskStatus) => {
-    if (isTerminalStatus(newStatus) && activeSession) {
-      await window.orca.agent.stop(activeSession.id);
-      refreshSessions();
-    }
-    await updateTask(taskId, { status: newStatus });
-  };
-
-  const handleArchive = async () => {
-    await archiveTask(taskId);
-    goToParent();
-  };
-
   return (
     <div className="p-6 grid grid-cols-[1fr_320px] gap-8 items-start">
       <div className="min-w-0 space-y-6">
@@ -186,17 +205,13 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
           </div>
         )}
 
-        <PullRequestList
-          pullRequests={task.pullRequests ?? []}
-          taskId={taskId}
-          onMutate={() => refetch({ requestPolicy: 'network-only' })}
-        />
+        <PullRequestList pullRequests={pullRequests} taskId={taskId} onMutate={handleMutate} />
 
         <TaskRelationshipList
-          relationships={task.relationships ?? []}
+          relationships={relationships}
           taskId={taskId}
-          workspaceId={currentWorkspace?.id ?? ''}
-          onMutate={() => refetch({ requestPolicy: 'network-only' })}
+          workspaceId={currentWorkspaceId}
+          onMutate={handleMutate}
         />
 
         <TaskActivityFeed taskId={taskId} />
@@ -210,7 +225,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
           handleArchive={handleArchive}
           workspaceProjects={workspaceProjects}
           workspaceMembers={workspaceMembers}
-          currentWorkspaceId={currentWorkspace?.id ?? null}
+          currentWorkspaceId={currentWorkspaceId}
           projectDirectory={projectDirectory ?? null}
           dirLoading={dirLoading}
           updateDirectory={updateDirectory}

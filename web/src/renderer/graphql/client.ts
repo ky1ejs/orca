@@ -219,28 +219,31 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 | { id: string; projectId: string | null }
                 | undefined;
               if (task) {
-                // Read old projectId before invalidating so we can update
-                // both old and new project when a task moves between projects.
+                // graphcache auto-normalization already updated this task entity
+                // with the subscription data. Do NOT invalidate the entity — that
+                // destroys fresh data and forces a network refetch that causes the
+                // task detail and sidebar to flash.
+
+                // Only invalidate project task lists when the task moves between
+                // projects so the old/new project lists refetch.
                 const oldProjectId = cache.resolve(
                   { __typename: 'Task', id: task.id },
                   'projectId',
                 ) as string | null;
 
-                cache.invalidate({ __typename: 'Task', id: task.id });
-                if (task.projectId) {
-                  cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
-                }
-                if (oldProjectId && oldProjectId !== task.projectId) {
-                  cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
-                }
-
-                // If the task moved to/from the inbox (projectId null), invalidate
-                // the workspace's unassociated task list so sidebar/command palette update.
-                const workspaceId = (_args as { workspaceId?: string }).workspaceId;
-                if (workspaceId && oldProjectId !== task.projectId) {
-                  cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
-                    unassociatedOnly: true,
-                  });
+                if (oldProjectId !== task.projectId) {
+                  if (task.projectId) {
+                    cache.invalidate({ __typename: 'Project', id: task.projectId }, 'tasks');
+                  }
+                  if (oldProjectId) {
+                    cache.invalidate({ __typename: 'Project', id: oldProjectId }, 'tasks');
+                  }
+                  const workspaceId = (_args as { workspaceId?: string }).workspaceId;
+                  if (workspaceId) {
+                    cache.invalidate({ __typename: 'Workspace', id: workspaceId }, 'tasks', {
+                      unassociatedOnly: true,
+                    });
+                  }
                 }
               }
             },

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { Trash2, FolderOpen, GitBranch, AlertTriangle, CheckCircle, Code } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
@@ -29,13 +29,13 @@ interface TaskDetailSidebarProps {
   handleArchive: () => Promise<void>;
   workspaceProjects: { id: string; name: string }[];
   workspaceMembers: { user: { id: string; name: string } }[];
-  currentWorkspaceId: string | null;
+  currentWorkspaceId: string;
   projectDirectory: string | null;
   dirLoading: boolean;
   updateDirectory: (dir: string) => void;
 }
 
-export function TaskDetailSidebar({
+export const TaskDetailSidebar = memo(function TaskDetailSidebar({
   task,
   updateTask,
   handleStatusChange,
@@ -392,4 +392,4 @@ export function TaskDetailSidebar({
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { ExternalLink, X, Plus, Link, Loader2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { type TaskQuery } from '../../graphql/__generated__/generated.js';
@@ -17,7 +17,11 @@ interface PullRequestListProps {
   onMutate?: () => void;
 }
 
-export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestListProps) {
+export const PullRequestList = memo(function PullRequestList({
+  pullRequests,
+  taskId,
+  onMutate,
+}: PullRequestListProps) {
   const { showForm, setShowForm, url, setUrl, linkError, linking, handleCancel, handleLink } =
     useLinkPrForm({ taskId, onSuccess: onMutate });
   const { unlinkPullRequest, fetching: unlinking } = useUnlinkPullRequest();
@@ -117,4 +121,4 @@ export function PullRequestList({ pullRequests, taskId, onMutate }: PullRequestL
       )}
     </div>
   );
-}
+});

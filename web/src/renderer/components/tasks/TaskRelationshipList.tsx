@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useClient } from 'urql';
 import { X, Plus, Link2, Loader2 } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
@@ -60,7 +60,7 @@ function groupByDisplayType(
   return groups;
 }
 
-export function TaskRelationshipList({
+export const TaskRelationshipList = memo(function TaskRelationshipList({
   relationships,
   taskId,
   workspaceId,
@@ -245,4 +245,4 @@ export function TaskRelationshipList({
       {error && <p className="text-error text-label-sm mt-1">{error}</p>}
     </div>
   );
-}
+});
