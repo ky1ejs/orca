@@ -10,9 +10,9 @@ import { createPerfTimer } from '../shared/perf.js';
 import { createSession, getSession, updateSession } from './sessions.js';
 import { SessionStatus, isActiveSessionStatus } from '../shared/session-status.js';
 import {
-  BootstrapError,
   ClaudeNotFoundError,
   InvalidWorkingDirectoryError,
+  PreTerminalError,
   PtySpawnError,
   serializeError,
   type SerializedAgentError,
@@ -20,7 +20,8 @@ import {
 import { WorktreeManager, isGitRepo } from './worktree-manager.js';
 import {
   findBootstrapScript,
-  runBootstrap,
+  findPreTerminalScript,
+  runPreTerminal,
   isBootstrapped,
   markBootstrapped,
   isBootstrapLocked,
@@ -155,58 +156,22 @@ export class DaemonStatusManager {
       // Subscribe the caller early so they receive status events during bootstrap
       onSessionCreated?.(session.id);
 
-      // Run bootstrap script if needed (new worktree or script has changed)
+      // Discover hook scripts in parallel
       const needsBootstrap = worktreeCreated || !isBootstrapped(effectiveWorkingDirectory);
+      const [bootstrapScriptPath, preTerminalScript] = await Promise.all([
+        needsBootstrap ? findBootstrapScript(effectiveWorkingDirectory) : Promise.resolve(null),
+        findPreTerminalScript(effectiveWorkingDirectory),
+      ]);
 
-      if (needsBootstrap) {
-        const scriptPath = await findBootstrapScript(effectiveWorkingDirectory);
-        if (scriptPath) {
-          if (options?.planMode) {
-            // Plan mode: start bootstrap in the background, spawn Claude immediately.
-            // Claude only reads files (already in the worktree from git) so it doesn't
-            // need installed deps, a database, or env files to plan.
-            if (
-              !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
-              !isBootstrapLocked(effectiveWorkingDirectory)
-            ) {
-              this.bootstrapTracker.start({
-                scriptPath,
-                worktreePath: effectiveWorkingDirectory,
-                repoPath: resolvedRepoPath,
-                metadata: metadata!,
-                broadcast: this.broadcast,
-              });
-              mark('bootstrap-started-background');
-            }
-          } else {
-            // Terminal mode: must wait for bootstrap to complete before spawning shell.
-            await this.awaitBootstrap(
-              session.id,
-              scriptPath,
-              effectiveWorkingDirectory,
-              resolvedRepoPath,
-              metadata!,
-              mark,
-            );
-          }
-        } else {
-          // No bootstrap script — mark as done so we don't check again
-          markBootstrapped(effectiveWorkingDirectory);
-        }
-      } else if (!options?.planMode && this.bootstrapTracker.isRunning(effectiveWorkingDirectory)) {
-        // Background bootstrap still running — wait for it
-        this.updateStatusAndNotify(session.id, SessionStatus.Bootstrapping);
-        mark('bootstrap-joining');
-        this.assertBootstrapSuccess(
-          session.id,
-          await this.bootstrapTracker.waitFor(effectiveWorkingDirectory),
-        );
-        mark('bootstrap-finished');
+      // Mark as bootstrapped early if there's no script, so we don't check again
+      if (needsBootstrap && !bootstrapScriptPath) {
+        markBootstrapped(effectiveWorkingDirectory);
       }
 
       const env: Record<string, string> = { ORCA_SESSION_ID: session.id };
       if (effectiveWorkingDirectory !== workingDirectory) {
         env.ORCA_WORKTREE_PATH = effectiveWorkingDirectory;
+        env.ORCA_REPO_ROOT = resolvedRepoPath;
       }
       // Set COLORFGBG so CLI tools (e.g. Claude Code) can detect light/dark background
       if (colorScheme === 'light') {
@@ -224,6 +189,22 @@ export class DaemonStatusManager {
         env.ORCA_SERVER_URL = this.backendUrl;
       }
       logger.debug(`Session ${session.id}: injecting env [${Object.keys(env).join(', ')}]`);
+
+      // Run pre-terminal synchronously — blocks PTY spawn so the agent has correct config
+      if (preTerminalScript) {
+        mark('pre-terminal-started');
+        const preResult = await runPreTerminal({
+          scriptPath: preTerminalScript,
+          worktreePath: effectiveWorkingDirectory,
+          repoPath: resolvedRepoPath,
+          env,
+        });
+        if (!preResult.success) {
+          this.updateStatusAndNotify(session.id, SessionStatus.Error);
+          throw new PreTerminalError(preResult.exitCode, preResult.output, preResult.timedOut);
+        }
+        mark('pre-terminal-finished');
+      }
 
       try {
         if (options?.planMode) {
@@ -264,6 +245,23 @@ export class DaemonStatusManager {
         throw new PtySpawnError(err);
       }
       mark('pty-spawned');
+
+      // Fire-and-forget bootstrap — heavy setup runs in background after PTY spawn
+      if (needsBootstrap && bootstrapScriptPath && metadata) {
+        if (
+          !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
+          !isBootstrapLocked(effectiveWorkingDirectory)
+        ) {
+          this.bootstrapTracker.start({
+            scriptPath: bootstrapScriptPath,
+            worktreePath: effectiveWorkingDirectory,
+            repoPath: resolvedRepoPath,
+            metadata,
+            broadcast: this.broadcast,
+          });
+          mark('bootstrap-started-background');
+        }
+      }
 
       // Fire-and-forget: avoid blocking the launch response on a non-critical mutation
       const userId = this.getUserIdFromToken();
@@ -330,75 +328,6 @@ export class DaemonStatusManager {
       this.stopMonitoring(sessionId);
     }
     this.bootstrapTracker.dispose();
-  }
-
-  /** Throw BootstrapError if result indicates failure. */
-  private assertBootstrapSuccess(
-    sessionId: string,
-    result: import('./bootstrap-runner.js').ScriptResult | null,
-  ): void {
-    if (result && !result.success) {
-      this.updateStatusAndNotify(sessionId, SessionStatus.Error);
-      throw new BootstrapError(result.exitCode, result.output, result.timedOut);
-    }
-  }
-
-  /**
-   * Wait for bootstrap to complete in terminal mode. Handles three cases:
-   * joining an in-flight bootstrap, waiting for an orphaned lock, or running fresh.
-   */
-  private async awaitBootstrap(
-    sessionId: string,
-    scriptPath: string,
-    worktreePath: string,
-    repoPath: string,
-    metadata: TaskMetadata,
-    mark: (label: string) => void,
-  ): Promise<void> {
-    this.updateStatusAndNotify(sessionId, SessionStatus.Bootstrapping);
-
-    if (this.bootstrapTracker.isRunning(worktreePath)) {
-      mark('bootstrap-joining');
-      this.assertBootstrapSuccess(sessionId, await this.bootstrapTracker.waitFor(worktreePath));
-      mark('bootstrap-finished');
-      return;
-    }
-
-    if (isBootstrapLocked(worktreePath)) {
-      mark('bootstrap-waiting-lock');
-      await this.waitForLockRelease(worktreePath);
-      mark('bootstrap-lock-released');
-      if (isBootstrapped(worktreePath)) return;
-      // If the lock is still held after timeout, abort rather than risk two concurrent bootstraps
-      if (isBootstrapLocked(worktreePath)) {
-        this.updateStatusAndNotify(sessionId, SessionStatus.Error);
-        throw new BootstrapError(null, 'Bootstrap lock still held after timeout', true);
-      }
-    }
-
-    mark('bootstrap-started');
-    const result = await runBootstrap({ scriptPath, worktreePath, repoPath, metadata });
-    mark('bootstrap-finished');
-    this.assertBootstrapSuccess(sessionId, result);
-    markBootstrapped(worktreePath);
-  }
-
-  /**
-   * Poll until the bootstrap lock file is released by an orphaned process.
-   * Falls back to a 10-minute timeout to prevent infinite blocking.
-   */
-  private waitForLockRelease(worktreePath: string, timeoutMs = 10 * 60 * 1000): Promise<void> {
-    const start = Date.now();
-    return new Promise((resolve) => {
-      const check = () => {
-        if (!isBootstrapLocked(worktreePath) || Date.now() - start > timeoutMs) {
-          resolve();
-        } else {
-          setTimeout(check, 2000);
-        }
-      };
-      check();
-    });
   }
 
   private startMonitoring(sessionId: string, taskId: string, workingDirectory: string): void {

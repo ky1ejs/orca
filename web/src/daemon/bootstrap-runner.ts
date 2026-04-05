@@ -12,8 +12,10 @@ import { isPidAlive } from './sessions.js';
 import { logger } from './logger.js';
 
 const BOOTSTRAP_SCRIPT_PATH = join('.orca', 'bootstrap');
+const PRE_TERMINAL_SCRIPT_PATH = join('.orca', 'pre-terminal');
 const TEARDOWN_SCRIPT_PATH = join('.orca', 'teardown');
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const PRE_TERMINAL_TIMEOUT_MS = 30 * 1000; // 30 seconds
 const TEARDOWN_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const MAX_OUTPUT_CHARS = 64 * 1024; // 64K characters retained for error reporting
 
@@ -102,6 +104,10 @@ async function findScript(worktreePath: string, relativePath: string): Promise<s
 
 export function findBootstrapScript(worktreePath: string): Promise<string | null> {
   return findScript(worktreePath, BOOTSTRAP_SCRIPT_PATH);
+}
+
+export function findPreTerminalScript(worktreePath: string): Promise<string | null> {
+  return findScript(worktreePath, PRE_TERMINAL_SCRIPT_PATH);
 }
 
 export function findTeardownScript(worktreePath: string): Promise<string | null> {
@@ -242,6 +248,23 @@ export function runBootstrap(opts: {
     logPrefix: 'bootstrap',
     onOutput: opts.onOutput,
     onSpawned: opts.onSpawned,
+  });
+}
+
+export function runPreTerminal(opts: {
+  scriptPath: string;
+  worktreePath: string;
+  repoPath: string;
+  env?: Record<string, string>;
+  timeoutMs?: number;
+}): Promise<ScriptResult> {
+  return runScript({
+    scriptPath: opts.scriptPath,
+    worktreePath: opts.worktreePath,
+    repoPath: opts.repoPath,
+    env: opts.env,
+    timeoutMs: opts.timeoutMs ?? PRE_TERMINAL_TIMEOUT_MS,
+    logPrefix: 'pre-terminal',
   });
 }
 
