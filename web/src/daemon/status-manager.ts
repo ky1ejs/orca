@@ -83,6 +83,7 @@ interface DaemonStatusManagerOptions {
   hookPort: number | null;
   broadcast: BroadcastFn;
   worktreeManager: WorktreeManager;
+  onSessionExited?: (taskId: string) => void;
 }
 
 interface AgentLaunchOptions {
@@ -98,6 +99,7 @@ export class DaemonStatusManager {
   private hookPort: number | null;
   private broadcast: BroadcastFn;
   private worktreeManager: WorktreeManager;
+  private onSessionExited: ((taskId: string) => void) | undefined;
   private readonly bootstrapTracker: BootstrapTracker;
 
   constructor(manager: DaemonPtyManager, options: DaemonStatusManagerOptions) {
@@ -108,6 +110,7 @@ export class DaemonStatusManager {
     this.hookPort = options.hookPort;
     this.broadcast = options.broadcast;
     this.worktreeManager = options.worktreeManager;
+    this.onSessionExited = options.onSessionExited;
     this.bootstrapTracker = new BootstrapTracker();
   }
 
@@ -425,6 +428,7 @@ export class DaemonStatusManager {
       if (session.status !== lastStatus) {
         if (session.status === SessionStatus.Exited && lastStatus !== SessionStatus.Exited) {
           await this.updateTask(taskId, { status: 'IN_REVIEW' });
+          this.onSessionExited?.(taskId);
           this.stopMonitoring(sessionId);
         }
         lastStatus = session.status;

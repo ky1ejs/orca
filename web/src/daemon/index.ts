@@ -22,6 +22,7 @@ import { DaemonStatusManager } from './status-manager.js';
 import { WorktreeManager } from './worktree-manager.js';
 import { HookServer } from '../shared/hooks/server.js';
 import { DaemonPidSweepManager } from './pid-sweep.js';
+import { WorktreeCleanupManager } from './worktree-cleanup.js';
 import { IdleManager } from './idle.js';
 import { createHandler } from './handlers.js';
 import {
@@ -199,6 +200,12 @@ async function main(): Promise<void> {
   ptyManager.setOnExit((id) => outputPersistence.flushSession(id));
   outputPersistence.start();
 
+  const cleanupManager = new WorktreeCleanupManager({
+    worktreeManager,
+    backendUrl,
+    getToken: () => authToken,
+  });
+
   const statusManager = new DaemonStatusManager(ptyManager, {
     backendUrl,
     getToken: () => authToken,
@@ -206,6 +213,7 @@ async function main(): Promise<void> {
     hookPort: hookServerPort,
     broadcast,
     worktreeManager,
+    onSessionExited: (taskId) => cleanupManager.scheduleCheck(taskId),
   });
   const pidSweepManager = new DaemonPidSweepManager(broadcast);
 
@@ -216,6 +224,7 @@ async function main(): Promise<void> {
     logger.info('Daemon shutting down...');
 
     idleManager.dispose();
+    cleanupManager.stop();
     outputPersistence.dispose();
     pidSweepManager.stop();
     statusManager.dispose();
@@ -265,6 +274,8 @@ async function main(): Promise<void> {
     setToken: (token) => {
       authToken = token || null;
     },
+    getToken: () => authToken,
+    backendUrl,
     getVersion: () => version,
     getUptime: () => Date.now() - startTime,
     getMcpServerPort: () => hookServerPort,
@@ -288,8 +299,9 @@ async function main(): Promise<void> {
     idleManager.check();
   });
 
-  // Start PID sweep
+  // Start PID sweep and worktree cleanup
   pidSweepManager.start();
+  cleanupManager.start();
 
   // Start server
   await server.start(socketPath);

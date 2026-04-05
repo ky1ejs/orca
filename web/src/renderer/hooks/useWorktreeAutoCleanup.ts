@@ -32,7 +32,12 @@ export function useWorktreeAutoCleanup(
       try {
         const safety = await window.orca.worktree.safety(changedTask.id);
         if (!safety) return;
-        if (safety.dirty || safety.unpushedCommits || !safety.branchMerged) return;
+        if (safety.dirty) return;
+        const merged = safety.branchMerged || safety.prMerged;
+        if (!merged) return;
+        // Even when merged, don't remove if there are local-only commits
+        // that weren't part of the merge (they'd be lost)
+        if (safety.unpushedCommits && !safety.branchMerged) return;
 
         await window.orca.worktree.remove(changedTask.id);
         cleanedRef.current.add(changedTask.id);

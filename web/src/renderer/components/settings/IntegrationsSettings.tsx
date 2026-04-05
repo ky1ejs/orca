@@ -274,12 +274,16 @@ function AutomationSettingsSection({
   settings: {
     autoCloseOnMerge: boolean;
     autoInReviewOnPrOpen: boolean;
+    autoCleanupWorktree: boolean;
   };
 }) {
   const { updateWorkspaceSettings } = useUpdateWorkspaceSettings();
 
   const handleToggle = useCallback(
-    (field: 'autoCloseOnMerge' | 'autoInReviewOnPrOpen', value: boolean) => {
+    (
+      field: 'autoCloseOnMerge' | 'autoInReviewOnPrOpen' | 'autoCleanupWorktree',
+      value: boolean,
+    ) => {
       updateWorkspaceSettings(workspaceId, { [field]: value });
     },
     [workspaceId, updateWorkspaceSettings],
@@ -300,6 +304,12 @@ function AutomationSettingsSection({
           description="When a pull request is opened linking to a task, move it to In Review."
           checked={settings.autoInReviewOnPrOpen}
           onChange={(v) => handleToggle('autoInReviewOnPrOpen', v)}
+        />
+        <ToggleRow
+          label="Auto-cleanup worktrees"
+          description="When a task moves to Done and its worktree is safe to remove, automatically clean it up."
+          checked={settings.autoCleanupWorktree}
+          onChange={(v) => handleToggle('autoCleanupWorktree', v)}
         />
       </div>
     </div>
