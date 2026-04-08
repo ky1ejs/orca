@@ -41,14 +41,14 @@ function createMockContext() {
       },
     },
     loaders: {
-      projectsByInitiativeId: { load: vi.fn().mockResolvedValue([]) },
-      workspaceById: { load: vi.fn().mockResolvedValue(WORKSPACE) },
-      tasksByProjectId: { load: vi.fn() },
-      projectById: { load: vi.fn() },
-      initiativeById: { load: vi.fn() },
-      userById: { load: vi.fn() },
-      labelsByTaskId: { load: vi.fn() },
-      pullRequestsByTaskId: { load: vi.fn() },
+      projectsByInitiativeId: { load: vi.fn().mockResolvedValue([]), clear: vi.fn() },
+      workspaceById: { load: vi.fn().mockResolvedValue(WORKSPACE), clear: vi.fn() },
+      tasksByProjectId: { load: vi.fn(), clear: vi.fn() },
+      projectById: { load: vi.fn(), clear: vi.fn() },
+      initiativeById: { load: vi.fn(), clear: vi.fn() },
+      userById: { load: vi.fn(), clear: vi.fn() },
+      labelsByTaskId: { load: vi.fn(), clear: vi.fn() },
+      pullRequestsByTaskId: { load: vi.fn(), clear: vi.fn() },
     },
     pubsub: {
       publish: vi.fn(),
@@ -188,6 +188,22 @@ describe('initiative resolvers', () => {
       );
       expect(result).toEqual(WORKSPACE);
       expect(ctx.loaders.workspaceById.load).toHaveBeenCalledWith('ws1');
+    });
+  });
+
+  describe('Subscription', () => {
+    it('initiativeChanged.resolve clears stale projects loader entry for the initiative', () => {
+      const ctx = createMockContext();
+      const payload = { id: 'init1', workspaceId: 'ws1' };
+
+      const result = initiativeResolvers.Subscription.initiativeChanged.resolve(
+        payload as never,
+        {} as never,
+        ctx as never,
+      );
+
+      expect(ctx.loaders.projectsByInitiativeId.clear).toHaveBeenCalledWith('init1');
+      expect(result).toBe(payload);
     });
   });
 });
