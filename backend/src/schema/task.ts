@@ -6,6 +6,7 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
+import type { ServerContext } from '../context.js';
 import {
   requireProjectAccess,
   requireTaskAccess,
@@ -369,7 +370,13 @@ export const taskResolvers = {
           context.userId,
         );
       },
-      resolve: (payload: Task) => payload,
+      // WS DataLoaders persist across subscription events — clear stale entries
+      // for this task so field resolvers fetch fresh PRs/labels from the DB.
+      resolve: (payload: Task, _args: unknown, context: ServerContext) => {
+        context.loaders.pullRequestsByTaskId.clear(payload.id);
+        context.loaders.labelsByTaskId.clear(payload.id);
+        return payload;
+      },
     },
   } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
   Task: {

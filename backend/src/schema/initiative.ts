@@ -6,6 +6,7 @@ import type {
   MutationResolvers,
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
+import type { ServerContext } from '../context.js';
 import {
   requireInitiativeAccess,
   requireWorkspaceAccess,
@@ -113,7 +114,12 @@ export const initiativeResolvers = {
           context.userId,
         );
       },
-      resolve: (payload: Initiative) => payload,
+      // WS DataLoaders persist across subscription events — clear stale entry
+      // so the projects field resolver fetches fresh data from the DB.
+      resolve: (payload: Initiative, _args: unknown, context: ServerContext) => {
+        context.loaders.projectsByInitiativeId.clear(payload.id);
+        return payload;
+      },
     },
   } satisfies Pick<SubscriptionResolvers, 'initiativeChanged'>,
   Initiative: {
