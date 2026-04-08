@@ -61,14 +61,14 @@ function createMockContext() {
     $transaction: vi.fn((cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
   };
   const loaders = {
-    userById: { load: vi.fn() },
-    projectById: { load: vi.fn().mockResolvedValue(PROJECT) },
-    initiativeById: { load: vi.fn() },
-    workspaceById: { load: vi.fn() },
-    labelsByTaskId: { load: vi.fn().mockResolvedValue([]) },
-    pullRequestsByTaskId: { load: vi.fn().mockResolvedValue([]) },
-    tasksByProjectId: { load: vi.fn() },
-    projectsByInitiativeId: { load: vi.fn() },
+    userById: { load: vi.fn(), clear: vi.fn() },
+    projectById: { load: vi.fn().mockResolvedValue(PROJECT), clear: vi.fn() },
+    initiativeById: { load: vi.fn(), clear: vi.fn() },
+    workspaceById: { load: vi.fn(), clear: vi.fn() },
+    labelsByTaskId: { load: vi.fn().mockResolvedValue([]), clear: vi.fn() },
+    pullRequestsByTaskId: { load: vi.fn().mockResolvedValue([]), clear: vi.fn() },
+    tasksByProjectId: { load: vi.fn(), clear: vi.fn() },
+    projectsByInitiativeId: { load: vi.fn(), clear: vi.fn() },
   };
   return {
     prisma,
@@ -538,6 +538,23 @@ describe('task resolvers', () => {
       const result = await taskResolvers.Task.labels!({ id: 'task1' } as never, {}, ctx as never);
       expect(result).toEqual(labels);
       expect(ctx.loaders.labelsByTaskId.load).toHaveBeenCalledWith('task1');
+    });
+  });
+
+  describe('Subscription', () => {
+    it('taskChanged.resolve clears stale PR and label loader entries for the task', () => {
+      const ctx = createMockContext();
+      const payload = { id: 'task1', workspaceId: 'ws1' };
+
+      const result = taskResolvers.Subscription.taskChanged.resolve(
+        payload as never,
+        {} as never,
+        ctx as never,
+      );
+
+      expect(ctx.loaders.pullRequestsByTaskId.clear).toHaveBeenCalledWith('task1');
+      expect(ctx.loaders.labelsByTaskId.clear).toHaveBeenCalledWith('task1');
+      expect(result).toBe(payload);
     });
   });
 });

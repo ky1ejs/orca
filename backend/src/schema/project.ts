@@ -7,6 +7,7 @@ import type {
   SubscriptionResolvers,
 } from '../__generated__/graphql.js';
 import type { PrismaClient } from '@prisma/client';
+import type { ServerContext } from '../context.js';
 import {
   requireInitiativeAccess,
   requireProjectAccess,
@@ -183,7 +184,12 @@ export const projectResolvers = {
           context.userId,
         );
       },
-      resolve: (payload: Project) => payload,
+      // WS DataLoaders persist across subscription events — clear stale entry
+      // so the tasks field resolver fetches fresh data from the DB.
+      resolve: (payload: Project, _args: unknown, context: ServerContext) => {
+        context.loaders.tasksByProjectId.clear(payload.id);
+        return payload;
+      },
     },
   } satisfies Pick<SubscriptionResolvers, 'projectChanged'>,
   Project: {
