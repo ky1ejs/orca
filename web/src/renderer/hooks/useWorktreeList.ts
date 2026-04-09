@@ -15,24 +15,28 @@ export function useWorktreeList(): UseWorktreeListResult {
   const [loading, setLoading] = useState(true);
   const fetchIdRef = useRef(0);
   const hasFetchedRef = useRef(false);
+  const pendingFetchRef = useRef<Promise<void> | null>(null);
 
   const doFetch = useCallback(() => {
     const id = ++fetchIdRef.current;
     if (!hasFetchedRef.current) setLoading(true);
-    window.orca.worktree
+    const promise = window.orca.worktree
       .list()
       .then((results) => {
         if (fetchIdRef.current === id) setWorktrees(results);
       })
       .catch(() => {
-        if (fetchIdRef.current === id) setWorktrees([]);
+        // Preserve previous state on transient errors
       })
       .finally(() => {
         if (fetchIdRef.current === id) {
           hasFetchedRef.current = true;
           setLoading(false);
+          pendingFetchRef.current = null;
         }
       });
+    pendingFetchRef.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {
@@ -44,7 +48,7 @@ export function useWorktreeList(): UseWorktreeListResult {
   const removeWorktree = useCallback(
     async (taskId: string, force?: boolean) => {
       await window.orca.worktree.remove(taskId, force);
-      doFetch();
+      await doFetch();
     },
     [doFetch],
   );

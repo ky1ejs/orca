@@ -13,8 +13,8 @@ interface TaskInfo {
   id: string;
   displayId: string;
   title: string;
-  projectId: string;
-  projectName: string;
+  projectId?: string;
+  projectName?: string;
 }
 
 export function WorktreeListView() {
@@ -44,8 +44,6 @@ export function WorktreeListView() {
           id: task.id,
           displayId: task.displayId,
           title: task.title,
-          projectId: '',
-          projectName: '',
         });
       }
     }
@@ -136,8 +134,8 @@ export function WorktreeListView() {
                                   view: 'task',
                                   id: taskInfo.id,
                                   taskName: taskInfo.title,
-                                  projectId: taskInfo.projectId || undefined,
-                                  projectName: taskInfo.projectName || undefined,
+                                  projectId: taskInfo.projectId,
+                                  projectName: taskInfo.projectName,
                                 })
                               }
                               className="text-left hover:text-accent transition-colors"
