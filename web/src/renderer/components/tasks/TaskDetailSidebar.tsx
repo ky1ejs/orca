@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, memo } from 'react';
-import { Trash2, FolderOpen, GitBranch, AlertTriangle, CheckCircle, Code } from 'lucide-react';
+import { useState, memo } from 'react';
+import { Trash2, FolderOpen, GitBranch, Code } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
@@ -8,6 +8,9 @@ import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { useWorktree } from '../../hooks/useWorktree.js';
+import { useHasVscode } from '../../hooks/useHasVscode.js';
+import { WorktreeSafetyBadge } from '../shared/WorktreeSafetyBadge.js';
+import { RemoveWorktreeModal } from '../shared/RemoveWorktreeModal.js';
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
@@ -50,35 +53,9 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
   const [editingDirectory, setEditingDirectory] = useState('');
   const [isEditingDir, setIsEditingDir] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
-  const [removing, setRemoving] = useState(false);
 
   const { worktree, safety, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
-
-  const [hasVscode, setHasVscode] = useState(false);
-
-  useEffect(() => {
-    window.orca.shell
-      .hasVscode()
-      .then(setHasVscode)
-      .catch(() => setHasVscode(false));
-  }, []);
-
-  const handleRemove = useCallback(
-    async (force: boolean) => {
-      setRemoving(true);
-      try {
-        await removeWorktree(force);
-        setConfirmRemove(false);
-        setRemoveError(null);
-      } catch (err) {
-        setRemoveError(err instanceof Error ? err.message : 'Failed to remove worktree');
-      } finally {
-        setRemoving(false);
-      }
-    },
-    [removeWorktree],
-  );
+  const hasVscode = useHasVscode();
 
   const selectClass =
     'w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-accent';
@@ -294,34 +271,9 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
                 </button>
               )}
             </div>
-            {safety && (
-              <div className="flex items-center gap-1.5 text-body-xs">
-                {!safety.dirty && !safety.unpushedCommits && safety.branchMerged ? (
-                  <>
-                    <CheckCircle className={`${iconSize.xs} text-success`} />
-                    <span className="text-success">Clean and merged</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className={`${iconSize.xs} text-warning`} />
-                    <span className="text-warning">
-                      {[
-                        safety.dirty && 'Uncommitted changes',
-                        safety.unpushedCommits && 'Unpushed commits',
-                        !safety.branchMerged && 'Branch not merged',
-                      ]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
+            {safety && <WorktreeSafetyBadge safety={safety} />}
             <button
-              onClick={() => {
-                setConfirmRemove(true);
-                setRemoveError(null);
-              }}
+              onClick={() => setConfirmRemove(true)}
               className="px-2 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded transition-colors inline-flex items-center"
             >
               <Trash2 className={`${iconSize.xs} mr-1`} />
@@ -332,53 +284,12 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
       )}
 
       {confirmRemove && worktree && (
-        <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-modal-backdrop animate-fade-in">
-          <div className="bg-surface-raised border border-edge-subtle rounded-lg p-6 max-w-md mx-4 shadow-modal animate-scale-in">
-            <p className="text-fg text-body-sm mb-4">
-              This will permanently remove the worktree at{' '}
-              <code className="text-fg-muted font-mono bg-surface-inset px-1 rounded">
-                {worktree.worktree_path}
-              </code>{' '}
-              and delete the local branch{' '}
-              <code className="text-fg-muted font-mono bg-surface-inset px-1 rounded">
-                {worktree.branch_name}
-              </code>
-              . This cannot be undone.
-            </p>
-            {removeError && <p className="text-error text-body-sm mb-4">{removeError}</p>}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setConfirmRemove(false);
-                  setRemoveError(null);
-                }}
-                disabled={removing}
-                className="px-3 py-1.5 text-label-md text-fg-muted hover:text-fg transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              {removeError &&
-                (removeError.includes('modified') || removeError.includes('untracked')) && (
-                  <button
-                    onClick={() => handleRemove(true)}
-                    disabled={removing}
-                    className="px-3 py-1.5 text-label-md bg-error-muted hover:bg-error-strong text-error rounded transition-colors disabled:opacity-50"
-                  >
-                    {removing ? 'Removing...' : 'Force remove'}
-                  </button>
-                )}
-              {!removeError && (
-                <button
-                  onClick={() => handleRemove(false)}
-                  disabled={removing}
-                  className="px-3 py-1.5 text-label-md bg-error-muted hover:bg-error-strong text-error rounded transition-colors disabled:opacity-50"
-                >
-                  {removing ? 'Removing...' : 'Confirm'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <RemoveWorktreeModal
+          worktreePath={worktree.worktree_path}
+          branchName={worktree.branch_name}
+          onRemove={removeWorktree}
+          onClose={() => setConfirmRemove(false)}
+        />
       )}
 
       <div className="border-t border-edge-subtle pt-5">
