@@ -11,6 +11,7 @@ import { ProjectDetail } from '../projects/ProjectDetail.js';
 import { TaskDetail } from '../tasks/TaskDetail.js';
 import { MyTasksView } from '../tasks/MyTasksView.js';
 import { WorkspaceSettings } from '../settings/WorkspaceSettings.js';
+import { WorktreeListView } from '../worktrees/WorktreeListView.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useTerminalSessions, type TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
@@ -49,6 +50,8 @@ function MainContent({ sessions, refreshSessions }: MainContentProps) {
       return <ProjectList />;
     case 'my-tasks':
       return <MyTasksView />;
+    case 'worktrees':
+      return <WorktreeListView />;
     case 'project':
       return current.id ? <ProjectDetail projectId={current.id} /> : <InitiativeList />;
     case 'task':

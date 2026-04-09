@@ -9,6 +9,7 @@ import {
   LogOut,
   Target,
   User,
+  GitFork,
 } from 'lucide-react';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
@@ -314,6 +315,18 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
                 {myTaskCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => navigate({ view: 'worktrees' })}
+            className={`w-full text-left px-3 py-1.5 text-body-sm rounded transition-colors flex items-center gap-1.5 ${
+              current.view === 'worktrees'
+                ? 'bg-surface-inset text-fg'
+                : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+            }`}
+            data-testid="sidebar-worktrees-btn"
+          >
+            <GitFork className={iconSize.sm} />
+            Worktrees
           </button>
         </div>
         {inboxTasks.length > 0 && (

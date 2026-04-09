@@ -7,6 +7,7 @@ type ViewType =
   | 'project'
   | 'task'
   | 'my-tasks'
+  | 'worktrees'
   | 'members'
   | 'invitations'
   | 'settings';

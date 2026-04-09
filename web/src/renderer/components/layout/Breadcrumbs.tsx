@@ -27,6 +27,10 @@ export function Breadcrumbs() {
       segments.push({ label: 'My Tasks' });
       break;
 
+    case 'worktrees':
+      segments.push({ label: 'Worktrees' });
+      break;
+
     case 'task':
       if (current.fromView === 'my-tasks') {
         segments.push({
