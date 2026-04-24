@@ -59,13 +59,7 @@ Orca injects context into both local and background agents sessions so that agen
 ```bash
 git clone https://github.com/ky1ejs/orca.git
 cd orca
-
-# Install root dependencies
 bun install
-
-# Install each package's dependencies
-cd backend && bun install && cd ..
-cd web && bun install && cd ..
 ```
 
 ### 2. Start Postgres

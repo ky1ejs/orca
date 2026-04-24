@@ -1,0 +1,16 @@
+{
+  "name": "@orca/root",
+  "version": "0.0.167",
+  "private": true,
+  "scripts": {
+    "postinstall": "(cd backend && bun install) && (cd web && bun install)",
+    "dev": "bun run --cwd backend dev & bun run --cwd web dev",
+    "lint": "bun run --cwd backend lint && bun run --cwd web lint",
+    "lint:fix": "bun run --cwd backend lint:fix && bun run --cwd web lint:fix",
+    "format": "bun run --cwd backend format && bun run --cwd web format",
+    "format:check": "bun run --cwd backend format:check && bun run --cwd web format:check",
+    "typecheck": "bun run --cwd backend typecheck && bun run --cwd web typecheck",
+    "test": "bun run --cwd backend test && bun run --cwd web test",
+    "validate": "bun run --cwd backend validate && bun run --cwd web validate"
+  }
+}
