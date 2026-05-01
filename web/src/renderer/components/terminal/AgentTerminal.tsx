@@ -306,26 +306,14 @@ export const AgentTerminal = memo(function AgentTerminal({
         if (writeRafId === null) {
           writeRafId = requestAnimationFrame(() => {
             writeRafId = null;
-
-            // Reset idle timer once per frame (not per IPC chunk) to avoid
-            // timer churn during rapid output. When data stops flowing for
-            // IDLE_REFRESH_MS, clear the WebGL texture atlas and force a full
-            // re-render to fix any accumulated rendering artifacts.
-            if (idleRefreshTimer !== null) clearTimeout(idleRefreshTimer);
-            idleRefreshTimer = setTimeout(() => {
-              idleRefreshTimer = null;
-              if (!disposed && visibleRef.current) {
-                terminal.clearTextureAtlas();
-                terminal.refresh(0, terminal.rows - 1);
-              }
-            }, IDLE_REFRESH_MS);
-
             const batch = pendingData;
             pendingData = '';
             inFlightBytes += batch.length;
             terminal.write(batch, () => {
               inFlightBytes -= batch.length;
               window.orca.pty.ack(sessionId, batch.length);
+              if (disposed) return;
+
               // Throttled full re-render to clear accumulated WebGL rendering
               // artifacts. Runs INSIDE the write callback so xterm has finished
               // processing the batch — refresh re-renders the up-to-date buffer
@@ -335,6 +323,19 @@ export const AgentTerminal = memo(function AgentTerminal({
                 lastRefreshAt = now;
                 terminal.refresh(0, terminal.rows - 1);
               }
+
+              // Reset idle timer after each write completes. When no more
+              // writes arrive for IDLE_REFRESH_MS, clear the WebGL texture
+              // atlas and force a full re-render to fix any accumulated
+              // rendering artifacts from the burst.
+              if (idleRefreshTimer !== null) clearTimeout(idleRefreshTimer);
+              idleRefreshTimer = setTimeout(() => {
+                idleRefreshTimer = null;
+                if (!disposed && visibleRef.current) {
+                  terminal.clearTextureAtlas();
+                  terminal.refresh(0, terminal.rows - 1);
+                }
+              }, IDLE_REFRESH_MS);
             });
           });
         }
