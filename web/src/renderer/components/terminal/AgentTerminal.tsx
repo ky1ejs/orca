@@ -52,7 +52,10 @@ export function escapeFilePath(p: string): string {
 }
 
 /** How often (ms) to force a full re-render during active PTY output. */
-const REFRESH_THROTTLE_MS = 1_000;
+const REFRESH_THROTTLE_MS = 250;
+
+/** Delay (ms) after the last data chunk before clearing the WebGL texture atlas. */
+const IDLE_REFRESH_MS = 300;
 
 /**
  * CSI u key encoding table for single-modifier+key combinations that Claude
@@ -267,6 +270,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     // flow control (daemon pauses PTY when unacked data exceeds watermark).
     let pendingData = '';
     let writeRafId: number | null = null;
+    /** Timer for post-burst idle refresh to clear accumulated WebGL artifacts. */
+    let idleRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     /** Replay the session buffer and subscribe to live data. Idempotent. */
     async function replayAndSubscribe(): Promise<void> {
@@ -296,6 +301,7 @@ export const AgentTerminal = memo(function AgentTerminal({
           firstDataLogged = true;
           mark('first-data');
         }
+
         pendingData += data;
         if (writeRafId === null) {
           writeRafId = requestAnimationFrame(() => {
@@ -306,15 +312,31 @@ export const AgentTerminal = memo(function AgentTerminal({
             terminal.write(batch, () => {
               inFlightBytes -= batch.length;
               window.orca.pty.ack(sessionId, batch.length);
+              if (disposed) return;
+
+              // Throttled full re-render to clear accumulated WebGL rendering
+              // artifacts. Runs INSIDE the write callback so xterm has finished
+              // processing the batch — refresh re-renders the up-to-date buffer
+              // state rather than stale pre-write state.
+              const now = performance.now();
+              if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+                lastRefreshAt = now;
+                terminal.refresh(0, terminal.rows - 1);
+              }
+
+              // Reset idle timer after each write completes. When no more
+              // writes arrive for IDLE_REFRESH_MS, clear the WebGL texture
+              // atlas and force a full re-render to fix any accumulated
+              // rendering artifacts from the burst.
+              if (idleRefreshTimer !== null) clearTimeout(idleRefreshTimer);
+              idleRefreshTimer = setTimeout(() => {
+                idleRefreshTimer = null;
+                if (!disposed && visibleRef.current) {
+                  terminal.clearTextureAtlas();
+                  terminal.refresh(0, terminal.rows - 1);
+                }
+              }, IDLE_REFRESH_MS);
             });
-            // Throttled full re-render to clear accumulated WebGL rendering
-            // artifacts. The rAF coalescing already limits this to once per
-            // frame; the 1 Hz throttle avoids unnecessary GPU work beyond that.
-            const now = performance.now();
-            if (visibleRef.current && now - lastRefreshAt >= REFRESH_THROTTLE_MS) {
-              lastRefreshAt = now;
-              terminal.refresh(0, terminal.rows - 1);
-            }
           });
         }
       });
@@ -330,6 +352,10 @@ export const AgentTerminal = memo(function AgentTerminal({
       if (writeRafId !== null) {
         cancelAnimationFrame(writeRafId);
         writeRafId = null;
+      }
+      if (idleRefreshTimer !== null) {
+        clearTimeout(idleRefreshTimer);
+        idleRefreshTimer = null;
       }
       const unleaked = pendingData.length + inFlightBytes;
       pendingData = '';
@@ -422,6 +448,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       sendSnapshot();
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       if (writeRafId !== null) cancelAnimationFrame(writeRafId);
+      if (idleRefreshTimer !== null) clearTimeout(idleRefreshTimer);
       // ACK any buffered or in-flight data directly so the daemon's
       // unackedSize doesn't stay inflated. We can't rely on
       // terminal.write()'s async callback because terminal.dispose()
