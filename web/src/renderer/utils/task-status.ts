@@ -35,6 +35,14 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
   [TaskPriority.Urgent]: 'Urgent',
 };
 
+export const PRIORITY_ORDER: TaskPriority[] = [
+  TaskPriority.Urgent,
+  TaskPriority.High,
+  TaskPriority.Medium,
+  TaskPriority.Low,
+  TaskPriority.None,
+];
+
 export function groupTasksByStatus<T extends { status: TaskStatus }>(
   tasks: T[],
 ): Record<TaskStatus, T[]> {

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, memo } from 'react';
+import { Edit3 } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { MarkdownRenderer } from '../markdown/MarkdownRenderer.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
 
@@ -7,6 +9,9 @@ interface TaskDetailDescriptionProps {
   taskId: string;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<unknown>;
 }
+
+const KBD_CLASS =
+  'inline-flex items-center font-mono text-code-sm bg-surface-inset border border-edge-subtle text-fg-muted px-1 py-px rounded-sm leading-none';
 
 export const TaskDetailDescription = memo(function TaskDetailDescription({
   description,
@@ -47,7 +52,7 @@ export const TaskDetailDescription = memo(function TaskDetailDescription({
 
   if (editing) {
     return (
-      <div>
+      <div className="rounded-lg border border-edge-subtle bg-surface-raised/50 p-1">
         <textarea
           ref={textareaRef}
           value={value}
@@ -67,15 +72,25 @@ export const TaskDetailDescription = memo(function TaskDetailDescription({
             }
           }}
           placeholder="Add a description (Markdown supported)"
-          className="w-full px-3 py-2 bg-surface-inset border border-edge-subtle rounded-md text-fg placeholder-fg-faint text-body-sm focus:outline-none focus:border-accent resize-y min-h-[120px]"
+          className="w-full px-4 py-3 bg-transparent text-fg placeholder-fg-faint text-body focus:outline-none resize-y min-h-[140px]"
           rows={6}
         />
-        <p className="text-fg-faint text-label-sm mt-1">
-          Markdown supported. Cmd+Enter to save, Escape to cancel.
-        </p>
+        <div className="flex items-center gap-2 px-3 py-2 border-t border-edge-subtle text-fg-faint text-label-sm">
+          <span>Markdown supported.</span>
+          <span className="ml-auto inline-flex items-center gap-1.5">
+            <kbd className={KBD_CLASS}>⌘</kbd>
+            <kbd className={KBD_CLASS}>↵</kbd>
+            <span>save</span>
+            <span className="text-edge mx-1">·</span>
+            <kbd className={KBD_CLASS}>esc</kbd>
+            <span>cancel</span>
+          </span>
+        </div>
       </div>
     );
   }
+
+  const isEmpty = !description;
 
   return (
     <div
@@ -88,12 +103,17 @@ export const TaskDetailDescription = memo(function TaskDetailDescription({
           setEditing(true);
         }
       }}
-      className="rounded-md px-3 py-2 -mx-3 cursor-text hover:bg-surface-hover transition-colors border border-transparent hover:border-edge-subtle"
+      className={`group relative rounded-lg border border-edge-subtle px-5 py-4 cursor-text transition-colors hover:border-edge hover:bg-surface-raised/40 focus:outline-none focus:border-edge ${
+        isEmpty ? 'bg-surface-raised/20' : 'bg-surface-raised/40'
+      }`}
     >
-      {description ? (
-        <MarkdownRenderer content={description} />
+      {isEmpty ? (
+        <div className="flex items-center gap-2 text-fg-faint text-body-sm italic">
+          <Edit3 className={`${iconSize.sm} text-fg-faint`} />
+          <span>Add a description...</span>
+        </div>
       ) : (
-        <p className="text-fg-faint text-body-sm italic">Add a description...</p>
+        <MarkdownRenderer content={description} />
       )}
     </div>
   );

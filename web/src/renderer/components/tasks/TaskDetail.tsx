@@ -24,6 +24,10 @@ import { TaskActivityFeed } from '../activity/TaskActivityFeed.js';
 import { TaskDetailHeader } from './TaskDetailHeader.js';
 import { TaskDetailDescription } from './TaskDetailDescription.js';
 import { TaskDetailSidebar } from './TaskDetailSidebar.js';
+import { StatusChip } from './StatusChip.js';
+import { PriorityChip } from './PriorityChip.js';
+import { ProjectChip } from './ProjectChip.js';
+import { AssigneeChip } from './AssigneeChip.js';
 
 type TaskPullRequests = NonNullable<TaskQuery['task']>['pullRequests'];
 type TaskRelationships = NonNullable<TaskQuery['task']>['relationships'];
@@ -174,67 +178,116 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   }
 
   return (
-    <div className="p-6 grid grid-cols-[1fr_320px] gap-8 items-start">
-      <div className="min-w-0 space-y-6">
-        <TaskDetailHeader
-          displayId={task.displayId}
-          title={task.title}
-          taskId={taskId}
-          updateTask={updateTask}
-        />
-
-        <TaskDetailDescription
-          description={task.description ?? null}
-          taskId={taskId}
-          updateTask={updateTask}
-        />
-
-        {agentError && (
-          <div
-            className="p-3 bg-error-muted border border-error-strong rounded-md"
-            data-testid="agent-error"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-error text-body-sm">{agentError.message}</p>
-                <p className="text-error/70 text-label-sm mt-1">{agentError.suggestion}</p>
-              </div>
-              <button
-                onClick={() => setAgentError(null)}
-                className="text-error hover:text-error text-label-md ml-2"
-                data-testid="dismiss-error"
-              >
-                <X className={iconSize.sm} />
-              </button>
+    <div className="max-w-[1180px] mx-auto px-8 pt-10 pb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-10 items-start">
+        <div className="min-w-0 animate-fade-in">
+          <div className="mb-8" style={{ animationDelay: '0ms' }}>
+            <TaskDetailHeader
+              displayId={task.displayId}
+              title={task.title}
+              taskId={taskId}
+              updateTask={updateTask}
+            />
+            <div className="flex items-center gap-2 flex-wrap mt-4">
+              <StatusChip
+                status={task.status}
+                onChange={handleStatusChange}
+                variant="inline"
+                testId="status-chip-hero"
+              />
+              <PriorityChip
+                priority={task.priority}
+                onChange={(priority) => updateTask(task.id, { priority })}
+                variant="inline"
+                testId="priority-chip-hero"
+              />
+              <ProjectChip
+                projectId={task.projectId}
+                projects={workspaceProjects}
+                onChange={(projectId) => updateTask(task.id, { projectId })}
+                variant="inline"
+                testId="project-chip-hero"
+              />
+              <AssigneeChip
+                assignee={task.assignee ?? null}
+                members={workspaceMembers}
+                onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
+                variant="inline"
+                testId="assignee-chip-hero"
+              />
             </div>
           </div>
-        )}
 
-        <PullRequestList pullRequests={pullRequests} taskId={taskId} onMutate={handleMutate} />
+          <div
+            className="animate-fade-in"
+            style={{ animationDelay: '80ms', animationFillMode: 'backwards' }}
+          >
+            <TaskDetailDescription
+              description={task.description ?? null}
+              taskId={taskId}
+              updateTask={updateTask}
+            />
+          </div>
 
-        <TaskRelationshipList
-          relationships={relationships}
-          taskId={taskId}
-          workspaceId={currentWorkspaceId}
-          onMutate={handleMutate}
-        />
+          {agentError && (
+            <div
+              className="mt-6 p-3 bg-error-muted border border-error-strong rounded-md"
+              data-testid="agent-error"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-error text-body-sm">{agentError.message}</p>
+                  <p className="text-error/70 text-label-sm mt-1">{agentError.suggestion}</p>
+                </div>
+                <button
+                  onClick={() => setAgentError(null)}
+                  className="text-error hover:text-error text-label-md ml-2"
+                  data-testid="dismiss-error"
+                >
+                  <X className={iconSize.sm} />
+                </button>
+              </div>
+            </div>
+          )}
 
-        <TaskActivityFeed taskId={taskId} />
-      </div>
+          <div
+            className="mt-10 space-y-8 animate-fade-in"
+            style={{ animationDelay: '160ms', animationFillMode: 'backwards' }}
+          >
+            <PullRequestList pullRequests={pullRequests} taskId={taskId} onMutate={handleMutate} />
+            <TaskRelationshipList
+              relationships={relationships}
+              taskId={taskId}
+              workspaceId={currentWorkspaceId}
+              onMutate={handleMutate}
+            />
+          </div>
 
-      <div className="sticky top-6 self-start">
-        <TaskDetailSidebar
-          task={task}
-          updateTask={updateTask}
-          handleStatusChange={handleStatusChange}
-          handleArchive={handleArchive}
-          workspaceProjects={workspaceProjects}
-          workspaceMembers={workspaceMembers}
-          currentWorkspaceId={currentWorkspaceId}
-          projectDirectory={projectDirectory ?? null}
-          dirLoading={dirLoading}
-          updateDirectory={updateDirectory}
-        />
+          <div
+            className="mt-10 pt-8 border-t border-edge-subtle animate-fade-in"
+            style={{ animationDelay: '240ms', animationFillMode: 'backwards' }}
+          >
+            <TaskActivityFeed taskId={taskId} />
+          </div>
+        </div>
+
+        <aside
+          className="hidden lg:block sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto pl-6 border-l border-edge-subtle animate-fade-in"
+          style={{ animationDelay: '120ms', animationFillMode: 'backwards' }}
+        >
+          <TaskDetailSidebar
+            task={task}
+            updateTask={updateTask}
+            handleStatusChange={handleStatusChange}
+            handleArchive={handleArchive}
+            workspaceProjects={workspaceProjects}
+            workspaceMembers={workspaceMembers}
+            currentWorkspaceId={currentWorkspaceId}
+            projectDirectory={projectDirectory ?? null}
+            dirLoading={dirLoading}
+            updateDirectory={updateDirectory}
+          />
+        </aside>
       </div>
     </div>
   );

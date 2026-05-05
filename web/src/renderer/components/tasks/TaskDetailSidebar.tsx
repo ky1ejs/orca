@@ -1,22 +1,19 @@
 import { useState, memo } from 'react';
-import { Trash2, FolderOpen, GitBranch, Code } from 'lucide-react';
+import { Trash2, FolderOpen, GitBranch, Code, Pencil } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
-import { STATUS_ORDER, STATUS_LABELS, PRIORITY_LABELS } from '../../utils/task-status.js';
-import { TaskStatusBadge } from './TaskStatusBadge.js';
 import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { useWorktree } from '../../hooks/useWorktree.js';
 import { useHasVscode } from '../../hooks/useHasVscode.js';
 import { WorktreeSafetyBadge } from '../shared/WorktreeSafetyBadge.js';
 import { RemoveWorktreeModal } from '../shared/RemoveWorktreeModal.js';
-
-const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
-
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = Object.entries(
-  PRIORITY_LABELS,
-).map(([value, label]) => ({ value: value as TaskPriority, label }));
+import { PropertyRow } from './PropertyRow.js';
+import { StatusChip } from './StatusChip.js';
+import { PriorityChip } from './PriorityChip.js';
+import { ProjectChip } from './ProjectChip.js';
+import { AssigneeChip } from './AssigneeChip.js';
 
 interface TaskDetailSidebarProps {
   task: {
@@ -57,81 +54,40 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
   const { worktree, safety, loading: worktreeLoading, removeWorktree } = useWorktree(task.id);
   const hasVscode = useHasVscode();
 
-  const selectClass =
-    'w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm focus:outline-none focus:border-accent';
   const iconButtonClass =
-    'flex-shrink-0 p-0.5 text-fg-faint hover:text-fg rounded transition-colors';
+    'flex-shrink-0 p-1 text-fg-faint hover:text-fg hover:bg-surface-hover rounded transition-colors';
 
   return (
-    <div className="space-y-5">
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Status</label>
-        <div className="flex items-center gap-2">
-          <select
-            value={task.status}
-            onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-            className={selectClass}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <TaskStatusBadge status={task.status} />
-        </div>
+    <div className="space-y-1">
+      <div className="space-y-0.5">
+        <PropertyRow label="Status">
+          <StatusChip status={task.status} onChange={handleStatusChange} />
+        </PropertyRow>
+        <PropertyRow label="Priority">
+          <PriorityChip
+            priority={task.priority}
+            onChange={(priority) => updateTask(task.id, { priority })}
+          />
+        </PropertyRow>
+        <PropertyRow label="Project">
+          <ProjectChip
+            projectId={task.projectId}
+            projects={workspaceProjects}
+            onChange={(projectId) => updateTask(task.id, { projectId })}
+          />
+        </PropertyRow>
+        <PropertyRow label="Assignee">
+          <AssigneeChip
+            assignee={task.assignee ?? null}
+            members={workspaceMembers}
+            onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
+            testId="assignee-select"
+          />
+        </PropertyRow>
       </div>
 
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Priority</label>
-        <select
-          value={task.priority}
-          onChange={(e) => updateTask(task.id, { priority: e.target.value as TaskPriority })}
-          className={selectClass}
-        >
-          {PRIORITY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Project</label>
-        <select
-          value={task.projectId ?? ''}
-          onChange={(e) => updateTask(task.id, { projectId: e.target.value || null })}
-          className={selectClass}
-        >
-          <option value="">Inbox (no project)</option>
-          {workspaceProjects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Assignee</label>
-        <select
-          value={task.assignee?.id ?? ''}
-          onChange={(e) => updateTask(task.id, { assigneeId: e.target.value || null })}
-          className={selectClass}
-          data-testid="assignee-select"
-        >
-          <option value="">Unassigned</option>
-          {workspaceMembers.map((m) => (
-            <option key={m.user.id} value={m.user.id}>
-              {m.user.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-fg-faint text-label-sm block mb-1.5">Labels</label>
+      <div className="border-t border-edge-subtle pt-4 mt-4">
+        <span className="text-fg-faint text-label-sm block mb-2">Labels</span>
         <div className="flex items-center gap-1 flex-wrap">
           {task.labels.map((label) => (
             <LabelBadge
@@ -152,98 +108,25 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
               onChange={(labelIds) => updateTask(task.id, { labelIds })}
             />
           )}
+          {task.labels.length === 0 && !currentWorkspaceId && (
+            <span className="text-fg-faint text-label-sm italic">No labels</span>
+          )}
         </div>
       </div>
 
-      <div className="border-t border-edge-subtle pt-5">
-        <label className="text-fg-faint text-label-sm block mb-1.5">Project Directory</label>
-        {dirLoading ? (
-          <p className="text-fg-faint text-body-sm">Loading...</p>
-        ) : isEditingDir ? (
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={editingDirectory}
-              onChange={(e) => setEditingDirectory(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  updateDirectory(editingDirectory.trim());
-                  setIsEditingDir(false);
-                } else if (e.key === 'Escape') {
-                  setIsEditingDir(false);
-                }
-              }}
-              className="w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm font-mono focus:outline-none focus:border-accent"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  updateDirectory(editingDirectory.trim());
-                  setIsEditingDir(false);
-                }}
-                className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setIsEditingDir(false)}
-                className="px-2 py-1 bg-surface-hover hover:bg-surface-overlay text-fg text-label-sm rounded transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : projectDirectory ? (
-          <p
-            className="text-fg-muted text-body-sm font-mono cursor-pointer hover:text-fg transition-colors truncate"
-            title={projectDirectory}
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              setEditingDirectory(projectDirectory);
-              setIsEditingDir(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setEditingDirectory(projectDirectory);
-                setIsEditingDir(true);
-              }
-            }}
-          >
-            {projectDirectory}
-          </p>
-        ) : (
-          <button
-            onClick={() => {
-              setEditingDirectory('');
-              setIsEditingDir(true);
-            }}
-            className="text-fg-muted hover:text-fg text-label-sm transition-colors inline-flex items-center"
-          >
-            <FolderOpen className={`${iconSize.sm} mr-1`} />
-            Set directory...
-          </button>
-        )}
-      </div>
-
       {!worktreeLoading && worktree && (
-        <div className="border-t border-edge-subtle pt-5">
-          <label className="text-fg-faint text-label-sm block mb-1.5">Worktree</label>
+        <div className="border-t border-edge-subtle pt-4 mt-4">
+          <span className="text-fg-faint text-label-sm block mb-2">Worktree</span>
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-1.5 max-w-full bg-surface-inset border border-edge-subtle rounded-md px-2 py-1">
               <GitBranch className={`${iconSize.xs} text-fg-faint flex-shrink-0`} />
-              <span
-                className="text-fg-muted text-code-sm font-mono truncate"
-                title={worktree.branch_name}
-              >
+              <span className="text-fg text-code font-mono truncate" title={worktree.branch_name}>
                 {worktree.branch_name}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 group">
               <p
-                className="text-fg-faint text-body-sm font-mono truncate flex-1 min-w-0"
+                className="text-fg-muted text-code-sm font-mono truncate flex-1 min-w-0"
                 title={worktree.worktree_path}
               >
                 {worktree.worktree_path}
@@ -274,9 +157,9 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
             {safety && <WorktreeSafetyBadge safety={safety} />}
             <button
               onClick={() => setConfirmRemove(true)}
-              className="px-2 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded transition-colors inline-flex items-center"
+              className="inline-flex items-center gap-1 text-error hover:bg-error-muted/60 text-label-sm px-2 py-1 -mx-2 rounded-md transition-colors"
             >
-              <Trash2 className={`${iconSize.xs} mr-1`} />
+              <Trash2 className={iconSize.xs} />
               Remove worktree
             </button>
           </div>
@@ -292,12 +175,80 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
         />
       )}
 
-      <div className="border-t border-edge-subtle pt-5">
+      <div className="border-t border-edge-subtle pt-4 mt-4 space-y-3">
+        <div>
+          <span className="text-fg-faint text-label-sm block mb-1.5">Project Directory</span>
+          {dirLoading ? (
+            <p className="text-fg-faint text-body-sm">Loading...</p>
+          ) : isEditingDir ? (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={editingDirectory}
+                onChange={(e) => setEditingDirectory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateDirectory(editingDirectory.trim());
+                    setIsEditingDir(false);
+                  } else if (e.key === 'Escape') {
+                    setIsEditingDir(false);
+                  }
+                }}
+                className="w-full px-2 py-1.5 bg-surface-inset border border-edge-subtle rounded-md text-fg text-body-sm font-mono focus:outline-none focus:border-accent"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    updateDirectory(editingDirectory.trim());
+                    setIsEditingDir(false);
+                  }}
+                  className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setIsEditingDir(false)}
+                  className="px-2 py-1 bg-surface-hover hover:bg-surface-overlay text-fg text-label-sm rounded transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : projectDirectory ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingDirectory(projectDirectory);
+                setIsEditingDir(true);
+              }}
+              className="group inline-flex items-center gap-1.5 max-w-full text-fg-muted hover:text-fg text-code font-mono transition-colors"
+              title={projectDirectory}
+            >
+              <span className="truncate">{projectDirectory}</span>
+              <Pencil
+                className={`${iconSize.xs} text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
+              />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setEditingDirectory('');
+                setIsEditingDir(true);
+              }}
+              className="text-fg-muted hover:text-fg text-label-sm transition-colors inline-flex items-center gap-1"
+            >
+              <FolderOpen className={iconSize.sm} />
+              Set directory...
+            </button>
+          )}
+        </div>
+
         <button
           onClick={handleArchive}
-          className="w-full px-3 py-1.5 bg-error-muted hover:bg-error-strong text-error text-label-md rounded-md transition-colors inline-flex items-center justify-center"
+          className="inline-flex items-center gap-1 text-error hover:bg-error-muted/60 text-label-sm px-2 py-1 -mx-2 rounded-md transition-colors"
         >
-          <Trash2 className={`${iconSize.sm} mr-1`} />
+          <Trash2 className={iconSize.xs} />
           Delete Task
         </button>
       </div>
