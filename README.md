@@ -48,7 +48,7 @@ Orca injects context into both local and background agents sessions so that agen
 
 ## Development Pre-requisites
 
-- **[Bun](https://bun.sh/)** (v1.0+) -- JavaScript runtime and package manager
+- **[Bun](https://bun.sh/)** (v1.2+) -- JavaScript runtime and package manager
 - **[Docker](https://www.docker.com/)** -- for running Postgres
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** -- the AI agent that Orca orchestrates (must be on your PATH)
 
