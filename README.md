@@ -78,7 +78,10 @@ docker compose up -d
 
 ```bash
 cd backend
+cp .env.example .env
+bunx prisma generate
 bunx prisma migrate deploy
+bun run seed:dev  # optional: creates a default dev user (dev@orca.local / dev-password)
 cd ..
 ```
 
