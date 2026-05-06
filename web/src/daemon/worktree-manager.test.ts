@@ -219,6 +219,22 @@ describe('WorktreeManager', () => {
       });
     });
 
+    it('reuses an orphaned worktree when directory exists but DB record is missing', async () => {
+      const result1 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      const { deleteWorktree } = await import('./worktrees.js');
+
+      // Simulate lost DB record (e.g. daemon restart wipe) while worktree directory remains
+      deleteWorktree('task-1');
+
+      const result2 = await manager.ensureWorktree('task-1', repoDir, metadata);
+      expect(result2.path).toBe(result1.path);
+      expect(existsSync(result2.path)).toBe(true);
+
+      execFileSync('git', ['-C', repoDir, 'worktree', 'remove', result2.path, '--force'], {
+        stdio: 'pipe',
+      });
+    });
+
     it('handles empty slug gracefully', async () => {
       const emptyTitleMeta = { ...metadata, title: '' };
       const result = await manager.ensureWorktree('task-empty', repoDir, emptyTitleMeta);

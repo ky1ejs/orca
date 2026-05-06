@@ -126,7 +126,10 @@ export class WorktreeManager {
       }
 
       try {
-        if (await branchExists(repoPath, branchName)) {
+        if (existsSync(worktreePath)) {
+          // Directory already exists as a registered worktree (e.g. DB record was lost after daemon restart)
+          logger.warn(`worktree.orphaned-reused taskId=${taskId} path=${worktreePath}`);
+        } else if (await branchExists(repoPath, branchName)) {
           await git(repoPath, ['worktree', 'add', worktreePath, branchName]);
         } else {
           await git(repoPath, ['worktree', 'add', '-b', branchName, worktreePath, startPoint]);
