@@ -164,6 +164,7 @@ export function ActivityTimeline({
           </ul>
           {hasNextPage && (
             <button
+              type="button"
               onClick={onLoadMore}
               disabled={loading}
               className="mt-3 ml-7 text-fg-muted hover:text-fg text-label-md transition-colors inline-flex items-center gap-1"

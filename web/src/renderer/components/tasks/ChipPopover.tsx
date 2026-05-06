@@ -69,7 +69,7 @@ export function ChipPopover({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={handleTriggerKeyDown}
-        aria-haspopup="listbox"
+        aria-haspopup="true"
         aria-expanded={open}
         aria-label={triggerLabel}
         data-testid={triggerTestId}
@@ -83,7 +83,6 @@ export function ChipPopover({
       {open && (
         <div
           className={`absolute top-full mt-1 ${align === 'right' ? 'right-0' : 'left-0'} bg-surface-overlay border border-edge-subtle rounded-md shadow-dropdown z-dropdown min-w-[200px] max-h-[280px] overflow-y-auto animate-slide-up py-1`}
-          role="listbox"
         >
           {children(close)}
         </div>
@@ -104,8 +103,6 @@ export function ChipPopoverItem({ selected, onSelect, children, testId }: ChipPo
     <button
       type="button"
       onClick={onSelect}
-      role="option"
-      aria-selected={selected}
       data-testid={testId}
       className={`w-full flex items-center gap-2 px-3 py-1.5 text-body-sm text-left transition-colors ${
         selected ? 'bg-surface-hover text-fg' : 'text-fg hover:bg-surface-hover'

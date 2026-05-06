@@ -272,7 +272,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
         </div>
 
         <aside
-          className="hidden lg:block sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto pl-6 border-l border-edge-subtle animate-fade-in"
+          className="mt-10 pt-8 border-t border-edge-subtle lg:mt-0 lg:pt-0 lg:border-t-0 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-6 lg:border-l lg:border-edge-subtle animate-fade-in"
           style={{ animationDelay: '120ms', animationFillMode: 'backwards' }}
         >
           <TaskDetailSidebar

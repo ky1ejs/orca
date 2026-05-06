@@ -45,6 +45,7 @@ export const PullRequestList = memo(function PullRequestList({
         action={
           !showForm && (
             <button
+              type="button"
               onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-1 text-fg-muted hover:text-fg text-label-md px-2 py-1 rounded-md hover:bg-surface-hover transition-colors"
             >
@@ -130,6 +131,7 @@ export const PullRequestList = memo(function PullRequestList({
         </div>
       ) : pullRequests.length === 0 ? (
         <button
+          type="button"
           onClick={() => setShowForm(true)}
           className="w-full mt-1 px-4 py-3 border border-dashed border-edge-subtle rounded-md text-fg-faint hover:text-fg-muted hover:border-edge text-label-md transition-colors inline-flex items-center justify-center gap-1.5"
         >

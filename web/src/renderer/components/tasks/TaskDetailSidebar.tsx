@@ -32,7 +32,7 @@ interface TaskDetailSidebarProps {
   currentWorkspaceId: string;
   projectDirectory: string | null;
   dirLoading: boolean;
-  updateDirectory: (dir: string) => void;
+  updateDirectory: (dir: string) => Promise<void>;
 }
 
 export const TaskDetailSidebar = memo(function TaskDetailSidebar({
@@ -188,7 +188,7 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
                 onChange={(e) => setEditingDirectory(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    updateDirectory(editingDirectory.trim());
+                    void updateDirectory(editingDirectory.trim()).catch(() => {});
                     setIsEditingDir(false);
                   } else if (e.key === 'Escape') {
                     setIsEditingDir(false);
@@ -199,8 +199,9 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
               />
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => {
-                    updateDirectory(editingDirectory.trim());
+                    void updateDirectory(editingDirectory.trim()).catch(() => {});
                     setIsEditingDir(false);
                   }}
                   className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-label-sm rounded transition-colors"
