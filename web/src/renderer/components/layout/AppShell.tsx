@@ -123,6 +123,9 @@ function TerminalAreaBody({
     return <EmptyTerminalArea />;
   }
 
+  // Keep TerminalPanel mounted whenever sessions exist so xterm.js buffers and
+  // ResizeObservers survive tab switches into and out of bootstrapping sessions.
+  // The setup view overlays the panel rather than replacing it.
   return (
     <>
       <TerminalTabs
@@ -131,11 +134,14 @@ function TerminalAreaBody({
         onSelectSession={setActiveSessionId}
         onCloseSession={handleCloseSession}
       />
-      {showSetupView ? (
-        <TerminalSetupView status={bootstrapStatus} launching={launching} />
-      ) : (
+      <div className="relative flex flex-col flex-1 overflow-hidden">
         <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
-      )}
+        {showSetupView && (
+          <div className="absolute inset-0 z-10 bg-surface flex flex-col">
+            <TerminalSetupView status={bootstrapStatus} launching={launching} />
+          </div>
+        )}
+      </div>
     </>
   );
 }
