@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
 import { useClient } from 'urql';
-import { X, Plus, Link2, Loader2 } from 'lucide-react';
+import { X, Plus, Link2, Loader2, ArrowUpRight } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
 import {
   type TaskQuery,
@@ -9,6 +9,7 @@ import {
   TaskByDisplayIdDocument,
 } from '../../graphql/__generated__/generated.js';
 import { TaskStatusBadge } from './TaskStatusBadge.js';
+import { TaskSectionHeading } from './TaskSectionHeading.js';
 import { useCreateTaskRelationship, useRemoveTaskRelationship } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 
@@ -84,7 +85,6 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
       return;
     }
 
-    // Resolve displayId to task ID
     const lookupResult = await client
       .query(TaskByDisplayIdDocument, { displayId: trimmed, workspaceId })
       .toPromise();
@@ -140,13 +140,28 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
   const grouped = groupByDisplayType(relationships);
 
   return (
-    <div>
-      <span className="text-fg-faint text-label-md block mb-2">Relationships</span>
+    <section>
+      <TaskSectionHeading
+        title="Relationships"
+        count={relationships.length}
+        action={
+          !showForm && (
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-1 text-fg-muted hover:text-fg text-label-md px-2 py-1 rounded-md hover:bg-surface-hover transition-colors"
+            >
+              <Plus className={iconSize.xs} />
+              Add link
+            </button>
+          )
+        }
+      />
       {relationships.length > 0 && (
         <div className="space-y-3">
           {DISPLAY_TYPE_ORDER.filter((dt) => grouped.has(dt)).map((dt) => (
             <div key={dt}>
-              <span className="text-fg-muted text-label-sm block mb-1">
+              <span className="text-fg-faint text-label-sm font-medium uppercase tracking-wider block mb-1.5">
                 {DISPLAY_TYPE_LABELS[dt]}
               </span>
               <div className="space-y-1">
@@ -162,14 +177,17 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
                         navigate({ view: 'task', id: rel.relatedTask.id });
                       }
                     }}
-                    className="group flex items-center gap-2 px-3 py-1.5 bg-surface-raised rounded-md border border-edge cursor-pointer hover:bg-surface-hover transition-colors"
+                    className="group flex items-center gap-2 px-3 py-2 bg-surface-raised border border-edge-subtle rounded-md cursor-pointer transition-colors hover:bg-surface-hover/40 hover:border-edge"
                   >
-                    <span className="text-accent text-body-sm font-medium flex-shrink-0">
+                    <span className="text-fg-muted font-mono text-code flex-shrink-0">
                       {rel.relatedTask.displayId}
                     </span>
                     <span className="text-fg text-body-sm truncate">{rel.relatedTask.title}</span>
                     <div className="flex-1" />
                     <TaskStatusBadge status={rel.relatedTask.status} />
+                    <ArrowUpRight
+                      className={`${iconSize.xs} text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
+                    />
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -177,7 +195,7 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
                       }}
                       onKeyDown={(e) => e.stopPropagation()}
                       disabled={removing}
-                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-fg-faint hover:text-error hover:bg-error-muted/40 rounded transition-all"
                       title="Remove relationship"
                       aria-label={`Remove relationship with ${rel.relatedTask.displayId}`}
                     >
@@ -191,7 +209,7 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
         </div>
       )}
       {showForm ? (
-        <div className="mt-2">
+        <div className="mt-3">
           <div className="flex items-center gap-2">
             <Link2 className={`${iconSize.sm} text-fg-faint flex-shrink-0`} />
             <select
@@ -233,16 +251,17 @@ export const TaskRelationshipList = memo(function TaskRelationshipList({
             </button>
           </div>
         </div>
-      ) : (
+      ) : relationships.length === 0 ? (
         <button
+          type="button"
           onClick={() => setShowForm(true)}
-          className="mt-2 text-fg-muted hover:text-fg text-label-md transition-colors inline-flex items-center gap-1"
+          className="w-full mt-1 px-4 py-3 border border-dashed border-edge-subtle rounded-md text-fg-faint hover:text-fg-muted hover:border-edge text-label-md transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <Plus className={iconSize.xs} />
           Add Relationship
         </button>
-      )}
-      {error && <p className="text-error text-label-sm mt-1">{error}</p>}
-    </div>
+      ) : null}
+      {error && <p className="text-error text-label-sm mt-2">{error}</p>}
+    </section>
   );
 });

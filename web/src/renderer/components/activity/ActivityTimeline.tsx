@@ -9,6 +9,7 @@ import { Skeleton } from '../layout/Skeleton.js';
 import { formatRelativeTime } from '../../utils/formatRelativeTime.js';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../../utils/task-status.js';
 import { linkifyTaskIds } from '../../utils/linkifyTaskIds.js';
+import { TaskSectionHeading } from '../tasks/TaskSectionHeading.js';
 
 type ActivityEdge = AuditEventConnection['edges'][number];
 type ActivityNode = ActivityEdge['node'];
@@ -95,7 +96,7 @@ function EventIcon({ action }: { action: AuditAction }) {
     case AuditAction.Archived:
       return <Trash2 className={`${iconSize.xs} text-error`} />;
     case AuditAction.Updated:
-      return <div className="w-2 h-2 rounded-full bg-fg-faint" />;
+      return <div className="w-1.5 h-1.5 rounded-full bg-fg-faint" />;
   }
 }
 
@@ -114,16 +115,16 @@ export function ActivityTimeline({
 }: ActivityTimelineProps) {
   if (!loading && edges.length === 0) {
     return (
-      <div>
-        <span className="text-fg-faint text-label-md block mb-2">Activity</span>
-        <p className="text-fg-faint text-body-sm">No activity recorded yet</p>
-      </div>
+      <section>
+        <TaskSectionHeading title="Activity" />
+        <p className="text-fg-faint text-body-sm italic">No activity recorded yet</p>
+      </section>
     );
   }
 
   return (
-    <div>
-      <span className="text-fg-faint text-label-md block mb-2">Activity</span>
+    <section>
+      <TaskSectionHeading title="Activity" />
       {loading && edges.length === 0 ? (
         <div className="space-y-3">
           <Skeleton className="h-4 w-64" />
@@ -131,42 +132,48 @@ export function ActivityTimeline({
           <Skeleton className="h-4 w-56" />
         </div>
       ) : (
-        <div className="space-y-0">
-          {edges.map((edge) => (
-            <div key={edge.node.id} className="flex items-start gap-3 py-1.5">
-              <div className="mt-1 flex-shrink-0 flex items-center justify-center w-4 h-4">
-                <EventIcon action={edge.node.action} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-body-sm text-fg">
-                  <span
-                    className={
-                      edge.node.actorType === AuditActorType.System
-                        ? 'text-fg-muted'
-                        : 'font-medium'
-                    }
-                  >
-                    {getActorName(edge.node)}
-                  </span>{' '}
-                  {linkifyTaskIds(describeEvent(edge.node))}
-                </p>
-                <p className="text-label-sm text-fg-faint">
-                  {formatRelativeTime(edge.node.createdAt)}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div className="relative">
+          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-edge-subtle" aria-hidden />
+          <ul className="space-y-2">
+            {edges.map((edge) => (
+              <li key={edge.node.id} className="flex items-start gap-3 relative">
+                <div className="mt-1.5 flex-shrink-0 flex items-center justify-center w-4 h-4 bg-surface rounded-full z-[1]">
+                  <EventIcon action={edge.node.action} />
+                </div>
+                <div className="min-w-0 flex-1 pb-1">
+                  <p className="text-body-sm text-fg">
+                    <span
+                      className={
+                        edge.node.actorType === AuditActorType.System
+                          ? 'text-fg-muted'
+                          : 'font-medium'
+                      }
+                    >
+                      {getActorName(edge.node)}
+                    </span>{' '}
+                    <span className="text-fg-muted">
+                      {linkifyTaskIds(describeEvent(edge.node))}
+                    </span>
+                  </p>
+                  <p className="text-label-sm text-fg-faint">
+                    {formatRelativeTime(edge.node.createdAt)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
           {hasNextPage && (
             <button
+              type="button"
               onClick={onLoadMore}
               disabled={loading}
-              className="mt-2 text-fg-muted hover:text-fg text-label-md transition-colors inline-flex items-center gap-1"
+              className="mt-3 ml-7 text-fg-muted hover:text-fg text-label-md transition-colors inline-flex items-center gap-1"
             >
               {loading ? 'Loading...' : 'Load more'}
             </button>
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

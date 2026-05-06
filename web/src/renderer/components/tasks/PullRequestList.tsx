@@ -6,6 +6,7 @@ import { CIStatusBadge } from './CIStatusBadge.js';
 import { PullRequestBadge } from './PullRequestBadge.js';
 import { PullRequestIcon } from './PullRequestIcon.js';
 import { ReviewIndicator } from './ReviewIndicator.js';
+import { TaskSectionHeading } from './TaskSectionHeading.js';
 import { useUnlinkPullRequest } from '../../hooks/useGraphQL.js';
 import { useLinkPrForm } from '../../hooks/useLinkPrForm.js';
 
@@ -37,36 +38,57 @@ export const PullRequestList = memo(function PullRequestList({
   };
 
   return (
-    <div>
-      <span className="text-fg-faint text-label-md block mb-2">Pull Requests</span>
+    <section>
+      <TaskSectionHeading
+        title="Pull Requests"
+        count={pullRequests.length}
+        action={
+          !showForm && (
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-1 text-fg-muted hover:text-fg text-label-md px-2 py-1 rounded-md hover:bg-surface-hover transition-colors"
+            >
+              <Plus className={iconSize.xs} />
+              Link PR
+            </button>
+          )
+        }
+      />
       {pullRequests.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {pullRequests.map((pr) => (
             <div
               key={pr.id}
-              className="group flex items-center gap-2 px-3 py-2 bg-surface-raised rounded-md border border-edge"
+              className="group flex items-center gap-2 px-3 py-2 bg-surface-raised border border-edge-subtle rounded-md transition-colors hover:bg-surface-hover/40 hover:border-edge"
             >
               <PullRequestIcon status={pr.status} className={iconSize.sm} />
               <a
                 href={pr.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-fg hover:text-accent text-body-sm font-medium transition-colors inline-flex items-center gap-1 min-w-0"
+                className="text-fg hover:text-accent text-body-sm font-medium transition-colors inline-flex items-center gap-1.5 min-w-0"
               >
-                <span className="text-fg-faint">#{pr.number}</span>
+                <span className="text-fg-faint font-mono text-code">#{pr.number}</span>
                 <span className="truncate">{pr.title}</span>
-                <ExternalLink className={`${iconSize.xs} flex-shrink-0 text-fg-faint`} />
+                <ExternalLink
+                  className={`${iconSize.xs} flex-shrink-0 text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity`}
+                />
               </a>
               <div className="flex-1" />
               <ReviewIndicator status={pr.reviewStatus} />
               <CIStatusBadge status={pr.checkStatus} />
               <PullRequestBadge status={pr.status} draft={pr.draft} />
-              <span className="text-fg-faint text-label-sm flex-shrink-0">{pr.repository}</span>
-              <span className="text-fg-muted text-label-sm flex-shrink-0">{pr.author}</span>
+              <span className="text-fg-faint text-label-sm font-mono flex-shrink-0 hidden md:inline">
+                {pr.repository}
+              </span>
+              <span className="text-fg-muted text-label-sm flex-shrink-0 hidden md:inline">
+                {pr.author}
+              </span>
               <button
                 onClick={() => handleUnlink(pr.id)}
                 disabled={unlinking}
-                className="opacity-0 group-hover:opacity-100 p-0.5 text-fg-faint hover:text-error transition-all rounded"
+                className="opacity-0 group-hover:opacity-100 p-1 text-fg-faint hover:text-error hover:bg-error-muted/40 rounded transition-all"
                 title="Unlink pull request"
               >
                 <X className={iconSize.xs} />
@@ -76,7 +98,7 @@ export const PullRequestList = memo(function PullRequestList({
         </div>
       )}
       {showForm ? (
-        <div className="mt-2">
+        <div className="mt-3">
           <div className="flex items-center gap-2">
             <Link className={`${iconSize.sm} text-fg-faint flex-shrink-0`} />
             <input
@@ -107,18 +129,19 @@ export const PullRequestList = memo(function PullRequestList({
             </button>
           </div>
         </div>
-      ) : (
+      ) : pullRequests.length === 0 ? (
         <button
+          type="button"
           onClick={() => setShowForm(true)}
-          className="mt-2 text-fg-muted hover:text-fg text-label-md transition-colors inline-flex items-center gap-1"
+          className="w-full mt-1 px-4 py-3 border border-dashed border-edge-subtle rounded-md text-fg-faint hover:text-fg-muted hover:border-edge text-label-md transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <Plus className={iconSize.xs} />
           Link Pull Request
         </button>
-      )}
+      ) : null}
       {(linkError || unlinkError) && (
-        <p className="text-error text-label-sm mt-1">{linkError ?? unlinkError}</p>
+        <p className="text-error text-label-sm mt-2">{linkError ?? unlinkError}</p>
       )}
-    </div>
+    </section>
   );
 });

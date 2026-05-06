@@ -55,14 +55,14 @@ describe('PullRequestList', () => {
     expect(screen.getByText('octocat')).toBeInTheDocument();
   });
 
-  it('renders the "Link Pull Request" button', async () => {
+  it('renders the "Link Pull Request" empty-state button when no PRs', async () => {
     await importAndRender([]);
     expect(screen.getByText('Link Pull Request')).toBeInTheDocument();
   });
 
-  it('shows inline form when "Link Pull Request" is clicked', async () => {
+  it('shows inline form when "Link PR" header action is clicked', async () => {
     await importAndRender();
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     expect(
       screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
     ).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe('PullRequestList', () => {
     const onMutate = vi.fn();
     await importAndRender([MOCK_PR], 'task-1', onMutate);
 
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     const input = screen.getByPlaceholderText('https://github.com/owner/repo/pull/123');
     fireEvent.change(input, {
       target: { value: 'https://github.com/test/repo/pull/99' },
@@ -95,7 +95,7 @@ describe('PullRequestList', () => {
   it('submits on Enter key', async () => {
     await importAndRender();
 
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     const input = screen.getByPlaceholderText('https://github.com/owner/repo/pull/123');
     fireEvent.change(input, {
       target: { value: 'https://github.com/test/repo/pull/1' },
@@ -113,7 +113,7 @@ describe('PullRequestList', () => {
   it('hides form on Cancel click', async () => {
     await importAndRender();
 
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     expect(
       screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
     ).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('PullRequestList', () => {
   it('hides form on Escape key', async () => {
     await importAndRender();
 
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     const input = screen.getByPlaceholderText('https://github.com/owner/repo/pull/123');
     fireEvent.keyDown(input, { key: 'Escape' });
 
@@ -145,7 +145,7 @@ describe('PullRequestList', () => {
     });
 
     await importAndRender();
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     const input = screen.getByPlaceholderText('https://github.com/owner/repo/pull/123');
     fireEvent.change(input, { target: { value: 'https://bad-url' } });
     fireEvent.click(screen.getByText('Link'));
@@ -158,7 +158,7 @@ describe('PullRequestList', () => {
   it('does not submit when URL is empty', async () => {
     await importAndRender();
 
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     fireEvent.click(screen.getByText('Link'));
 
     expect(mockLinkPullRequest).not.toHaveBeenCalled();
@@ -205,7 +205,7 @@ describe('PullRequestList', () => {
     });
 
     await importAndRender();
-    fireEvent.click(screen.getByText('Link Pull Request'));
+    fireEvent.click(screen.getByText('Link PR'));
     const input = screen.getByPlaceholderText('https://github.com/owner/repo/pull/123');
     fireEvent.change(input, { target: { value: 'bad' } });
     fireEvent.click(screen.getByText('Link'));

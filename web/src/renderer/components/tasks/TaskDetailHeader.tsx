@@ -45,8 +45,10 @@ export const TaskDetailHeader = memo(function TaskDetailHeader({
   };
 
   return (
-    <div className="mb-6">
-      <span className="text-fg-faint text-label-sm font-mono block mb-1">{displayId}</span>
+    <div>
+      <span className="inline-block font-mono text-code text-fg-muted bg-surface-inset border border-edge-subtle rounded-sm px-1.5 py-0.5 mb-3 leading-none">
+        {displayId}
+      </span>
       {editing ? (
         <input
           ref={inputRef}
@@ -67,7 +69,7 @@ export const TaskDetailHeader = memo(function TaskDetailHeader({
               cancel();
             }
           }}
-          className="w-full text-heading-lg font-bold text-fg bg-surface-inset border border-edge-subtle rounded-md px-2 py-1 -mx-2 focus:outline-none focus:border-accent"
+          className="block w-full text-heading-xl font-semibold tracking-tight text-fg bg-surface-inset border border-edge-subtle rounded-md px-2 py-1 -mx-2 focus:outline-none focus:border-accent"
         />
       ) : (
         <h1
@@ -80,7 +82,7 @@ export const TaskDetailHeader = memo(function TaskDetailHeader({
               setEditing(true);
             }
           }}
-          className="text-heading-lg font-bold text-fg cursor-text rounded px-2 py-1 -mx-2 hover:bg-surface-hover transition-colors"
+          className="text-heading-xl font-semibold tracking-tight text-fg cursor-text rounded-md px-2 py-1 -mx-2 border border-transparent hover:border-edge-subtle hover:bg-surface-hover/40 transition-colors"
         >
           {title}
         </h1>

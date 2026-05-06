@@ -271,23 +271,29 @@ describe('TaskDetail', () => {
   });
 
   describe('task fields', () => {
-    it('renders project selector with workspace projects', async () => {
+    it('renders project chip and lists workspace projects in popover', async () => {
       await importAndRender();
 
-      const projectSelect = screen.getByDisplayValue('Test Project');
-      expect(projectSelect).toBeInTheDocument();
+      const projectChip = screen.getAllByTestId('project-chip')[0]!;
+      expect(projectChip).toBeInTheDocument();
+      // Current project shown in chip trigger
+      expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0);
+
+      fireEvent.click(projectChip);
       expect(screen.getByText('Other Project')).toBeInTheDocument();
       expect(screen.getByText('Inbox (no project)')).toBeInTheDocument();
     });
 
-    it('renders assignee selector with workspace members', async () => {
+    it('renders assignee chip and lists workspace members in popover', async () => {
       await importAndRender();
 
-      const assigneeSelect = screen.getByTestId('assignee-select');
-      expect(assigneeSelect).toBeInTheDocument();
+      const assigneeChip = screen.getByTestId('assignee-select');
+      expect(assigneeChip).toBeInTheDocument();
+
+      fireEvent.click(assigneeChip);
       expect(screen.getByText('Alice')).toBeInTheDocument();
       expect(screen.getByText('Bob')).toBeInTheDocument();
-      expect(screen.getByText('Unassigned')).toBeInTheDocument();
+      expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
     });
 
     it('renders description with MarkdownRenderer', async () => {
