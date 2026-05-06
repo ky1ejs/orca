@@ -12,13 +12,14 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && !window.orca) {
     platform: 'browser',
     auth: {
       readToken: () => Promise.resolve(import.meta.env.VITE_AUTH_TOKEN ?? null),
-      saveToken: () => Promise.resolve(),
+      storeToken: () => Promise.resolve(),
       clearToken: () => Promise.resolve(),
     },
     worktree: {
       get: () => Promise.resolve(null),
       safety: () => Promise.resolve(null),
       remove: () => Promise.resolve(),
+      list: () => Promise.resolve([]),
     },
     projectDir: { get: () => Promise.resolve(null), set: () => Promise.resolve() },
     shell: {
