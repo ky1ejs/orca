@@ -4,6 +4,9 @@
  */
 import { ipcMain, shell } from 'electron';
 import { execFile } from 'node:child_process';
+import { access } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { IPC_CHANNELS } from './channels.js';
 import { getSetting, setSetting, getAllSettings } from '../config/settings.js';
@@ -21,6 +24,37 @@ const execFileAsync = promisify(execFile);
 
 /** Extended timeout for agent launch/restart to accommodate bootstrap scripts. */
 const AGENT_LAUNCH_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+const VSCODE_BUNDLE_NAMES = ['Visual Studio Code.app', 'Visual Studio Code - Insiders.app'];
+
+/**
+ * Locate the VS Code CLI. PATH lookup catches custom installs and dev runs
+ * launched from a terminal; the bundle probe catches the common case where
+ * Electron inherits the launchd default PATH (no /usr/local/bin) and `which`
+ * fails despite VS Code being installed.
+ */
+async function findVscodeCli(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync('which', ['code']);
+    const resolved = stdout.trim();
+    if (resolved) return resolved;
+  } catch {
+    // fall through to bundle probing
+  }
+  const roots = ['/Applications', join(homedir(), 'Applications')];
+  for (const root of roots) {
+    for (const bundle of VSCODE_BUNDLE_NAMES) {
+      const cli = join(root, bundle, 'Contents/Resources/app/bin/code');
+      try {
+        await access(cli);
+        return cli;
+      } catch {
+        // continue
+      }
+    }
+  }
+  return null;
+}
 
 export function registerIpcHandlers(client: DaemonClient, connector: DaemonConnector): void {
   // ── Database handlers (proxy to daemon) ──────────────────────────────
@@ -251,19 +285,15 @@ export function registerIpcHandlers(client: DaemonClient, connector: DaemonConne
 
   ipcMain.handle(IPC_CHANNELS.SHELL_HAS_VSCODE, async () => {
     if (vscodePath !== null) return true;
-    try {
-      const { stdout } = await execFileAsync('which', ['code']);
-      const resolved = stdout.trim();
-      if (!resolved) return false;
-      vscodePath = resolved;
-      return true;
-    } catch {
-      return false;
-    }
+    vscodePath = await findVscodeCli();
+    return vscodePath !== null;
   });
 
   ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_IN_VSCODE, async (_event, dirPath: string) => {
-    await execFileAsync(vscodePath ?? 'code', [dirPath]);
+    const cli = vscodePath ?? (await findVscodeCli());
+    if (!cli) throw new Error('VS Code CLI not found');
+    vscodePath = cli;
+    await execFileAsync(cli, [dirPath]);
   });
 
   // ── Perf logging (fire-and-forget from renderer → main.log) ─────────
