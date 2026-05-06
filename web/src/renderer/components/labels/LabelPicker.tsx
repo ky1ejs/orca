@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Check } from 'lucide-react';
+import { iconSize } from '../../tokens/icon-size.js';
 import { useLabels } from '../../hooks/useGraphQL.js';
 
 interface LabelPickerProps {
@@ -8,21 +10,10 @@ interface LabelPickerProps {
 }
 
 export function LabelPicker({ workspaceId, selectedLabelIds, onChange }: LabelPickerProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const { data } = useLabels(workspaceId);
   const labels = data?.labels ?? [];
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  if (labels.length === 0) return null;
 
   const toggleLabel = (labelId: string) => {
     if (selectedLabelIds.includes(labelId)) {
@@ -32,39 +23,45 @@ export function LabelPicker({ workspaceId, selectedLabelIds, onChange }: LabelPi
     }
   };
 
-  if (labels.length === 0) return null;
-
   return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="px-2 py-0.5 text-xs text-fg-muted hover:text-fg-muted border border-edge-subtle rounded transition-colors"
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className="px-2 py-0.5 text-xs text-fg-muted hover:text-fg hover:bg-surface-hover border border-edge-subtle rounded transition-colors focus:outline-none focus:ring-1 focus:ring-edge"
         data-testid="label-picker-toggle"
       >
         + Label
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 bg-surface-overlay border border-edge-subtle rounded-md shadow-lg z-10 min-w-[180px] max-h-[240px] overflow-y-auto animate-slide-up">
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={4}
+          collisionPadding={8}
+          className="bg-surface-hover border border-edge rounded-md shadow-dropdown z-dropdown min-w-[200px] max-h-[280px] overflow-y-auto animate-slide-up py-1 focus:outline-none"
+        >
           {labels.map((label) => {
             const isSelected = selectedLabelIds.includes(label.id);
             return (
-              <button
+              <DropdownMenu.CheckboxItem
                 key={label.id}
-                onClick={() => toggleLabel(label.id)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-surface-hover transition-colors"
+                checked={isSelected}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  toggleLabel(label.id);
+                }}
                 data-testid={`label-option-${label.id}`}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-body-sm text-left cursor-pointer outline-none transition-colors text-fg data-[highlighted]:bg-surface-active"
               >
                 <span
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: label.color }}
                 />
                 <span className="text-fg flex-1 truncate">{label.name}</span>
-                {isSelected && <span className="text-accent text-xs">&#10003;</span>}
-              </button>
+                {isSelected && <Check className={`${iconSize.xs} text-fg-muted`} />}
+              </DropdownMenu.CheckboxItem>
             );
           })}
-        </div>
-      )}
-    </div>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
