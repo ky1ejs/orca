@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Download } from 'lucide-react';
 import { iconSize } from '../../tokens/icon-size.js';
-import { isActiveSessionStatus } from '../../../shared/session-status.js';
+import { isActiveSessionStatus, SessionStatus } from '../../../shared/session-status.js';
 import { Sidebar } from './Sidebar.js';
 import { useNavigation } from '../../navigation/context.js';
 import { InitiativeList } from '../initiatives/InitiativeList.js';
@@ -15,14 +15,16 @@ import { WorktreeListView } from '../worktrees/WorktreeListView.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useTerminalSessions, type TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
+import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
 import { AgentTerminal } from '../terminal/AgentTerminal.js';
 import { TerminalTabs } from '../terminal/TerminalTabs.js';
 import { TerminalPRStatusBar } from '../terminal/TerminalPRStatusBar.js';
+import { TerminalSetupView } from '../terminal/TerminalSetupView.js';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow.js';
 import { KeyboardShortcutHelp } from './KeyboardShortcutHelp.js';
 import { EmptyTerminalArea } from './EmptyState.js';
 import { PageHeader } from './PageHeader.js';
-import { TaskHeaderProvider } from '../tasks/TaskHeaderContext.js';
+import { TaskHeaderProvider, useTaskLaunching } from '../tasks/TaskHeaderContext.js';
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../../hooks/useKeyboardShortcuts.js';
 import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
 import { CommandPalette } from '../command-palette/CommandPalette.js';
@@ -94,6 +96,55 @@ const TerminalPanel = memo(function TerminalPanel({
     </div>
   );
 });
+
+// Must render inside TaskHeaderProvider so useTaskLaunching can read the lifted launching state.
+function TerminalAreaBody({
+  sessions,
+  activeSessionId,
+  setActiveSessionId,
+  handleCloseSession,
+}: {
+  sessions: TerminalSessionInfo[];
+  activeSessionId: string | null;
+  setActiveSessionId: (id: string | null) => void;
+  handleCloseSession: (sessionId: string) => Promise<void>;
+}) {
+  const { launching } = useTaskLaunching();
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const bootstrapStatus = useBootstrapStatus(activeSession?.working_directory ?? null);
+
+  const sessionBootstrapping = activeSession?.status === SessionStatus.Bootstrapping;
+  const showSetupView = launching || sessionBootstrapping || bootstrapStatus.state === 'failed';
+
+  if (sessions.length === 0) {
+    if (launching) {
+      return <TerminalSetupView status={bootstrapStatus} launching={launching} />;
+    }
+    return <EmptyTerminalArea />;
+  }
+
+  // Keep TerminalPanel mounted whenever sessions exist so xterm.js buffers and
+  // ResizeObservers survive tab switches into and out of bootstrapping sessions.
+  // The setup view overlays the panel rather than replacing it.
+  return (
+    <>
+      <TerminalTabs
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={setActiveSessionId}
+        onCloseSession={handleCloseSession}
+      />
+      <div className="relative flex flex-col flex-1 overflow-hidden">
+        <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
+        {showSetupView && (
+          <div className="absolute inset-0 z-10 bg-surface flex flex-col">
+            <TerminalSetupView status={bootstrapStatus} launching={launching} />
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 export function AppShell({ onLogout }: AppShellProps) {
   const { current, navigate, goBack, goForward } = useNavigation();
@@ -332,8 +383,6 @@ export function AppShell({ onLogout }: AppShellProps) {
       !(s.key === 'p' && s.metaKey),
   );
 
-  const hasActiveSessions = sessions.length > 0;
-
   if (showOnboarding) {
     return (
       <div className="flex h-screen bg-surface text-fg">
@@ -389,19 +438,12 @@ export function AppShell({ onLogout }: AppShellProps) {
                 style={{ height: terminalPanelHeight }}
               >
                 <TerminalPRStatusBar taskId={taskId} />
-                {hasActiveSessions ? (
-                  <>
-                    <TerminalTabs
-                      sessions={sessions}
-                      activeSessionId={activeSessionId}
-                      onSelectSession={setActiveSessionId}
-                      onCloseSession={handleCloseSession}
-                    />
-                    <TerminalPanel sessions={sessions} activeSessionId={activeSessionId} />
-                  </>
-                ) : (
-                  <EmptyTerminalArea />
-                )}
+                <TerminalAreaBody
+                  sessions={sessions}
+                  activeSessionId={activeSessionId}
+                  setActiveSessionId={setActiveSessionId}
+                  handleCloseSession={handleCloseSession}
+                />
               </div>
             </>
           )}

@@ -31,13 +31,19 @@ type SetTaskHeaderControls = Dispatch<SetStateAction<TaskHeaderControls | null>>
 interface TaskHeaderContextValue {
   controls: TaskHeaderControls | null;
   setControls: SetTaskHeaderControls;
+  launching: boolean;
+  setLaunching: (value: boolean) => void;
 }
 
 const TaskHeaderContext = createContext<TaskHeaderContextValue | null>(null);
 
 export function TaskHeaderProvider({ children }: { children: ReactNode }) {
   const [controls, setControls] = useState<TaskHeaderControls | null>(null);
-  const value = useMemo(() => ({ controls, setControls }), [controls]);
+  const [launching, setLaunching] = useState(false);
+  const value = useMemo(
+    () => ({ controls, setControls, launching, setLaunching }),
+    [controls, launching],
+  );
   return <TaskHeaderContext.Provider value={value}>{children}</TaskHeaderContext.Provider>;
 }
 
@@ -52,4 +58,12 @@ export function useSetTaskHeaderControls(): SetTaskHeaderControls {
     throw new Error('useSetTaskHeaderControls must be used within a TaskHeaderProvider');
   }
   return ctx.setControls;
+}
+
+export function useTaskLaunching(): { launching: boolean; setLaunching: (value: boolean) => void } {
+  const ctx = useContext(TaskHeaderContext);
+  if (!ctx) {
+    return { launching: false, setLaunching: () => {} };
+  }
+  return { launching: ctx.launching, setLaunching: ctx.setLaunching };
 }
