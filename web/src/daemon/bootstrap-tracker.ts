@@ -42,8 +42,9 @@ export class BootstrapTracker {
     repoPath: string;
     metadata: TaskMetadata;
     broadcast: BroadcastFn;
+    onComplete?: (success: boolean) => void;
   }): void {
-    const { scriptPath, worktreePath, repoPath, metadata, broadcast } = opts;
+    const { scriptPath, worktreePath, repoPath, metadata, broadcast, onComplete } = opts;
 
     // Dedup: already tracked in-memory
     if (this.running.has(worktreePath)) return;
@@ -118,6 +119,12 @@ export class BootstrapTracker {
         logger.warn(
           `bootstrap-tracker: failed worktreePath=${worktreePath} exitCode=${result.exitCode} timedOut=${result.timedOut}`,
         );
+      }
+
+      try {
+        onComplete?.(result.success);
+      } catch (err) {
+        logger.warn(`bootstrap-tracker: onComplete callback threw: ${String(err)}`);
       }
 
       return result;

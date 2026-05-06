@@ -4,7 +4,7 @@ import { SquareTerminal, RotateCcw, ChevronDown, Sparkles, Check, Square } from 
 import { iconSize } from '../../tokens/icon-size.js';
 import { AgentStatus } from '../terminal/AgentStatus.js';
 import { SessionStatus } from '../../../shared/session-status.js';
-import { useTaskHeaderControls } from './TaskHeaderContext.js';
+import { useTaskHeaderControls, useTaskLaunching } from './TaskHeaderContext.js';
 import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { usePreferences } from '../../preferences/context.js';
 import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
@@ -12,7 +12,7 @@ import { BootstrapIndicator } from './BootstrapIndicator.js';
 
 export function HeaderTerminalControls() {
   const controls = useTaskHeaderControls();
-  const [launching, setLaunching] = useState(false);
+  const { launching, setLaunching } = useTaskLaunching();
   const [launchMenuOpen, setLaunchMenuOpen] = useState(false);
   const launchMenuRef = useRef<HTMLDivElement>(null);
   const { agentLaunchMode, setAgentLaunchMode } = usePreferences();

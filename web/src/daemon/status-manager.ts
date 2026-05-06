@@ -255,12 +255,22 @@ export class DaemonStatusManager {
           !this.bootstrapTracker.isRunning(effectiveWorkingDirectory) &&
           !isBootstrapLocked(effectiveWorkingDirectory)
         ) {
+          // Surface bootstrap state in the session status so the UI can show a setup view
+          // in the terminal panel until the script finishes.
+          this.updateStatusAndNotify(session.id, SessionStatus.Bootstrapping);
+          const sessionId = session.id;
           this.bootstrapTracker.start({
             scriptPath: bootstrapScriptPath,
             worktreePath: effectiveWorkingDirectory,
             repoPath: resolvedRepoPath,
             metadata,
             broadcast: this.broadcast,
+            onComplete: (success) => {
+              this.updateStatusAndNotify(
+                sessionId,
+                success ? SessionStatus.Running : SessionStatus.Error,
+              );
+            },
           });
           mark('bootstrap-started-background');
         }
@@ -339,9 +349,13 @@ export class DaemonStatusManager {
     inputDetector.setOnChange((waiting) => {
       const monitor = this.monitors.get(sessionId);
       if (waiting) {
-        // Don't downgrade AwaitingPermission or override hook-set WaitingForInput
+        // Don't downgrade AwaitingPermission, Bootstrapping, or override hook-set WaitingForInput
         const session = getSession(sessionId);
-        if (session?.status !== SessionStatus.AwaitingPermission && !monitor?.hookSetWaiting) {
+        if (
+          session?.status !== SessionStatus.AwaitingPermission &&
+          session?.status !== SessionStatus.Bootstrapping &&
+          !monitor?.hookSetWaiting
+        ) {
           this.updateStatusAndNotify(sessionId, SessionStatus.WaitingForInput);
         }
       } else {
@@ -381,9 +395,14 @@ export class DaemonStatusManager {
           cancelDebounce();
           monitor.stopDebounce = setTimeout(() => {
             monitor.stopDebounce = null;
-            // Don't downgrade AwaitingPermission
+            // Don't downgrade AwaitingPermission or Bootstrapping
             const current = getSession(sessionId);
-            if (current?.status === SessionStatus.AwaitingPermission) return;
+            if (
+              current?.status === SessionStatus.AwaitingPermission ||
+              current?.status === SessionStatus.Bootstrapping
+            ) {
+              return;
+            }
             monitor.hookSetWaiting = true;
             monitor.hookWaitingOutputLen = this.manager.visibleOutputSize(sessionId);
             monitor.hookWaitingSetAt = Date.now();
