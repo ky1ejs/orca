@@ -178,7 +178,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
   }
 
   return (
-    <div className="max-w-[1180px] mx-auto px-8 pt-10 pb-12">
+    <div className="max-w-[1100px] mx-auto px-6 pt-6 pb-10">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-10 items-start">
         <div className="min-w-0 animate-fade-in">
           <div className="mb-8" style={{ animationDelay: '0ms' }}>
@@ -272,7 +272,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
         </div>
 
         <aside
-          className="mt-10 pt-8 border-t border-edge-subtle lg:mt-0 lg:pt-0 lg:border-t-0 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-6 lg:border-l lg:border-edge-subtle animate-fade-in"
+          className="mt-10 pt-8 border-t border-edge-subtle lg:mt-0 lg:pt-0 lg:border-t-0 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-8 lg:border-l lg:border-edge animate-fade-in"
           style={{ animationDelay: '120ms', animationFillMode: 'backwards' }}
         >
           <TaskDetailSidebar

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { iconSize } from '../../tokens/icon-size.js';
 
 export type ChipPopoverVariant = 'default' | 'inline';
@@ -21,6 +22,9 @@ const VARIANT_TRIGGER_CLASSES: Record<ChipPopoverVariant, string> = {
     'group inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-inset border border-edge-subtle text-label-md text-fg hover:bg-surface-hover focus:outline-none focus:ring-1 focus:ring-edge transition-colors',
 };
 
+const CONTENT_CLASSES =
+  'bg-surface-hover border border-edge rounded-md shadow-dropdown z-dropdown min-w-[200px] max-h-[280px] overflow-y-auto animate-slide-up py-1 focus:outline-none';
+
 export function ChipPopover({
   trigger,
   triggerLabel,
@@ -31,63 +35,36 @@ export function ChipPopover({
   maxWidth,
 }: ChipPopoverProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const handleEscape = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [open]);
-
   const close = () => setOpen(false);
 
-  const handleTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      setOpen((prev) => !prev);
-    }
-  };
-
-  const wrapperClass =
-    variant === 'inline' ? 'relative inline-flex' : 'relative inline-flex w-full';
-
   return (
-    <div className={wrapperClass} ref={ref} style={maxWidth ? { maxWidth } : undefined}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        onKeyDown={handleTriggerKeyDown}
-        aria-haspopup="true"
-        aria-expanded={open}
-        aria-label={triggerLabel}
-        data-testid={triggerTestId}
-        className={VARIANT_TRIGGER_CLASSES[variant]}
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+      <div
+        className={variant === 'inline' ? 'inline-flex' : 'inline-flex w-full'}
+        style={maxWidth ? { maxWidth } : undefined}
       >
-        <span className="inline-flex items-center gap-1.5 min-w-0 flex-1">{trigger}</span>
-        <ChevronDown
-          className={`${iconSize.xs} text-fg-faint group-hover:text-fg-muted flex-shrink-0 transition-colors`}
-        />
-      </button>
-      {open && (
-        <div
-          className={`absolute top-full mt-1 ${align === 'right' ? 'right-0' : 'left-0'} bg-surface-overlay border border-edge-subtle rounded-md shadow-dropdown z-dropdown min-w-[200px] max-h-[280px] overflow-y-auto animate-slide-up py-1`}
+        <DropdownMenu.Trigger
+          aria-label={triggerLabel}
+          data-testid={triggerTestId}
+          className={VARIANT_TRIGGER_CLASSES[variant]}
+        >
+          <span className="inline-flex items-center gap-1.5 min-w-0 flex-1">{trigger}</span>
+          <ChevronDown
+            className={`${iconSize.xs} text-fg-faint group-hover:text-fg-muted flex-shrink-0 transition-colors`}
+          />
+        </DropdownMenu.Trigger>
+      </div>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align={align === 'right' ? 'end' : 'start'}
+          sideOffset={4}
+          collisionPadding={8}
+          className={CONTENT_CLASSES}
         >
           {children(close)}
-        </div>
-      )}
-    </div>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -100,15 +77,14 @@ interface ChipPopoverItemProps {
 
 export function ChipPopoverItem({ selected, onSelect, children, testId }: ChipPopoverItemProps) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <DropdownMenu.Item
+      onSelect={onSelect}
       data-testid={testId}
-      className={`w-full flex items-center gap-2 px-3 py-1.5 text-body-sm text-left transition-colors ${
-        selected ? 'bg-surface-hover text-fg' : 'text-fg hover:bg-surface-hover'
+      className={`w-full flex items-center gap-2 px-3 py-1.5 text-body-sm text-left cursor-pointer outline-none transition-colors ${
+        selected ? 'bg-surface-active text-fg' : 'text-fg data-[highlighted]:bg-surface-active'
       }`}
     >
       {children}
-    </button>
+    </DropdownMenu.Item>
   );
 }

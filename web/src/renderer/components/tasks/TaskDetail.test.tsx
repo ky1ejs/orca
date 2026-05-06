@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { TaskStatus, TaskPriority } from '../../graphql/__generated__/generated.js';
 import { SessionStatus } from '../../../shared/session-status.js';
@@ -279,8 +280,9 @@ describe('TaskDetail', () => {
       // Current project shown in chip trigger
       expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0);
 
-      fireEvent.click(projectChip);
-      expect(screen.getByText('Other Project')).toBeInTheDocument();
+      const user = userEvent.setup();
+      await user.click(projectChip);
+      expect(await screen.findByText('Other Project')).toBeInTheDocument();
       expect(screen.getByText('Inbox (no project)')).toBeInTheDocument();
     });
 
@@ -290,8 +292,9 @@ describe('TaskDetail', () => {
       const assigneeChip = screen.getByTestId('assignee-select');
       expect(assigneeChip).toBeInTheDocument();
 
-      fireEvent.click(assigneeChip);
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      const user = userEvent.setup();
+      await user.click(assigneeChip);
+      expect(await screen.findByText('Alice')).toBeInTheDocument();
       expect(screen.getByText('Bob')).toBeInTheDocument();
       expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
     });
