@@ -2,7 +2,6 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
-import type { Plugin } from 'vite';
 import pkg from './package.json';
 
 const appVersion = pkg.version;
@@ -32,11 +31,11 @@ function buildCsp(backend: string): string {
 
 // Inject CSP into renderer index.html using the build-time backend URL so
 // connect-src tracks whatever VITE_BACKEND_URL the renderer was built against.
-function cspInjectPlugin(): Plugin {
+function cspInjectPlugin() {
   const csp = buildCsp(backendUrl);
   return {
     name: 'orca:csp-inject',
-    transformIndexHtml(html) {
+    transformIndexHtml(html: string) {
       return html.replace('__CSP_CONTENT__', csp);
     },
   };
