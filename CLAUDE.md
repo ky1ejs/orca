@@ -56,8 +56,8 @@ Never commit generated code. If it seems that the generated code is stale, you c
 
 - JWT-based auth with per-user email/password accounts
 - `JWT_SECRET` and `INVITE_CODE` env vars required in `backend/.env`
-- Local dev: `bun run seed:dev` in `backend/` creates a default dev user (`dev@orca.local` / `dev-password`)
-- Electron stores JWT via `safeStorage`; browser dev uses `VITE_AUTH_TOKEN` env var
+- Local dev: `.orca/bootstrap` auto-seeds the dev user (`dev@orca.local` / `dev-password`) and writes a fresh JWT into `web/.env`. `bun run dev` in `web/` re-runs this via a `predev` hook so tokens auto-heal.
+- Electron stores JWT via `safeStorage`; browser dev reads `VITE_AUTH_TOKEN` from `web/.env`
 
 ## UI Validation in Browser
 
@@ -65,9 +65,8 @@ You can visually validate the UI by opening the Vite dev server in Chrome using 
 
 ### Setup
 
-1. Ensure `VITE_AUTH_TOKEN` is set in `web/.env` (a valid JWT for browser-based testing)
-2. Start the backend and web: `bun run dev` (from the worktree root, or separately in `backend/` and `web/`)
-3. The Vite dev server runs on `http://localhost:5173`
+1. Start the backend and web: `bun run dev` separately in `backend/` and `web/`. The web package's `predev` hook auto-seeds the dev user and (re)mints `VITE_AUTH_TOKEN` into `web/.env` if needed.
+2. The Vite dev server runs on `http://localhost:5173`.
 
 ### Viewing the UI
 

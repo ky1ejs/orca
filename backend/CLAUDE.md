@@ -25,28 +25,31 @@ bun run db:migrate
 bun run codegen
 
 # 7. Seed dev user (dev@orca.local / dev-password)
+# Auto-run by .orca/bootstrap via `bun run dev-bootstrap`; this is the
+# manual fallback if you bootstrap the package directly.
 bun run seed:dev
 ```
 
 ## Commands
 
-| Command                | Description                                               |
-| ---------------------- | --------------------------------------------------------- |
-| `bun run dev`          | Start dev server with watch mode                          |
-| `bun run lint`         | ESLint check                                              |
-| `bun run lint:fix`     | ESLint auto-fix                                           |
-| `bun run format`       | Prettier format                                           |
-| `bun run format:check` | Prettier check                                            |
-| `bun run typecheck`    | TypeScript check (`tsc --noEmit`)                         |
-| `bun run test`         | Run tests (`vitest run`)                                  |
-| `bun run knip`         | Dead code detection                                       |
-| `bun run validate`     | All checks: lint + format:check + knip + typecheck + test |
-| `bun run codegen`      | Generate GraphQL TypeScript types                         |
-| `bun run db:generate`  | Generate Prisma client                                    |
-| `bun run db:migrate`   | Create/run Prisma migrations                              |
-| `bun run db:push`      | Push schema to DB without migration                       |
-| `bun run seed`         | Create/update a user (`--email`, `--name`, `--password`)  |
-| `bun run seed:dev`     | Create default dev user                                   |
+| Command                 | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `bun run dev`           | Start dev server with watch mode                          |
+| `bun run lint`          | ESLint check                                              |
+| `bun run lint:fix`      | ESLint auto-fix                                           |
+| `bun run format`        | Prettier format                                           |
+| `bun run format:check`  | Prettier check                                            |
+| `bun run typecheck`     | TypeScript check (`tsc --noEmit`)                         |
+| `bun run test`          | Run tests (`vitest run`)                                  |
+| `bun run knip`          | Dead code detection                                       |
+| `bun run validate`      | All checks: lint + format:check + knip + typecheck + test |
+| `bun run codegen`       | Generate GraphQL TypeScript types                         |
+| `bun run db:generate`   | Generate Prisma client                                    |
+| `bun run db:migrate`    | Create/run Prisma migrations                              |
+| `bun run db:push`       | Push schema to DB without migration                       |
+| `bun run seed`          | Create/update a user (`--email`, `--name`, `--password`)  |
+| `bun run seed:dev`      | Create default dev user                                   |
+| `bun run dev-bootstrap` | Seed dev user + (re)mint JWT + write web/.env             |
 
 ## Code Generation
 

@@ -71,8 +71,6 @@ if ! grep -q '^JWT_SECRET=' "$BACKEND_ENV" 2>/dev/null; then
   echo "JWT_SECRET=${JWT_SECRET}" >> "$BACKEND_ENV"
 fi
 
-echo "VITE_BACKEND_PORT=${PORT}" > web/.env
-
 echo "Environment files generated."
 
 # ─── Package-specific bootstrap ──────────────────────────────────────
@@ -82,5 +80,10 @@ backend/scripts/bootstrap
 
 echo "Bootstrapping web..."
 web/scripts/bootstrap
+
+# ─── Browser dev: seed user, mint JWT, write web/.env ────────────────
+
+echo "Setting up browser dev (seed user + mint token)..."
+(cd backend && bun run dev-bootstrap)
 
 echo "Bootstrap complete! Port: $PORT, DB: $DB_NAME"
