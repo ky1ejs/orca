@@ -63,14 +63,29 @@ export function useResizablePanel({
   useEffect(() => {
     if (!isDragging) return;
 
+    let rafId: number | null = null;
+    let pendingHeight: number | null = null;
+
+    const flush = () => {
+      rafId = null;
+      if (pendingHeight !== null) {
+        onHeightChangeRef.current(pendingHeight);
+        pendingHeight = null;
+      }
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       e.preventDefault();
       const delta = startYRef.current - e.clientY;
-      const newHeight = clamp(startHeightRef.current + delta);
-      onHeightChangeRef.current(newHeight);
+      pendingHeight = clamp(startHeightRef.current + delta);
+      if (rafId === null) {
+        rafId = requestAnimationFrame(flush);
+      }
     };
 
     const handleMouseUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      flush();
       setIsDragging(false);
       document.body.style.removeProperty('cursor');
       document.body.style.removeProperty('user-select');
@@ -79,6 +94,7 @@ export function useResizablePanel({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.removeProperty('cursor');
