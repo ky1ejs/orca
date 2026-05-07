@@ -14,27 +14,39 @@ export interface SeededDevUser {
   workspaceSlug: string;
 }
 
-export async function seedDevUser(prisma: PrismaClient): Promise<SeededDevUser> {
-  // Fast path: in steady state (most predev runs), the dev user, workspace,
-  // and membership all already exist — return without re-hashing the password
-  // (argon2 is intentionally slow, ~100ms+) or re-running upserts.
-  const existing = await prisma.user.findUnique({
-    where: { email: DEV_USER_EMAIL },
-    include: {
-      memberships: {
-        where: { workspace: { slug: DEV_WORKSPACE_SLUG } },
-        include: { workspace: true },
+export interface SeedDevUserOptions {
+  /**
+   * When true, always re-hash and write the password — used by `bun run seed:dev`
+   * so the CLI is a deterministic password-reset escape hatch. The default (false)
+   * skips the hash + upserts when the user, workspace, and membership already
+   * exist, keeping the predev hot path fast (argon2 is intentionally slow).
+   */
+  forceResetPassword?: boolean;
+}
+
+export async function seedDevUser(
+  prisma: PrismaClient,
+  options: SeedDevUserOptions = {},
+): Promise<SeededDevUser> {
+  if (!options.forceResetPassword) {
+    const existing = await prisma.user.findUnique({
+      where: { email: DEV_USER_EMAIL },
+      include: {
+        memberships: {
+          where: { workspace: { slug: DEV_WORKSPACE_SLUG } },
+          include: { workspace: true },
+        },
       },
-    },
-  });
-  if (existing && existing.memberships.length > 0) {
-    const ws = existing.memberships[0].workspace;
-    return {
-      id: existing.id,
-      email: existing.email,
-      workspaceId: ws.id,
-      workspaceSlug: ws.slug,
-    };
+    });
+    if (existing && existing.memberships.length > 0) {
+      const ws = existing.memberships[0].workspace;
+      return {
+        id: existing.id,
+        email: existing.email,
+        workspaceId: ws.id,
+        workspaceSlug: ws.slug,
+      };
+    }
   }
 
   const passwordHash = await hashPassword(DEV_USER_PASSWORD);
@@ -78,7 +90,7 @@ export async function seedDevUser(prisma: PrismaClient): Promise<SeededDevUser> 
 async function main() {
   const prisma = new PrismaClient();
   try {
-    const seeded = await seedDevUser(prisma);
+    const seeded = await seedDevUser(prisma, { forceResetPassword: true });
     console.log('');
     console.log('Dev user ready:');
     console.log(`  Email:    ${seeded.email}`);
