@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPerfTimer, rendererPerfLog } from '../../shared/perf.js';
+import { usePlatform } from '../platform/usePlatform.js';
 
 export interface TerminalSessionInfo {
   id: string;
@@ -14,30 +15,26 @@ export interface TerminalSessionInfo {
 
 const POLL_INTERVAL = 2000;
 
-/** True when running inside Electron (window.orca is injected by preload). */
-function hasElectronApi(): boolean {
-  return typeof window !== 'undefined' && !!window.orca;
-}
-
 /** Fingerprint for structural equality — only fields that change during a session lifetime. */
 function sessionsFingerprint(sessions: TerminalSessionInfo[]): string {
   return sessions.map((s) => `${s.id}:${s.status}`).join(',');
 }
 
 export function useTerminalSessions(taskId?: string) {
+  const platform = usePlatform();
   const [sessions, setSessions] = useState<TerminalSessionInfo[]>([]);
   const mountedRef = useRef(true);
 
   const initialFetchDone = useRef(false);
 
   const fetchSessions = useCallback(async () => {
-    if (!window.orca?.db) return;
+    if (platform.kind !== 'electron') return;
     const isFirst = !initialFetchDone.current;
     const mark = isFirst ? createPerfTimer('sessions-fetch', rendererPerfLog) : null;
     try {
       const filtered = taskId
-        ? ((await window.orca.db.getSessionsByTask(taskId)) as TerminalSessionInfo[])
-        : ((await window.orca.db.getSessions()) as TerminalSessionInfo[]);
+        ? ((await platform.orca.db.getSessionsByTask(taskId)) as TerminalSessionInfo[])
+        : ((await platform.orca.db.getSessions()) as TerminalSessionInfo[]);
       if (!mountedRef.current) return;
       setSessions((prev) => {
         if (sessionsFingerprint(prev) === sessionsFingerprint(filtered)) return prev;
@@ -51,7 +48,7 @@ export function useTerminalSessions(taskId?: string) {
         mark!('complete');
       }
     }
-  }, [taskId]);
+  }, [platform, taskId]);
 
   const refresh = useCallback(() => {
     fetchSessions();
@@ -68,21 +65,20 @@ export function useTerminalSessions(taskId?: string) {
   }, [taskId]);
 
   useEffect(() => {
-    if (!hasElectronApi()) return;
+    if (platform.kind !== 'electron') return;
     mountedRef.current = true;
     fetchSessions();
 
-    if (!window.orca?.db) return;
     const interval = setInterval(fetchSessions, POLL_INTERVAL);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
     };
-  }, [fetchSessions]);
+  }, [platform, fetchSessions]);
 
   useEffect(() => {
-    if (!window.orca?.lifecycle) return;
-    const unsubscribe = window.orca.lifecycle.onSessionStatusChanged(
+    if (platform.kind !== 'electron') return;
+    const unsubscribe = platform.orca.lifecycle.onSessionStatusChanged(
       (sessionId: string, status: string) => {
         setSessions((prev) => {
           const found = prev.some((s) => s.id === sessionId && s.status !== status);
@@ -92,7 +88,7 @@ export function useTerminalSessions(taskId?: string) {
       },
     );
     return unsubscribe;
-  }, []);
+  }, [platform]);
 
   return { sessions, refresh };
 }

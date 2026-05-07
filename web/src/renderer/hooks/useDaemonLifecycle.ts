@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '../components/toast/ToastProvider.js';
+import { usePlatform } from '../platform/usePlatform.js';
 
 interface ProtocolUpdateState {
   required: boolean;
@@ -15,6 +16,7 @@ export function useDaemonLifecycle(): {
   protocolUpdate: ProtocolUpdateState;
   confirmProtocolUpdate: () => void;
 } {
+  const platform = usePlatform();
   const { addToast, removeToast } = useToast();
   const disconnectToastId = useRef<string | null>(null);
   const [protocolUpdate, setProtocolUpdate] = useState<ProtocolUpdateState>({
@@ -23,15 +25,15 @@ export function useDaemonLifecycle(): {
   });
 
   const confirmProtocolUpdate = useCallback(async () => {
-    if (!window.orca?.lifecycle) return;
-    await window.orca.lifecycle.forceRestartDaemon();
+    if (platform.kind !== 'electron') return;
+    await platform.orca.lifecycle.forceRestartDaemon();
     setProtocolUpdate({ required: false, activeSessions: 0 });
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
-    if (!window.orca?.lifecycle) return;
+    if (platform.kind !== 'electron') return;
 
-    const unsubDisconnect = window.orca.lifecycle.onDaemonDisconnected(() => {
+    const unsubDisconnect = platform.orca.lifecycle.onDaemonDisconnected(() => {
       if (!disconnectToastId.current) {
         disconnectToastId.current = addToast({
           message: 'Connection to terminal daemon lost. Reconnecting...',
@@ -40,7 +42,7 @@ export function useDaemonLifecycle(): {
       }
     });
 
-    const unsubReconnect = window.orca.lifecycle.onDaemonReconnected(() => {
+    const unsubReconnect = platform.orca.lifecycle.onDaemonReconnected(() => {
       if (disconnectToastId.current) {
         removeToast(disconnectToastId.current);
         disconnectToastId.current = null;
@@ -52,7 +54,7 @@ export function useDaemonLifecycle(): {
       });
     });
 
-    const unsubInterrupted = window.orca.lifecycle.onInterruptedSessions((count) => {
+    const unsubInterrupted = platform.orca.lifecycle.onInterruptedSessions((count) => {
       addToast({
         message: `Reconnected to ${count} running session${count === 1 ? '' : 's'} from previous launch`,
         type: 'info',
@@ -60,7 +62,7 @@ export function useDaemonLifecycle(): {
       });
     });
 
-    const unsubProtocol = window.orca.lifecycle.onProtocolUpdateRequired((activeSessions) => {
+    const unsubProtocol = platform.orca.lifecycle.onProtocolUpdateRequired((activeSessions) => {
       setProtocolUpdate({ required: true, activeSessions });
     });
 
@@ -70,7 +72,7 @@ export function useDaemonLifecycle(): {
       unsubInterrupted();
       unsubProtocol();
     };
-  }, [addToast, removeToast]);
+  }, [platform, addToast, removeToast]);
 
   return { protocolUpdate, confirmProtocolUpdate };
 }

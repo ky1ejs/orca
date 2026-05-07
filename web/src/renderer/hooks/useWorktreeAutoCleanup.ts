@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { TaskStatus } from '../graphql/__generated__/generated.js';
+import { usePlatform } from '../platform/usePlatform.js';
 
 /**
  * Watches for tasks moving to DONE and auto-removes their worktree
@@ -12,6 +13,7 @@ export function useWorktreeAutoCleanup(
   autoCleanupWorktree: boolean,
   changedTask: { id: string; status: string } | undefined,
 ): void {
+  const platform = usePlatform();
   const cleanedRef = useRef(new Set<string>());
   const prevAutoCleanup = useRef(autoCleanupWorktree);
 
@@ -24,13 +26,14 @@ export function useWorktreeAutoCleanup(
   }, [autoCleanupWorktree]);
 
   useEffect(() => {
+    if (platform.kind !== 'electron') return;
     if (!changedTask || !autoCleanupWorktree) return;
     if (changedTask.status !== TaskStatus.Done) return;
     if (cleanedRef.current.has(changedTask.id)) return;
 
     void (async () => {
       try {
-        const safety = await window.orca.worktree.safety(changedTask.id);
+        const safety = await platform.orca.worktree.safety(changedTask.id);
         if (!safety) return;
         if (safety.dirty) return;
         const merged = safety.branchMerged || safety.prMerged;
@@ -39,11 +42,11 @@ export function useWorktreeAutoCleanup(
         // that weren't part of the merge (they'd be lost)
         if (safety.unpushedCommits && !safety.branchMerged) return;
 
-        await window.orca.worktree.remove(changedTask.id);
+        await platform.orca.worktree.remove(changedTask.id);
         cleanedRef.current.add(changedTask.id);
       } catch {
         // Transient failure — don't mark as cleaned so it retries next event
       }
     })();
-  }, [changedTask, autoCleanupWorktree]);
+  }, [platform, changedTask, autoCleanupWorktree]);
 }

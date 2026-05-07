@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDaemonStatus } from '../../hooks/useDaemonStatus.js';
+import { usePlatform } from '../../platform/usePlatform.js';
+import { DesktopOnlyPlaceholder } from '../shared/DesktopOnlyPlaceholder.js';
 
 function formatUptime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -14,6 +16,7 @@ function formatUptime(ms: number): string {
 }
 
 export function DaemonSettings() {
+  const platform = usePlatform();
   const { connected, status, error, refresh } = useDaemonStatus();
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -26,17 +29,32 @@ export function DaemonSettings() {
   }, []);
 
   const handleRestart = useCallback(async () => {
-    if (!window.orca?.lifecycle) return;
+    if (platform.kind !== 'electron') return;
     setRestarting(true);
     try {
-      await window.orca.lifecycle.forceRestartDaemon();
+      await platform.orca.lifecycle.forceRestartDaemon();
     } finally {
       setRestarting(false);
       setConfirmRestart(false);
       // Give the daemon a moment to come back up before refreshing
       restartTimerRef.current = setTimeout(refresh, 1000);
     }
-  }, [refresh]);
+  }, [platform, refresh]);
+
+  if (platform.kind !== 'electron') {
+    return (
+      <div>
+        <h2 className="text-label-md font-medium text-fg mb-4">Daemon</h2>
+        <div className="bg-surface-inset border border-edge-subtle rounded-lg p-4">
+          <DesktopOnlyPlaceholder
+            feature="Daemon control"
+            detail="The terminal daemon runs as part of the desktop app."
+            className="flex flex-col items-center justify-center py-6 text-center"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

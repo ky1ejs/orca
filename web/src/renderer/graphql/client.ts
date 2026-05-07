@@ -1,6 +1,7 @@
 import { Client, fetchExchange, subscriptionExchange, mapExchange } from 'urql';
 import { type Cache, cacheExchange } from '@urql/exchange-graphcache';
 import { createClient as createWSClient, CloseCode } from 'graphql-ws';
+import { getPlatform } from '../platform/usePlatform.js';
 
 function invalidateAllWorkspaceQueries(cache: Cache) {
   const fields = cache.inspectFields('Query');
@@ -29,8 +30,9 @@ export function setOnAuthError(cb: () => void) {
 
 async function getToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
-  if (window.orca) {
-    cachedToken = await window.orca.auth.readToken();
+  const platform = getPlatform();
+  if (platform.kind === 'electron') {
+    cachedToken = await platform.orca.auth.readToken();
   } else {
     cachedToken = import.meta.env.VITE_AUTH_TOKEN ?? null;
   }
@@ -43,8 +45,9 @@ export function clearCachedToken() {
 
 export async function storeAuthToken(token: string) {
   clearCachedToken();
-  if (window.orca) {
-    await window.orca.auth.storeToken(token);
+  const platform = getPlatform();
+  if (platform.kind === 'electron') {
+    await platform.orca.auth.storeToken(token);
   }
 }
 

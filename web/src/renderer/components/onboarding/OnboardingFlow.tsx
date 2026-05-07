@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useCreateProject, useCreateTask } from '../../hooks/useGraphQL.js';
 import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 type OnboardingStep = 'welcome' | 'create-project' | 'create-task' | 'open-terminal';
 
@@ -19,6 +20,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const platform = usePlatform();
   const { createProject } = useCreateProject();
   const { createTask } = useCreateTask();
   const { navigate } = useNavigation();
@@ -36,13 +38,20 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (result.data?.createProject) {
       const projectId = result.data.createProject.id;
       setCreatedProjectId(projectId);
-      if (defaultDirectory.trim() && window.orca?.projectDir) {
-        await window.orca.projectDir.set(projectId, defaultDirectory.trim());
+      if (defaultDirectory.trim() && platform.kind === 'electron') {
+        await platform.orca.projectDir.set(projectId, defaultDirectory.trim());
       }
       setStep('create-task');
     }
     setCreating(false);
-  }, [projectName, projectDescription, defaultDirectory, createProject, currentWorkspace]);
+  }, [
+    platform,
+    projectName,
+    projectDescription,
+    defaultDirectory,
+    createProject,
+    currentWorkspace,
+  ]);
 
   const handleCreateTask = useCallback(async () => {
     if (!taskTitle.trim() || !createdProjectId) return;

@@ -7,7 +7,9 @@ import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useNavigation } from '../../navigation/context.js';
 import { WorktreeSafetyBadge } from '../shared/WorktreeSafetyBadge.js';
 import { RemoveWorktreeModal } from '../shared/RemoveWorktreeModal.js';
+import { DesktopOnlyPlaceholder } from '../shared/DesktopOnlyPlaceholder.js';
 import { formatRelativeTime } from '../../utils/formatRelativeTime.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 interface TaskInfo {
   id: string;
@@ -18,11 +20,11 @@ interface TaskInfo {
 }
 
 export function WorktreeListView() {
+  const platform = usePlatform();
   const { worktrees, loading, removeWorktree, refetch } = useWorktreeList();
   const { projects, inboxTasks } = useWorkspaceData();
   const { navigate } = useNavigation();
   const hasVscode = useHasVscode();
-
   const [removingTaskId, setRemovingTaskId] = useState<string | null>(null);
 
   const taskMap = useMemo(() => {
@@ -66,6 +68,19 @@ export function WorktreeListView() {
 
   const iconButtonClass =
     'flex-shrink-0 p-0.5 text-fg-faint hover:text-fg rounded transition-colors';
+
+  if (platform.kind !== 'electron') {
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <h1 className="text-heading-lg font-semibold text-fg mb-6">Worktrees</h1>
+        <DesktopOnlyPlaceholder
+          feature="Worktrees"
+          detail="Worktrees are local git checkouts managed by the desktop daemon."
+          className="flex flex-col items-center justify-center py-16 text-center"
+        />
+      </div>
+    );
+  }
 
   if (loading && worktrees.length === 0) {
     return (
@@ -170,7 +185,7 @@ export function WorktreeListView() {
                             </p>
                             <button
                               onClick={() =>
-                                void window.orca.shell.openPath(wt.worktree_path).catch(() => {})
+                                void platform.orca.shell.openPath(wt.worktree_path).catch(() => {})
                               }
                               className={iconButtonClass}
                               title="Open in Finder"
@@ -181,7 +196,7 @@ export function WorktreeListView() {
                             {hasVscode && (
                               <button
                                 onClick={() =>
-                                  void window.orca.shell
+                                  void platform.orca.shell
                                     .openInVscode(wt.worktree_path)
                                     .catch(() => {})
                                 }

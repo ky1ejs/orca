@@ -9,8 +9,10 @@ import { useSessionActivity } from '../../hooks/useSessionActivity.js';
 import { usePreferences } from '../../preferences/context.js';
 import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
 import { BootstrapIndicator } from './BootstrapIndicator.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 export function HeaderTerminalControls() {
+  const platform = usePlatform();
   const controls = useTaskHeaderControls();
   const { launching, setLaunching } = useTaskLaunching();
   const [launchMenuOpen, setLaunchMenuOpen] = useState(false);
@@ -34,6 +36,7 @@ export function HeaderTerminalControls() {
   }, [launchMenuOpen]);
 
   if (!controls) return null;
+  if (platform.kind !== 'electron') return null;
 
   const {
     activeSession,
@@ -57,7 +60,7 @@ export function HeaderTerminalControls() {
     onAgentError(null);
     try {
       const mark = createPerfTimer('agent-launch', rendererPerfLog);
-      const result = await window.orca.agent.launch(
+      const result = await platform.orca.agent.launch(
         taskId,
         projectDirectory,
         options,
@@ -78,7 +81,7 @@ export function HeaderTerminalControls() {
 
   const handleStopAgent = async () => {
     if (!activeSession) return;
-    await window.orca.agent.stop(activeSession.id);
+    await platform.orca.agent.stop(activeSession.id);
     refreshSessions();
   };
 
@@ -94,7 +97,7 @@ export function HeaderTerminalControls() {
     setLaunching(true);
     onAgentError(null);
     try {
-      const result = await window.orca.agent.restart(
+      const result = await platform.orca.agent.restart(
         taskId,
         errorSession.id,
         projectDirectory,

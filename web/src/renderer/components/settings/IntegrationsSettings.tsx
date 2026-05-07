@@ -9,6 +9,7 @@ import {
   useUpdateObservedRepositories,
   useUpdateWorkspaceSettings,
 } from '../../hooks/useGraphQL.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 export function IntegrationsSettings() {
   const { currentWorkspace } = useWorkspace();
@@ -52,6 +53,7 @@ function GitHubConnectionSection({
     | undefined;
   isOwner: boolean;
 }) {
+  const platform = usePlatform();
   const { data: urlData } = useGitHubAppInstallUrl(installation ? '' : workspaceId);
   const { data: oauthUrlData } = useGitHubOAuthUrl(installation ? '' : workspaceId);
   const { completeGitHubInstallation, fetching: completing } = useCompleteGitHubInstallation();
@@ -64,8 +66,8 @@ function GitHubConnectionSection({
 
   // Listen for deep link callback from Electron
   useEffect(() => {
-    if (!window.orca?.github) return;
-    return window.orca.github.onInstallationCallback(async (data) => {
+    if (platform.kind !== 'electron') return;
+    return platform.orca.github.onInstallationCallback(async (data) => {
       if (data.workspaceId !== workspaceId) return;
       setError(null);
       const result = await completeGitHubInstallation(data.workspaceId, data.installationId);
@@ -73,18 +75,18 @@ function GitHubConnectionSection({
         setError(result.error.graphQLErrors?.[0]?.message ?? result.error.message);
       }
     });
-  }, [workspaceId, completeGitHubInstallation]);
+  }, [platform, workspaceId, completeGitHubInstallation]);
 
   const handleConnect = useCallback(() => {
     const url = urlData?.githubAppInstallUrl;
     if (url) {
       window.open(url, '_blank');
-      // In browser dev mode (no window.orca), show manual input
-      if (!window.orca?.github) {
+      // In browser mode there's no deep-link IPC; fall back to manual ID entry.
+      if (platform.kind !== 'electron') {
         setShowManualInput(true);
       }
     }
-  }, [urlData]);
+  }, [platform, urlData]);
 
   const handleUseExisting = useCallback(() => {
     const url = oauthUrlData?.githubOAuthUrl;

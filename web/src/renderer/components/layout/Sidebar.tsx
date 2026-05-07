@@ -27,6 +27,7 @@ import { iconSize } from '../../tokens/icon-size.js';
 import { useDaemonStatus } from '../../hooks/useDaemonStatus.js';
 import { useBackendStatus } from '../../hooks/useBackendStatus.js';
 import { StatusLights, StatusLightsCollapsed } from './StatusLights.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 interface SidebarTask {
   id: string;
@@ -214,15 +215,17 @@ export function Sidebar({ collapsed, onToggleCollapse, onLogout }: SidebarProps)
   const { connected: backendConnected } = useBackendStatus();
   const mcpConnected = daemonConnected && daemonStatus?.mcpServerPort != null;
 
+  const platform = usePlatform();
   const handleCloseActiveTerminal = useCallback(
     async (entry: ActiveTerminalEntry) => {
+      if (platform.kind !== 'electron') return;
       for (const sessionId of entry.sessionIds) {
-        await window.orca.agent.stop(sessionId);
-        await window.orca.db.deleteSession(sessionId);
+        await platform.orca.agent.stop(sessionId);
+        await platform.orca.db.deleteSession(sessionId);
       }
       refreshSessions();
     },
-    [refreshSessions],
+    [platform, refreshSessions],
   );
 
   if (collapsed) {

@@ -2,6 +2,7 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import type { WorktreeGetResult } from '../../shared/daemon-protocol.js';
+import { __resetPlatformCacheForTests } from '../platform/usePlatform.js';
 
 const mockWorktree: WorktreeGetResult = {
   task_id: 'task-1',
@@ -27,6 +28,7 @@ beforeEach(() => {
       },
     },
   };
+  __resetPlatformCacheForTests();
   mockGet.mockResolvedValue(null);
   mockRemove.mockResolvedValue({ ok: true });
   mockSafety.mockResolvedValue(null);

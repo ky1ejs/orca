@@ -12,17 +12,19 @@ import { ToastProvider } from './components/toast/ToastProvider.js';
 import { useDaemonLifecycle } from './hooks/useDaemonLifecycle.js';
 import { SessionActivityProvider } from './hooks/useSessionActivity.js';
 import { ProtocolUpdateDialog } from './components/toast/ProtocolUpdateDialog.js';
+import { usePlatform } from './platform/usePlatform.js';
 
 type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'expired' | 'registering';
 
 function App() {
+  const platform = usePlatform();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [clientKey, setClientKey] = useState(0);
 
   useEffect(() => {
     async function checkAuth() {
-      if (window.orca) {
-        const token = await window.orca.auth.readToken();
+      if (platform.kind === 'electron') {
+        const token = await platform.orca.auth.readToken();
         setAuthState(token ? 'authenticated' : 'unauthenticated');
       } else if (import.meta.env.VITE_AUTH_TOKEN) {
         // Browser dev mode with VITE_AUTH_TOKEN
@@ -32,7 +34,7 @@ function App() {
       }
     }
     checkAuth();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
     setOnAuthError(() => {
@@ -52,12 +54,12 @@ function App() {
 
   const handleLogout = useCallback(async () => {
     clearCachedToken();
-    if (window.orca) {
-      await window.orca.auth.clearToken();
+    if (platform.kind === 'electron') {
+      await platform.orca.auth.clearToken();
     }
     setClientKey((k) => k + 1);
     setAuthState('unauthenticated');
-  }, []);
+  }, [platform]);
 
   if (authState === 'loading') {
     return (

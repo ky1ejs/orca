@@ -17,9 +17,11 @@ const mockOrca = {
   platform: 'darwin',
   db: {
     getSessions: vi.fn().mockResolvedValue([]),
+    getSessionsByTask: vi.fn().mockResolvedValue([]),
     getSession: vi.fn().mockResolvedValue(undefined),
     createSession: vi.fn().mockResolvedValue({}),
     updateSession: vi.fn().mockResolvedValue(undefined),
+    deleteSession: vi.fn().mockResolvedValue(undefined),
   },
   auth: {
     storeToken: vi.fn().mockResolvedValue(undefined),
@@ -32,13 +34,59 @@ const mockOrca = {
     resize: vi.fn(),
     kill: vi.fn(),
     replay: vi.fn(),
+    snapshot: vi.fn(),
+    ack: vi.fn(),
     onData: vi.fn().mockReturnValue(() => {}),
     onExit: vi.fn().mockReturnValue(() => {}),
+  },
+  settings: {
+    get: vi.fn().mockResolvedValue(undefined),
+    set: vi.fn().mockResolvedValue(undefined),
+    getAll: vi.fn().mockResolvedValue({}),
+  },
+  fonts: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+  projectDir: {
+    get: vi.fn().mockResolvedValue(undefined),
+    set: vi.fn().mockResolvedValue({ project_id: '', directory: '' }),
+    delete: vi.fn().mockResolvedValue(undefined),
+  },
+  worktree: {
+    get: vi.fn().mockResolvedValue(null),
+    remove: vi.fn().mockResolvedValue({ ok: true }),
+    safety: vi.fn().mockResolvedValue(null),
+    list: vi.fn().mockResolvedValue([]),
+  },
+  perf: {
+    log: vi.fn(),
+  },
+  daemon: {
+    getStatus: vi.fn().mockResolvedValue({
+      version: '0.0.0',
+      protocolVersion: 1,
+      uptime: 0,
+      activeSessions: 0,
+      connectedClients: 0,
+    }),
+  },
+  agent: {
+    launch: vi.fn().mockResolvedValue({ success: true }),
+    stop: vi.fn().mockResolvedValue(undefined),
+    restart: vi.fn().mockResolvedValue({ success: true }),
+    status: vi.fn().mockResolvedValue(null),
+  },
+  bootstrap: {
+    status: vi.fn().mockResolvedValue({ status: 'pending' }),
   },
   lifecycle: {
     onSessionsDied: vi.fn().mockReturnValue(() => {}),
     onInterruptedSessions: vi.fn().mockReturnValue(() => {}),
     onSessionStatusChanged: vi.fn().mockReturnValue(() => {}),
+    onSessionActivityChanged: vi.fn().mockReturnValue(() => {}),
+    onBootstrapOutput: vi.fn().mockReturnValue(() => {}),
+    onBootstrapCompleted: vi.fn().mockReturnValue(() => {}),
+    onBootstrapFailed: vi.fn().mockReturnValue(() => {}),
     onDaemonReconnected: vi.fn().mockReturnValue(() => {}),
     onDaemonDisconnected: vi.fn().mockReturnValue(() => {}),
     onProtocolUpdateRequired: vi.fn().mockReturnValue(() => {}),
@@ -48,6 +96,14 @@ const mockOrca = {
     openPath: vi.fn().mockResolvedValue(undefined),
     hasVscode: vi.fn().mockResolvedValue(false),
     openInVscode: vi.fn().mockResolvedValue(undefined),
+  },
+  github: {
+    onInstallationCallback: vi.fn().mockReturnValue(() => {}),
+  },
+  updates: {
+    onUpdateReady: vi.fn().mockReturnValue(() => {}),
+    onUpdateError: vi.fn().mockReturnValue(() => {}),
+    install: vi.fn().mockResolvedValue(undefined),
   },
 };
 

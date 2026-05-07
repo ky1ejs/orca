@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DaemonStatusResult } from '../../shared/daemon-protocol.js';
+import { usePlatform } from '../platform/usePlatform.js';
 
 interface DaemonStatusState {
   connected: boolean;
@@ -8,17 +9,18 @@ interface DaemonStatusState {
 }
 
 export function useDaemonStatus(): DaemonStatusState & { refresh: () => void } {
+  const platform = usePlatform();
   const [state, setState] = useState<DaemonStatusState>({
-    connected: true,
+    connected: platform.kind === 'electron',
     status: null,
     error: null,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchStatus = useCallback(async () => {
-    if (!window.orca?.daemon) return;
+    if (platform.kind !== 'electron') return;
     try {
-      const result = await window.orca.daemon.getStatus();
+      const result = await platform.orca.daemon.getStatus();
       setState({ connected: true, status: result, error: null });
     } catch (err) {
       setState((prev) => ({
@@ -27,25 +29,26 @@ export function useDaemonStatus(): DaemonStatusState & { refresh: () => void } {
         error: err instanceof Error ? err.message : 'Failed to fetch daemon status',
       }));
     }
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
+    if (platform.kind !== 'electron') return;
     fetchStatus();
     intervalRef.current = setInterval(fetchStatus, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchStatus]);
+  }, [platform, fetchStatus]);
 
   // Track daemon disconnect/reconnect events
   useEffect(() => {
-    if (!window.orca?.lifecycle) return;
+    if (platform.kind !== 'electron') return;
 
-    const unsubDisconnect = window.orca.lifecycle.onDaemonDisconnected(() => {
+    const unsubDisconnect = platform.orca.lifecycle.onDaemonDisconnected(() => {
       setState((prev) => ({ ...prev, connected: false }));
     });
 
-    const unsubReconnect = window.orca.lifecycle.onDaemonReconnected(() => {
+    const unsubReconnect = platform.orca.lifecycle.onDaemonReconnected(() => {
       fetchStatus();
     });
 
@@ -53,7 +56,7 @@ export function useDaemonStatus(): DaemonStatusState & { refresh: () => void } {
       unsubDisconnect();
       unsubReconnect();
     };
-  }, [fetchStatus]);
+  }, [platform, fetchStatus]);
 
   return { ...state, refresh: fetchStatus };
 }

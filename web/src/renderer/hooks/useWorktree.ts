@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { WorktreeGetResult, WorktreeSafetyResult } from '../../shared/daemon-protocol.js';
+import { usePlatform } from '../platform/usePlatform.js';
 
 interface UseWorktreeResult {
   worktree: WorktreeGetResult | null;
@@ -10,13 +11,14 @@ interface UseWorktreeResult {
 }
 
 export function useWorktree(taskId: string | undefined): UseWorktreeResult {
+  const platform = usePlatform();
   const [worktree, setWorktree] = useState<WorktreeGetResult | null>(null);
   const [safety, setSafety] = useState<WorktreeSafetyResult | null>(null);
-  const [loading, setLoading] = useState(!!taskId);
+  const [loading, setLoading] = useState(platform.kind === 'electron' && !!taskId);
   const fetchIdRef = useRef(0);
 
   const doFetch = useCallback(() => {
-    if (!taskId) {
+    if (platform.kind !== 'electron' || !taskId) {
       setWorktree(null);
       setSafety(null);
       setLoading(false);
@@ -25,7 +27,7 @@ export function useWorktree(taskId: string | undefined): UseWorktreeResult {
 
     const id = ++fetchIdRef.current;
     setLoading(true);
-    Promise.all([window.orca.worktree.get(taskId), window.orca.worktree.safety(taskId)])
+    Promise.all([platform.orca.worktree.get(taskId), platform.orca.worktree.safety(taskId)])
       .then(([wt, s]) => {
         if (fetchIdRef.current === id) {
           setWorktree(wt ?? null);
@@ -41,7 +43,7 @@ export function useWorktree(taskId: string | undefined): UseWorktreeResult {
       .finally(() => {
         if (fetchIdRef.current === id) setLoading(false);
       });
-  }, [taskId]);
+  }, [platform, taskId]);
 
   useEffect(() => {
     doFetch();
@@ -49,11 +51,11 @@ export function useWorktree(taskId: string | undefined): UseWorktreeResult {
 
   const removeWorktree = useCallback(
     async (force?: boolean) => {
-      if (!taskId) return;
-      await window.orca.worktree.remove(taskId, force);
+      if (platform.kind !== 'electron' || !taskId) return;
+      await platform.orca.worktree.remove(taskId, force);
       doFetch();
     },
-    [taskId, doFetch],
+    [platform, taskId, doFetch],
   );
 
   return { worktree, safety, loading, removeWorktree, refetch: doFetch };

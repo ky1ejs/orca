@@ -11,7 +11,18 @@ import { usePreferences } from '../../preferences/context.js';
 import { TerminalSearchBar } from './TerminalSearchBar.js';
 import { createPerfTimer, rendererPerfLog } from '../../../shared/perf.js';
 import { isActiveSessionStatus } from '../../../shared/session-status.js';
+import { getPlatform } from '../../platform/usePlatform.js';
 import '@xterm/xterm/css/xterm.css';
+
+// Asserts the electron platform so call sites can use the preload API directly
+// without per-call type narrowing. AppShell gates AgentTerminal on platform.kind.
+function orca() {
+  const p = getPlatform();
+  if (p.kind !== 'electron') {
+    throw new Error('AgentTerminal requires the Electron platform');
+  }
+  return p.orca;
+}
 
 function readTerminalTheme() {
   const s = getComputedStyle(document.documentElement);
@@ -138,7 +149,7 @@ function fitAndResize(fitAddon: FitAddon, terminal: Terminal, sessionId: string)
 
       fitAddon.fit();
       if (terminal.cols > 0 && terminal.rows > 0) {
-        window.orca.pty.resize(sessionId, terminal.cols, terminal.rows);
+        orca().pty.resize(sessionId, terminal.cols, terminal.rows);
       }
 
       if (wasAtBottom) {
@@ -237,7 +248,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       if (key) {
         const entry = CSI_U_MAP[key];
         if (entry) {
-          window.orca.pty.write(sessionId, encodeCsiU(entry));
+          orca().pty.write(sessionId, encodeCsiU(entry));
           return false;
         }
       }
@@ -257,10 +268,10 @@ export const AgentTerminal = memo(function AgentTerminal({
     searchAddonRef.current = searchAddon;
 
     const onDataDisposable = terminal.onData((data) => {
-      window.orca.pty.write(sessionId, data);
+      orca().pty.write(sessionId, data);
     });
 
-    const unsubExit = window.orca.pty.onExit(sessionId, (exitCode) => {
+    const unsubExit = orca().pty.onExit(sessionId, (exitCode) => {
       terminal.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
     });
 
@@ -279,12 +290,12 @@ export const AgentTerminal = memo(function AgentTerminal({
       unsubData = null;
 
       try {
-        const output = await window.orca.pty.replay(sessionId);
+        const output = await orca().pty.replay(sessionId);
         if (disposed) return;
         mark('replay-complete');
         if (output) {
           terminal.write(output, () => {
-            window.orca.pty.ack(sessionId, output.length);
+            orca().pty.ack(sessionId, output.length);
           });
         }
       } catch {
@@ -295,7 +306,7 @@ export const AgentTerminal = memo(function AgentTerminal({
 
       // Always subscribe regardless of replay success — subscribing synchronously
       // after the await ensures no IPC gap between the buffer end and live stream.
-      unsubData = window.orca.pty.onData(sessionId, (data) => {
+      unsubData = orca().pty.onData(sessionId, (data) => {
         if (disposed) return;
         if (!firstDataLogged) {
           firstDataLogged = true;
@@ -311,7 +322,7 @@ export const AgentTerminal = memo(function AgentTerminal({
             inFlightBytes += batch.length;
             terminal.write(batch, () => {
               inFlightBytes -= batch.length;
-              window.orca.pty.ack(sessionId, batch.length);
+              orca().pty.ack(sessionId, batch.length);
               if (disposed) return;
 
               // Throttled full re-render to clear accumulated WebGL rendering
@@ -344,7 +355,7 @@ export const AgentTerminal = memo(function AgentTerminal({
 
     // Re-replay and re-subscribe after daemon disconnect/reconnect to recover
     // any output produced during the gap.
-    const unsubReconnect = window.orca.lifecycle.onDaemonReconnected(() => {
+    const unsubReconnect = orca().lifecycle.onDaemonReconnected(() => {
       if (disposed || !initialFitDone) return;
       // Cancel any pending write rAF and ACK buffered data before resetting.
       // Without this, the stale rAF callback could fire after reset and write
@@ -361,7 +372,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       pendingData = '';
       inFlightBytes = 0;
       if (unleaked > 0) {
-        window.orca.pty.ack(sessionId, unleaked);
+        orca().pty.ack(sessionId, unleaked);
       }
       terminal.reset();
       void replayAndSubscribe();
@@ -415,7 +426,7 @@ export const AgentTerminal = memo(function AgentTerminal({
         });
         if (serialized && serialized !== lastSnapshot) {
           lastSnapshot = serialized;
-          window.orca.pty.snapshot(sessionId, serialized);
+          orca().pty.snapshot(sessionId, serialized);
         }
       } catch {
         // Addon may not be ready if terminal hasn't fully initialized
@@ -457,7 +468,7 @@ export const AgentTerminal = memo(function AgentTerminal({
       pendingData = '';
       inFlightBytes = 0;
       if (unleakedBytes > 0) {
-        window.orca.pty.ack(sessionId, unleakedBytes);
+        orca().pty.ack(sessionId, unleakedBytes);
       }
       resizeObserver.disconnect();
       colorSchemeQuery.removeEventListener('change', handleColorSchemeChange);
