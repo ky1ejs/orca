@@ -25,6 +25,9 @@ export function useProjectDirectory(projectId: string | undefined): UseProjectDi
       .then((result) => {
         setDirectory(result?.directory);
       })
+      .catch(() => {
+        setDirectory(undefined);
+      })
       .finally(() => setLoading(false));
   }, [platform, projectId]);
 

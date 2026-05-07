@@ -51,25 +51,30 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // Browser mode: skip persisted settings; fall back to in-memory defaults.
   useEffect(() => {
     if (platform.kind !== 'electron') return;
-    platform.orca.settings.getAll().then((settings) => {
-      const font = settings[TERMINAL_FONT_FAMILY_KEY];
-      if (typeof font === 'string') {
-        setTerminalFontFamilyState(font);
-      }
-      const scheme = settings[COLOR_SCHEME_KEY];
-      if (scheme === 'light' || scheme === 'dark' || scheme === 'system') {
-        setColorSchemeState(scheme);
-        applyColorScheme(scheme);
-      }
-      const launchMode = settings[AGENT_LAUNCH_MODE_KEY];
-      if (launchMode === 'terminal' || launchMode === 'plan') {
-        setAgentLaunchModeState(launchMode);
-      }
-      const height = settings[TERMINAL_PANEL_HEIGHT_KEY];
-      if (typeof height === 'number' && height > 0) {
-        setTerminalPanelHeightState(height);
-      }
-    });
+    platform.orca.settings
+      .getAll()
+      .then((settings) => {
+        const font = settings[TERMINAL_FONT_FAMILY_KEY];
+        if (typeof font === 'string') {
+          setTerminalFontFamilyState(font);
+        }
+        const scheme = settings[COLOR_SCHEME_KEY];
+        if (scheme === 'light' || scheme === 'dark' || scheme === 'system') {
+          setColorSchemeState(scheme);
+          applyColorScheme(scheme);
+        }
+        const launchMode = settings[AGENT_LAUNCH_MODE_KEY];
+        if (launchMode === 'terminal' || launchMode === 'plan') {
+          setAgentLaunchModeState(launchMode);
+        }
+        const height = settings[TERMINAL_PANEL_HEIGHT_KEY];
+        if (typeof height === 'number' && height > 0) {
+          setTerminalPanelHeightState(height);
+        }
+      })
+      .catch(() => {
+        // Settings store unavailable — keep in-memory defaults.
+      });
   }, [platform]);
 
   const setTerminalFontFamily = useCallback(

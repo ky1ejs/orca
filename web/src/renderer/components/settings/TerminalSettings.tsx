@@ -12,7 +12,10 @@ export function TerminalSettings() {
 
   useEffect(() => {
     if (platform.kind !== 'electron') return;
-    platform.orca.fonts.list().then(setSystemFonts);
+    platform.orca.fonts
+      .list()
+      .then(setSystemFonts)
+      .catch(() => setSystemFonts([]));
   }, [platform]);
 
   const handleSave = useCallback(
