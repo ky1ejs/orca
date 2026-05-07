@@ -5,7 +5,10 @@
 #
 # Expects:
 #   - CWD is the worktree root (or repo root)
-#   - web/.env exists with VITE_BACKEND_PORT
+#
+# Note: web/.env (with VITE_BACKEND_URL + VITE_AUTH_TOKEN) is written
+# afterwards by `(cd backend && bun run dev-bootstrap)`, which needs Prisma
+# to be generated first — so this script just installs deps and runs setup.
 
 set -euo pipefail
 

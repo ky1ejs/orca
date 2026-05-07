@@ -220,8 +220,9 @@ Orca uses this exact pattern for its own development. The `scripts/bootstrap` sc
 - Derives port `4010 + (hash % 990)` and database `orca_wt_<hash>` from the worktree path
 - Ensures Postgres is running via `docker compose`
 - Creates a worktree-specific Postgres database
-- Generates `backend/.env` (PORT, DATABASE_URL, JWT_SECRET) and `web/.env` (VITE_BACKEND_PORT)
+- Generates `backend/.env` (PORT, DATABASE_URL, JWT_SECRET)
 - Delegates to `backend/scripts/bootstrap` (bun install, Prisma generate, migrations) and `web/scripts/bootstrap` (bun install, codegen, native module rebuild)
+- Runs `backend/src/scripts/dev-bootstrap.ts` to seed the dev user, mint a JWT, and write `web/.env` (VITE_BACKEND_URL, VITE_AUTH_TOKEN). Re-run automatically as a `predev` hook in `web/` so tokens auto-heal.
 
 The `scripts/teardown` script mirrors the hash derivation, runs per-package teardown, and drops the database.
 

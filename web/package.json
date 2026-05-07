@@ -10,6 +10,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "predev": "cd ../backend && bun run dev-bootstrap",
     "dev": "bun run setup && bun run build:daemon && electron-vite dev",
     "build": "bun run setup && electron-vite build && bun run build:daemon",
     "build:daemon": "node scripts/build-daemon.mjs",

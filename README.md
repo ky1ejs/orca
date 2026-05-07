@@ -78,7 +78,7 @@ cd backend
 cp .env.example .env
 bunx prisma generate
 bunx prisma migrate deploy
-bun run seed:dev  # optional: creates a default dev user (dev@orca.local / dev-password)
+bun run seed:dev  # optional: creates/resets the default dev user (dev@orca.local / dev-password). Worktrees run this automatically via .orca/bootstrap.
 cd ..
 ```
 
@@ -101,9 +101,8 @@ cd web && bun bun run dev
 
 If you want to test the UI in a regular browser via the Vite dev server:
 
-1. Find your token: `cat ~/.orca/config.json`
-2. Create `web/.env` with: `VITE_AUTH_TOKEN=<your-token>`
-3. Open `http://localhost:5173` in your browser
+1. Run `bun run dev` in `web/` — its `predev` hook seeds the dev user and writes `web/.env` (`VITE_BACKEND_URL` + `VITE_AUTH_TOKEN`) automatically.
+2. Open `http://localhost:5173` in your browser — you'll be authenticated as the dev user.
 
 ## Architecture
 
