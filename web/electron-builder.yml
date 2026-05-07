@@ -12,6 +12,10 @@ files:
 extraMetadata:
   main: out/main/index.js
 asar: true
+# Native .node binaries can't be dlopen'd from inside an ASAR archive.
+asarUnpack:
+  - node_modules/node-pty/**/*
+  - node_modules/better-sqlite3/**/*
 publish:
   provider: github
   owner: ky1ejs

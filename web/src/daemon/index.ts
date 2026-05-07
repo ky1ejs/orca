@@ -312,6 +312,13 @@ async function main(): Promise<void> {
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+  process.on('SIGHUP', shutdown);
+
+  // Sync last-chance: async shutdown() may not finish on uncaught errors,
+  // and we must not leave child shells orphaned.
+  process.on('exit', () => {
+    ptyManager.killAll();
+  });
 }
 
 main().catch((err) => {
