@@ -2,6 +2,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
+import type { Plugin } from 'vite';
 import pkg from './package.json';
 
 const appVersion = pkg.version;
@@ -13,6 +14,33 @@ const buildDefines = {
   __GIT_HASH__: JSON.stringify(gitHash),
   __BACKEND_URL__: JSON.stringify(backendUrl),
 };
+
+function buildCsp(backend: string): string {
+  const wsBackend = backend.replace(/^http/, 'ws');
+  const connectSrc = ["'self'", 'http://localhost:*', 'ws://localhost:*', backend, wsBackend].join(
+    ' ',
+  );
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src ${connectSrc}`,
+  ].join('; ');
+}
+
+// Inject CSP into renderer index.html using the build-time backend URL so
+// connect-src tracks whatever VITE_BACKEND_URL the renderer was built against.
+function cspInjectPlugin(): Plugin {
+  const csp = buildCsp(backendUrl);
+  return {
+    name: 'orca:csp-inject',
+    transformIndexHtml(html) {
+      return html.replace('__CSP_CONTENT__', csp);
+    },
+  };
+}
 
 export default defineConfig({
   main: {
@@ -31,7 +59,7 @@ export default defineConfig({
     },
   },
   renderer: {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), cspInjectPlugin()],
     define: buildDefines,
   },
 });
