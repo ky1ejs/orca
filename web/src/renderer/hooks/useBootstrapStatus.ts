@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { usePlatform } from '../platform/usePlatform.js';
 
 /** Max output lines retained in the hook state. */
 const MAX_LINES = 500;
@@ -16,6 +17,7 @@ const IDLE_STATUS: BootstrapStatus = { state: 'idle', lines: [], error: null };
  * Queries initial state from the daemon, then subscribes to live events.
  */
 export function useBootstrapStatus(worktreePath: string | null | undefined): BootstrapStatus {
+  const platform = usePlatform();
   const [status, setStatus] = useState<BootstrapStatus>(IDLE_STATUS);
   const linesRef = useRef<string[]>([]);
 
@@ -27,10 +29,10 @@ export function useBootstrapStatus(worktreePath: string | null | undefined): Boo
 
   // Query initial status from daemon
   useEffect(() => {
-    if (!worktreePath || !window.orca?.bootstrap?.status) return;
+    if (platform.kind !== 'electron' || !worktreePath) return;
 
     let cancelled = false;
-    window.orca.bootstrap
+    platform.orca.bootstrap
       .status(worktreePath)
       .then((result) => {
         if (cancelled) return;
@@ -49,7 +51,7 @@ export function useBootstrapStatus(worktreePath: string | null | undefined): Boo
     return () => {
       cancelled = true;
     };
-  }, [worktreePath]);
+  }, [platform, worktreePath]);
 
   // Subscribe to live bootstrap events
   const handleOutput = useCallback(
@@ -83,18 +85,18 @@ export function useBootstrapStatus(worktreePath: string | null | undefined): Boo
   );
 
   useEffect(() => {
-    if (!worktreePath || !window.orca?.lifecycle) return;
+    if (platform.kind !== 'electron' || !worktreePath) return;
 
     const unsubs = [
-      window.orca.lifecycle.onBootstrapOutput?.(handleOutput),
-      window.orca.lifecycle.onBootstrapCompleted?.(handleCompleted),
-      window.orca.lifecycle.onBootstrapFailed?.(handleFailed),
-    ].filter(Boolean) as (() => void)[];
+      platform.orca.lifecycle.onBootstrapOutput(handleOutput),
+      platform.orca.lifecycle.onBootstrapCompleted(handleCompleted),
+      platform.orca.lifecycle.onBootstrapFailed(handleFailed),
+    ];
 
     return () => {
       for (const unsub of unsubs) unsub();
     };
-  }, [worktreePath, handleOutput, handleCompleted, handleFailed]);
+  }, [platform, worktreePath, handleOutput, handleCompleted, handleFailed]);
 
   return status;
 }

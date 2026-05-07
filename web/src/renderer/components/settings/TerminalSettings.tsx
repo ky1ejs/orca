@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { usePreferences } from '../../preferences/context.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 export function TerminalSettings() {
+  const platform = usePlatform();
   const { terminalFontFamily, setTerminalFontFamily } = usePreferences();
   const [fontInput, setFontInput] = useState(terminalFontFamily);
   const [systemFonts, setSystemFonts] = useState<string[]>([]);
@@ -9,9 +11,9 @@ export function TerminalSettings() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!window.orca?.fonts) return;
-    window.orca.fonts.list().then(setSystemFonts);
-  }, []);
+    if (platform.kind !== 'electron') return;
+    platform.orca.fonts.list().then(setSystemFonts);
+  }, [platform]);
 
   const handleSave = useCallback(
     async (e: FormEvent) => {

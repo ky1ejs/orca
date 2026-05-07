@@ -105,6 +105,10 @@ src/
 - **Daemon**: Runs via `ELECTRON_RUN_AS_NODE=1`. Owns PTY processes (node-pty), SQLite database (`~/.orca/orca.db`), session monitoring. Communicates via NDJSON over Unix socket (`~/.orca/daemon.sock`).
 - **Shared**: Electron-independent modules used by both daemon and main.
 
+### Platform boundary (browser vs. Electron)
+
+`window.orca` is typed as optional (`OrcaAPI | undefined`). The renderer must access it through `usePlatform()` (or `getPlatform()` in non-React modules) from `src/renderer/platform/usePlatform.ts`, which returns a discriminated union `{ kind: 'electron'; orca } | { kind: 'browser' }`. Branch on `kind` and provide a degraded value (empty list, no-op, etc.) for the browser case. For features that genuinely cannot run in a browser (terminal pane, daemon settings, worktrees view), render `<DesktopOnlyPlaceholder feature="…" />`. Adding a new `window.orca.*` call without going through this boundary is a TypeScript error, not a runtime crash.
+
 The daemon survives Electron quit and restarts. On quit, Electron disconnects but does not shut the daemon down — the daemon's 5-minute idle timeout handles cleanup when no clients are connected and no sessions are active. Dev instances (`bun run dev`) use a separate daemon directory (`~/.orca-dev/`) for full isolation from the production app.
 
 ## Testing

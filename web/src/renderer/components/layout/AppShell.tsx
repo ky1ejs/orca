@@ -30,6 +30,7 @@ import { QuickCreateTask } from '../tasks/QuickCreateTask.js';
 import { CommandPalette } from '../command-palette/CommandPalette.js';
 import { usePreferences } from '../../preferences/context.js';
 import { useResizablePanel } from '../../hooks/useResizablePanel.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 
 interface AppShellProps {
   onLogout: () => void;
@@ -147,6 +148,7 @@ function TerminalAreaBody({
 }
 
 export function AppShell({ onLogout }: AppShellProps) {
+  const platform = usePlatform();
   const { current, navigate, goBack, goForward } = useNavigation();
   const { loading: workspaceLoading } = useWorkspace();
   const { projects, fetching: projectsFetching } = useWorkspaceData();
@@ -189,27 +191,28 @@ export function AppShell({ onLogout }: AppShellProps) {
 
   // Listen for auto-update readiness
   useEffect(() => {
-    if (!window.orca?.updates) return;
-    return window.orca.updates.onUpdateReady((version) => {
+    if (platform.kind !== 'electron') return;
+    return platform.orca.updates.onUpdateReady((version) => {
       setUpdateVersion(version);
     });
-  }, []);
+  }, [platform]);
 
   // Listen for auto-update errors
   useEffect(() => {
-    if (!window.orca?.updates?.onUpdateError) return;
-    return window.orca.updates.onUpdateError((message) => {
+    if (platform.kind !== 'electron') return;
+    return platform.orca.updates.onUpdateError((message) => {
       console.error('[updater] Error:', message);
     });
-  }, []);
+  }, [platform]);
 
   const handleCloseSession = useCallback(
     async (sessionId: string) => {
-      await window.orca.pty.kill(sessionId);
-      await window.orca.db.deleteSession(sessionId);
+      if (platform.kind !== 'electron') return;
+      await platform.orca.pty.kill(sessionId);
+      await platform.orca.db.deleteSession(sessionId);
       refresh();
     },
-    [refresh],
+    [platform, refresh],
   );
 
   // Determine if we should show the onboarding flow
@@ -257,7 +260,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         label: 'New Terminal',
         description: 'New standalone terminal',
         action: () => {
-          // Standalone terminal — no-op if window.orca not available
+          // Standalone terminal — not implemented yet
         },
       },
       {
@@ -410,11 +413,11 @@ export function AppShell({ onLogout }: AppShellProps) {
         onLogout={onLogout}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {updateVersion && (
+        {updateVersion && platform.kind === 'electron' && (
           <div className="bg-surface-overlay border-b border-edge-subtle text-fg px-4 py-2 text-body-sm flex items-center justify-between shrink-0">
             <span>Orca v{updateVersion} is ready to install.</span>
             <button
-              onClick={() => window.orca.updates.install()}
+              onClick={() => platform.orca.updates.install()}
               className="bg-accent hover:bg-accent-hover text-on-accent px-3 py-1 rounded text-label-sm font-medium transition-colors"
             >
               <Download className={`${iconSize.sm} mr-1 inline-block`} />
@@ -427,7 +430,7 @@ export function AppShell({ onLogout }: AppShellProps) {
           <main className="flex-1 overflow-y-auto">
             <MainContent sessions={sessions} refreshSessions={refresh} />
           </main>
-          {current.view === 'task' && taskId && (
+          {current.view === 'task' && taskId && platform.kind === 'electron' && (
             <>
               <div
                 {...resizeHandleProps}

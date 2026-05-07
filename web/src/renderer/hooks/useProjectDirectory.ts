@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { usePlatform } from '../platform/usePlatform.js';
 
 interface UseProjectDirectoryResult {
   directory: string | undefined;
@@ -7,32 +8,33 @@ interface UseProjectDirectoryResult {
 }
 
 export function useProjectDirectory(projectId: string | undefined): UseProjectDirectoryResult {
+  const platform = usePlatform();
   const [directory, setDirectory] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(platform.kind === 'electron');
 
   useEffect(() => {
-    if (!projectId) {
+    if (platform.kind !== 'electron' || !projectId) {
       setDirectory(undefined);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    window.orca.projectDir
+    platform.orca.projectDir
       .get(projectId)
       .then((result) => {
         setDirectory(result?.directory);
       })
       .finally(() => setLoading(false));
-  }, [projectId]);
+  }, [platform, projectId]);
 
   const updateDirectory = useCallback(
     async (dir: string) => {
-      if (!projectId) return;
-      const result = await window.orca.projectDir.set(projectId, dir);
+      if (platform.kind !== 'electron' || !projectId) return;
+      const result = await platform.orca.projectDir.set(projectId, dir);
       setDirectory(result.directory);
     },
-    [projectId],
+    [platform, projectId],
   );
 
   return { directory, loading, updateDirectory };

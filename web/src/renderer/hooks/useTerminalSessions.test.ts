@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { useTerminalSessions, type TerminalSessionInfo } from './useTerminalSessions.js';
 import { SessionStatus } from '../../shared/session-status.js';
+import { __resetPlatformCacheForTests } from '../platform/usePlatform.js';
 
 const mockSessions: TerminalSessionInfo[] = [
   {
@@ -44,6 +45,7 @@ beforeEach(() => {
       },
     },
   };
+  __resetPlatformCacheForTests();
 });
 
 afterEach(() => {

@@ -1,16 +1,18 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { usePlatform } from '../platform/usePlatform.js';
 
 type SessionActivitySet = Set<string>;
 
 const SessionActivityContext = createContext<SessionActivitySet>(new Set());
 
 export function SessionActivityProvider({ children }: { children: ReactNode }) {
+  const platform = usePlatform();
   const [activeIds, setActiveIds] = useState<SessionActivitySet>(new Set());
 
   useEffect(() => {
-    if (!window.orca?.lifecycle?.onSessionActivityChanged) return;
+    if (platform.kind !== 'electron') return;
 
-    return window.orca.lifecycle.onSessionActivityChanged((sessionId, active) => {
+    return platform.orca.lifecycle.onSessionActivityChanged((sessionId, active) => {
       setActiveIds((prev) => {
         if (active && prev.has(sessionId)) return prev;
         if (!active && !prev.has(sessionId)) return prev;
@@ -23,7 +25,7 @@ export function SessionActivityProvider({ children }: { children: ReactNode }) {
         return next;
       });
     });
-  }, []);
+  }, [platform]);
 
   return (
     <SessionActivityContext.Provider value={activeIds}>{children}</SessionActivityContext.Provider>

@@ -13,6 +13,7 @@ import { useNavigation } from '../../navigation/context.js';
 import { useWorkspace } from '../../workspace/context.js';
 import { useWorkspaceData } from '../../workspace/workspace-data-context.js';
 import { useProjectDirectory } from '../../hooks/useProjectDirectory.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 import type { TerminalSessionInfo } from '../../hooks/useTerminalSessions.js';
 import { TaskStatus } from '../../graphql/__generated__/generated.js';
 import type { TaskQuery, WorkspaceMembersQuery } from '../../graphql/__generated__/generated.js';
@@ -44,6 +45,7 @@ interface TaskDetailProps {
 }
 
 export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProps) {
+  const platform = usePlatform();
   const { data, fetching, error, refetch } = useTask(taskId);
   const { updateTask } = useUpdateTask();
   const { archiveTask } = useArchiveTask();
@@ -94,13 +96,13 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
 
   const handleStatusChange = useCallback(
     async (newStatus: TaskStatus) => {
-      if (isTerminalStatus(newStatus) && activeSession) {
-        await window.orca.agent.stop(activeSession.id);
+      if (isTerminalStatus(newStatus) && activeSession && platform.kind === 'electron') {
+        await platform.orca.agent.stop(activeSession.id);
         refreshSessionsRef.current();
       }
       await updateTask(taskId, { status: newStatus });
     },
-    [activeSession, updateTask, taskId],
+    [platform, activeSession, updateTask, taskId],
   );
 
   const handleArchive = useCallback(async () => {

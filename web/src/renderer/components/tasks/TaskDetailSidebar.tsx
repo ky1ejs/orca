@@ -7,6 +7,7 @@ import { LabelBadge } from '../labels/LabelBadge.js';
 import { LabelPicker } from '../labels/LabelPicker.js';
 import { useWorktree } from '../../hooks/useWorktree.js';
 import { useHasVscode } from '../../hooks/useHasVscode.js';
+import { usePlatform } from '../../platform/usePlatform.js';
 import { WorktreeSafetyBadge } from '../shared/WorktreeSafetyBadge.js';
 import { RemoveWorktreeModal } from '../shared/RemoveWorktreeModal.js';
 import { PropertyRow } from './PropertyRow.js';
@@ -47,6 +48,7 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
   dirLoading,
   updateDirectory,
 }: TaskDetailSidebarProps) {
+  const platform = usePlatform();
   const [editingDirectory, setEditingDirectory] = useState('');
   const [isEditingDir, setIsEditingDir] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -131,20 +133,22 @@ export const TaskDetailSidebar = memo(function TaskDetailSidebar({
               >
                 {worktree.worktree_path}
               </p>
-              <button
-                onClick={() =>
-                  void window.orca.shell.openPath(worktree.worktree_path).catch(() => {})
-                }
-                className={iconButtonClass}
-                title="Open in Finder"
-                aria-label="Open in Finder"
-              >
-                <FolderOpen className={iconSize.xs} />
-              </button>
-              {hasVscode && (
+              {platform.kind === 'electron' && (
                 <button
                   onClick={() =>
-                    void window.orca.shell.openInVscode(worktree.worktree_path).catch(() => {})
+                    void platform.orca.shell.openPath(worktree.worktree_path).catch(() => {})
+                  }
+                  className={iconButtonClass}
+                  title="Open in Finder"
+                  aria-label="Open in Finder"
+                >
+                  <FolderOpen className={iconSize.xs} />
+                </button>
+              )}
+              {platform.kind === 'electron' && hasVscode && (
+                <button
+                  onClick={() =>
+                    void platform.orca.shell.openInVscode(worktree.worktree_path).catch(() => {})
                   }
                   className={iconButtonClass}
                   title="Open in VS Code"
