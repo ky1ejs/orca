@@ -66,6 +66,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "app-builder-lib@25.1.8": "patches/app-builder-lib@25.1.8.patch",
+  },
   "overrides": {
     "node-gyp": "^12.4.0",
   },
