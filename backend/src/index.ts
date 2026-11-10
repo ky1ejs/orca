@@ -10,6 +10,7 @@ import { handleGitHubCallback } from './webhooks/github-callback.js';
 import { handleGitHubOAuthCallback } from './webhooks/github-oauth.js';
 import type { ServerContext } from './context.js';
 import { createLoaders } from './loaders.js';
+import { createMcpHandler } from './mcp/server.js';
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
 
@@ -62,6 +63,8 @@ const yoga = createYoga({
   graphqlEndpoint: '/graphql',
 });
 
+const handleMcpRequest = createMcpHandler({ schema, baseContext: { prisma, pubsub } });
+
 const PORT = Number(process.env.PORT ?? 4000);
 
 const wsHandler = makeHandler({
@@ -111,6 +114,10 @@ const server = Bun.serve({
     }
     if (url.pathname === '/github/oauth/callback' && request.method === 'GET') {
       return handleGitHubOAuthCallback(request);
+    }
+
+    if (url.pathname === '/mcp') {
+      return handleMcpRequest(request);
     }
 
     if (url.pathname === '/graphql' && request.headers.get('upgrade') === 'websocket') {

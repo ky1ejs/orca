@@ -158,6 +158,10 @@ Agent processes run in a separate daemon that survives Electron restarts (e.g. d
 
 Each agent session runs in its own [git worktree](https://git-scm.com/docs/git-worktree), giving it an isolated working directory, port, and database. The daemon creates worktrees on agent launch and runs a repo-provided bootstrap hook to set up resources. See **[Worktrees & Bootstrapping](docs/worktrees.md)** for the full reference on lifecycle, hook setup, environment variables, and deterministic resource isolation.
 
+### MCP
+
+Agents reach Orca data through MCP. The desktop app serves a local MCP server to the agents it launches, and the backend serves a remote one at `/mcp` for any other MCP client. See **[MCP servers](docs/mcp.md)** for tools, auth, and setup.
+
 ## Tech Stack
 
 | Layer     | Technology                       |

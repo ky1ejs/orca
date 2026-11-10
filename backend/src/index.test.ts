@@ -272,4 +272,42 @@ describe('server integration', () => {
     );
     expect(deleteRes.body.errors).toBeUndefined();
   });
+
+  it('serves MCP tools over /mcp as the authenticated user', async () => {
+    const callTool = async (name: string, args: Record<string, unknown>, token = authToken) => {
+      const res = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name, arguments: args },
+        }),
+      });
+      return res;
+    };
+
+    expect((await callTool('list_workspaces', {}, 'bad-token')).status).toBe(401);
+
+    const createRes = await callTool('create_task', { workspaceId, title: 'Remote MCP task' });
+    expect(createRes.status).toBe(200);
+    const created = (await createRes.json()) as {
+      result: { isError?: boolean; content: Array<{ text: string }> };
+    };
+    expect(created.result.isError).toBeUndefined();
+    const task = JSON.parse(created.result.content[0].text) as { id: string; title: string };
+    expect(task.title).toBe('Remote MCP task');
+
+    const getRes = await callTool('get_task', { id: task.id });
+    const fetched = (await getRes.json()) as { result: { content: Array<{ text: string }> } };
+    expect(JSON.parse(fetched.result.content[0].text)).toMatchObject({
+      id: task.id,
+      title: 'Remote MCP task',
+    });
+  });
 });

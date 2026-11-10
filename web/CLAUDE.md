@@ -89,7 +89,7 @@ src/
     ├── errors.ts, shell.ts, claude.ts, logger.ts
     ├── input-detection.ts     — Terminal input detection
     ├── session-status.ts      — Session status types
-    └── hooks/                 — Shared hooks (server, settings, mcp-tools)
+    └── hooks/                 — Shared hooks (server, settings, mcp-tools; GraphQL tools are mirrored in backend/src/mcp/tools, see docs/mcp.md)
 ```
 
 ## Architecture

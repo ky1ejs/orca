@@ -70,6 +70,9 @@ src/
 ├── pubsub.ts                  — Pub/Sub for subscriptions
 ├── auth/                      — JWT, password hashing, token ops
 ├── db/client.ts               — Prisma client init
+├── mcp/
+│   ├── server.ts              — Remote MCP endpoint (`/mcp`, Streamable HTTP, JWT auth)
+│   └── tools/                 — MCP tools; mirror web/src/shared/hooks/mcp-tools/ (see docs/mcp.md)
 ├── schema/
 │   ├── schema.graphql         — SDL schema definition (source of truth)
 │   ├── index.ts               — Schema composition
