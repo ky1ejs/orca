@@ -382,18 +382,20 @@ interface TokenGrant {
   resource: string;
 }
 
+type Db = Pick<PrismaClient, 'oAuthRefreshToken'>;
+
 /**
- * Issues an access token and a refresh token. A new sign-in starts a refresh
- * token family; a refresh continues it and keeps its absolute expiry, so a
- * sign-in lasts at most REFRESH_TOKEN_TTL_MS however often it is refreshed.
+ * Stores a new refresh token. A new sign-in starts a family; a refresh
+ * continues it and keeps its absolute expiry, so a sign-in lasts at most
+ * REFRESH_TOKEN_TTL_MS however often it is refreshed.
  */
-async function issueTokens(
-  prisma: PrismaClient,
+async function createRefreshToken(
+  db: Db,
   grant: TokenGrant,
   family?: { familyId: string; expiresAt: Date },
-): Promise<Response> {
+): Promise<string> {
   const refreshToken = randomToken();
-  await prisma.oAuthRefreshToken.create({
+  await db.oAuthRefreshToken.create({
     data: {
       tokenHash: hashToken(refreshToken),
       familyId: family?.familyId ?? randomUUID(),
@@ -403,6 +405,10 @@ async function issueTokens(
       expiresAt: family?.expiresAt ?? new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     },
   });
+  return refreshToken;
+}
+
+async function tokenResponse(grant: TokenGrant, refreshToken: string): Promise<Response> {
   const accessToken = await signAccessToken({
     clientId: grant.clientId,
     userId: grant.userId,
@@ -458,7 +464,7 @@ async function exchangeAuthorizationCode(
     return oauthError('invalid_target', 'resource does not match the authorization request.');
   }
 
-  return issueTokens(prisma, grant);
+  return tokenResponse(grant, await createRefreshToken(prisma, grant));
 }
 
 async function exchangeRefreshToken(
@@ -481,17 +487,23 @@ async function exchangeRefreshToken(
   }
 
   if (!existing.revokedAt) {
-    // The conditional update makes rotation single-use under concurrent requests.
-    const now = new Date();
-    const { count } = await prisma.oAuthRefreshToken.updateMany({
-      where: { id: existing.id, revokedAt: null },
-      data: { revokedAt: now, rotatedAt: now },
+    // Rotating and storing the successor in one transaction means a concurrent
+    // request never sees the family without an active token. The conditional
+    // update makes rotation single-use: a racing request blocks on the row
+    // lock, then updates nothing and falls through to the grace check.
+    const rotated = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const { count } = await tx.oAuthRefreshToken.updateMany({
+        where: { id: existing.id, revokedAt: null },
+        data: { revokedAt: now, rotatedAt: now },
+      });
+      return count === 1 ? createRefreshToken(tx, existing, existing) : null;
     });
-    if (count === 1) return issueTokens(prisma, existing, existing);
+    if (rotated) return tokenResponse(existing, rotated);
   }
 
-  // The token was already rotated or revoked. Re-read it: a concurrent request
-  // may have rotated it between our read and our update.
+  // The token was already rotated or revoked, possibly by a concurrent request
+  // between our read and our update, so re-read it.
   const current = await prisma.oAuthRefreshToken.findUnique({ where: { tokenHash } });
   const familyActive =
     (await prisma.oAuthRefreshToken.count({
@@ -504,7 +516,9 @@ async function exchangeRefreshToken(
   // Retries after a lost response, and clients racing on one stored token,
   // present the old token again within seconds. Give them a token in the same
   // family instead of signing everyone out.
-  if (withinGrace && familyActive) return issueTokens(prisma, existing, existing);
+  if (withinGrace && familyActive) {
+    return tokenResponse(existing, await createRefreshToken(prisma, existing, existing));
+  }
 
   // Otherwise the old token may have leaked: revoke the whole family
   // (OAuth 2.1 §4.3.1).

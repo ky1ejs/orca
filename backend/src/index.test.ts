@@ -691,25 +691,24 @@ describe('server integration', () => {
       expect(status).toBe(200);
     });
 
-    it('lets concurrent refreshes with one token both succeed', async () => {
-      const { clientId, tokens } = await signIn();
-      const refresh = () =>
-        tokenRequest({
-          grant_type: 'refresh_token',
-          refresh_token: tokens.refresh_token,
-          client_id: clientId,
-        });
-      const [a, b] = await Promise.all([refresh(), refresh()]);
-      expect([a.status, b.status]).toEqual([200, 200]);
+    it('lets concurrent refreshes with one token all succeed', async () => {
+      // Several rounds, because the original bug only showed up when one
+      // request landed between another's rotation and its insert.
+      for (let round = 0; round < 5; round++) {
+        const { clientId, tokens } = await signIn();
+        const refresh = (refreshToken: string) =>
+          tokenRequest({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: clientId,
+          });
+        const results = await Promise.all([1, 2, 3].map(() => refresh(tokens.refresh_token)));
+        expect(results.map((r) => r.status)).toEqual([200, 200, 200]);
 
-      // Both new tokens still work: the race did not revoke the family.
-      for (const next of [a.body.refresh_token, b.body.refresh_token]) {
-        const res = await tokenRequest({
-          grant_type: 'refresh_token',
-          refresh_token: next,
-          client_id: clientId,
-        });
-        expect(res.status).toBe(200);
+        // Every new token still works: the race did not revoke the family.
+        for (const next of results) {
+          expect((await refresh(next.body.refresh_token)).status).toBe(200);
+        }
       }
     });
 
@@ -786,34 +785,40 @@ describe('server integration', () => {
 
     describe('in a real browser', () => {
       let browser: Browser | undefined;
-      let callbackServer: Server;
+      let callbackServer: Server | undefined;
       let callbackPort: number;
       let callbacks: URL[] = [];
 
+      // A cold Chrome start on a CI runner can take well over vitest's 10s default.
+      const BROWSER_START_TIMEOUT_MS = 60_000;
+
       beforeAll(async () => {
-        try {
-          browser = await chromium.launch(
-            process.env.CHROME_PATH
-              ? { executablePath: process.env.CHROME_PATH }
-              : { channel: 'chrome' },
-          );
-        } catch (err) {
-          // CI must run this test; locally it is skipped when Chrome is missing.
-          if (process.env.CI) throw err;
-        }
-        callbackServer = createServer((req, res) => {
+        const server = createServer((req, res) => {
           const url = new URL(req.url!, 'http://localhost');
           if (url.pathname === '/callback') callbacks.push(url);
           res.end('ok');
         });
-        await new Promise<void>((r) => callbackServer.listen(0, '127.0.0.1', () => r()));
-        const addr = callbackServer.address();
+        await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+        callbackServer = server;
+        const addr = server.address();
         callbackPort = typeof addr === 'object' && addr ? addr.port : 0;
-      });
+
+        try {
+          browser = await chromium.launch({
+            ...(process.env.CHROME_PATH
+              ? { executablePath: process.env.CHROME_PATH }
+              : { channel: 'chrome' }),
+            timeout: BROWSER_START_TIMEOUT_MS,
+          });
+        } catch (err) {
+          // CI must run this test; locally it is skipped when Chrome is missing.
+          if (process.env.CI) throw err;
+        }
+      }, BROWSER_START_TIMEOUT_MS + 5_000);
 
       afterAll(async () => {
         await browser?.close();
-        await new Promise<void>((r) => callbackServer.close(() => r()));
+        await new Promise<void>((r) => (callbackServer ? callbackServer.close(() => r()) : r()));
       });
 
       it.each(['allow', 'deny'])(
@@ -843,6 +848,7 @@ describe('server integration', () => {
           if (action === 'allow') expect(params.get('code')).toBeTruthy();
           else expect(params.get('error')).toBe('access_denied');
         },
+        30_000,
       );
     });
   });
