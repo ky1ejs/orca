@@ -3,6 +3,21 @@ import * as z from 'zod/v4';
 import { type McpToolsDeps, toolError, toolSuccess } from './helpers.js';
 
 export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
+  // The resolver links CREATED_FROM only when the source task exists in the
+  // same workspace, and silently skips it otherwise. Check up front so callers
+  // get an error instead of a task with no link.
+  async function checkSourceTask(sourceTaskId: string, workspaceId: string) {
+    const json = await deps.graphql(
+      'query SourceTask($id: ID!) { task(id: $id) { workspace { id } } }',
+      { id: sourceTaskId },
+    );
+    const task = json.data?.task as { workspace: { id: string } } | null | undefined;
+    if (task?.workspace.id === workspaceId) return null;
+    return toolError(
+      `sourceTaskId ${sourceTaskId} is not the UUID of a task in workspace ${workspaceId}.`,
+    );
+  }
+
   server.registerTool(
     'create_task',
     {
@@ -23,7 +38,9 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
         sourceTaskId: z
           .string()
           .optional()
-          .describe('ID of the task this one was created from (adds a CREATED_FROM link)'),
+          .describe(
+            'UUID (not display ID) of a task in the same workspace that this task was created from. Adds a CREATED_FROM link.',
+          ),
       },
     },
     async ({ workspaceId, title, description, status, priority, projectId, sourceTaskId }) => {
@@ -36,6 +53,11 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       `;
 
       try {
+        if (sourceTaskId) {
+          const sourceError = await checkSourceTask(sourceTaskId, workspaceId);
+          if (sourceError) return sourceError;
+        }
+
         const json = await deps.graphql(mutation, {
           input: { workspaceId, title, description, status, priority, projectId, sourceTaskId },
         });

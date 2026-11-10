@@ -10,6 +10,23 @@ import {
 } from './helpers.js';
 
 export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
+  // The resolver links CREATED_FROM only when the source task exists in the
+  // same workspace, and silently skips it otherwise. Check up front so callers
+  // get an error instead of a task with no link.
+  async function checkSourceTask(token: string, sourceTaskId: string, workspaceId: string) {
+    const json = await graphqlRequest(
+      deps.backendUrl,
+      token,
+      'query SourceTask($id: ID!) { task(id: $id) { workspace { id } } }',
+      { id: sourceTaskId },
+    );
+    const task = json.data?.task as { workspace: { id: string } } | null | undefined;
+    if (task?.workspace.id === workspaceId) return null;
+    return toolError(
+      `sourceTaskId ${sourceTaskId} is not the UUID of a task in workspace ${workspaceId}.`,
+    );
+  }
+
   server.registerTool(
     'create_task',
     {
@@ -27,15 +44,21 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           .optional()
           .describe('Task priority'),
         projectId: z.string().optional().describe('Project ID to associate with'),
+        sourceTaskId: z
+          .string()
+          .optional()
+          .describe(
+            'UUID (not display ID) of a task in the same workspace that this task was created from. Adds a CREATED_FROM link.',
+          ),
       },
     },
-    async ({ workspaceId, title, description, status, priority, projectId }) => {
+    async ({ workspaceId, title, description, status, priority, projectId, sourceTaskId }) => {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
 
-      // Best-effort: resolve source task from session context for CREATED_FROM relationship
-      let sourceTaskId: string | undefined;
-      if (deps.sessionId) {
+      // Without an explicit sourceTaskId, link to the session's task (best-effort)
+      const explicitSourceTaskId = sourceTaskId;
+      if (!sourceTaskId && deps.sessionId) {
         const session = resolveSession(deps);
         if (!('isError' in session)) {
           sourceTaskId = session.taskId;
@@ -51,6 +74,11 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       `;
 
       try {
+        if (explicitSourceTaskId) {
+          const sourceError = await checkSourceTask(token, explicitSourceTaskId, workspaceId);
+          if (sourceError) return sourceError;
+        }
+
         const json = await graphqlRequest(deps.backendUrl, token, mutation, {
           input: { workspaceId, title, description, status, priority, projectId, sourceTaskId },
         });

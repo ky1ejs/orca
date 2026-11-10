@@ -1,0 +1,559 @@
+[
+  {
+    "name": "create_initiative",
+    "description": "Create a new initiative in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "description": "The workspace ID",
+          "type": "string"
+        },
+        "name": {
+          "description": "Initiative name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Initiative description",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceId", "name"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create_project",
+    "description": "Create a new project in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "description": "The workspace ID",
+          "type": "string"
+        },
+        "name": {
+          "description": "Project name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Project description",
+          "type": "string"
+        },
+        "initiativeId": {
+          "description": "Initiative ID to associate with",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceId", "name"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "create_task",
+    "description": "Create a new task in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "description": "The workspace ID",
+          "type": "string"
+        },
+        "title": {
+          "description": "Task title",
+          "type": "string"
+        },
+        "description": {
+          "description": "Task description",
+          "type": "string"
+        },
+        "status": {
+          "description": "Task status",
+          "type": "string",
+          "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELLED"]
+        },
+        "priority": {
+          "description": "Task priority",
+          "type": "string",
+          "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"]
+        },
+        "projectId": {
+          "description": "Project ID to associate with",
+          "type": "string"
+        },
+        "sourceTaskId": {
+          "description": "UUID (not display ID) of a task in the same workspace that this task was created from. Adds a CREATED_FROM link.",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceId", "title"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete_initiative",
+    "description": "Delete an initiative by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The initiative ID to delete",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete_project",
+    "description": "Delete a project by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The project ID to delete",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "delete_task",
+    "description": "Delete a task by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The task ID to delete",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get_docs",
+    "description": "Get Orca documentation for configuring worktrees, hook scripts, and environment variables. Use this when you need to set up or troubleshoot `.orca/pre-terminal`, `.orca/bootstrap`, and `.orca/teardown` hooks in a repository.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "description": "Specific topic to retrieve. \"worktrees\" = lifecycle and idempotency, \"hooks\" = pre-terminal/bootstrap/teardown setup and deterministic resource isolation, \"environment\" = env vars for hooks and agent sessions. Omit to get all topics.",
+          "type": "string",
+          "enum": ["worktrees", "hooks", "environment"]
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get_initiative",
+    "description": "Get a single initiative by ID, including its projects.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The initiative ID",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get_project",
+    "description": "Get a single project by ID, including its tasks.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The project ID",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "get_task",
+    "description": "Get a single task by ID or display ID (e.g. ORCA-123). When using displayId, workspaceId is required.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Task UUID",
+          "type": "string"
+        },
+        "displayId": {
+          "description": "Task display ID (e.g. ORCA-123)",
+          "type": "string"
+        },
+        "workspaceId": {
+          "description": "Workspace ID (required when using displayId)",
+          "type": "string"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "link_tasks",
+    "description": "Create a relationship (link) between two tasks.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sourceTaskId": {
+          "description": "The source task UUID",
+          "type": "string"
+        },
+        "targetTaskId": {
+          "description": "The target task UUID",
+          "type": "string"
+        },
+        "type": {
+          "description": "Relationship type: BLOCKS (source blocks target), RELATES_TO (bidirectional), DUPLICATES (source duplicates target)",
+          "type": "string",
+          "enum": ["BLOCKS", "RELATES_TO", "DUPLICATES"]
+        }
+      },
+      "required": ["sourceTaskId", "targetTaskId", "type"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_initiatives",
+    "description": "List initiatives in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceSlug"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_labels",
+    "description": "List all labels in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "description": "The workspace ID",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceId"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_projects",
+    "description": "List projects in a workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceSlug"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_task_links",
+    "description": "List all relationships (links) for a given task.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "taskId": {
+          "description": "The task UUID to list relationships for",
+          "type": "string"
+        }
+      },
+      "required": ["taskId"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_tasks",
+    "description": "List tasks in a project (by projectId) or in a workspace (by workspaceSlug). Optionally filter by status. Returns up to `limit` results (default 100). When projectId is provided, workspaceSlug is ignored.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "description": "Project ID to list tasks from",
+          "type": "string"
+        },
+        "workspaceSlug": {
+          "description": "Workspace slug to list all tasks from",
+          "type": "string"
+        },
+        "status": {
+          "description": "Filter tasks by status",
+          "type": "string",
+          "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELLED"]
+        },
+        "limit": {
+          "description": "Maximum number of tasks to return (default 100)",
+          "type": "number"
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_workspace_members",
+    "description": "List members of a workspace. Email is omitted by default.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        },
+        "includeEmail": {
+          "description": "Include member email addresses in the response (default false)",
+          "type": "boolean"
+        }
+      },
+      "required": ["workspaceSlug"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_workspaces",
+    "description": "List all workspaces the current user belongs to.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "search_initiatives",
+    "description": "Search initiatives by name within a workspace. Performs case-insensitive substring matching.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search term to match against initiative names",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceSlug", "query"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "search_projects",
+    "description": "Search projects by name within a workspace. Performs case-insensitive substring matching.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search term to match against project names",
+          "type": "string"
+        }
+      },
+      "required": ["workspaceSlug", "query"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "search_tasks",
+    "description": "Search tasks by title within a workspace. Performs case-insensitive substring matching. Optionally filter by projectId and status. Returns up to `limit` results (default 100).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workspaceSlug": {
+          "description": "The workspace slug",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search term to match against task titles",
+          "type": "string"
+        },
+        "projectId": {
+          "description": "Filter to tasks in this project",
+          "type": "string"
+        },
+        "status": {
+          "description": "Filter tasks by status",
+          "type": "string",
+          "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELLED"]
+        },
+        "limit": {
+          "description": "Maximum number of results to return (default 100)",
+          "type": "number"
+        }
+      },
+      "required": ["workspaceSlug", "query"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "unlink_tasks",
+    "description": "Remove a relationship (link) between tasks.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The relationship ID to remove",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update_initiative",
+    "description": "Update an initiative by ID. All fields are optional — only provided fields are changed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The initiative ID",
+          "type": "string"
+        },
+        "name": {
+          "description": "New initiative name",
+          "type": "string"
+        },
+        "description": {
+          "description": "New initiative description",
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update_project",
+    "description": "Update a project by ID. All fields are optional — only provided fields are changed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The project ID",
+          "type": "string"
+        },
+        "name": {
+          "description": "New project name",
+          "type": "string"
+        },
+        "description": {
+          "description": "New project description",
+          "type": "string"
+        },
+        "defaultDirectory": {
+          "description": "New default directory path, or null to clear",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initiativeId": {
+          "description": "Initiative ID to associate with, or null to disassociate",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "update_task",
+    "description": "Update a task by ID. All fields are optional — only provided fields are changed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The task ID",
+          "type": "string"
+        },
+        "title": {
+          "description": "New task title",
+          "type": "string"
+        },
+        "description": {
+          "description": "New task description",
+          "type": "string"
+        },
+        "status": {
+          "description": "New task status",
+          "type": "string",
+          "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "CANCELLED"]
+        },
+        "priority": {
+          "description": "New task priority",
+          "type": "string",
+          "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"]
+        },
+        "projectId": {
+          "description": "Project ID to move the task to, or null to clear",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assigneeId": {
+          "description": "User ID to assign the task to, or null to unassign",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "labelIds": {
+          "description": "Label IDs to set on the task",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["id"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+]

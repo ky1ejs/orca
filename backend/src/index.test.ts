@@ -34,33 +34,38 @@ describe('server integration', () => {
   beforeAll(async () => {
     const backendDir = resolve(__dirname, '..');
 
-    // Seed a test user first
-    const seedProcess = spawn(
-      'bun',
-      [
-        'run',
-        'src/scripts/seed.ts',
-        '--email',
-        'test@orca.local',
-        '--name',
-        'Test User',
-        '--password',
-        'test-password',
-      ],
-      {
-        cwd: backendDir,
-        env: { ...process.env, JWT_SECRET: TEST_JWT_SECRET },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    );
+    // Seed two test users: the second checks cross-workspace isolation
+    for (const [email, name] of [
+      ['test@orca.local', 'Test User'],
+      ['other@orca.local', 'Other User'],
+    ]) {
+      const seedProcess = spawn(
+        'bun',
+        [
+          'run',
+          'src/scripts/seed.ts',
+          '--email',
+          email,
+          '--name',
+          name,
+          '--password',
+          'test-password',
+        ],
+        {
+          cwd: backendDir,
+          env: { ...process.env, JWT_SECRET: TEST_JWT_SECRET },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
 
-    await new Promise<void>((resolve, reject) => {
-      seedProcess.on('exit', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`Seed failed with code ${code}`));
+      await new Promise<void>((resolve, reject) => {
+        seedProcess.on('exit', (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(`Seed failed with code ${code}`));
+        });
+        seedProcess.on('error', reject);
       });
-      seedProcess.on('error', reject);
-    });
+    }
 
     // Start the server
     await new Promise<void>((resolve, reject) => {
@@ -309,5 +314,18 @@ describe('server integration', () => {
       id: task.id,
       title: 'Remote MCP task',
     });
+
+    // A user outside the workspace must not be able to read the task
+    const otherLogin = await gql(
+      `mutation { login(email: "other@orca.local", password: "test-password") { token } }`,
+    );
+    const otherToken = (otherLogin.body.data as { login: { token: string } }).login.token;
+    const otherRes = await callTool('get_task', { id: task.id }, otherToken);
+    expect(otherRes.status).toBe(200);
+    const denied = (await otherRes.json()) as {
+      result: { isError?: boolean; content: Array<{ text: string }> };
+    };
+    expect(denied.result.isError).toBe(true);
+    expect(denied.result.content[0].text).not.toContain('Remote MCP task');
   });
 });
