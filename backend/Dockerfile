@@ -2,8 +2,8 @@ FROM oven/bun:1 AS build
 WORKDIR /app
 
 # Copy and install all dependencies (including dev)
-COPY package.json bun.lockb* ./
-RUN bun install
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 # Copy source and generate Prisma client
 COPY . .
@@ -13,8 +13,8 @@ FROM oven/bun:1
 WORKDIR /app
 
 # Install production dependencies only
-COPY package.json bun.lockb* ./
-RUN bun install --production
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile
 
 # Copy generated Prisma client from build stage
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma

@@ -3,6 +3,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createServer, type Server } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createMcpServer, type McpToolsDeps } from './mcp-tools.js';
 
 vi.mock('../../daemon/sessions.js', () => ({
@@ -454,6 +457,35 @@ describe('MCP tools', () => {
         const sentVars = JSON.parse(received.body()).variables;
         expect(sentVars.input.workspaceId).toBe('ws-1');
         expect(sentVars.input.title).toBe('Minimal Task');
+      });
+    });
+
+    it('passes an explicit sourceTaskId in the same workspace', async () => {
+      const created = { id: 'task-new', displayId: 'ORCA-101', title: 'Child' };
+      await withMockBackend(
+        { task: { workspace: { id: 'ws-1' } }, createTask: created },
+        async (received) => {
+          const result = await callTool('create_task', {
+            workspaceId: 'ws-1',
+            title: 'Child',
+            sourceTaskId: 'task-parent',
+          });
+          expect(result.isError).toBeUndefined();
+          const sentVars = JSON.parse(received.body()).variables;
+          expect(sentVars.input.sourceTaskId).toBe('task-parent');
+        },
+      );
+    });
+
+    it('rejects an explicit sourceTaskId outside the workspace', async () => {
+      await withMockBackend({ task: null }, async () => {
+        const result = await callTool('create_task', {
+          workspaceId: 'ws-1',
+          title: 'Child',
+          sourceTaskId: 'ORCA-1',
+        });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('sourceTaskId ORCA-1 is not the UUID');
       });
     });
   });
@@ -1331,6 +1363,36 @@ describe('MCP tools', () => {
       expect(text).toContain('ORCA_WORKTREE_PATH');
       expect(text).toContain('ORCA_REPO_ROOT');
       expect(text).toContain('ORCA_SERVER_URL');
+    });
+  });
+
+  // backend/src/mcp/tools.manifest.json records the remote MCP server's tool
+  // definitions. The local copies of those tools must match it exactly; see
+  // docs/mcp.md for how to regenerate it after changing a tool.
+  describe('remote tool parity', () => {
+    it('defines every remote tool identically', async () => {
+      const manifestPath = resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../../../backend/src/mcp/tools.manifest.json',
+      );
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Array<{ name: string }>;
+
+      const client = new Client({ name: 'test', version: '1.0.0' });
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${serverPort}/`)),
+      );
+      const { tools } = await client.listTools();
+      await client.close();
+
+      const local = new Map(
+        tools.map(({ name, description, inputSchema }) => [
+          name,
+          { name, description, inputSchema },
+        ]),
+      );
+      for (const remoteTool of manifest) {
+        expect(local.get(remoteTool.name), remoteTool.name).toEqual(remoteTool);
+      }
     });
   });
 });
