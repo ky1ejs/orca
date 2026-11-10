@@ -57,20 +57,22 @@ The backend is its own OAuth 2.1 authorization server (`backend/src/oauth/`), fo
 1. An unauthenticated request to `/mcp` gets a 401 whose `WWW-Authenticate` header points to `/.well-known/oauth-protected-resource/mcp` (RFC 9728).
 2. That document names the backend as the authorization server. Its metadata is at `/.well-known/oauth-authorization-server` (RFC 8414).
 3. The client registers itself at `/oauth/register` (Dynamic Client Registration, RFC 7591). All clients are public: they prove themselves with PKCE, not a secret.
-4. The client opens `/oauth/authorize` in a browser. The user signs in with their Orca email and password and chooses **Allow**.
+4. The client opens `/oauth/authorize` in a browser. The user signs in with their Orca email and password and chooses **Allow**. Anyone can register a client and choose its name, so the page names the app by the host it returns to (or "an app on this computer" for loopback) and shows the self-declared name only as a claim.
 5. The backend redirects to the client with a single-use code. The client exchanges it at `/oauth/token` with its PKCE verifier.
 
 Tokens:
 
-| Token              | Lifetime   | Stored as        | Notes                                                                                       |
-| ------------------ | ---------- | ---------------- | ------------------------------------------------------------------------------------------- |
-| Authorization code | 10 minutes | SHA-256 hash     | Deleted when used.                                                                          |
-| Access token       | 1 hour     | Not stored (JWT) | Audience is the `/mcp` URL. `/graphql` and WebSockets reject it.                            |
-| Refresh token      | 90 days    | SHA-256 hash     | Rotates on every use. Reusing an old one revokes all of that client's tokens for that user. |
+| Token              | Lifetime             | Stored as        | Notes                                                                                                                                                                                                          |
+| ------------------ | -------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization code | 10 minutes           | SHA-256 hash     | Deleted when used.                                                                                                                                                                                             |
+| Access token       | 1 hour               | Not stored (JWT) | Audience is the `/mcp` URL. `/graphql` and WebSockets reject it.                                                                                                                                               |
+| Refresh token      | 90 days from sign-in | SHA-256 hash     | Rotates on every use; the new token keeps the original expiry. A rotated token still works for 30 seconds, for retries and concurrent refreshes. After that, reusing it revokes every token from that sign-in. |
 
 Redirect URIs must be HTTPS or `http://localhost` / `127.0.0.1`. Loopback redirects may use any port, because native clients pick a free port when they start.
 
-The backend builds its URLs from `PUBLIC_URL` (set in `fly.toml`). Without it, it uses the request's host and `X-Forwarded-Proto`.
+The backend builds its URLs and token audiences from `PUBLIC_URL` (set in `fly.toml`). The server refuses to start in production without it. Outside production it falls back to the request's `Host` and `X-Forwarded-Proto`, which callers control, so that fallback is only for local development and tests.
+
+Expired codes and refresh tokens, and registered clients that never completed a sign-in within 24 hours, are deleted at startup and then hourly.
 
 ## How the endpoint works
 
@@ -82,7 +84,7 @@ Tools do not call the backend over the network. They run through one shared in-p
 
 ## Limitations
 
-- No way to see or revoke connected apps yet. Changing your password does not revoke OAuth tokens. Deleting the user does.
+- No way to see or revoke connected apps yet. Orca has no password change flow; resetting a password with `bun run seed` does not revoke OAuth tokens. Deleting the user cuts off `/mcp` access at once, because each request checks that the user still exists.
 - No scopes. A connected app can do anything the user can do in Orca.
 - No rate limit on `/mcp`, `/oauth/register` or the sign-in form. Each request is one tool call, but a client can send requests as fast as it likes.
 - The GraphQL-backed tool definitions exist in both `web/src/shared/hooks/mcp-tools/` and `backend/src/mcp/tools/`. Change both when you change a tool.

@@ -27,10 +27,12 @@ CREATE TABLE "OAuthAuthorizationCode" (
 CREATE TABLE "OAuthRefreshToken" (
     "id" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
+    "familyId" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "resource" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
+    "rotatedAt" TIMESTAMP(3),
     "revokedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -45,6 +47,9 @@ CREATE INDEX "OAuthAuthorizationCode_expiresAt_idx" ON "OAuthAuthorizationCode"(
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OAuthRefreshToken_tokenHash_key" ON "OAuthRefreshToken"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "OAuthRefreshToken_familyId_idx" ON "OAuthRefreshToken"("familyId");
 
 -- CreateIndex
 CREATE INDEX "OAuthRefreshToken_clientId_userId_idx" ON "OAuthRefreshToken"("clientId", "userId");

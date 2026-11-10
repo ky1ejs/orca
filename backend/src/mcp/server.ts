@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { GraphQLSchema } from 'graphql';
+import type { PrismaClient } from '@prisma/client';
 import { createYoga, type YogaServerInstance } from 'graphql-yoga';
 import type { ServerContext } from '../context.js';
 import { createLoaders } from '../loaders.js';
@@ -111,23 +112,28 @@ async function readBody(request: Request): Promise<{ body: unknown } | Response>
 
 /**
  * Accepts an OAuth access token issued for this resource, or a session JWT
- * from `login` (for clients configured with a static bearer header).
+ * from `login` (for clients configured with a static bearer header). Tokens
+ * for users that no longer exist are rejected, so deleting a user cuts off
+ * access immediately rather than when the token expires.
  */
-async function authenticate(request: Request): Promise<string | null> {
+async function authenticate(request: Request, prisma: PrismaClient): Promise<string | null> {
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) return null;
   const token = header.slice('Bearer '.length);
 
   const resource = mcpResourceUrl(getPublicOrigin(request));
-  const oauthUserId = await verifyAccessToken(token, resource);
-  if (oauthUserId) return oauthUserId;
-
-  try {
-    const payload = await verifyJwt(token);
-    return payload.sub || null;
-  } catch {
-    return null;
+  let userId = await verifyAccessToken(token, resource);
+  if (!userId) {
+    try {
+      userId = (await verifyJwt(token)).sub || null;
+    } catch {
+      return null;
+    }
   }
+  if (!userId) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  return user ? userId : null;
 }
 
 interface McpHandlerDeps {
@@ -161,7 +167,7 @@ export function createMcpHandler({ schema, baseContext }: McpHandlerDeps) {
       return jsonRpcError(405, -32000, 'Method not allowed.', { Allow: 'POST, OPTIONS' });
     }
 
-    const userId = await authenticate(request);
+    const userId = await authenticate(request, baseContext.prisma);
     if (!userId) {
       return jsonRpcError(401, -32001, 'Missing or invalid authentication', {
         // Points clients at the OAuth metadata so they can start the sign-in flow.

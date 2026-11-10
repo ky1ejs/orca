@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { UNUSED_CLIENT_TTL_MS } from './config.js';
 import {
   authorizationServerMetadata,
   authorizeGet,
@@ -47,12 +48,23 @@ export function createOAuthHandler(prisma: PrismaClient) {
   };
 }
 
-/** Deletes expired authorization codes and refresh tokens. */
+/**
+ * Deletes expired authorization codes and refresh tokens, and registered
+ * clients that never completed a sign-in. Registration is unauthenticated,
+ * so without this, abandoned or abusive registrations would pile up.
+ */
 export async function pruneOAuthGrants(prisma: PrismaClient): Promise<number> {
   const now = new Date();
-  const [codes, tokens] = await Promise.all([
+  const [codes, tokens, clients] = await Promise.all([
     prisma.oAuthAuthorizationCode.deleteMany({ where: { expiresAt: { lt: now } } }),
     prisma.oAuthRefreshToken.deleteMany({ where: { expiresAt: { lt: now } } }),
+    prisma.oAuthClient.deleteMany({
+      where: {
+        createdAt: { lt: new Date(now.getTime() - UNUSED_CLIENT_TTL_MS) },
+        authorizationCodes: { none: {} },
+        refreshTokens: { none: {} },
+      },
+    }),
   ]);
-  return codes.count + tokens.count;
+  return codes.count + tokens.count + clients.count;
 }

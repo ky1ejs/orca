@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { SignJWT, jwtVerify } from 'jose';
 import { getSecret } from '../auth/jwt.js';
@@ -6,6 +7,7 @@ import { escapeHtml } from '../webhooks/render-page.js';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   AUTHORIZATION_CODE_TTL_MS,
+  REFRESH_REUSE_GRACE_MS,
   REFRESH_TOKEN_TTL_MS,
   getPublicOrigin,
   mcpResourceUrl,
@@ -164,16 +166,23 @@ interface AuthorizationRequest {
   resource: string;
 }
 
-const PAGE_HEADERS = {
-  'Content-Type': 'text/html; charset=utf-8',
-  'Cache-Control': 'no-store',
-  'X-Frame-Options': 'DENY',
-  'Content-Security-Policy':
-    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
-  'Referrer-Policy': 'no-referrer',
-};
+/**
+ * Browsers apply `form-action` to redirects that follow a form submission, so
+ * the sign-in page must also allow the origin of the client's redirect URI.
+ * Otherwise the 302 back to the client is blocked after Allow or Cancel.
+ */
+function pageHeaders(redirectOrigin?: string): HeadersInit {
+  const formAction = ["'self'", redirectOrigin].filter(Boolean).join(' ');
+  return {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; form-action ${formAction}; frame-ancestors 'none'`,
+    'Referrer-Policy': 'no-referrer',
+  };
+}
 
-function page(title: string, body: string, status = 200): Response {
+function page(title: string, body: string, status = 200, redirectOrigin?: string): Response {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -197,7 +206,7 @@ function page(title: string, body: string, status = 200): Response {
 </head>
 <body><div class="card">${body}</div></body>
 </html>`;
-  return new Response(html, { status, headers: PAGE_HEADERS });
+  return new Response(html, { status, headers: pageHeaders(redirectOrigin) });
 }
 
 function errorPage(message: string, status = 400): Response {
@@ -237,17 +246,28 @@ async function unsealRequest(sealed: string): Promise<AuthorizationRequest | nul
   }
 }
 
+/**
+ * Anyone can register a client and pick its name, so the page identifies the
+ * app by where it sends you back to, which Orca checked at registration, and
+ * shows the self-declared name only as a claim.
+ */
+function describeDestination(redirectUri: string): string {
+  const url = new URL(redirectUri);
+  return url.protocol === 'http:' ? 'an app on this computer' : url.hostname;
+}
+
 function loginForm(
   req: AuthorizationRequest,
   sealed: string,
   error?: string,
   email = '',
 ): Response {
-  const redirectHost = new URL(req.redirectUri).host;
+  const destination = escapeHtml(describeDestination(req.redirectUri));
   return page(
     'Connect',
-    `<h1>Connect ${escapeHtml(req.clientName)} to Orca</h1>
-    <p><strong>${escapeHtml(req.clientName)}</strong> wants to read and change your Orca workspaces, projects and tasks. After you allow it, you'll return to <strong>${escapeHtml(redirectHost)}</strong>.</p>
+    `<h1>Allow ${destination} to access Orca?</h1>
+    <p>It will be able to read and change your Orca workspaces, projects and tasks. After you allow it, you'll return to <strong>${destination}</strong>.</p>
+    <p>The app calls itself <strong>${escapeHtml(req.clientName)}</strong>. Orca doesn't verify this name. Only continue if you started connecting from ${destination}.</p>
     ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
     <form method="post" action="/oauth/authorize">
       <input type="hidden" name="request" value="${escapeHtml(sealed)}">
@@ -261,6 +281,7 @@ function loginForm(
       </div>
     </form>`,
     error ? 401 : 200,
+    new URL(req.redirectUri).origin,
   );
 }
 
@@ -355,21 +376,38 @@ export async function authorizePost(request: Request, prisma: PrismaClient): Pro
 
 // ─── Token endpoint ─────────────────────────────────────────────────
 
+interface TokenGrant {
+  clientId: string;
+  userId: string;
+  resource: string;
+}
+
+/**
+ * Issues an access token and a refresh token. A new sign-in starts a refresh
+ * token family; a refresh continues it and keeps its absolute expiry, so a
+ * sign-in lasts at most REFRESH_TOKEN_TTL_MS however often it is refreshed.
+ */
 async function issueTokens(
   prisma: PrismaClient,
-  grant: { clientId: string; userId: string; resource: string },
+  grant: TokenGrant,
+  family?: { familyId: string; expiresAt: Date },
 ): Promise<Response> {
   const refreshToken = randomToken();
   await prisma.oAuthRefreshToken.create({
     data: {
       tokenHash: hashToken(refreshToken),
+      familyId: family?.familyId ?? randomUUID(),
       clientId: grant.clientId,
       userId: grant.userId,
       resource: grant.resource,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      expiresAt: family?.expiresAt ?? new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     },
   });
-  const accessToken = await signAccessToken(grant);
+  const accessToken = await signAccessToken({
+    clientId: grant.clientId,
+    userId: grant.userId,
+    resource: grant.resource,
+  });
   return json(
     {
       access_token: accessToken,
@@ -433,34 +471,48 @@ async function exchangeRefreshToken(
     return oauthError('invalid_request', 'refresh_token and client_id are required.');
   }
 
-  const existing = await prisma.oAuthRefreshToken.findUnique({
-    where: { tokenHash: hashToken(refreshToken) },
-  });
+  const tokenHash = hashToken(refreshToken);
+  const existing = await prisma.oAuthRefreshToken.findUnique({ where: { tokenHash } });
   if (!existing || existing.clientId !== clientId) {
     return oauthError('invalid_grant', 'The refresh token is invalid.');
-  }
-
-  // A rotated token being presented again means it may have leaked: revoke
-  // every token this client holds for this user (OAuth 2.1 §4.3.1).
-  if (existing.revokedAt) {
-    await prisma.oAuthRefreshToken.updateMany({
-      where: { clientId: existing.clientId, userId: existing.userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    return oauthError('invalid_grant', 'The refresh token was already used.');
   }
   if (existing.expiresAt < new Date()) {
     return oauthError('invalid_grant', 'The refresh token expired.');
   }
 
-  // The conditional update makes rotation single-use under concurrent requests.
-  const { count } = await prisma.oAuthRefreshToken.updateMany({
-    where: { id: existing.id, revokedAt: null },
+  if (!existing.revokedAt) {
+    // The conditional update makes rotation single-use under concurrent requests.
+    const now = new Date();
+    const { count } = await prisma.oAuthRefreshToken.updateMany({
+      where: { id: existing.id, revokedAt: null },
+      data: { revokedAt: now, rotatedAt: now },
+    });
+    if (count === 1) return issueTokens(prisma, existing, existing);
+  }
+
+  // The token was already rotated or revoked. Re-read it: a concurrent request
+  // may have rotated it between our read and our update.
+  const current = await prisma.oAuthRefreshToken.findUnique({ where: { tokenHash } });
+  const familyActive =
+    (await prisma.oAuthRefreshToken.count({
+      where: { familyId: existing.familyId, revokedAt: null },
+    })) > 0;
+  const withinGrace =
+    current?.rotatedAt != null &&
+    Date.now() - current.rotatedAt.getTime() <= REFRESH_REUSE_GRACE_MS;
+
+  // Retries after a lost response, and clients racing on one stored token,
+  // present the old token again within seconds. Give them a token in the same
+  // family instead of signing everyone out.
+  if (withinGrace && familyActive) return issueTokens(prisma, existing, existing);
+
+  // Otherwise the old token may have leaked: revoke the whole family
+  // (OAuth 2.1 §4.3.1).
+  await prisma.oAuthRefreshToken.updateMany({
+    where: { familyId: existing.familyId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
-  if (count !== 1) return oauthError('invalid_grant', 'The refresh token was already used.');
-
-  return issueTokens(prisma, existing);
+  return oauthError('invalid_grant', 'The refresh token was already used.');
 }
 
 export async function token(request: Request, prisma: PrismaClient): Promise<Response> {

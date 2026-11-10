@@ -12,6 +12,9 @@ import type { ServerContext } from './context.js';
 import { createLoaders } from './loaders.js';
 import { createMcpHandler } from './mcp/server.js';
 import { createOAuthHandler, pruneOAuthGrants } from './oauth/index.js';
+import { assertPublicUrlConfigured } from './oauth/config.js';
+
+assertPublicUrlConfigured();
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
 
@@ -159,12 +162,18 @@ prisma.webhookDelivery
     // Non-critical — log and continue
   });
 
-pruneOAuthGrants(prisma)
-  .then((count) => {
-    if (count > 0) console.log(`Pruned ${count} expired OAuth grants`);
-  })
-  .catch(() => {
-    // Non-critical — expired grants are rejected on use anyway
-  });
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+
+function pruneOAuth() {
+  pruneOAuthGrants(prisma)
+    .then((count) => {
+      if (count > 0) console.log(`Pruned ${count} expired OAuth grants and unused clients`);
+    })
+    .catch((err) => {
+      console.error('oauth:prune failed', err);
+    });
+}
+pruneOAuth();
+setInterval(pruneOAuth, PRUNE_INTERVAL_MS).unref();
 
 export { server };

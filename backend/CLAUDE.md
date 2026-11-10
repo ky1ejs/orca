@@ -14,7 +14,8 @@ docker compose up -d
 # 3. Copy env and configure
 cp .env.example .env
 # Requires: DATABASE_URL, JWT_SECRET, INVITE_CODE, PORT (default 4000)
-# Optional: PUBLIC_URL (origin used in OAuth metadata; defaults to the request's host)
+# PUBLIC_URL: origin used in OAuth metadata. Required when NODE_ENV=production;
+# optional locally (defaults to the request's host)
 
 # 4. Generate Prisma client
 bun run db:generate
@@ -97,6 +98,7 @@ src/
 - **Framework**: Vitest
 - **Pattern**: `*.test.ts` co-located next to source files
 - **Run**: `bun run test`
+- The OAuth browser test in `src/index.test.ts` drives Chrome through `playwright-core` (`channel: 'chrome'`, or `CHROME_PATH`). It is skipped locally when Chrome can't start, and fails in CI.
 
 ## Schema Workflow
 

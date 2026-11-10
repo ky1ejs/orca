@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
+import { createServer, type Server } from 'node:http';
+import { PrismaClient } from '@prisma/client';
+import { chromium, type Browser } from 'playwright-core';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -389,7 +393,8 @@ describe('server integration', () => {
       const pageRes = await fetch(authorizationUrl);
       expect(pageRes.status).toBe(200);
       const html = await pageRes.text();
-      expect(html).toContain('Connect Orca integration test to Orca');
+      expect(html).toContain('Allow an app on this computer to access Orca?');
+      expect(html).toContain('The app calls itself <strong>Orca integration test</strong>');
       const sealed = /name="request" value="([^"]+)"/.exec(html)?.[1];
       expect(sealed).toBeDefined();
 
@@ -471,7 +476,7 @@ describe('server integration', () => {
       expect(body.errors).toBeDefined();
     });
 
-    it('rotates refresh tokens and revokes the family when one is reused', async () => {
+    it('rotates refresh tokens', async () => {
       const { provider, store } = createProvider();
       const first = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
         authProvider: provider,
@@ -498,10 +503,6 @@ describe('server integration', () => {
       expect(rotatedRes.status).toBe(200);
       const rotated = (await rotatedRes.json()) as OAuthTokens;
       expect(rotated.refresh_token).not.toBe(original);
-
-      // Reusing the old token fails and revokes the new one too.
-      expect((await refresh(original)).status).toBe(400);
-      expect((await refresh(rotated.refresh_token!)).status).toBe(400);
     });
 
     it('redirects with access_denied when the user cancels', async () => {
@@ -548,6 +549,301 @@ describe('server integration', () => {
       });
       expect(reg.status).toBe(400);
       expect(((await reg.json()) as { error: string }).error).toBe('invalid_redirect_uri');
+    });
+  });
+
+  describe('MCP OAuth flow details', () => {
+    const base = `http://127.0.0.1:${TEST_PORT}`;
+    const prisma = new PrismaClient();
+
+    afterAll(async () => {
+      await prisma.$disconnect();
+    });
+
+    function pkce() {
+      const verifier = randomBytes(32).toString('base64url');
+      const challenge = createHash('sha256').update(verifier).digest('base64url');
+      return { verifier, challenge };
+    }
+
+    async function register(redirectUri: string, name = 'Flow test') {
+      const res = await fetch(`${base}/oauth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_name: name, redirect_uris: [redirectUri] }),
+      });
+      expect(res.status).toBe(201);
+      return ((await res.json()) as { client_id: string }).client_id;
+    }
+
+    function authorizeUrl(clientId: string, redirectUri: string, challenge: string) {
+      const url = new URL(`${base}/oauth/authorize`);
+      url.search = new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: 'st',
+        resource: `${base}/mcp`,
+      }).toString();
+      return url;
+    }
+
+    /** Runs the sign-in with fetch and returns the code from the redirect. */
+    async function getCode(clientId: string, redirectUri: string, challenge: string) {
+      const html = await (await fetch(authorizeUrl(clientId, redirectUri, challenge))).text();
+      const sealed = /name="request" value="([^"]+)"/.exec(html)![1];
+      const res = await fetch(`${base}/oauth/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          request: sealed,
+          email: 'test@orca.local',
+          password: 'test-password',
+          action: 'allow',
+        }),
+        redirect: 'manual',
+      });
+      const location = new URL(res.headers.get('location')!);
+      expect(location.searchParams.get('state')).toBe('st');
+      return location.searchParams.get('code')!;
+    }
+
+    async function tokenRequest(params: Record<string, string>) {
+      const res = await fetch(`${base}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params),
+      });
+      return { status: res.status, body: (await res.json()) as Record<string, string> };
+    }
+
+    async function signIn(redirectUri = 'https://app.example/callback') {
+      const clientId = await register(redirectUri);
+      const { verifier, challenge } = pkce();
+      const code = await getCode(clientId, redirectUri, challenge);
+      const { status, body } = await tokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      });
+      expect(status).toBe(200);
+      return { clientId, tokens: body };
+    }
+
+    it.each([
+      ['a wrong code_verifier', { code_verifier: 'z'.repeat(43) }, 'invalid_grant'],
+      ['a different redirect_uri', { redirect_uri: 'https://app.example/other' }, 'invalid_grant'],
+      ['another client_id', { client_id: 'not-the-client' }, 'invalid_grant'],
+      ['a different resource', { resource: 'https://other.example/mcp' }, 'invalid_target'],
+    ])('rejects a code exchanged with %s', async (_label, override, error) => {
+      const redirectUri = 'https://app.example/callback';
+      const clientId = await register(redirectUri);
+      const { verifier, challenge } = pkce();
+      const code = await getCode(clientId, redirectUri, challenge);
+      const { status, body } = await tokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+        ...override,
+      });
+      expect(status).toBe(400);
+      expect(body.error).toBe(error);
+    });
+
+    it('rejects an expired code', async () => {
+      const redirectUri = 'https://app.example/callback';
+      const clientId = await register(redirectUri);
+      const { verifier, challenge } = pkce();
+      const code = await getCode(clientId, redirectUri, challenge);
+      await prisma.oAuthAuthorizationCode.updateMany({
+        where: { clientId },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+      const { status, body } = await tokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      });
+      expect(status).toBe(400);
+      expect(body.error).toBe('invalid_grant');
+    });
+
+    it('accepts a loopback redirect on a different port than registered', async () => {
+      const clientId = await register('http://localhost:33418/callback');
+      const redirectUri = 'http://localhost:40123/callback';
+      const { verifier, challenge } = pkce();
+      const code = await getCode(clientId, redirectUri, challenge);
+      const { status } = await tokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      });
+      expect(status).toBe(200);
+    });
+
+    it('lets concurrent refreshes with one token both succeed', async () => {
+      const { clientId, tokens } = await signIn();
+      const refresh = () =>
+        tokenRequest({
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+          client_id: clientId,
+        });
+      const [a, b] = await Promise.all([refresh(), refresh()]);
+      expect([a.status, b.status]).toEqual([200, 200]);
+
+      // Both new tokens still work: the race did not revoke the family.
+      for (const next of [a.body.refresh_token, b.body.refresh_token]) {
+        const res = await tokenRequest({
+          grant_type: 'refresh_token',
+          refresh_token: next,
+          client_id: clientId,
+        });
+        expect(res.status).toBe(200);
+      }
+    });
+
+    it('revokes the family when a rotated token is reused after the grace period', async () => {
+      const { clientId, tokens } = await signIn();
+      const rotated = await tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: tokens.refresh_token,
+        client_id: clientId,
+      });
+      expect(rotated.status).toBe(200);
+
+      await prisma.oAuthRefreshToken.updateMany({
+        where: { clientId, rotatedAt: { not: null } },
+        data: { rotatedAt: new Date(Date.now() - 60_000) },
+      });
+
+      const reuse = await tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: tokens.refresh_token,
+        client_id: clientId,
+      });
+      expect(reuse.status).toBe(400);
+      const next = await tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: rotated.body.refresh_token,
+        client_id: clientId,
+      });
+      expect(next.status).toBe(400);
+    });
+
+    it('keeps the family expiry when refreshing', async () => {
+      const { clientId, tokens } = await signIn();
+      const [first] = await prisma.oAuthRefreshToken.findMany({ where: { clientId } });
+      await tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: tokens.refresh_token,
+        client_id: clientId,
+      });
+      const all = await prisma.oAuthRefreshToken.findMany({ where: { clientId } });
+      expect(all).toHaveLength(2);
+      expect(new Set(all.map((t) => t.expiresAt.getTime()))).toEqual(
+        new Set([first.expiresAt.getTime()]),
+      );
+    });
+
+    it('rejects OAuth access tokens on the GraphQL WebSocket', async () => {
+      const { tokens } = await signIn();
+      const connect = (token: string) =>
+        new Promise<string>((resolve) => {
+          const ws = new WebSocket(`ws://127.0.0.1:${TEST_PORT}/graphql`, 'graphql-transport-ws');
+          ws.onopen = () =>
+            ws.send(JSON.stringify({ type: 'connection_init', payload: { token } }));
+          ws.onmessage = (event) => {
+            resolve(JSON.parse(String(event.data)).type);
+            ws.close();
+          };
+          ws.onclose = (event) => resolve(`closed:${event.code}`);
+        });
+
+      expect(await connect(authToken)).toBe('connection_ack');
+      expect(await connect(tokens.access_token)).toBe('closed:4403');
+    });
+
+    it('allows the redirect origin in the sign-in page CSP', async () => {
+      const clientId = await register('https://app.example/callback');
+      const res = await fetch(
+        authorizeUrl(clientId, 'https://app.example/callback', 'c'.repeat(43)),
+      );
+      expect(res.headers.get('content-security-policy')).toContain(
+        "form-action 'self' https://app.example",
+      );
+    });
+
+    describe('in a real browser', () => {
+      let browser: Browser | undefined;
+      let callbackServer: Server;
+      let callbackPort: number;
+      let callbacks: URL[] = [];
+
+      beforeAll(async () => {
+        try {
+          browser = await chromium.launch(
+            process.env.CHROME_PATH
+              ? { executablePath: process.env.CHROME_PATH }
+              : { channel: 'chrome' },
+          );
+        } catch (err) {
+          // CI must run this test; locally it is skipped when Chrome is missing.
+          if (process.env.CI) throw err;
+        }
+        callbackServer = createServer((req, res) => {
+          const url = new URL(req.url!, 'http://localhost');
+          if (url.pathname === '/callback') callbacks.push(url);
+          res.end('ok');
+        });
+        await new Promise<void>((r) => callbackServer.listen(0, '127.0.0.1', () => r()));
+        const addr = callbackServer.address();
+        callbackPort = typeof addr === 'object' && addr ? addr.port : 0;
+      });
+
+      afterAll(async () => {
+        await browser?.close();
+        await new Promise<void>((r) => callbackServer.close(() => r()));
+      });
+
+      it.each(['allow', 'deny'])(
+        'follows the redirect back to the client on %s',
+        async (action) => {
+          if (!browser) return;
+          callbacks = [];
+          const redirectUri = `http://localhost:${callbackPort}/callback`;
+          const clientId = await register(redirectUri, 'Browser test');
+          const { challenge } = pkce();
+
+          const page = await browser.newPage();
+          await page.goto(authorizeUrl(clientId, redirectUri, challenge).toString());
+          if (action === 'allow') {
+            await page.fill('#email', 'test@orca.local');
+            await page.fill('#password', 'test-password');
+            await page.click('button[value="allow"]');
+          } else {
+            await page.click('button[value="deny"]');
+          }
+          await page.waitForURL(/\/callback/);
+          await page.close();
+
+          expect(callbacks).toHaveLength(1);
+          const params = callbacks[0].searchParams;
+          expect(params.get('state')).toBe('st');
+          if (action === 'allow') expect(params.get('code')).toBeTruthy();
+          else expect(params.get('error')).toBe('access_denied');
+        },
+      );
     });
   });
 });

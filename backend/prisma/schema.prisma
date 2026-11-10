@@ -347,20 +347,24 @@ model OAuthAuthorizationCode {
   @@index([expiresAt])
 }
 
-/// A rotating refresh token. Only the SHA-256 hash is stored. Using a
-/// revoked token revokes every token for that client and user.
+/// A rotating refresh token. Only the SHA-256 hash is stored. Each sign-in
+/// starts a family; rotation keeps the family and its absolute expiry.
+/// Presenting a rotated token after the grace period revokes the family.
 model OAuthRefreshToken {
   id        String      @id @default(cuid())
   tokenHash String      @unique
+  familyId  String
   clientId  String
   client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
   userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   resource  String
   expiresAt DateTime
+  rotatedAt DateTime?
   revokedAt DateTime?
   createdAt DateTime    @default(now())
 
+  @@index([familyId])
   @@index([clientId, userId])
   @@index([expiresAt])
 }
