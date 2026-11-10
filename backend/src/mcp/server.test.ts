@@ -7,6 +7,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { createSchema } from 'graphql-yoga';
 import type { PrismaClient } from '@prisma/client';
 import { signJwt } from '../auth/jwt.js';
+import { signAccessToken } from '../oauth/tokens.js';
 import type { ServerContext } from '../context.js';
 import { pubsub } from '../pubsub.js';
 import { createMcpHandler } from './server.js';
@@ -41,10 +42,17 @@ const schema = createSchema<ServerContext>({
   },
 });
 
-const handler = createMcpHandler({
-  schema,
-  baseContext: { prisma: {} as PrismaClient, pubsub },
-});
+const DELETED_USER = 'deleted-user';
+
+// Every user exists except DELETED_USER.
+const prisma = {
+  user: {
+    findUnique: async ({ where }: { where: { id: string } }) =>
+      where.id === DELETED_USER ? null : { id: where.id },
+  },
+} as unknown as PrismaClient;
+
+const handler = createMcpHandler({ schema, baseContext: { prisma, pubsub } });
 
 function post(body: string, token?: string): Request {
   const headers: Record<string, string> = {
@@ -99,13 +107,37 @@ describe('createMcpHandler', () => {
   it('rejects requests without a bearer token', async () => {
     const res = await handler(rpc({ method: 'tools/list' }));
     expect(res.status).toBe(401);
-    expect(res.headers.get('WWW-Authenticate')).toContain('Bearer');
+    expect(res.headers.get('WWW-Authenticate')).toBe(
+      'Bearer resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"',
+    );
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
   it('rejects requests with an invalid token', async () => {
     const res = await handler(rpc({ method: 'tools/list' }, 'not-a-jwt'));
     expect(res.status).toBe(401);
+  });
+
+  it('rejects tokens for users that no longer exist', async () => {
+    const deleted = await signJwt({ sub: DELETED_USER, email: 'gone@example.com' });
+    const res = await handler(rpc({ method: 'tools/list' }, deleted));
+    expect(res.status).toBe(401);
+  });
+
+  it('accepts OAuth access tokens for this resource only', async () => {
+    const ok = await signAccessToken({
+      userId: 'user1',
+      clientId: 'c1',
+      resource: 'http://localhost/mcp',
+    });
+    expect((await handler(rpc({ method: 'tools/list' }, ok))).status).toBe(200);
+
+    const otherResource = await signAccessToken({
+      userId: 'user1',
+      clientId: 'c1',
+      resource: 'https://other.example/mcp',
+    });
+    expect((await handler(rpc({ method: 'tools/list' }, otherResource))).status).toBe(401);
   });
 
   it('rejects JSON-RPC batches', async () => {

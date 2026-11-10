@@ -11,6 +11,10 @@ import { handleGitHubOAuthCallback } from './webhooks/github-oauth.js';
 import type { ServerContext } from './context.js';
 import { createLoaders } from './loaders.js';
 import { createMcpHandler } from './mcp/server.js';
+import { createOAuthHandler, pruneOAuthGrants } from './oauth/index.js';
+import { assertPublicUrlConfigured } from './oauth/config.js';
+
+assertPublicUrlConfigured();
 
 const PUBLIC_MUTATIONS = ['login', 'register'];
 
@@ -64,6 +68,7 @@ const yoga = createYoga({
 });
 
 const handleMcpRequest = createMcpHandler({ schema, baseContext: { prisma, pubsub } });
+const handleOAuthRequest = createOAuthHandler(prisma);
 
 const PORT = Number(process.env.PORT ?? 4000);
 
@@ -101,7 +106,7 @@ const wsHandler = makeHandler({
 const server = Bun.serve({
   port: PORT,
   hostname: '0.0.0.0',
-  fetch(request, server) {
+  async fetch(request, server) {
     const url = new URL(request.url);
     if (url.pathname === '/health') {
       return new Response('ok', { status: 200 });
@@ -118,6 +123,11 @@ const server = Bun.serve({
 
     if (url.pathname === '/mcp') {
       return handleMcpRequest(request);
+    }
+
+    if (url.pathname.startsWith('/.well-known/') || url.pathname.startsWith('/oauth/')) {
+      const oauthResponse = await handleOAuthRequest(request, url.pathname);
+      if (oauthResponse) return oauthResponse;
     }
 
     if (url.pathname === '/graphql' && request.headers.get('upgrade') === 'websocket') {
@@ -151,5 +161,19 @@ prisma.webhookDelivery
   .catch(() => {
     // Non-critical — log and continue
   });
+
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+
+function pruneOAuth() {
+  pruneOAuthGrants(prisma)
+    .then((count) => {
+      if (count > 0) console.log(`Pruned ${count} expired OAuth grants and unused clients`);
+    })
+    .catch((err) => {
+      console.error('oauth:prune failed', err);
+    });
+}
+pruneOAuth();
+setInterval(pruneOAuth, PRUNE_INTERVAL_MS).unref();
 
 export { server };

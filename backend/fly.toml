@@ -4,6 +4,7 @@ primary_region = "iad"
 [env]
 PORT = "4000"
 NODE_ENV = "production"
+PUBLIC_URL = "https://orca-api.fly.dev"
 
 [http_service]
 internal_port = 4000
