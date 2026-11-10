@@ -86,6 +86,8 @@ model User {
   memberships       WorkspaceMembership[]
   sentInvitations   WorkspaceInvitation[] @relation("invitationsSent")
   assignedTasks     Task[]                @relation("assignedTasks")
+  oauthCodes         OAuthAuthorizationCode[]
+  oauthRefreshTokens OAuthRefreshToken[]
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 }
@@ -313,4 +315,52 @@ model TaskRelationship {
   @@index([sourceTaskId])
   @@index([targetTaskId])
   @@index([workspaceId])
+}
+
+// ─── OAuth 2.1 for the remote MCP server (/mcp) ─────────────────────
+
+/// A client registered through Dynamic Client Registration (RFC 7591).
+/// All clients are public: they authenticate with PKCE, not a secret.
+model OAuthClient {
+  id                 String                   @id @default(cuid())
+  name               String
+  redirectUris       String[]
+  createdAt          DateTime                 @default(now())
+  authorizationCodes OAuthAuthorizationCode[]
+  refreshTokens      OAuthRefreshToken[]
+}
+
+/// A single-use authorization code. Only the SHA-256 hash is stored.
+model OAuthAuthorizationCode {
+  id            String      @id @default(cuid())
+  codeHash      String      @unique
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String
+  resource      String
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([expiresAt])
+}
+
+/// A rotating refresh token. Only the SHA-256 hash is stored. Using a
+/// revoked token revokes every token for that client and user.
+model OAuthRefreshToken {
+  id        String      @id @default(cuid())
+  tokenHash String      @unique
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([clientId, userId])
+  @@index([expiresAt])
 }

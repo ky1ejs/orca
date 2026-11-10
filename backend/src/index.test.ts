@@ -2,6 +2,16 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  UnauthorizedError,
+  type OAuthClientProvider,
+} from '@modelcontextprotocol/sdk/client/auth.js';
+import type {
+  OAuthClientInformationMixed,
+  OAuthTokens,
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_PORT = 4444;
@@ -327,5 +337,217 @@ describe('server integration', () => {
     };
     expect(denied.result.isError).toBe(true);
     expect(denied.result.content[0].text).not.toContain('Remote MCP task');
+  });
+
+  describe('MCP OAuth sign-in', () => {
+    const base = `http://127.0.0.1:${TEST_PORT}`;
+    const redirectUrl = 'http://localhost:33418/callback';
+
+    /** In-memory provider, like the one an MCP client such as Claude Code keeps. */
+    function createProvider() {
+      const store: {
+        client?: OAuthClientInformationMixed;
+        tokens?: OAuthTokens;
+        verifier?: string;
+        authorizationUrl?: URL;
+      } = {};
+      const provider: OAuthClientProvider = {
+        redirectUrl,
+        clientMetadata: {
+          client_name: 'Orca integration test',
+          redirect_uris: [redirectUrl],
+          grant_types: ['authorization_code', 'refresh_token'],
+          response_types: ['code'],
+          token_endpoint_auth_method: 'none',
+        },
+        clientInformation: () => store.client,
+        saveClientInformation: (info) => {
+          store.client = info;
+        },
+        tokens: () => store.tokens,
+        saveTokens: (tokens) => {
+          store.tokens = tokens;
+        },
+        redirectToAuthorization: (url) => {
+          store.authorizationUrl = url;
+        },
+        saveCodeVerifier: (verifier) => {
+          store.verifier = verifier;
+        },
+        codeVerifier: () => store.verifier!,
+      };
+      return { provider, store };
+    }
+
+    /** Plays the user's browser: loads the sign-in page and submits it. */
+    async function signInInBrowser(
+      authorizationUrl: URL,
+      email: string,
+      password: string,
+      action = 'allow',
+    ) {
+      const pageRes = await fetch(authorizationUrl);
+      expect(pageRes.status).toBe(200);
+      const html = await pageRes.text();
+      expect(html).toContain('Connect Orca integration test to Orca');
+      const sealed = /name="request" value="([^"]+)"/.exec(html)?.[1];
+      expect(sealed).toBeDefined();
+
+      return fetch(`${base}/oauth/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ request: sealed!, email, password, action }),
+        redirect: 'manual',
+      });
+    }
+
+    async function connect(provider: OAuthClientProvider) {
+      const client = new Client({ name: 'oauth-test', version: '1.0.0' });
+      const transport = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+        authProvider: provider,
+      });
+      await client.connect(transport);
+      return { client, transport };
+    }
+
+    it('signs in through discovery, registration, the browser page and PKCE', async () => {
+      const { provider, store } = createProvider();
+
+      // 1. First connect has no token: the SDK discovers metadata, registers,
+      //    and asks the client to open the authorization URL.
+      const first = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+        authProvider: provider,
+      });
+      await expect(
+        new Client({ name: 'oauth-test', version: '1.0.0' }).connect(first),
+      ).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(store.client?.client_id).toBeDefined();
+      expect(store.authorizationUrl?.toString()).toContain(`${base}/oauth/authorize`);
+
+      // 2. A wrong password re-renders the page instead of redirecting.
+      const wrong = await signInInBrowser(store.authorizationUrl!, 'test@orca.local', 'nope');
+      expect(wrong.status).toBe(401);
+      expect(await wrong.text()).toContain('Incorrect email or password.');
+
+      // 3. The right password redirects back with a code and the issuer.
+      const ok = await signInInBrowser(store.authorizationUrl!, 'test@orca.local', 'test-password');
+      expect(ok.status).toBe(302);
+      const callback = new URL(ok.headers.get('location')!);
+      expect(`${callback.origin}${callback.pathname}`).toBe(redirectUrl);
+      expect(callback.searchParams.get('iss')).toBe(base);
+      const code = callback.searchParams.get('code')!;
+
+      // 4. The client exchanges the code and can now use the tools.
+      await first.finishAuth(code);
+      expect(store.tokens?.refresh_token).toBeDefined();
+      const { client } = await connect(provider);
+      const { tools } = await client.listTools();
+      expect(tools.map((t) => t.name)).toContain('list_workspaces');
+      const result = (await client.callTool({ name: 'list_workspaces', arguments: {} })) as {
+        content: Array<{ text: string }>;
+      };
+      expect(JSON.parse(result.content[0].text)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: workspaceId })]),
+      );
+      await client.close();
+
+      // 5. The code is single-use.
+      const replay = await fetch(`${base}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: store.client!.client_id,
+          redirect_uri: redirectUrl,
+          code_verifier: store.verifier!,
+        }),
+      });
+      expect(replay.status).toBe(400);
+      expect(((await replay.json()) as { error: string }).error).toBe('invalid_grant');
+
+      // 6. The access token is scoped to /mcp and cannot call /graphql.
+      const { body } = await gql('{ me { id } }', store.tokens!.access_token);
+      expect(body.errors).toBeDefined();
+    });
+
+    it('rotates refresh tokens and revokes the family when one is reused', async () => {
+      const { provider, store } = createProvider();
+      const first = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+        authProvider: provider,
+      });
+      await expect(
+        new Client({ name: 'oauth-test', version: '1.0.0' }).connect(first),
+      ).rejects.toBeInstanceOf(UnauthorizedError);
+      const ok = await signInInBrowser(store.authorizationUrl!, 'test@orca.local', 'test-password');
+      await first.finishAuth(new URL(ok.headers.get('location')!).searchParams.get('code')!);
+
+      const refresh = (refreshToken: string) =>
+        fetch(`${base}/oauth/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: store.client!.client_id,
+          }),
+        });
+
+      const original = store.tokens!.refresh_token!;
+      const rotatedRes = await refresh(original);
+      expect(rotatedRes.status).toBe(200);
+      const rotated = (await rotatedRes.json()) as OAuthTokens;
+      expect(rotated.refresh_token).not.toBe(original);
+
+      // Reusing the old token fails and revokes the new one too.
+      expect((await refresh(original)).status).toBe(400);
+      expect((await refresh(rotated.refresh_token!)).status).toBe(400);
+    });
+
+    it('redirects with access_denied when the user cancels', async () => {
+      const { provider, store } = createProvider();
+      const first = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+        authProvider: provider,
+      });
+      await expect(
+        new Client({ name: 'oauth-test', version: '1.0.0' }).connect(first),
+      ).rejects.toBeInstanceOf(UnauthorizedError);
+
+      const res = await signInInBrowser(store.authorizationUrl!, '', '', 'deny');
+      expect(res.status).toBe(302);
+      expect(new URL(res.headers.get('location')!).searchParams.get('error')).toBe('access_denied');
+    });
+
+    it('refuses unregistered redirect URIs without redirecting', async () => {
+      const reg = await fetch(`${base}/oauth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: ['https://app.example/callback'] }),
+      });
+      expect(reg.status).toBe(201);
+      const { client_id } = (await reg.json()) as { client_id: string };
+
+      const url = new URL(`${base}/oauth/authorize`);
+      url.search = new URLSearchParams({
+        response_type: 'code',
+        client_id,
+        redirect_uri: 'https://evil.example/callback',
+        code_challenge: 'x'.repeat(43),
+        code_challenge_method: 'S256',
+      }).toString();
+      const res = await fetch(url, { redirect: 'manual' });
+      expect(res.status).toBe(400);
+      expect(res.headers.get('location')).toBeNull();
+    });
+
+    it('rejects registrations with non-HTTPS redirect URIs', async () => {
+      const reg = await fetch(`${base}/oauth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: ['http://app.example/callback'] }),
+      });
+      expect(reg.status).toBe(400);
+      expect(((await reg.json()) as { error: string }).error).toBe('invalid_redirect_uri');
+    });
   });
 });

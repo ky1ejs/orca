@@ -99,7 +99,9 @@ describe('createMcpHandler', () => {
   it('rejects requests without a bearer token', async () => {
     const res = await handler(rpc({ method: 'tools/list' }));
     expect(res.status).toBe(401);
-    expect(res.headers.get('WWW-Authenticate')).toContain('Bearer');
+    expect(res.headers.get('WWW-Authenticate')).toBe(
+      'Bearer resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"',
+    );
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 

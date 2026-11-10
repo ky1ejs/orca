@@ -160,7 +160,7 @@ Each agent session runs in its own [git worktree](https://git-scm.com/docs/git-w
 
 ### MCP
 
-Agents reach Orca data through MCP. The desktop app serves a local MCP server to the agents it launches, and the backend serves a remote one at `/mcp` for any other MCP client. See **[MCP servers](docs/mcp.md)** for tools, auth, and setup.
+Agents reach Orca data through MCP. The desktop app serves a local MCP server to the agents it launches, and the backend serves a remote one at `/mcp` for any other MCP client. To connect Claude, add `https://orca-api.fly.dev/mcp` as a custom connector and sign in with your Orca account. See **[MCP servers](docs/mcp.md)** for tools, auth, and setup.
 
 ## Tech Stack
 

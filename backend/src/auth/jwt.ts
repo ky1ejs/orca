@@ -22,8 +22,16 @@ export async function signJwt(payload: JwtPayload): Promise<string> {
     .sign(getSecret());
 }
 
+/**
+ * Verifies a session JWT from `login`/`register`. Tokens with an audience are
+ * OAuth access tokens scoped to another resource (see src/oauth/tokens.ts)
+ * and are rejected here.
+ */
 export async function verifyJwt(token: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(token, getSecret());
+  if (payload.aud !== undefined) {
+    throw new Error('Token is scoped to another resource');
+  }
   return {
     sub: payload.sub as string,
     email: payload.email as string,

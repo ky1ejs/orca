@@ -14,6 +14,7 @@ docker compose up -d
 # 3. Copy env and configure
 cp .env.example .env
 # Requires: DATABASE_URL, JWT_SECRET, INVITE_CODE, PORT (default 4000)
+# Optional: PUBLIC_URL (origin used in OAuth metadata; defaults to the request's host)
 
 # 4. Generate Prisma client
 bun run db:generate
@@ -71,9 +72,10 @@ src/
 ├── auth/                      — JWT, password hashing, token ops
 ├── db/client.ts               — Prisma client init
 ├── mcp/
-│   ├── server.ts              — Remote MCP endpoint (`/mcp`, Streamable HTTP, JWT auth)
+│   ├── server.ts              — Remote MCP endpoint (`/mcp`, Streamable HTTP, OAuth or JWT auth)
 │   ├── tools/                 — MCP tools; mirror web/src/shared/hooks/mcp-tools/ (see docs/mcp.md)
 │   └── tools.manifest.json    — Tool definitions both packages' tests check against
+├── oauth/                     — OAuth 2.1 authorization server for `/mcp` (see docs/mcp.md)
 ├── schema/
 │   ├── schema.graphql         — SDL schema definition (source of truth)
 │   ├── index.ts               — Schema composition

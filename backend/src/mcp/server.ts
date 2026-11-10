@@ -5,6 +5,8 @@ import { createYoga, type YogaServerInstance } from 'graphql-yoga';
 import type { ServerContext } from '../context.js';
 import { createLoaders } from '../loaders.js';
 import { verifyJwt } from '../auth/jwt.js';
+import { getPublicOrigin, mcpResourceUrl, protectedResourceMetadataUrl } from '../oauth/config.js';
+import { verifyAccessToken } from '../oauth/tokens.js';
 import type { GraphqlExecutor, GraphqlResult, McpToolsDeps } from './tools/helpers.js';
 import { registerDiscoveryTools } from './tools/discovery-tools.js';
 import { registerDocTools } from './tools/doc-tools.js';
@@ -107,11 +109,21 @@ async function readBody(request: Request): Promise<{ body: unknown } | Response>
   return { body };
 }
 
+/**
+ * Accepts an OAuth access token issued for this resource, or a session JWT
+ * from `login` (for clients configured with a static bearer header).
+ */
 async function authenticate(request: Request): Promise<string | null> {
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) return null;
+  const token = header.slice('Bearer '.length);
+
+  const resource = mcpResourceUrl(getPublicOrigin(request));
+  const oauthUserId = await verifyAccessToken(token, resource);
+  if (oauthUserId) return oauthUserId;
+
   try {
-    const payload = await verifyJwt(header.slice('Bearer '.length));
+    const payload = await verifyJwt(token);
     return payload.sub || null;
   } catch {
     return null;
@@ -124,9 +136,9 @@ interface McpHandlerDeps {
 }
 
 /**
- * Remote MCP endpoint (Streamable HTTP, stateless). Each request is
- * authenticated with the same JWT the GraphQL API accepts, and tools run
- * GraphQL operations in-process as that user.
+ * Remote MCP endpoint (Streamable HTTP, stateless). Each request carries an
+ * OAuth access token (see src/oauth) or a session JWT, and tools run GraphQL
+ * operations in-process as that user.
  */
 export function createMcpHandler({ schema, baseContext }: McpHandlerDeps) {
   const yoga = createYoga<McpServerContext, ServerContext>({
@@ -152,7 +164,8 @@ export function createMcpHandler({ schema, baseContext }: McpHandlerDeps) {
     const userId = await authenticate(request);
     if (!userId) {
       return jsonRpcError(401, -32001, 'Missing or invalid authentication', {
-        'WWW-Authenticate': 'Bearer realm="orca"',
+        // Points clients at the OAuth metadata so they can start the sign-in flow.
+        'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(getPublicOrigin(request))}"`,
       });
     }
 
