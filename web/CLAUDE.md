@@ -124,6 +124,8 @@ The daemon survives Electron quit and restarts. On quit, Electron disconnects bu
 3. `bun run build:daemon` — esbuild bundles `src/daemon/index.ts` to `out/daemon/index.js` (externalizes node-pty, better-sqlite3)
 4. `electron-builder` (for packaging) — creates dmg/zip, includes `out/`, `drizzle/`, and `resources/`
 
+`package.json` overrides `node-gyp` to v12. When `better-sqlite3` has no prebuilt binary for the installed Node, its install script compiles with whichever `node-gyp` is hoisted. The v9 that `@electron/rebuild` pulls in imports `distutils`, which Python 3.12+ no longer ships, so `bun install` fails on newer Pythons.
+
 ## Key Files
 
 | File                         | Purpose                                |

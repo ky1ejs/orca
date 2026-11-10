@@ -81,5 +81,8 @@
     "typescript": "^5.8.2",
     "vitest": "^3.0.9",
     "wonka": "^6.3.5"
+  },
+  "overrides": {
+    "node-gyp": "^12.4.0"
   }
 }
