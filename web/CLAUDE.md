@@ -126,6 +126,8 @@ The daemon survives Electron quit and restarts. On quit, Electron disconnects bu
 
 `package.json` overrides `node-gyp` to v12. When `better-sqlite3` has no prebuilt binary for the installed Node, its install script compiles with whichever `node-gyp` is hoisted. The v9 that `@electron/rebuild` pulls in imports `distutils`, which Python 3.12+ no longer ships, so `bun install` fails on newer Pythons.
 
+`package.json` also patches `app-builder-lib@25.1.8` (`patches/app-builder-lib@25.1.8.patch`, applied by `bun install`). When signing from `CSC_LINK`, 25.1.8 passes the `.p12` password to `security set-key-partition-list -k` instead of its temp keychain's password. The macOS 26 (Darwin 25.6) runners reject that, so signing fails with `SecKeychainUnlock: The user name or passphrase you entered is not correct`. The patch backports the upstream fix from app-builder-lib 26.17.0. Delete the patch and the `patchedDependencies` entry when upgrading electron-builder to 26.17.0 or later.
+
 ## Key Files
 
 | File                         | Purpose                                |

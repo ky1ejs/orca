@@ -1,0 +1,24 @@
+diff --git a/out/codeSign/macCodeSign.js b/out/codeSign/macCodeSign.js
+index 1befc039201b8faf161205fa1aff8bbeb0de1ba7..c5b64f4b7f12de7dada5ad847c955be35fc04b14 100644
+--- a/out/codeSign/macCodeSign.js
++++ b/out/codeSign/macCodeSign.js
+@@ -158,15 +158,16 @@ async function createKeychain({ tmpDir, cscLink, cscKeyPassword, cscILink, cscIK
+     if (cscIKeyPassword) {
+         cscPasswords.push(cscIKeyPassword);
+     }
+-    return await importCerts(keychainFile, certPaths, cscPasswords);
++    return await importCerts(keychainFile, certPaths, cscPasswords, keychainPassword);
+ }
+-async function importCerts(keychainFile, paths, keyPasswords) {
++async function importCerts(keychainFile, paths, keyPasswords, keychainPassword) {
+     for (let i = 0; i < paths.length; i++) {
+         const password = keyPasswords[i];
+         await (0, builder_util_1.exec)("/usr/bin/security", ["import", paths[i], "-k", keychainFile, "-T", "/usr/bin/codesign", "-T", "/usr/bin/productbuild", "-P", password]);
+         // https://stackoverflow.com/questions/39868578/security-codesign-in-sierra-keychain-ignores-access-control-settings-and-ui-p
+         // https://github.com/electron-userland/electron-packager/issues/701#issuecomment-322315996
+-        await (0, builder_util_1.exec)("/usr/bin/security", ["set-key-partition-list", "-S", "apple-tool:,apple:", "-s", "-k", password, keychainFile]);
++        // `-k` expects the keychain's own unlock password, not the .p12 password (backport of the fix in app-builder-lib 26.17.0).
++        await (0, builder_util_1.exec)("/usr/bin/security", ["set-key-partition-list", "-S", "apple-tool:,apple:", "-s", "-k", keychainPassword, keychainFile]);
+     }
+     return {
+         keychainFile,
