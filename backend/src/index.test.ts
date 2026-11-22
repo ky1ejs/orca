@@ -292,6 +292,94 @@ describe('server integration', () => {
     expect(deleteRes.body.errors).toBeUndefined();
   });
 
+  it('lets an owner create, list and revoke API keys, which JWT paths refuse', async () => {
+    const createRes = await gql(
+      `mutation Create($input: CreateApiKeyInput!) {
+        createApiKey(input: $input) { key apiKey { id name displayHint scopes revokedAt createdBy { id } } }
+      }`,
+      authToken,
+      {
+        operationName: 'Create',
+        variables: { input: { workspaceId, name: 'cut-api', scopes: ['TASKS_CREATE'] } },
+      },
+    );
+    expect(createRes.body.errors).toBeUndefined();
+    const created = (
+      createRes.body.data as {
+        createApiKey: {
+          key: string;
+          apiKey: { id: string; name: string; displayHint: string; revokedAt: string | null };
+        };
+      }
+    ).createApiKey;
+    expect(created.key).toMatch(/^orca_/);
+    expect(created.apiKey).toMatchObject({ name: 'cut-api', displayHint: created.key.slice(-4) });
+
+    const listRes = await gql(
+      `query Keys($workspaceId: ID!) { apiKeys(workspaceId: $workspaceId) { id } }`,
+      authToken,
+      { operationName: 'Keys', variables: { workspaceId } },
+    );
+    const keys = (listRes.body.data as { apiKeys: Array<{ id: string }> }).apiKeys;
+    expect(keys.map((k) => k.id)).toContain(created.apiKey.id);
+    expect(JSON.stringify(listRes.body)).not.toContain(created.key);
+
+    // The key never authenticates as a user on GraphQL, MCP or the WebSocket.
+    const graphqlRes = await gql('{ workspaces { id } }', created.key);
+    expect((graphqlRes.body.errors as Array<{ message: string }>)[0].message).toContain(
+      'Missing or invalid authentication',
+    );
+    const mcpRes = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${created.key}`,
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    expect(mcpRes.status).toBe(401);
+    const wsResult = await new Promise<string>((resolve) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${TEST_PORT}/graphql`, 'graphql-transport-ws');
+      ws.onopen = () =>
+        ws.send(JSON.stringify({ type: 'connection_init', payload: { token: created.key } }));
+      ws.onmessage = (event) => {
+        resolve(JSON.parse(String(event.data)).type);
+        ws.close();
+      };
+      ws.onclose = (event) => resolve(`closed:${event.code}`);
+    });
+    expect(wsResult).not.toBe('connection_ack');
+
+    // Someone outside the workspace can neither list nor revoke the key.
+    const otherLogin = await gql(
+      `mutation { login(email: "other@orca.local", password: "test-password") { token } }`,
+    );
+    const otherToken = (otherLogin.body.data as { login: { token: string } }).login.token;
+    const otherList = await gql(
+      `query Keys($workspaceId: ID!) { apiKeys(workspaceId: $workspaceId) { id } }`,
+      otherToken,
+      { operationName: 'Keys', variables: { workspaceId } },
+    );
+    expect(otherList.body.errors).toBeDefined();
+    const revokeQuery = `mutation Revoke($id: ID!) { revokeApiKey(id: $id) { id revokedAt } }`;
+    const otherRevoke = await gql(revokeQuery, otherToken, {
+      operationName: 'Revoke',
+      variables: { id: created.apiKey.id },
+    });
+    expect(otherRevoke.body.errors).toBeDefined();
+
+    const revokeRes = await gql(revokeQuery, authToken, {
+      operationName: 'Revoke',
+      variables: { id: created.apiKey.id },
+    });
+    expect(revokeRes.body.errors).toBeUndefined();
+    expect(
+      (revokeRes.body.data as { revokeApiKey: { revokedAt: string | null } }).revokeApiKey
+        .revokedAt,
+    ).not.toBeNull();
+  });
+
   it('serves MCP tools over /mcp as the authenticated user', async () => {
     const callTool = async (name: string, args: Record<string, unknown>, token = authToken) => {
       const res = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {

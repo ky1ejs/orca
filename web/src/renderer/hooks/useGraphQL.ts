@@ -9,6 +9,9 @@ import {
   WorkspaceMembersDocument,
   PendingInvitationsDocument,
   LabelsDocument,
+  ApiKeysDocument,
+  CreateApiKeyDocument,
+  RevokeApiKeyDocument,
   CreateWorkspaceDocument,
   UpdateWorkspaceDocument,
   DeleteWorkspaceDocument,
@@ -64,6 +67,7 @@ import type {
   UpdateLabelInput,
   AddMemberInput,
   UpdateMemberRoleInput,
+  CreateApiKeyInput,
 } from '../graphql/__generated__/generated.js';
 
 // Query hooks
@@ -330,6 +334,32 @@ export function useDeleteLabel() {
   const [result, executeMutation] = useMutation(DeleteLabelDocument);
   const deleteLabel = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, deleteLabel };
+}
+
+// API key hooks
+
+export function useApiKeys(workspaceId: string) {
+  const [result, reexecute] = useQuery({
+    query: ApiKeysDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+export function useCreateApiKey() {
+  const [result, executeMutation] = useMutation(CreateApiKeyDocument);
+  const createApiKey = useCallback(
+    (input: CreateApiKeyInput) => executeMutation({ input }),
+    [executeMutation],
+  );
+  return { ...result, createApiKey };
+}
+
+export function useRevokeApiKey() {
+  const [result, executeMutation] = useMutation(RevokeApiKeyDocument);
+  const revokeApiKey = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, revokeApiKey };
 }
 
 // Integrations hooks

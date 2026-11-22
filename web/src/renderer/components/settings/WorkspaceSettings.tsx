@@ -8,8 +8,17 @@ import { LabelManager } from '../labels/LabelManager.js';
 import { AppearanceSettings } from './AppearanceSettings.js';
 import { IntegrationsSettings } from './IntegrationsSettings.js';
 import { DaemonSettings } from './DaemonSettings.js';
+import { ApiKeysSettings } from './ApiKeysSettings.js';
 
-type Tab = 'general' | 'members' | 'labels' | 'integrations' | 'terminal' | 'appearance' | 'daemon';
+type Tab =
+  | 'general'
+  | 'members'
+  | 'labels'
+  | 'integrations'
+  | 'apiKeys'
+  | 'terminal'
+  | 'appearance'
+  | 'daemon';
 
 export function WorkspaceSettings() {
   const { currentWorkspace, switchWorkspace } = useWorkspace();
@@ -77,11 +86,15 @@ export function WorkspaceSettings() {
 
   if (!currentWorkspace) return null;
 
+  // API keys are managed by owners only; the API rejects anyone else too.
+  const isOwner = currentWorkspace.role === 'OWNER';
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'general', label: 'General' },
     { key: 'members', label: 'Members' },
     { key: 'labels', label: 'Labels' },
     { key: 'integrations', label: 'Integrations' },
+    ...(isOwner ? [{ key: 'apiKeys' as const, label: 'API Keys' }] : []),
     { key: 'terminal', label: 'Terminal' },
     { key: 'appearance', label: 'Appearance' },
     { key: 'daemon', label: 'Daemon' },
@@ -184,6 +197,8 @@ export function WorkspaceSettings() {
       {activeTab === 'labels' && <LabelManager />}
 
       {activeTab === 'integrations' && <IntegrationsSettings />}
+
+      {activeTab === 'apiKeys' && isOwner && <ApiKeysSettings />}
 
       {activeTab === 'terminal' && <TerminalSettings />}
 

@@ -504,3 +504,20 @@ export const LabelsQueryDocument = /* GraphQL */ `
     }
   }
 `;
+
+export const ApiKeysQueryDocument = /* GraphQL */ `
+  query ApiKeys($workspaceId: ID!) {
+    apiKeys(workspaceId: $workspaceId) {
+      id
+      name
+      displayHint
+      scopes
+      revokedAt
+      createdAt
+      createdBy {
+        id
+        name
+      }
+    }
+  }
+`;

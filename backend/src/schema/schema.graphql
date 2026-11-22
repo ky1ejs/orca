@@ -52,6 +52,43 @@ type WorkspaceSettings {
   autoCleanupWorktree: Boolean!
 }
 
+"""
+What an API key may do. Each operation of the public API names the scopes it needs.
+"""
+enum ApiKeyScope {
+  "Create tasks through POST /api/v1/tasks."
+  TASKS_CREATE
+  "Delete tasks this workspace's API keys created for an external user."
+  TASKS_DELETE_EXTERNAL
+}
+
+"""
+A credential another service uses to call Orca's public API for one workspace.
+The key itself is shown only once, in CreatedApiKey.
+"""
+type ApiKey {
+  id: ID!
+  name: String!
+  "Last 4 characters of the key, to tell keys apart."
+  displayHint: String!
+  scopes: [ApiKeyScope!]!
+  createdBy: User
+  revokedAt: DateTime
+  createdAt: DateTime!
+}
+
+type CreatedApiKey {
+  apiKey: ApiKey!
+  "The plaintext key. It is not stored and cannot be retrieved again."
+  key: String!
+}
+
+input CreateApiKeyInput {
+  workspaceId: ID!
+  name: String!
+  scopes: [ApiKeyScope!]!
+}
+
 type Workspace {
   id: ID!
   name: String!
@@ -400,6 +437,8 @@ type Query {
     first: Int = 20
     after: String
   ): AuditEventConnection!
+  "The workspace's API keys, newest first. Workspace owners only."
+  apiKeys(workspaceId: ID!): [ApiKey!]!
 }
 
 type Mutation {
@@ -437,6 +476,10 @@ type Mutation {
   unlinkPullRequest(id: ID!): Boolean!
   createTaskRelationship(input: CreateTaskRelationshipInput!): TaskRelationship!
   removeTaskRelationship(id: ID!): Boolean!
+  "Workspace owners only. The response holds the only copy of the key."
+  createApiKey(input: CreateApiKeyInput!): CreatedApiKey!
+  "Workspace owners only. Revoking an already revoked key returns it unchanged."
+  revokeApiKey(id: ID!): ApiKey!
 }
 
 type Subscription {
