@@ -57,6 +57,13 @@ export async function authenticateApiKey(
   return { apiKey: key, workspace };
 }
 
+/**
+ * Whether the key has every required scope. An empty list throws rather than
+ * passing every key, so an endpoint that forgets its scopes fails closed.
+ */
 export function hasScopes(apiKey: Pick<ApiKey, 'scopes'>, required: ApiKeyScope[]): boolean {
+  if (required.length === 0) {
+    throw new Error('hasScopes needs at least one required scope');
+  }
   return required.every((scope) => apiKey.scopes.includes(scope));
 }

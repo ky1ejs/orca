@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
@@ -16,33 +16,37 @@ const mockCreateApiKey = vi.fn().mockResolvedValue({
 });
 const mockRevokeApiKey = vi.fn().mockResolvedValue({ data: { revokeApiKey: { id: 'k1' } } });
 
-vi.mock('../../hooks/useGraphQL.js', () => ({
-  useApiKeys: () => ({
-    data: {
-      apiKeys: [
-        {
-          id: 'k1',
-          name: 'cut-api',
-          displayHint: 'wxyz',
-          scopes: ['TASKS_CREATE', 'TASKS_DELETE_EXTERNAL'],
-          revokedAt: null,
-          createdAt: '2026-11-20T10:00:00.000Z',
-          createdBy: { id: 'u1', name: 'Kyle' },
-        },
-        {
-          id: 'k2',
-          name: 'old-key',
-          displayHint: '1234',
-          scopes: ['TASKS_CREATE'],
-          revokedAt: '2026-11-21T10:00:00.000Z',
-          createdAt: '2026-11-01T10:00:00.000Z',
-          createdBy: null,
-        },
-      ],
+const LIST_DATA = {
+  apiKeys: [
+    {
+      id: 'k1',
+      name: 'cut-api',
+      displayHint: 'wxyz',
+      scopes: ['TASKS_CREATE', 'TASKS_DELETE_EXTERNAL'],
+      revokedAt: null,
+      createdAt: '2026-11-20T10:00:00.000Z',
+      createdBy: { id: 'u1', name: 'Kyle' },
     },
-    fetching: false,
-    refetch: mockRefetch,
-  }),
+    {
+      id: 'k2',
+      name: 'old-key',
+      displayHint: '1234',
+      scopes: ['TASKS_CREATE'],
+      revokedAt: '2026-11-21T10:00:00.000Z',
+      createdAt: '2026-11-01T10:00:00.000Z',
+      createdBy: null,
+    },
+  ],
+};
+
+let listState: {
+  data?: typeof LIST_DATA;
+  fetching: boolean;
+  error?: { message: string; graphQLErrors: Array<{ message: string }> };
+};
+
+vi.mock('../../hooks/useGraphQL.js', () => ({
+  useApiKeys: () => ({ ...listState, refetch: mockRefetch }),
   useCreateApiKey: () => ({ createApiKey: mockCreateApiKey, fetching: false }),
   useRevokeApiKey: () => ({ revokeApiKey: mockRevokeApiKey }),
 }));
@@ -51,9 +55,16 @@ vi.mock('../../workspace/context.js', () => ({
   useWorkspace: () => ({ currentWorkspace: { id: 'ws1', slug: 'cut', role: 'OWNER' } }),
 }));
 
+const originalClipboard = navigator.clipboard;
+
+beforeEach(() => {
+  listState = { data: LIST_DATA, fetching: false };
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  Object.defineProperty(navigator, 'clipboard', { value: originalClipboard, configurable: true });
 });
 
 async function importAndRender() {
@@ -62,7 +73,7 @@ async function importAndRender() {
 }
 
 describe('ApiKeysSettings', () => {
-  it('lists keys with their hint, scopes and status, never a full key', async () => {
+  it('lists keys with their hint, scopes, creator and status', async () => {
     await importAndRender();
     expect(screen.getByText('…wxyz')).toBeInTheDocument();
     expect(screen.getByText(/Create tasks · Delete tasks it created/)).toBeInTheDocument();
@@ -89,12 +100,12 @@ describe('ApiKeysSettings', () => {
 
     fireEvent.click(screen.getByTestId('api-key-done'));
     expect(screen.queryByTestId('api-key-value')).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue(NEW_KEY)).not.toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain(NEW_KEY);
   });
 
   it('copies the new key', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     await importAndRender();
     fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'cut-api' } });
     fireEvent.click(screen.getByTestId('api-key-create-button'));
@@ -133,5 +144,64 @@ describe('ApiKeysSettings', () => {
     fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'cut-api' } });
     fireEvent.click(screen.getByTestId('api-key-create-button'));
     await waitFor(() => expect(screen.getByText('Workspace not found')).toBeInTheDocument());
+  });
+
+  it('blocks creating another key until the shown one is dismissed', async () => {
+    await importAndRender();
+    fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'cut-api' } });
+    fireEvent.click(screen.getByTestId('api-key-create-button'));
+    await waitFor(() => screen.getByTestId('api-key-value'));
+
+    fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'second' } });
+    expect(screen.getByTestId('api-key-create-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('api-key-done'));
+    expect(screen.getByTestId('api-key-create-button')).toBeEnabled();
+  });
+
+  it('keeps the new key on screen while the list refetches', async () => {
+    await importAndRender();
+    fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'cut-api' } });
+    fireEvent.click(screen.getByTestId('api-key-create-button'));
+    await waitFor(() => screen.getByTestId('api-key-value'));
+
+    listState = { data: LIST_DATA, fetching: true };
+    fireEvent.change(screen.getByTestId('api-key-name-input'), { target: { value: 'x' } });
+
+    expect(screen.getByTestId('api-key-value')).toHaveValue(NEW_KEY);
+    expect(screen.queryByText('Loading API keys...')).not.toBeInTheDocument();
+  });
+
+  it('shows a failed list query instead of an empty list', async () => {
+    listState = {
+      fetching: false,
+      error: { message: '[Network] Failed to fetch', graphQLErrors: [] },
+    };
+    await importAndRender();
+    expect(screen.getByTestId('api-key-list-error')).toHaveTextContent('Failed to fetch');
+    expect(screen.queryByText('No API keys yet.')).not.toBeInTheDocument();
+  });
+
+  it('disables the confirm button while a revoke runs', async () => {
+    let finishRevoke: (value: unknown) => void = () => {};
+    mockRevokeApiKey.mockReturnValueOnce(new Promise((resolve) => (finishRevoke = resolve)));
+    await importAndRender();
+    fireEvent.click(screen.getByTestId('api-key-revoke-k1'));
+    fireEvent.click(screen.getByTestId('api-key-confirm-revoke-k1'));
+
+    await waitFor(() => expect(screen.getByTestId('api-key-confirm-revoke-k1')).toBeDisabled());
+    fireEvent.click(screen.getByTestId('api-key-confirm-revoke-k1'));
+    expect(mockRevokeApiKey).toHaveBeenCalledTimes(1);
+
+    finishRevoke({ data: { revokeApiKey: { id: 'k1' } } });
+    await waitFor(() =>
+      expect(screen.queryByTestId('api-key-confirm-revoke-k1')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('moves focus to Cancel when a revoke confirmation opens', async () => {
+    await importAndRender();
+    fireEvent.click(screen.getByTestId('api-key-revoke-k1'));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   });
 });

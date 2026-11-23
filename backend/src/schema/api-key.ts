@@ -5,7 +5,7 @@ import type {
   QueryResolvers,
 } from '../__generated__/graphql.js';
 import { generateApiKey } from '../auth/api-key.js';
-import { requireWorkspaceOwner } from '../auth/workspace.js';
+import { requireApiKeyOwner, requireWorkspaceOwner } from '../auth/workspace.js';
 
 const MAX_API_KEY_NAME_LENGTH = 64;
 
@@ -54,17 +54,16 @@ export const apiKeyResolvers = {
     },
 
     revokeApiKey: async (_parent, args, context) => {
-      const apiKey = await context.prisma.apiKey.findUnique({ where: { id: args.id } });
-      if (!apiKey) {
-        throw new GraphQLError('API key not found', { extensions: { code: 'NOT_FOUND' } });
-      }
-      await requireWorkspaceOwner(context.prisma, apiKey.workspaceId, context.userId);
-
+      const { apiKey } = await requireApiKeyOwner(context.prisma, args.id, context.userId);
       if (apiKey.revokedAt) return apiKey;
-      return context.prisma.apiKey.update({
-        where: { id: apiKey.id },
+
+      // Only an active key is updated, so a concurrent revoke can't move
+      // the revocation time forward.
+      await context.prisma.apiKey.updateMany({
+        where: { id: apiKey.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      return context.prisma.apiKey.findUniqueOrThrow({ where: { id: apiKey.id } });
     },
   } satisfies Pick<MutationResolvers, 'createApiKey' | 'revokeApiKey'>,
   ApiKey: {

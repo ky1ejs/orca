@@ -87,7 +87,10 @@ export function WorkspaceSettings() {
   if (!currentWorkspace) return null;
 
   // API keys are managed by owners only; the API rejects anyone else too.
+  // If the user stops being an owner (a role change, or a switch to another
+  // workspace) while the tab is open, fall back to General.
   const isOwner = currentWorkspace.role === 'OWNER';
+  const selectedTab: Tab = activeTab === 'apiKeys' && !isOwner ? 'general' : activeTab;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'general', label: 'General' },
@@ -105,22 +108,22 @@ export function WorkspaceSettings() {
       <h1 className="text-heading-md font-semibold text-fg mb-6">Workspace Settings</h1>
 
       <div className="flex gap-4 border-b border-edge mb-6">
-        {tabs.map((tab) => (
+        {tabs.map((item) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            key={item.key}
+            onClick={() => setActiveTab(item.key)}
             className={`pb-2 text-label-md transition-colors ${
-              activeTab === tab.key
+              selectedTab === item.key
                 ? 'text-fg border-b-2 border-fg'
                 : 'text-fg-muted hover:text-fg-muted'
             }`}
           >
-            {tab.label}
+            {item.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'general' && (
+      {selectedTab === 'general' && (
         <div>
           <form onSubmit={handleSave} className="space-y-4">
             <div>
@@ -192,19 +195,22 @@ export function WorkspaceSettings() {
         </div>
       )}
 
-      {activeTab === 'members' && <MemberList />}
+      {selectedTab === 'members' && <MemberList />}
 
-      {activeTab === 'labels' && <LabelManager />}
+      {selectedTab === 'labels' && <LabelManager />}
 
-      {activeTab === 'integrations' && <IntegrationsSettings />}
+      {selectedTab === 'integrations' && <IntegrationsSettings />}
 
-      {activeTab === 'apiKeys' && isOwner && <ApiKeysSettings />}
+      {selectedTab === 'apiKeys' && (
+        // Keyed by workspace so a switch drops all state, including a one-time key.
+        <ApiKeysSettings key={currentWorkspace.id} />
+      )}
 
-      {activeTab === 'terminal' && <TerminalSettings />}
+      {selectedTab === 'terminal' && <TerminalSettings />}
 
-      {activeTab === 'appearance' && <AppearanceSettings />}
+      {selectedTab === 'appearance' && <AppearanceSettings />}
 
-      {activeTab === 'daemon' && <DaemonSettings />}
+      {selectedTab === 'daemon' && <DaemonSettings />}
     </div>
   );
 }

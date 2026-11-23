@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { pipe, filter } from 'graphql-yoga';
 import type {
+  ApiKey,
   PrismaClient,
   Workspace,
   Initiative,
@@ -230,4 +231,34 @@ export function workspaceScopedSubscription<T extends { workspaceId: string }>(
       return !!membership;
     }),
   );
+}
+
+/**
+ * Checks that the user owns the workspace an API key belongs to.
+ * Missing keys, keys in deleted workspaces and keys the user can't manage
+ * all give the same NOT_FOUND, so the response never shows whether a key
+ * id exists.
+ */
+export async function requireApiKeyOwner(
+  prisma: PrismaClient,
+  apiKeyId: string,
+  userId: string,
+): Promise<{ apiKey: ApiKey }> {
+  const notFound = new GraphQLError('API key not found', {
+    extensions: { code: 'NOT_FOUND' },
+  });
+
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { id: apiKeyId },
+    include: { workspace: { select: { deletedAt: true } } },
+  });
+  if (!apiKey || apiKey.workspace.deletedAt) throw notFound;
+
+  const membership = await prisma.workspaceMembership.findUnique({
+    where: { workspaceId_userId: { workspaceId: apiKey.workspaceId, userId } },
+  });
+  if (membership?.role !== 'OWNER') throw notFound;
+
+  const { workspace: _workspace, ...key } = apiKey;
+  return { apiKey: key };
 }

@@ -35,9 +35,10 @@ function createMockContext(role: 'OWNER' | 'MEMBER' | null = 'OWNER') {
     },
     apiKey: {
       findMany: vi.fn().mockResolvedValue([API_KEY]),
-      findUnique: vi.fn().mockResolvedValue(API_KEY),
+      findUnique: vi.fn().mockResolvedValue({ ...API_KEY, workspace: { deletedAt: null } }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ ...API_KEY, revokedAt: new Date() }),
       create: vi.fn().mockImplementation(({ data }) => ({ id: 'key2', ...data })),
-      update: vi.fn().mockImplementation(({ data }) => ({ ...API_KEY, ...data })),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
   return {
@@ -139,38 +140,60 @@ describe('api key resolvers', () => {
   });
 
   describe('Mutation.revokeApiKey', () => {
-    it('sets revokedAt for an owner', async () => {
+    function revoke(ctx: ReturnType<typeof createMockContext>, id = 'key1') {
+      return Mutation.revokeApiKey({} as never, { id }, ctx as never);
+    }
+
+    it('revokes only while the key is still active, then returns it', async () => {
       const ctx = createMockContext('OWNER');
-      const result = await Mutation.revokeApiKey({} as never, { id: 'key1' }, ctx as never);
-      expect(result.revokedAt).toBeInstanceOf(Date);
-      expect(ctx.prisma.apiKey.update).toHaveBeenCalledWith({
-        where: { id: 'key1' },
+      const result = await revoke(ctx);
+      expect(ctx.prisma.apiKey.updateMany).toHaveBeenCalledWith({
+        where: { id: 'key1', revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
+      expect(ctx.prisma.apiKey.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'key1' } });
+      expect(result.revokedAt).toBeInstanceOf(Date);
     });
 
     it('returns an already revoked key unchanged', async () => {
       const ctx = createMockContext('OWNER');
-      const revoked = { ...API_KEY, revokedAt: new Date('2026-01-01') };
-      ctx.prisma.apiKey.findUnique.mockResolvedValue(revoked);
-      expect(await Mutation.revokeApiKey({} as never, { id: 'key1' }, ctx as never)).toBe(revoked);
-      expect(ctx.prisma.apiKey.update).not.toHaveBeenCalled();
+      const revokedAt = new Date('2026-01-01');
+      ctx.prisma.apiKey.findUnique.mockResolvedValue({
+        ...API_KEY,
+        revokedAt,
+        workspace: { deletedAt: null },
+      });
+      expect((await revoke(ctx)).revokedAt).toBe(revokedAt);
+      expect(ctx.prisma.apiKey.updateMany).not.toHaveBeenCalled();
     });
 
-    it('rejects members who are not owners', async () => {
-      const ctx = createMockContext('MEMBER');
-      await expect(
-        Mutation.revokeApiKey({} as never, { id: 'key1' }, ctx as never),
-      ).rejects.toThrow('Workspace not found');
-      expect(ctx.prisma.apiKey.update).not.toHaveBeenCalled();
+    it('gives a non-owner the same error as an unknown key', async () => {
+      const member = createMockContext('MEMBER');
+      const outsider = createMockContext(null);
+      const unknown = createMockContext('OWNER');
+      unknown.prisma.apiKey.findUnique.mockResolvedValue(null);
+
+      const errors = await Promise.all(
+        [member, outsider, unknown].map((ctx) => revoke(ctx).catch((e: Error) => e)),
+      );
+
+      for (const error of errors) {
+        expect(error).toMatchObject({
+          message: 'API key not found',
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+      expect(member.prisma.apiKey.updateMany).not.toHaveBeenCalled();
+      expect(outsider.prisma.apiKey.updateMany).not.toHaveBeenCalled();
     });
 
-    it('returns NOT_FOUND for an unknown key', async () => {
+    it('treats a key in a deleted workspace as unknown', async () => {
       const ctx = createMockContext('OWNER');
-      ctx.prisma.apiKey.findUnique.mockResolvedValue(null);
-      await expect(
-        Mutation.revokeApiKey({} as never, { id: 'nope' }, ctx as never),
-      ).rejects.toThrow('API key not found');
+      ctx.prisma.apiKey.findUnique.mockResolvedValue({
+        ...API_KEY,
+        workspace: { deletedAt: new Date() },
+      });
+      await expect(revoke(ctx)).rejects.toThrow('API key not found');
     });
   });
 

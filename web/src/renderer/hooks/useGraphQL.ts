@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useSubscription } from 'urql';
-import { useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useSubscription, useClient } from 'urql';
+import { useCallback, useEffect, useState } from 'react';
 import {
   MeDocument,
   WorkspaceDocument,
@@ -347,13 +347,26 @@ export function useApiKeys(workspaceId: string) {
   return { ...result, refetch: reexecute };
 }
 
+/**
+ * Runs the mutation through the client rather than `useMutation`, which would
+ * keep the result, and so the one-time plaintext key, in hook state for as
+ * long as the component stays mounted. The caller decides how long to hold it.
+ */
 export function useCreateApiKey() {
-  const [result, executeMutation] = useMutation(CreateApiKeyDocument);
+  const client = useClient();
+  const [fetching, setFetching] = useState(false);
   const createApiKey = useCallback(
-    (input: CreateApiKeyInput) => executeMutation({ input }),
-    [executeMutation],
+    async (input: CreateApiKeyInput) => {
+      setFetching(true);
+      try {
+        return await client.mutation(CreateApiKeyDocument, { input }).toPromise();
+      } finally {
+        setFetching(false);
+      }
+    },
+    [client],
   );
-  return { ...result, createApiKey };
+  return { fetching, createApiKey };
 }
 
 export function useRevokeApiKey() {

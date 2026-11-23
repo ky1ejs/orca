@@ -19,7 +19,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }
 export function ApiKeysSettings() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id ?? '';
-  const { data, fetching, refetch } = useApiKeys(workspaceId);
+  const { data, fetching, error: listError, refetch } = useApiKeys(workspaceId);
   const { createApiKey, fetching: creating } = useCreateApiKey();
   const { revokeApiKey } = useRevokeApiKey();
 
@@ -29,6 +29,7 @@ export function ApiKeysSettings() {
   const [newKey, setNewKey] = useState<{ name: string; key: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const apiKeys = data?.apiKeys ?? [];
 
@@ -41,7 +42,8 @@ export function ApiKeysSettings() {
   const handleCreate = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (!workspaceId || !name.trim() || scopes.length === 0) return;
+      // A shown key must be dismissed first, so creating another can't replace it unseen.
+      if (!workspaceId || !name.trim() || scopes.length === 0 || newKey) return;
       setError(null);
 
       const result = await createApiKey({ workspaceId, name: name.trim(), scopes });
@@ -55,7 +57,7 @@ export function ApiKeysSettings() {
       setScopes([ApiKeyScope.TasksCreate]);
       refetch({ requestPolicy: 'network-only' });
     },
-    [workspaceId, name, scopes, createApiKey, refetch],
+    [workspaceId, name, scopes, newKey, createApiKey, refetch],
   );
 
   const handleCopy = useCallback(() => {
@@ -69,17 +71,22 @@ export function ApiKeysSettings() {
   const handleRevoke = useCallback(
     async (id: string) => {
       setError(null);
+      setRevokingId(id);
       const result = await revokeApiKey(id);
+      setRevokingId(null);
       if (result.error) {
         setError(result.error.graphQLErrors[0]?.message ?? 'Failed to revoke API key');
       }
-      setConfirmRevokeId(null);
+      // Leave a confirmation the user opened for another key in the meantime.
+      setConfirmRevokeId((current) => (current === id ? null : current));
       refetch({ requestPolicy: 'network-only' });
     },
     [revokeApiKey, refetch],
   );
 
-  if (fetching && apiKeys.length === 0) {
+  // Only before the first result: a refetch after creating a key must not
+  // replace the panel, which would hide the one-time key.
+  if (fetching && !data) {
     return <p className="text-sm text-fg-muted p-8">Loading API keys...</p>;
   }
 
@@ -102,6 +109,7 @@ export function ApiKeysSettings() {
 
       {newKey && (
         <div
+          role="status"
           className="mb-6 p-4 border border-edge-subtle rounded bg-surface-inset"
           data-testid="api-key-created"
         >
@@ -113,6 +121,7 @@ export function ApiKeysSettings() {
             <input
               type="text"
               readOnly
+              autoFocus
               value={newKey.key}
               onFocus={(e) => e.target.select()}
               aria-label="New API key"
@@ -151,7 +160,7 @@ export function ApiKeysSettings() {
           />
           <button
             type="submit"
-            disabled={creating || !name.trim() || scopes.length === 0}
+            disabled={creating || newKey !== null || !name.trim() || scopes.length === 0}
             className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded transition-colors disabled:opacity-50"
             data-testid="api-key-create-button"
           >
@@ -172,9 +181,18 @@ export function ApiKeysSettings() {
             </label>
           ))}
         </fieldset>
+        {newKey && (
+          <p className="text-label-sm text-fg-faint">
+            Press Done on the key above before creating another.
+          </p>
+        )}
       </form>
 
-      {apiKeys.length === 0 ? (
+      {listError && !data ? (
+        <p className="text-sm text-error" data-testid="api-key-list-error">
+          Couldn&apos;t load API keys: {listError.graphQLErrors[0]?.message ?? listError.message}
+        </p>
+      ) : apiKeys.length === 0 ? (
         <p className="text-sm text-fg-muted">No API keys yet.</p>
       ) : (
         <ul className="space-y-1" data-testid="api-key-list">
@@ -209,12 +227,15 @@ export function ApiKeysSettings() {
                       </span>
                       <button
                         onClick={() => handleRevoke(apiKey.id)}
-                        className="px-2 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded transition-colors"
+                        disabled={revokingId === apiKey.id}
+                        className="px-2 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded transition-colors disabled:opacity-50"
                         data-testid={`api-key-confirm-revoke-${apiKey.id}`}
                       >
-                        Revoke
+                        {revokingId === apiKey.id ? 'Revoking...' : 'Revoke'}
                       </button>
                       <button
+                        autoFocus
+                        disabled={revokingId === apiKey.id}
                         onClick={() => setConfirmRevokeId(null)}
                         className="px-2 py-1 text-label-sm text-fg-muted hover:text-fg transition-colors"
                       >

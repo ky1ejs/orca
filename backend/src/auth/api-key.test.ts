@@ -69,10 +69,10 @@ describe('authenticateApiKey', () => {
 });
 
 describe('hasScopes', () => {
-  it('requires every scope', () => {
+  it('requires every scope and fails closed on an empty list', () => {
     const key = { scopes: ['TASKS_CREATE' as const] };
     expect(hasScopes(key, ['TASKS_CREATE'])).toBe(true);
     expect(hasScopes(key, ['TASKS_CREATE', 'TASKS_DELETE_EXTERNAL'])).toBe(false);
-    expect(hasScopes(key, [])).toBe(true);
+    expect(() => hasScopes(key, [])).toThrow('at least one required scope');
   });
 });
