@@ -1,4 +1,5 @@
 import { TaskPriority } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 export const MAX_ATTACHMENTS_PER_TASK = 5;
@@ -25,11 +26,14 @@ export const taskInputSchema = z
   .strict();
 
 export interface ValidatedAttachment {
-  data: Uint8Array;
+  /** The uploaded file, passed to storage as is rather than copied. */
+  file: File;
   mimeType: string;
   /** Orca's own name; the uploader's filename is never stored. */
   filename: string;
 }
+
+const SIGNATURE_BYTES = 8;
 
 function startsWith(data: Uint8Array, signature: number[]): boolean {
   return signature.every((byte, i) => data[i] === byte);
@@ -37,7 +41,8 @@ function startsWith(data: Uint8Array, signature: number[]): boolean {
 
 /**
  * Checks an uploaded file: a PNG or JPEG, declared and by its first bytes,
- * from 1 byte to 10 MB. Returns an error message for anything else.
+ * from 1 byte to 10 MB. Reads only the first bytes. Returns an error message
+ * for anything else.
  */
 export async function validateAttachment(
   file: File,
@@ -49,12 +54,30 @@ export async function validateAttachment(
   if (file.size === 0) return `Attachment ${index + 1} is empty`;
   if (file.size > MAX_ATTACHMENT_BYTES) return `Attachment ${index + 1} is over 10 MB`;
 
-  const data = new Uint8Array(await file.arrayBuffer());
+  const head = new Uint8Array(await file.slice(0, SIGNATURE_BYTES).arrayBuffer());
   const signature = mimeType === 'image/png' ? PNG_SIGNATURE : JPEG_SIGNATURE;
-  if (!startsWith(data, signature)) {
+  if (!startsWith(head, signature)) {
     return `Attachment ${index + 1} is not a valid ${extension.toUpperCase()} file`;
   }
-  return { data, mimeType, filename: `attachment-${index + 1}.${extension}` };
+  return { file, mimeType, filename: `attachment-${index + 1}.${extension}` };
+}
+
+/**
+ * SHA-256 of a request's task JSON and files (type, size and contents), so a
+ * reused Idempotency-Key with a different request can be refused. Files are
+ * hashed as streams, without another copy in memory.
+ */
+export async function requestFingerprint(taskJson: string, files: File[]): Promise<string> {
+  const hash = createHash('sha256');
+  hash.update(`task:${taskJson.length}:`).update(taskJson);
+  for (const file of files) {
+    hash.update(`\nfile:${file.type}:${file.size}:`);
+    const reader = file.stream().getReader();
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      hash.update(chunk.value);
+    }
+  }
+  return hash.digest('hex');
 }
 
 /** Idempotency keys are 1-100 printable ASCII characters. */

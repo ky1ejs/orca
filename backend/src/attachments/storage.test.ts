@@ -27,7 +27,7 @@ describe('filesystem attachment storage', () => {
     const key = attachmentStorageKey('ws1', 'att1');
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 
-    await storage.put(key, bytes, 'image/png');
+    await storage.put(key, new Blob([bytes]), 'image/png');
     expect(await storage.get(key)).toEqual(bytes);
 
     await storage.delete([key]);
@@ -43,7 +43,7 @@ describe('filesystem attachment storage', () => {
   it('refuses a key that leaves its folder', async () => {
     const storage = await tempStorage();
     await expect(storage.get('../outside')).rejects.toThrow('Invalid attachment key');
-    await expect(storage.put('/etc/passwd', new Uint8Array(), 'image/png')).rejects.toThrow(
+    await expect(storage.put('/etc/passwd', new Blob([]), 'image/png')).rejects.toThrow(
       'Invalid attachment key',
     );
   });
@@ -98,9 +98,10 @@ describe('S3 attachment storage', () => {
   it('writes with the content type and deletes each key', async () => {
     const client = stubClient(async () => new ArrayBuffer(0));
     const storage = createS3Storage(client);
-    await storage.put('k', new Uint8Array([1]), 'image/png');
+    const blob = new Blob([new Uint8Array([1])]);
+    await storage.put('k', blob, 'image/png');
     await storage.delete(['a', 'b']);
-    expect(client.write).toHaveBeenCalledWith('k', new Uint8Array([1]), { type: 'image/png' });
+    expect(client.write).toHaveBeenCalledWith('k', blob, { type: 'image/png' });
     expect(client.delete).toHaveBeenCalledTimes(2);
   });
 });

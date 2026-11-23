@@ -5,9 +5,12 @@ import { recordAuditEvent } from '../../audit/record-event.js';
 import { allocateTaskNumber } from '../../db/task-number.js';
 import { attachmentStorageKey, getAttachmentStorage } from '../../attachments/storage.js';
 import { apiError, authenticateApiRequest, jsonResponse } from './http.js';
+import { acquireIntakeSlot } from './limits.js';
+import { lockExternalUser } from './external-user-lock.js';
 import {
   MAX_ATTACHMENTS_PER_TASK,
   isValidIdempotencyKey,
+  requestFingerprint,
   taskInputSchema,
   validateAttachment,
   type ValidatedAttachment,
@@ -18,24 +21,54 @@ interface Deps {
   pubsub: PubSubLike;
 }
 
+const ALLOWED_PARTS = new Set(['task', 'attachment']);
+
+/** The create transaction found the person deleted, after this request began. */
+class ExternalUserDeletedError extends Error {}
+/** This request's reservation was released (by the sweep) before it committed. */
+class ReservationLostError extends Error {}
+
 function taskResponse(status: number, task: { id: string; displayId: string }): Response {
   return jsonResponse(status, { id: task.id, displayId: task.displayId });
 }
 
+function externalUserDeleted(): Response {
+  return apiError(
+    410,
+    'external_user_deleted',
+    "This externalUserRef's tasks were deleted; new tasks for it are refused",
+  );
+}
+
 /**
- * The response for a key that's already reserved: the task if its request
- * finished, or 409 if it is still in progress (or crashed and awaits the sweep).
+ * The answer for a key that already has a row, or null if it has none:
+ * - a different request under the same key: 422;
+ * - finished: 200 with its task, or 410 if that task has since been deleted;
+ * - still running (or crashed, until the sweep releases it): 409.
  */
 async function existingKeyResponse(
   prisma: PrismaClient,
   workspaceId: string,
   key: string,
-): Promise<Response> {
+  fingerprint: string,
+): Promise<Response | null> {
   const existing = await prisma.apiIdempotencyKey.findUnique({
     where: { workspaceId_key: { workspaceId, key } },
     include: { task: { select: { id: true, displayId: true } } },
   });
-  if (existing?.task) return taskResponse(200, existing.task);
+  if (!existing) return null;
+  if (existing.fingerprint !== fingerprint) {
+    return apiError(
+      422,
+      'idempotency_key_reused',
+      'This Idempotency-Key was used for a different request',
+    );
+  }
+  if (existing.completedAt) {
+    return existing.task
+      ? taskResponse(200, existing.task)
+      : apiError(410, 'task_deleted', 'The task this Idempotency-Key created has been deleted');
+  }
   return apiError(
     409,
     'idempotency_conflict',
@@ -46,23 +79,30 @@ async function existingKeyResponse(
 /**
  * POST /api/v1/tasks: creates an external task, with optional image
  * attachments, for the API key's workspace. See docs/api.md.
- *
- * Order matters for retries and crashes:
- * 1. Validate everything that doesn't write.
- * 2. Reserve the Idempotency-Key, recording the storage keys about to be used.
- * 3. Store the files.
- * 4. In one transaction, create the task and its attachments and attach the
- *    task to the key.
- * A failure after step 2 deletes the files and the key, so a retry starts
- * clean. A crash leaves the key without a task; the sweep removes it and its
- * files, and until then a retry gets 409.
  */
 export async function handleCreateTask(request: Request, deps: Deps): Promise<Response> {
-  const { prisma, pubsub } = deps;
-  const caller = await authenticateApiRequest(request, prisma, ['TASKS_CREATE']);
+  const caller = await authenticateApiRequest(request, deps.prisma, ['TASKS_CREATE']);
   if (caller instanceof Response) return caller;
-  const workspaceId = caller.workspace.id;
 
+  const slot = acquireIntakeSlot(caller.apiKey.id);
+  if ('reason' in slot) {
+    const response = apiError(429, 'rate_limited', slot.reason);
+    response.headers.set('Retry-After', String(slot.retryAfterSeconds));
+    return response;
+  }
+  try {
+    return await createTask(request, deps, caller.apiKey, caller.workspace.id);
+  } finally {
+    slot.release();
+  }
+}
+
+async function createTask(
+  request: Request,
+  { prisma, pubsub }: Deps,
+  apiKey: { id: string; name: string; displayHint: string },
+  workspaceId: string,
+): Promise<Response> {
   const idempotencyKey = request.headers.get('idempotency-key');
   if (!isValidIdempotencyKey(idempotencyKey)) {
     return apiError(
@@ -81,10 +121,33 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
   } catch {
     return apiError(400, 'invalid_request', 'The multipart body could not be parsed');
   }
+  const unknownPart = [...form.keys()].find((name) => !ALLOWED_PARTS.has(name));
+  if (unknownPart) {
+    return apiError(400, 'invalid_request', `Unexpected part "${unknownPart}"`);
+  }
+  const taskParts = form.getAll('task');
+  if (taskParts.length !== 1) {
+    return apiError(400, 'invalid_request', 'Send exactly one "task" part');
+  }
+  const taskJson = typeof taskParts[0] === 'string' ? taskParts[0] : await taskParts[0].text();
+  const fileParts = form.getAll('attachment');
+  if (fileParts.length > MAX_ATTACHMENTS_PER_TASK) {
+    return apiError(400, 'invalid_request', `At most ${MAX_ATTACHMENTS_PER_TASK} attachments`);
+  }
+  const files: File[] = [];
+  for (const [index, part] of fileParts.entries()) {
+    if (typeof part === 'string') {
+      return apiError(400, 'invalid_request', `Attachment ${index + 1} must be a file`);
+    }
+    files.push(part);
+  }
 
-  const taskPart = form.get('task');
-  const taskJson = typeof taskPart === 'string' ? taskPart : await taskPart?.text();
-  if (!taskJson) return apiError(400, 'invalid_request', 'The "task" part is required');
+  // A replay is answered before anything is validated, so it gets the same
+  // answer even if, say, a label was deleted since the first request.
+  const fingerprint = await requestFingerprint(taskJson, files);
+  const replay = await existingKeyResponse(prisma, workspaceId, idempotencyKey, fingerprint);
+  if (replay) return replay;
+
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(taskJson);
@@ -97,16 +160,10 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
     return apiError(400, 'invalid_request', `task.${issue.path.join('.')}: ${issue.message}`);
   }
   const input = parsed.data;
+  const externalUserRef = input.externalUserRef ?? null;
 
-  const files = form.getAll('attachment');
-  if (files.length > MAX_ATTACHMENTS_PER_TASK) {
-    return apiError(400, 'invalid_request', `At most ${MAX_ATTACHMENTS_PER_TASK} attachments`);
-  }
   const attachments: ValidatedAttachment[] = [];
   for (const [index, file] of files.entries()) {
-    if (typeof file === 'string') {
-      return apiError(400, 'invalid_request', `Attachment ${index + 1} must be a file`);
-    }
     const result = await validateAttachment(file, index);
     if (typeof result === 'string') return apiError(400, 'invalid_request', result);
     attachments.push(result);
@@ -131,7 +188,19 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
       return apiError(403, 'forbidden', "The project is not in this API key's workspace");
     }
   }
+  // Cheap early refusal; the create transaction checks again under a lock.
+  if (
+    externalUserRef &&
+    (await prisma.deletedExternalUser.findUnique({
+      where: { workspaceId_externalUserRef: { workspaceId, externalUserRef } },
+    }))
+  ) {
+    return externalUserDeleted();
+  }
 
+  // Reserve the key. Each attempt has its own reservationId, and only that
+  // attempt can complete or release the row it wrote.
+  const reservationId = randomUUID();
   const stored = attachments.map((attachment) => {
     const id = randomUUID();
     return { ...attachment, id, storageKey: attachmentStorageKey(workspaceId, id) };
@@ -141,22 +210,41 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
       data: {
         workspaceId,
         key: idempotencyKey,
+        reservationId,
+        fingerprint,
+        externalUserRef,
         pendingStorageKeys: stored.map((a) => a.storageKey),
       },
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return existingKeyResponse(prisma, workspaceId, idempotencyKey);
+      const raced = await existingKeyResponse(prisma, workspaceId, idempotencyKey, fingerprint);
+      if (raced) return raced;
     }
     throw error;
   }
+  const ownReservation = {
+    workspaceId,
+    key: idempotencyKey,
+    reservationId,
+    completedAt: null,
+  };
 
   let task;
   try {
     for (const attachment of stored) {
-      await storage!.put(attachment.storageKey, attachment.data, attachment.mimeType);
+      await storage!.put(attachment.storageKey, attachment.file, attachment.mimeType);
     }
     task = await prisma.$transaction(async (tx) => {
+      if (externalUserRef) {
+        // Serializes with the purge: either the purge finds this task, or
+        // this transaction finds the purge's record and refuses.
+        await lockExternalUser(tx, workspaceId, externalUserRef);
+        const deleted = await tx.deletedExternalUser.findUnique({
+          where: { workspaceId_externalUserRef: { workspaceId, externalUserRef } },
+        });
+        if (deleted) throw new ExternalUserDeletedError();
+      }
       const { sequenceNumber, displayId } = await allocateTaskNumber(tx, workspaceId);
       const created = await tx.task.create({
         data: {
@@ -168,8 +256,8 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
           sequenceNumber,
           displayId,
           isExternal: true,
-          createdByApiKeyId: caller.apiKey.id,
-          externalUserRef: input.externalUserRef ?? null,
+          createdByApiKeyId: apiKey.id,
+          externalUserRef,
           labels: labelIds.length ? { connect: labelIds.map((id) => ({ id })) } : undefined,
         },
       });
@@ -181,37 +269,45 @@ export async function handleCreateTask(request: Request, deps: Deps): Promise<Re
             workspaceId,
             filename: a.filename,
             mimeType: a.mimeType,
-            byteSize: a.data.byteLength,
+            byteSize: a.file.size,
             storageKey: a.storageKey,
           })),
         });
       }
-      await tx.apiIdempotencyKey.update({
-        where: { workspaceId_key: { workspaceId, key: idempotencyKey } },
-        data: { taskId: created.id, pendingStorageKeys: [] },
+      const completed = await tx.apiIdempotencyKey.updateMany({
+        where: ownReservation,
+        data: { taskId: created.id, completedAt: new Date(), pendingStorageKeys: [] },
       });
+      if (completed.count !== 1) throw new ReservationLostError();
       return created;
     });
   } catch (error) {
-    // Undo everything this request wrote, so a retry starts clean.
+    // Undo what this attempt wrote, so a retry starts clean.
     await storage
       ?.delete(stored.map((a) => a.storageKey))
       .catch((cleanupError) => console.error('api: failed to delete stored files', cleanupError));
     await prisma.apiIdempotencyKey
-      .delete({ where: { workspaceId_key: { workspaceId, key: idempotencyKey } } })
+      .deleteMany({ where: ownReservation })
       .catch((cleanupError) =>
         console.error('api: failed to release idempotency key', cleanupError),
       );
+    if (error instanceof ExternalUserDeletedError) return externalUserDeleted();
+    if (error instanceof ReservationLostError) {
+      return apiError(409, 'idempotency_conflict', 'This request took too long; retry it');
+    }
     throw error;
   }
 
   pubsub.publish('taskChanged', task);
-  recordAuditEvent(prisma, {
+  await recordAuditEvent(prisma, {
     entityType: 'TASK',
     entityId: task.id,
     action: 'CREATED',
     actorType: 'SYSTEM',
     workspaceId,
+    changes: [
+      { field: 'apiKey', oldValue: null, newValue: `${apiKey.name} (…${apiKey.displayHint})` },
+    ],
   });
   return taskResponse(201, task);
 }

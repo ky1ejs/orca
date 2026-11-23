@@ -240,6 +240,16 @@ export async function createGraphQLClient(): Promise<GraphQLClientHandle> {
                 }
               }
             },
+            taskDeleted(result, args, cache) {
+              const taskId = result.taskDeleted as string | undefined;
+              if (!taskId) return;
+              taskProjectIds.delete(taskId);
+              // Drop the task, and every list it could appear in.
+              cache.invalidate({ __typename: 'Task', id: taskId });
+              invalidateAllWorkspaceQueries(cache);
+              const workspaceId = (args as { workspaceId?: string }).workspaceId;
+              if (workspaceId) cache.invalidate({ __typename: 'Workspace', id: workspaceId });
+            },
             taskChanged(_result, _args, cache) {
               const task = _result.taskChanged as
                 | { id: string; projectId: string | null }

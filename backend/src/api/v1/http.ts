@@ -10,6 +10,10 @@ type ApiErrorCode =
   | 'payload_too_large'
   | 'unsupported_media_type'
   | 'idempotency_conflict'
+  | 'idempotency_key_reused'
+  | 'task_deleted'
+  | 'external_user_deleted'
+  | 'rate_limited'
   | 'not_found'
   | 'method_not_allowed'
   | 'storage_unavailable';

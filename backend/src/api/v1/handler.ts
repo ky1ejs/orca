@@ -30,7 +30,7 @@ export function createPublicApiHandler(deps: { prisma: PrismaClient; pubsub: Pub
 
       if (route === 'external-tasks') {
         if (request.method !== 'DELETE') return apiError(405, 'method_not_allowed', 'Use DELETE');
-        return await handlePurgeExternalTasks(request, url, deps.prisma);
+        return await handlePurgeExternalTasks(request, url, deps);
       }
 
       return apiError(404, 'not_found', 'No such endpoint');

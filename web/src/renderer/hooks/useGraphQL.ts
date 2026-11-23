@@ -47,6 +47,7 @@ import {
   InitiativeChangedDocument,
   ProjectChangedDocument,
   TaskChangedDocument,
+  TaskDeletedDocument,
   TaskActivityDocument,
   ProjectActivityDocument,
   InitiativeActivityDocument,
@@ -489,6 +490,15 @@ export function useInitiativeSubscription(workspaceId: string) {
 export function useProjectSubscription(workspaceId: string) {
   useSubscription({
     query: ProjectChangedDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
+}
+
+/** Removes tasks deleted on the server (by the public API's purge) from the cache. */
+export function useTaskDeletedSubscription(workspaceId: string) {
+  useSubscription({
+    query: TaskDeletedDocument,
     variables: { workspaceId },
     pause: !workspaceId,
   });

@@ -8,7 +8,7 @@ import { dirname, join, resolve, sep } from 'node:path';
  */
 export interface AttachmentStorage {
   readonly kind: 's3' | 'filesystem';
-  put(key: string, data: Uint8Array, contentType: string): Promise<void>;
+  put(key: string, data: Blob, contentType: string): Promise<void>;
   /** The object's bytes, or null if there is no object at `key`. */
   get(key: string): Promise<Uint8Array<ArrayBuffer> | null>;
   /** Deletes each key. A key with no object is not an error. */
@@ -40,7 +40,7 @@ export function createFilesystemStorage(directory: string): AttachmentStorage {
     async put(key, data) {
       const path = pathFor(key);
       await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, data);
+      await writeFile(path, new Uint8Array(await data.arrayBuffer()));
     },
     async get(key) {
       try {
@@ -58,7 +58,7 @@ export function createFilesystemStorage(directory: string): AttachmentStorage {
 
 /** The part of Bun's S3 client this module uses, so tests can stub it. */
 interface S3ClientLike {
-  write(key: string, data: Uint8Array, options: { type: string }): Promise<unknown>;
+  write(key: string, data: Blob, options: { type: string }): Promise<unknown>;
   file(key: string): { arrayBuffer(): Promise<ArrayBuffer> };
   delete(key: string): Promise<unknown>;
 }

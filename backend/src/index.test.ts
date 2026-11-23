@@ -5,10 +5,11 @@ import { createServer, type Server } from 'node:http';
 import { PrismaClient } from '@prisma/client';
 import { chromium, type Browser } from 'playwright-core';
 import { resolve, dirname, join } from 'node:path';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { attachmentStorageKey, createFilesystemStorage } from './attachments/storage.js';
 import { signAccessToken } from './oauth/tokens.js';
+import { requestFingerprint } from './api/v1/task-input.js';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -526,7 +527,7 @@ describe('server integration', () => {
       });
       await createFilesystemStorage(attachmentStorageDir).put(
         attachment.storageKey,
-        bytes,
+        new Blob([bytes]),
         'image/png',
       );
 
@@ -660,6 +661,7 @@ describe('server integration', () => {
       idempotencyKey: string | null,
       task: unknown,
       files: Array<{ bytes: Uint8Array<ArrayBuffer>; type: string }> = [],
+      extraParts: Array<[string, string]> = [],
     ) => {
       const form = new FormData();
       form.set(
@@ -672,6 +674,7 @@ describe('server integration', () => {
       files.forEach((f, i) =>
         form.append('attachment', new Blob([f.bytes], { type: f.type }), `f${i}`),
       );
+      for (const [name, value] of extraParts) form.append(name, value);
       const encoded = new Request('http://x', { method: 'POST', body: form });
       const headers: Record<string, string> = {
         'Content-Type': encoded.headers.get('content-type')!,
@@ -760,10 +763,20 @@ describe('server integration', () => {
 
         // A key whose request is still running gets 409.
         await prisma.apiIdempotencyKey.create({
-          data: { workspaceId, key: `cut-bug-report:in-progress-${runId}`, pendingStorageKeys: [] },
+          data: {
+            workspaceId,
+            key: `cut-bug-report:in-progress-${runId}`,
+            reservationId: 'still-running',
+            fingerprint: await requestFingerprint(JSON.stringify(task), []),
+            pendingStorageKeys: [],
+          },
         });
         const busy = await postTask(key, `cut-bug-report:in-progress-${runId}`, task);
         expect(busy.status).toBe(409);
+
+        // The same key with a different request is refused.
+        const reused = await postTask(key, `cut-bug-report:1-${runId}`, { title: 'Other' });
+        expect(reused.status).toBe(422);
       } finally {
         await prisma.$disconnect();
       }
@@ -794,6 +807,10 @@ describe('server integration', () => {
           .status,
       ).toBe(400);
       expect((await postTask(key, 'k5', { title: 'x', labelIds: ['missing'] })).status).toBe(403);
+      expect((await postTask(key, 'k6', task, [], [['task', '{"title":"second"}']])).status).toBe(
+        400,
+      );
+      expect((await postTask(key, 'k7', task, [], [['note', 'unexpected']])).status).toBe(400);
     });
 
     it('purges an external user’s tasks and their files', async () => {
@@ -816,15 +833,94 @@ describe('server integration', () => {
         expect((await purge(creator.key, `ref-purge-${runId}`)).status).toBe(403);
         expect(await purge(purger.key, `ref-purge-${runId}`)).toEqual({
           status: 200,
-          body: { deletedTaskCount: 1 },
+          body: { deletedTaskCount: 1, deletedTaskDisplayIds: [made.body.displayId] },
         });
         expect(await prisma.task.findUnique({ where: { id: made.body.id as string } })).toBeNull();
         expect(await storage.get(attachment.storageKey)).toBeNull();
         expect(await purge(purger.key, `ref-purge-${runId}`)).toEqual({
           status: 200,
-          body: { deletedTaskCount: 0 },
+          body: { deletedTaskCount: 0, deletedTaskDisplayIds: [] },
         });
         expect((await purge(purger.key, 'bad ref')).status).toBe(400);
+      } finally {
+        await prisma.$disconnect();
+      }
+    });
+    it('cleans up after a failure and lets the retry succeed', async () => {
+      const { key } = await createKey(['TASKS_CREATE']);
+      const task = { title: 'Retried', externalUserRef: `ref-retry-${runId}` };
+      // Storage fails: a file stands where the workspace's attachment folder goes.
+      const folder = join(attachmentStorageDir, 'attachments', workspaceId);
+      const moved = `${folder}.moved-${runId}`;
+      mkdirSync(join(attachmentStorageDir, 'attachments'), { recursive: true });
+      if (existsSync(folder)) renameSync(folder, moved);
+      writeFileSync(folder, 'not a folder');
+      let failed;
+      try {
+        failed = await postTask(key, `retry-${runId}`, task, [{ bytes: PNG, type: 'image/png' }]);
+      } finally {
+        rmSync(folder, { force: true });
+        if (existsSync(moved)) renameSync(moved, folder);
+      }
+      expect(failed.status).toBe(500);
+
+      const prisma = new PrismaClient();
+      try {
+        expect(
+          await prisma.apiIdempotencyKey.findUnique({
+            where: { workspaceId_key: { workspaceId, key: `retry-${runId}` } },
+          }),
+        ).toBeNull();
+      } finally {
+        await prisma.$disconnect();
+      }
+      const retried = await postTask(key, `retry-${runId}`, task, [
+        { bytes: PNG, type: 'image/png' },
+      ]);
+      expect(retried.status).toBe(201);
+    });
+
+    it('after a purge, refuses both a retried create and new tasks for the person', async () => {
+      const creator = await createKey(['TASKS_CREATE']);
+      const purger = await createKey(['TASKS_DELETE_EXTERNAL']);
+      const ref = `ref-gone-${runId}`;
+      const task = { title: 'Gone soon', externalUserRef: ref };
+      const made = await postTask(creator.key, `gone-${runId}`, task);
+      expect(made.status).toBe(201);
+
+      // A person's task linked to the external one, and an audit event on it.
+      const linked = await gql(
+        `mutation C($input: CreateTaskInput!) { createTask(input: $input) { id } }`,
+        authToken,
+        { operationName: 'C', variables: { input: { workspaceId, title: 'Linked by a person' } } },
+      );
+      const linkedId = (linked.body.data as { createTask: { id: string } }).createTask.id;
+      await gql(
+        `mutation R($input: CreateTaskRelationshipInput!) { createTaskRelationship(input: $input) { id } }`,
+        authToken,
+        {
+          operationName: 'R',
+          variables: {
+            input: { sourceTaskId: linkedId, targetTaskId: made.body.id, type: 'RELATES_TO' },
+          },
+        },
+      );
+
+      const purged = await purge(purger.key, ref);
+      expect(purged).toEqual({
+        status: 200,
+        body: { deletedTaskCount: 1, deletedTaskDisplayIds: [made.body.displayId] },
+      });
+
+      expect((await postTask(creator.key, `gone-${runId}`, task)).status).toBe(410);
+      expect((await postTask(creator.key, `gone-new-${runId}`, task)).status).toBe(410);
+
+      const prisma = new PrismaClient();
+      try {
+        expect(await prisma.auditEvent.count({ where: { entityId: made.body.id as string } })).toBe(
+          0,
+        );
+        expect(await prisma.taskRelationship.count({ where: { sourceTaskId: linkedId } })).toBe(0);
       } finally {
         await prisma.$disconnect();
       }

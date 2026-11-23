@@ -175,8 +175,9 @@ describe('WorkspaceDataProvider', () => {
 
     renderWithProviders(client);
 
-    // WorkspaceDataProvider registers 3 subscriptions (initiative, project, task)
-    expect(client.executeSubscription).toHaveBeenCalledTimes(3);
+    // WorkspaceDataProvider registers 4 subscriptions: initiative, project,
+    // task changes and task deletions.
+    expect(client.executeSubscription).toHaveBeenCalledTimes(4);
   });
 
   it('throws when useWorkspaceData is used outside provider', () => {

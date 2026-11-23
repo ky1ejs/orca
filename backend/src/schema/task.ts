@@ -373,7 +373,19 @@ export const taskResolvers = {
         return payload;
       },
     },
-  } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
+    taskDeleted: {
+      subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
+        await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
+        return workspaceScopedSubscription(
+          context.pubsub.subscribe('taskDeleted'),
+          context.prisma,
+          args.workspaceId,
+          context.userId,
+        );
+      },
+      resolve: (payload: { id: string; workspaceId: string }) => payload.id,
+    },
+  } satisfies Pick<SubscriptionResolvers, 'taskChanged' | 'taskDeleted'>,
   Task: {
     project: (parent, _args, context) => {
       if (!parent.projectId) return null;

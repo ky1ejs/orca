@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isValidIdempotencyKey, taskInputSchema, validateAttachment } from './task-input.js';
+import {
+  isValidIdempotencyKey,
+  requestFingerprint,
+  taskInputSchema,
+  validateAttachment,
+} from './task-input.js';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0]);
@@ -64,5 +69,24 @@ describe('isValidIdempotencyKey', () => {
     expect(isValidIdempotencyKey('')).toBe(false);
     expect(isValidIdempotencyKey('has space')).toBe(false);
     expect(isValidIdempotencyKey('x'.repeat(101))).toBe(false);
+  });
+});
+
+describe('requestFingerprint', () => {
+  const file = (bytes: number[], type = 'image/png') =>
+    new File([new Uint8Array(bytes)], 'f', { type });
+
+  it('is the same for the same request', async () => {
+    expect(await requestFingerprint('{"title":"a"}', [file([1, 2])])).toBe(
+      await requestFingerprint('{"title":"a"}', [file([1, 2])]),
+    );
+  });
+
+  it('changes with the task JSON, file contents, type or count', async () => {
+    const base = await requestFingerprint('{"title":"a"}', [file([1, 2])]);
+    expect(await requestFingerprint('{"title":"b"}', [file([1, 2])])).not.toBe(base);
+    expect(await requestFingerprint('{"title":"a"}', [file([1, 3])])).not.toBe(base);
+    expect(await requestFingerprint('{"title":"a"}', [file([1, 2], 'image/jpeg')])).not.toBe(base);
+    expect(await requestFingerprint('{"title":"a"}', [])).not.toBe(base);
   });
 });
