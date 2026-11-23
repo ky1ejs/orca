@@ -518,4 +518,6 @@ type Subscription {
   initiativeChanged(workspaceId: ID!): Initiative!
   projectChanged(workspaceId: ID!): Project!
   taskChanged(workspaceId: ID!): Task!
+  "The ID of a task that was deleted, so clients can drop it."
+  taskDeleted(workspaceId: ID!): ID!
 }

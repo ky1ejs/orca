@@ -112,6 +112,8 @@ model Workspace {
   auditEvents           AuditEvent[]
   taskRelationships     TaskRelationship[]
   apiKeys               ApiKey[]
+  apiIdempotencyKeys    ApiIdempotencyKey[]
+  deletedExternalUsers  DeletedExternalUser[]
   deletedAt             DateTime?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -204,13 +206,21 @@ model Task {
   /// Created through the public API by another service, not by a person.
   /// Its title, description and attachments are untrusted input.
   isExternal            Boolean      @default(false)
+  /// The API key that created this task, if it came through the public API.
+  createdByApiKeyId     String?
+  createdByApiKey       ApiKey?      @relation(fields: [createdByApiKeyId], references: [id], onDelete: SetNull)
+  /// The calling service's opaque reference for the person the task came
+  /// from, so the service can ask Orca to delete that person's tasks.
+  externalUserRef       String?
   attachments           TaskAttachment[]
+  idempotencyKeys       ApiIdempotencyKey[]
   archivedAt            DateTime?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
   @@index([workspaceId])
   @@index([workspaceId, sequenceNumber])
+  @@index([workspaceId, externalUserRef])
 }
 
 model Label {
@@ -396,6 +406,7 @@ model ApiKey {
   createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
   revokedAt   DateTime?
   createdAt   DateTime      @default(now())
+  tasks       Task[]
 
   @@index([workspaceId])
 }
@@ -416,4 +427,40 @@ model TaskAttachment {
 
   @@index([taskId])
   @@index([workspaceId])
+}
+
+/// One public API request's Idempotency-Key, kept after its task is deleted so
+/// a retry can't recreate it. Each attempt to use a free key writes a row with
+/// its own reservationId; only that attempt can complete or release it. Rows
+/// that never complete (a crash mid-request) are swept with their stored files.
+model ApiIdempotencyKey {
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  key                String
+  reservationId      String
+  /// SHA-256 of the request's task JSON and files, to refuse a reused key.
+  fingerprint        String
+  externalUserRef    String?
+  taskId             String?
+  task               Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  /// Set when the task commits. A completed row whose task is gone answers 410.
+  completedAt        DateTime?
+  /// Files written for this request before its task was committed.
+  pendingStorageKeys String[]
+  createdAt          DateTime  @default(now())
+
+  @@id([workspaceId, key])
+  @@index([completedAt, createdAt])
+}
+
+/// A person whose external tasks were deleted through the public API. Their
+/// reference is refused from then on, so a delayed create can't bring their
+/// data back.
+model DeletedExternalUser {
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  externalUserRef String
+  deletedAt       DateTime  @default(now())
+
+  @@id([workspaceId, externalUserRef])
 }

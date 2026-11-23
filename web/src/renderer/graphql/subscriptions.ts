@@ -50,6 +50,12 @@ export const ProjectChangedDocument = /* GraphQL */ `
   }
 `;
 
+export const TaskDeletedDocument = /* GraphQL */ `
+  subscription TaskDeleted($workspaceId: ID!) {
+    taskDeleted(workspaceId: $workspaceId)
+  }
+`;
+
 export const TaskChangedDocument = /* GraphQL */ `
   subscription TaskChanged($workspaceId: ID!) {
     taskChanged(workspaceId: $workspaceId) {

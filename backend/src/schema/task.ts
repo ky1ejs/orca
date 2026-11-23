@@ -16,6 +16,7 @@ import {
 import { recordAuditEvent } from '../audit/record-event.js';
 import { diffFields } from '../audit/diff.js';
 import { computeDisplayType, DISPLAY_LABELS } from './task-relationship.js';
+import { allocateTaskNumber } from '../db/task-number.js';
 
 export const taskResolvers = {
   Query: {
@@ -40,13 +41,7 @@ export const taskResolvers = {
             });
           }
         }
-        // Atomic increment — PostgreSQL row lock serializes concurrent updates
-        const workspace = await tx.workspace.update({
-          where: { id: workspaceId },
-          data: { taskCounter: { increment: 1 } },
-        });
-        const sequenceNumber = workspace.taskCounter;
-        const displayId = `${workspace.slug.toUpperCase()}-${sequenceNumber}`;
+        const { sequenceNumber, displayId } = await allocateTaskNumber(tx, workspaceId);
         // Validate assignee is a workspace member
         if (args.input.assigneeId) {
           const assigneeMembership = await tx.workspaceMembership.findUnique({
@@ -378,7 +373,19 @@ export const taskResolvers = {
         return payload;
       },
     },
-  } satisfies Pick<SubscriptionResolvers, 'taskChanged'>,
+    taskDeleted: {
+      subscribe: async (_parent: unknown, args: { workspaceId: string }, context) => {
+        await requireWorkspaceAccess(context.prisma, args.workspaceId, context.userId);
+        return workspaceScopedSubscription(
+          context.pubsub.subscribe('taskDeleted'),
+          context.prisma,
+          args.workspaceId,
+          context.userId,
+        );
+      },
+      resolve: (payload: { id: string; workspaceId: string }) => payload.id,
+    },
+  } satisfies Pick<SubscriptionResolvers, 'taskChanged' | 'taskDeleted'>,
   Task: {
     project: (parent, _args, context) => {
       if (!parent.projectId) return null;

@@ -4,6 +4,7 @@ import {
   useInitiativeSubscription,
   useProjectSubscription,
   useTaskSubscription,
+  useTaskDeletedSubscription,
 } from '../hooks/useGraphQL.js';
 import { useWorktreeAutoCleanup } from '../hooks/useWorktreeAutoCleanup.js';
 import { useWorkspace } from './context.js';
@@ -37,6 +38,7 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
   useInitiativeSubscription(currentWorkspace?.id ?? '');
   useProjectSubscription(currentWorkspace?.id ?? '');
   const [{ data: taskSubData }] = useTaskSubscription(currentWorkspace?.id ?? '');
+  useTaskDeletedSubscription(currentWorkspace?.id ?? '');
 
   const workspace = data?.workspace ?? undefined;
 

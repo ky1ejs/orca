@@ -70,9 +70,10 @@ src/
 ├── index.ts                   — Server entry point
 ├── context.ts                 — GraphQL context (auth, Prisma client)
 ├── pubsub.ts                  — Pub/Sub for subscriptions
+├── api/v1/                    — Public API for other services, authenticated with API keys (see docs/api.md)
 ├── attachments/               — Task attachment storage (S3 or a local folder) and GET /attachments/:id
 ├── auth/                      — JWT, password hashing, token ops, API keys (api-key.ts)
-├── db/client.ts               — Prisma client init
+├── db/                        — Prisma client init; task number allocation (task-number.ts)
 ├── mcp/
 │   ├── server.ts              — Remote MCP endpoint (`/mcp`, Streamable HTTP, OAuth or JWT auth)
 │   ├── tools/                 — MCP tools; mirror web/src/shared/hooks/mcp-tools/ (see docs/mcp.md)

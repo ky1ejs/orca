@@ -15,6 +15,12 @@ import { createOAuthHandler, pruneOAuthGrants } from './oauth/index.js';
 import { assertPublicUrlConfigured } from './oauth/config.js';
 import { ATTACHMENT_PATH_PREFIX, createAttachmentHandler } from './attachments/route.js';
 import { attachmentStorageFromEnv, setAttachmentStorage } from './attachments/storage.js';
+import {
+  MAX_PUBLIC_API_BODY_BYTES,
+  PUBLIC_API_PREFIX,
+  createPublicApiHandler,
+} from './api/v1/handler.js';
+import { sweepStaleIdempotencyKeys } from './api/v1/idempotency-sweep.js';
 
 assertPublicUrlConfigured();
 
@@ -72,6 +78,7 @@ const yoga = createYoga({
 const handleMcpRequest = createMcpHandler({ schema, baseContext: { prisma, pubsub } });
 const handleOAuthRequest = createOAuthHandler(prisma);
 const handleAttachmentRequest = createAttachmentHandler(prisma);
+const handlePublicApiRequest = createPublicApiHandler({ prisma, pubsub });
 
 const attachmentStorage = attachmentStorageFromEnv();
 setAttachmentStorage(attachmentStorage);
@@ -117,6 +124,8 @@ const wsHandler = makeHandler({
 const server = Bun.serve({
   port: PORT,
   hostname: '0.0.0.0',
+  // The largest request any route takes is the public API's task intake.
+  maxRequestBodySize: MAX_PUBLIC_API_BODY_BYTES,
   async fetch(request, server) {
     const url = new URL(request.url);
     if (url.pathname === '/health') {
@@ -132,6 +141,9 @@ const server = Bun.serve({
       return handleGitHubOAuthCallback(request);
     }
 
+    if (url.pathname.startsWith(PUBLIC_API_PREFIX)) {
+      return handlePublicApiRequest(request, url);
+    }
     if (url.pathname.startsWith(ATTACHMENT_PATH_PREFIX)) {
       return handleAttachmentRequest(request, url.pathname);
     }
@@ -190,5 +202,17 @@ function pruneOAuth() {
 }
 pruneOAuth();
 setInterval(pruneOAuth, PRUNE_INTERVAL_MS).unref();
+
+const IDEMPOTENCY_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+
+function sweepIdempotencyKeys() {
+  sweepStaleIdempotencyKeys(prisma, attachmentStorage)
+    .then((count) => {
+      if (count > 0) console.log(`Released ${count} idempotency keys from unfinished requests`);
+    })
+    .catch((err) => console.error('api:idempotency sweep failed', err));
+}
+sweepIdempotencyKeys();
+setInterval(sweepIdempotencyKeys, IDEMPOTENCY_SWEEP_INTERVAL_MS).unref();
 
 export { server };
