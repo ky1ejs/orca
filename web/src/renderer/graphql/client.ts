@@ -55,6 +55,15 @@ function authHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** Downloads a task attachment with the user's session token. */
+export async function fetchAttachment(attachmentId: string): Promise<Blob> {
+  const res = await fetch(`${BACKEND_URL}/attachments/${encodeURIComponent(attachmentId)}`, {
+    headers: authHeaders(await getToken()),
+  });
+  if (!res.ok) throw new Error(`Attachment download failed (${res.status})`);
+  return res.blob();
+}
+
 function isForbiddenClose(event: unknown): boolean {
   return (
     event != null &&

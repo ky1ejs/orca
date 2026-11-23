@@ -6,6 +6,7 @@ import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
 
 interface TaskDetailDescriptionProps {
   description: string | null;
+  isExternal?: boolean;
   taskId: string;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<unknown>;
 }
@@ -15,6 +16,7 @@ const KBD_CLASS =
 
 export const TaskDetailDescription = memo(function TaskDetailDescription({
   description,
+  isExternal = false,
   taskId,
   updateTask,
 }: TaskDetailDescriptionProps) {
@@ -113,7 +115,7 @@ export const TaskDetailDescription = memo(function TaskDetailDescription({
           <span>Add a description...</span>
         </div>
       ) : (
-        <MarkdownRenderer content={description} />
+        <MarkdownRenderer content={description} allowImages={!isExternal} />
       )}
     </div>
   );

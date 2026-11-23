@@ -26,6 +26,8 @@ let mockTask: {
   project: { name: string };
   assignee: { id: string; name: string; email: string } | null;
   labels: { id: string; name: string; color: string }[];
+  isExternal: boolean;
+  attachments: { id: string; filename: string; mimeType: string; byteSize: number }[];
 } | null = null;
 let mockFetching = false;
 let mockError: { message: string } | null = null;
@@ -197,6 +199,8 @@ beforeEach(() => {
     project: { name: 'Test Project' },
     assignee: null,
     labels: [],
+    isExternal: false,
+    attachments: [],
   };
   mockSessions = [];
   mockFetching = false;
@@ -303,6 +307,21 @@ describe('TaskDetail', () => {
       await importAndRender();
 
       expect(screen.getByText('A test description')).toBeInTheDocument();
+    });
+
+    it('marks an external task and shows no images from its description', async () => {
+      mockTask!.isExternal = true;
+      mockTask!.description = 'Look ![x](https://example.com/x.png)';
+
+      await importAndRender();
+
+      expect(screen.getByTestId('external-task-badge')).toHaveTextContent('External');
+      expect(screen.queryByRole('img', { name: 'x' })).not.toBeInTheDocument();
+    });
+
+    it('shows no External badge for a task created by a person', async () => {
+      await importAndRender();
+      expect(screen.queryByTestId('external-task-badge')).not.toBeInTheDocument();
     });
 
     it('shows placeholder when description is absent', async () => {

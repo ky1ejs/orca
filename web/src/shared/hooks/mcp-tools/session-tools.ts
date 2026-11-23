@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import {
   type McpToolsDeps,
+  flagExternalTasks,
   graphqlRequest,
   resolveSession,
   toolError,
@@ -31,6 +32,8 @@ export function registerSessionTools(server: McpServer, deps: McpToolsDeps): voi
             project { id name }
             assignee { id name }
             labels { id name color }
+            isExternal
+            attachments { id filename mimeType byteSize }
           }
         }
       `;
@@ -46,7 +49,7 @@ export function registerSessionTools(server: McpServer, deps: McpToolsDeps): voi
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.task, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.task), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }

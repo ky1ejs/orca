@@ -23,6 +23,7 @@ const config: CodegenConfig = {
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
           AuditEvent: '@prisma/client#AuditEvent as AuditEventModel',
           ApiKey: '@prisma/client#ApiKey as ApiKeyModel',
+          TaskAttachment: '@prisma/client#TaskAttachment as TaskAttachmentModel',
           TaskRelationship:
             '../schema/task-relationship.js#TaskRelationshipParent as TaskRelationshipParent',
         },

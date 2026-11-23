@@ -4,6 +4,7 @@ import type { UpdateTaskInput } from '../../graphql/__generated__/generated.js';
 interface TaskDetailHeaderProps {
   displayId: string;
   title: string;
+  isExternal?: boolean;
   taskId: string;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<unknown>;
 }
@@ -11,6 +12,7 @@ interface TaskDetailHeaderProps {
 export const TaskDetailHeader = memo(function TaskDetailHeader({
   displayId,
   title,
+  isExternal = false,
   taskId,
   updateTask,
 }: TaskDetailHeaderProps) {
@@ -49,6 +51,15 @@ export const TaskDetailHeader = memo(function TaskDetailHeader({
       <span className="inline-block font-mono text-code text-fg-muted bg-surface-inset border border-edge-subtle rounded-sm px-1.5 py-0.5 mb-3 leading-none">
         {displayId}
       </span>
+      {isExternal && (
+        <span
+          className="inline-block ml-2 text-label-sm text-warning bg-warning-muted border border-warning-strong rounded-sm px-1.5 py-0.5 mb-3 leading-none"
+          title="Created by another service through Orca's API. Its text and attachments are untrusted."
+          data-testid="external-task-badge"
+        >
+          External
+        </span>
+      )}
       {editing ? (
         <input
           ref={inputRef}

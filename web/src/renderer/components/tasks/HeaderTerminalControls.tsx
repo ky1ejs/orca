@@ -11,6 +11,9 @@ import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
 import { BootstrapIndicator } from './BootstrapIndicator.js';
 import { usePlatform } from '../../platform/usePlatform.js';
 
+const EXTERNAL_LAUNCH_WARNING =
+  'This task was created by another service through the Orca API. Its description and attachments are untrusted input, and the agent will read them. Start an agent on it?';
+
 export function HeaderTerminalControls() {
   const platform = usePlatform();
   const controls = useTaskHeaderControls();
@@ -49,6 +52,8 @@ export function HeaderTerminalControls() {
   } = controls;
 
   const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
+    // External tasks are never started automatically: a person confirms here.
+    if (buildMetadata().isExternal && !window.confirm(EXTERNAL_LAUNCH_WARNING)) return;
     if (!projectDirectory) {
       onAgentError({
         message: 'No project directory set.',

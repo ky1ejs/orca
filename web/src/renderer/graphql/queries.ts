@@ -278,6 +278,13 @@ export const TaskQueryDocument = /* GraphQL */ `
       displayId
       title
       description
+      isExternal
+      attachments {
+        id
+        filename
+        mimeType
+        byteSize
+      }
       status
       priority
       projectId

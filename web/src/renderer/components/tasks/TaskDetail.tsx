@@ -25,6 +25,7 @@ import { TaskActivityFeed } from '../activity/TaskActivityFeed.js';
 import { TaskDetailHeader } from './TaskDetailHeader.js';
 import { TaskDetailDescription } from './TaskDetailDescription.js';
 import { TaskDetailSidebar } from './TaskDetailSidebar.js';
+import { TaskAttachments } from './TaskAttachments.js';
 import { StatusChip } from './StatusChip.js';
 import { PriorityChip } from './PriorityChip.js';
 import { ProjectChip } from './ProjectChip.js';
@@ -83,8 +84,16 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
       description: task?.description ?? null,
       projectName: task?.project?.name ?? null,
       workspaceSlug: currentWorkspace?.slug ?? '',
+      isExternal: task?.isExternal ?? false,
     }),
-    [task?.displayId, task?.title, task?.description, task?.project?.name, currentWorkspace?.slug],
+    [
+      task?.displayId,
+      task?.title,
+      task?.description,
+      task?.project?.name,
+      task?.isExternal,
+      currentWorkspace?.slug,
+    ],
   );
 
   const setHeaderControls = useSetTaskHeaderControls();
@@ -187,6 +196,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
             <TaskDetailHeader
               displayId={task.displayId}
               title={task.title}
+              isExternal={task.isExternal}
               taskId={taskId}
               updateTask={updateTask}
             />
@@ -226,6 +236,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
           >
             <TaskDetailDescription
               description={task.description ?? null}
+              isExternal={task.isExternal}
               taskId={taskId}
               updateTask={updateTask}
             />
@@ -256,6 +267,7 @@ export function TaskDetail({ taskId, sessions, refreshSessions }: TaskDetailProp
             className="mt-10 space-y-8 animate-fade-in"
             style={{ animationDelay: '160ms', animationFillMode: 'backwards' }}
           >
+            <TaskAttachments attachments={task.attachments} />
             <PullRequestList pullRequests={pullRequests} taskId={taskId} onMutate={handleMutate} />
             <TaskRelationshipList
               relationships={relationships}

@@ -13,6 +13,8 @@ import { createLoaders } from './loaders.js';
 import { createMcpHandler } from './mcp/server.js';
 import { createOAuthHandler, pruneOAuthGrants } from './oauth/index.js';
 import { assertPublicUrlConfigured } from './oauth/config.js';
+import { ATTACHMENT_PATH_PREFIX, createAttachmentHandler } from './attachments/route.js';
+import { attachmentStorageFromEnv, setAttachmentStorage } from './attachments/storage.js';
 
 assertPublicUrlConfigured();
 
@@ -69,6 +71,15 @@ const yoga = createYoga({
 
 const handleMcpRequest = createMcpHandler({ schema, baseContext: { prisma, pubsub } });
 const handleOAuthRequest = createOAuthHandler(prisma);
+const handleAttachmentRequest = createAttachmentHandler(prisma);
+
+const attachmentStorage = attachmentStorageFromEnv();
+setAttachmentStorage(attachmentStorage);
+console.log(
+  attachmentStorage
+    ? `Attachment storage: ${attachmentStorage.kind}`
+    : 'Attachment storage is not configured; attachments are unavailable',
+);
 
 const PORT = Number(process.env.PORT ?? 4000);
 
@@ -119,6 +130,10 @@ const server = Bun.serve({
     }
     if (url.pathname === '/github/oauth/callback' && request.method === 'GET') {
       return handleGitHubOAuthCallback(request);
+    }
+
+    if (url.pathname.startsWith(ATTACHMENT_PATH_PREFIX)) {
+      return handleAttachmentRequest(request, url.pathname);
     }
 
     if (url.pathname === '/mcp') {

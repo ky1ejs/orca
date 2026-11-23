@@ -91,4 +91,20 @@ describe('MarkdownRenderer', () => {
       expect(screen.getByTestId('task-link-ORCA-1')).toBeInTheDocument();
     });
   });
+
+  it('renders images by default', () => {
+    render(<MarkdownRenderer content="![diagram](https://example.com/a.png)" />);
+    expect(screen.getByRole('img', { name: 'diagram' })).toBeInTheDocument();
+  });
+
+  it('shows only the alt text of images when images are not allowed', () => {
+    render(
+      <MarkdownRenderer
+        content="![tracking pixel](https://example.com/a.png)"
+        allowImages={false}
+      />,
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('blocked-image')).toHaveTextContent('[image: tracking pixel]');
+  });
 });

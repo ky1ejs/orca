@@ -13,7 +13,7 @@ Use the local server for agents Orca launches on your machine. Use the remote se
 
 ## Tools
 
-Both servers expose the workspace, initiative, project, task, label, member, task-link and `get_docs` tools.
+Both servers expose the workspace, initiative, project, task, label, member, task-link and `get_docs` tools. `get_task_attachment` returns a task's attachment as an image (see [docs/api.md](api.md#task-attachments)).
 
 The local server also has tools that need the desktop app:
 

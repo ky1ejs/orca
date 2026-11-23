@@ -5,6 +5,11 @@ import { TaskIdLink } from '../shared/TaskIdLink.js';
 
 interface MarkdownRendererProps {
   content: string;
+  /**
+   * False for text from outside the team: images render as their alt text,
+   * so the text can't load or show an image the reader didn't choose.
+   */
+  allowImages?: boolean;
 }
 
 const ORCA_SCHEME = 'orca://';
@@ -34,7 +39,16 @@ const components = {
   },
 };
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+const componentsWithoutImages = {
+  ...components,
+  img: ({ alt }: { alt?: string }) => (
+    <span className="text-fg-muted" data-testid="blocked-image">
+      [image{alt ? `: ${alt}` : ''}]
+    </span>
+  ),
+};
+
+export function MarkdownRenderer({ content, allowImages = true }: MarkdownRendererProps) {
   return (
     <div
       className="prose prose-sm max-w-none prose-code:font-mono prose-code:text-code-sm"
@@ -42,7 +56,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     >
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
-        components={components}
+        components={allowImages ? components : componentsWithoutImages}
         urlTransform={urlTransform}
       >
         {content}

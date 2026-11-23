@@ -189,6 +189,7 @@ export class DaemonStatusManager {
         env.ORCA_PROJECT_NAME = metadata.projectName ?? '';
         env.ORCA_WORKSPACE_SLUG = metadata.workspaceSlug;
         env.ORCA_TASK_DESCRIPTION = (metadata.description ?? '').slice(0, 1000);
+        env.ORCA_TASK_IS_EXTERNAL = metadata.isExternal ? '1' : '0';
         env.ORCA_SERVER_URL = this.backendUrl;
       }
       logger.debug(`Session ${session.id}: injecting env [${Object.keys(env).join(', ')}]`);
