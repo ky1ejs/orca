@@ -18,12 +18,12 @@ export interface AttachmentStorage {
 /** Image types Orca stores and serves. Anything else is refused on upload. */
 export const ATTACHMENT_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
 
-export function attachmentStorageKey(
-  workspaceId: string,
-  taskId: string,
-  attachmentId: string,
-): string {
-  return `tasks/${workspaceId}/${taskId}/${attachmentId}`;
+/**
+ * Where an attachment's bytes live. The key doesn't include the task, because
+ * the public API stores files before it creates their task.
+ */
+export function attachmentStorageKey(workspaceId: string, attachmentId: string): string {
+  return `attachments/${workspaceId}/${attachmentId}`;
 }
 
 export function createFilesystemStorage(directory: string): AttachmentStorage {

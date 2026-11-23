@@ -24,7 +24,7 @@ afterEach(async () => {
 describe('filesystem attachment storage', () => {
   it('stores, reads and deletes bytes', async () => {
     const storage = await tempStorage();
-    const key = attachmentStorageKey('ws1', 'task1', 'att1');
+    const key = attachmentStorageKey('ws1', 'att1');
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 
     await storage.put(key, bytes, 'image/png');

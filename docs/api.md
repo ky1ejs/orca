@@ -16,7 +16,57 @@ Keys look like `orca_` followed by 43 URL-safe characters. The list shows each k
 | `TASKS_CREATE` | Creating tasks |
 | `TASKS_DELETE_EXTERNAL` | Deleting tasks the workspace's keys created for an external user |
 
-The endpoints that use these scopes are not built yet; this page will describe them when they are.
+Each endpoint below names the scope it needs.
+
+## Endpoints
+
+Send the key as `Authorization: Bearer orca_…`. Only API keys work here; session tokens and OAuth tokens get 401. Missing, unknown and revoked keys all get the same 401.
+
+Errors are JSON: `{ "error": { "code": "…", "message": "…" } }`.
+
+### Create a task: `POST /api/v1/tasks`
+
+Scope `TASKS_CREATE`. Creates an external task (`isExternal: true`) in the key's workspace.
+
+Headers:
+
+- `Idempotency-Key` (required): 1–100 printable ASCII characters, unique per task you mean to create. Repeating a key returns the task that key already created, with status 200, and doesn't compare the body. Retry with the same key after a timeout or a 5xx, so a request that did succeed isn't duplicated. Keys are scoped to the workspace, so rotating API keys doesn't reset them.
+- `Content-Type: multipart/form-data`, with a `Content-Length` of at most 52 MiB.
+
+Parts:
+
+- `task` (required): JSON.
+
+  | Field | Required | Notes |
+  | --- | --- | --- |
+  | `title` | yes | 1–200 characters after trimming |
+  | `description` | no | Markdown, up to 50,000 characters |
+  | `priority` | no | `NONE` (default), `LOW`, `MEDIUM`, `HIGH` or `URGENT` |
+  | `projectId` | no | A project in the key's workspace |
+  | `labelIds` | no | Up to 20 labels in the key's workspace |
+  | `externalUserRef` | no | 1–128 letters, digits, `-` or `_`: your opaque reference for the person the task came from, used by the delete endpoint below |
+
+  Other fields are refused.
+- `attachment` (0–5): PNG or JPEG files, 1 byte to 10 MB each. Orca checks the type against the file's first bytes and names the files itself (`attachment-1.png`, …).
+
+Responses:
+
+| Status | Meaning |
+| --- | --- |
+| 201 | Created: `{ "id", "displayId" }` |
+| 200 | This `Idempotency-Key` already created a task: the same body as its 201 |
+| 400 | Invalid headers, JSON or attachment |
+| 401 | Missing, unknown or revoked API key |
+| 403 | The key lacks `TASKS_CREATE`, or a label or project isn't in its workspace |
+| 409 | A request with this `Idempotency-Key` is still running. Retry later; a request that crashed is cleared within about 15 minutes |
+| 411 / 413 / 415 | No `Content-Length` / body over 52 MiB / not multipart |
+| 503 | Attachments were sent but Orca has no attachment storage |
+
+### Delete a person's tasks: `DELETE /api/v1/external-tasks?externalUserRef=…`
+
+Scope `TASKS_DELETE_EXTERNAL`. Deletes every external task in the key's workspace with that `externalUserRef`. It removes their attachment files first, then the tasks with their attachments, relationships, pull request links and audit history. Text that people or agents copied out of these tasks elsewhere is not touched.
+
+Returns 200 with `{ "deletedTaskCount": n }`, including when nothing matched. A 5xx leaves everything it hadn't yet deleted in place, so retrying is safe.
 
 ## Task attachments
 

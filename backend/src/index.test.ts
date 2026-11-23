@@ -521,7 +521,7 @@ describe('server integration', () => {
           filename: 'screenshot-1.png',
           mimeType: 'image/png',
           byteSize: bytes.byteLength,
-          storageKey: attachmentStorageKey(workspaceId, task.id, 'att-test'),
+          storageKey: attachmentStorageKey(workspaceId, randomBytes(8).toString('hex')),
         },
       });
       await createFilesystemStorage(attachmentStorageDir).put(
@@ -632,6 +632,203 @@ describe('server integration', () => {
     } finally {
       await prisma.$disconnect();
     }
+  });
+
+  describe('public API', () => {
+    // The test database persists between local runs, so keys differ per run.
+    const runId = Date.now();
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+
+    const createKey = async (scopes: string[]) => {
+      const res = await gql(
+        `mutation Key($input: CreateApiKeyInput!) {
+          createApiKey(input: $input) { key apiKey { id } }
+        }`,
+        authToken,
+        {
+          operationName: 'Key',
+          variables: { input: { workspaceId, name: 'intake-test', scopes } },
+        },
+      );
+      return (res.body.data as { createApiKey: { key: string; apiKey: { id: string } } })
+        .createApiKey;
+    };
+
+    // Builds the multipart body up front, so the request carries a Content-Length.
+    const postTask = async (
+      key: string | null,
+      idempotencyKey: string | null,
+      task: unknown,
+      files: Array<{ bytes: Uint8Array<ArrayBuffer>; type: string }> = [],
+    ) => {
+      const form = new FormData();
+      form.set(
+        'task',
+        new Blob([typeof task === 'string' ? task : JSON.stringify(task)], {
+          type: 'application/json',
+        }),
+        'task.json',
+      );
+      files.forEach((f, i) =>
+        form.append('attachment', new Blob([f.bytes], { type: f.type }), `f${i}`),
+      );
+      const encoded = new Request('http://x', { method: 'POST', body: form });
+      const headers: Record<string, string> = {
+        'Content-Type': encoded.headers.get('content-type')!,
+      };
+      if (key) headers.Authorization = `Bearer ${key}`;
+      if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+      const res = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/tasks`, {
+        method: 'POST',
+        headers,
+        body: await encoded.arrayBuffer(),
+      });
+      return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+    };
+
+    const purge = async (key: string, ref: string) => {
+      const res = await fetch(
+        `http://127.0.0.1:${TEST_PORT}/api/v1/external-tasks?externalUserRef=${ref}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${key}` } },
+      );
+      return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+    };
+
+    it('creates an external task with an attachment, once per Idempotency-Key', async () => {
+      const { key } = await createKey(['TASKS_CREATE']);
+      const labelRes = await gql(
+        `mutation L($input: CreateLabelInput!) { createLabel(input: $input) { id } }`,
+        authToken,
+        {
+          operationName: 'L',
+          variables: {
+            input: { workspaceId, name: `Intake Bug ${Date.now()}`, color: '#EB5757' },
+          },
+        },
+      );
+      const labelId = (labelRes.body.data as { createLabel: { id: string } }).createLabel.id;
+      const task = {
+        title: 'Bug report [bug]: feed is empty',
+        description: 'The feed shows nothing.',
+        labelIds: [labelId],
+        externalUserRef: `ref-intake-${runId}`,
+      };
+
+      const first = await postTask(key, `cut-bug-report:1-${runId}`, task, [
+        { bytes: PNG, type: 'image/png' },
+      ]);
+      expect(first.status).toBe(201);
+      const replay = await postTask(key, `cut-bug-report:1-${runId}`, task, [
+        { bytes: PNG, type: 'image/png' },
+      ]);
+      expect(replay).toEqual({ status: 200, body: first.body });
+
+      const created = await gql(
+        `query T($id: ID!) {
+          task(id: $id) { isExternal title labels { id } attachments { id filename mimeType } }
+        }`,
+        authToken,
+        { operationName: 'T', variables: { id: first.body.id } },
+      );
+      const fetched = (
+        created.body.data as {
+          task: {
+            isExternal: boolean;
+            title: string;
+            labels: Array<{ id: string }>;
+            attachments: Array<{ id: string; filename: string; mimeType: string }>;
+          };
+        }
+      ).task;
+      expect(fetched).toMatchObject({
+        isExternal: true,
+        title: task.title,
+        labels: [{ id: labelId }],
+        attachments: [{ filename: 'attachment-1.png', mimeType: 'image/png' }],
+      });
+      const download = await fetch(
+        `http://127.0.0.1:${TEST_PORT}/attachments/${fetched.attachments[0].id}`,
+        { headers: { Authorization: `Bearer ${authToken}` } },
+      );
+      expect(new Uint8Array(await download.arrayBuffer())).toEqual(PNG);
+
+      const prisma = new PrismaClient();
+      try {
+        expect(await prisma.task.count({ where: { externalUserRef: task.externalUserRef } })).toBe(
+          1,
+        );
+
+        // A key whose request is still running gets 409.
+        await prisma.apiIdempotencyKey.create({
+          data: { workspaceId, key: `cut-bug-report:in-progress-${runId}`, pendingStorageKeys: [] },
+        });
+        const busy = await postTask(key, `cut-bug-report:in-progress-${runId}`, task);
+        expect(busy.status).toBe(409);
+      } finally {
+        await prisma.$disconnect();
+      }
+    });
+
+    it('refuses bad keys, missing scopes and invalid requests', async () => {
+      const task = { title: 'Refused' };
+      expect((await postTask(null, 'k', task)).status).toBe(401);
+      expect((await postTask('orca_unknown', 'k', task)).status).toBe(401);
+      expect((await postTask(authToken, 'k', task)).status).toBe(401);
+
+      const revoked = await createKey(['TASKS_CREATE']);
+      await gql(`mutation R($id: ID!) { revokeApiKey(id: $id) { id } }`, authToken, {
+        operationName: 'R',
+        variables: { id: revoked.apiKey.id },
+      });
+      expect((await postTask(revoked.key, 'k', task)).status).toBe(401);
+
+      const deleteOnly = await createKey(['TASKS_DELETE_EXTERNAL']);
+      expect((await postTask(deleteOnly.key, 'k', task)).status).toBe(403);
+
+      const { key } = await createKey(['TASKS_CREATE']);
+      expect((await postTask(key, null, task)).status).toBe(400);
+      expect((await postTask(key, 'k2', '{not json')).status).toBe(400);
+      expect((await postTask(key, 'k3', { title: '' })).status).toBe(400);
+      expect(
+        (await postTask(key, 'k4', task, [{ bytes: new Uint8Array([1, 2, 3]), type: 'image/png' }]))
+          .status,
+      ).toBe(400);
+      expect((await postTask(key, 'k5', { title: 'x', labelIds: ['missing'] })).status).toBe(403);
+    });
+
+    it('purges an external user’s tasks and their files', async () => {
+      const creator = await createKey(['TASKS_CREATE']);
+      const purger = await createKey(['TASKS_DELETE_EXTERNAL']);
+      const made = await postTask(
+        creator.key,
+        `purge-1-${runId}`,
+        { title: 'To purge', externalUserRef: `ref-purge-${runId}` },
+        [{ bytes: PNG, type: 'image/png' }],
+      );
+      const prisma = new PrismaClient();
+      try {
+        const attachment = await prisma.taskAttachment.findFirstOrThrow({
+          where: { taskId: made.body.id as string },
+        });
+        const storage = createFilesystemStorage(attachmentStorageDir);
+        expect(await storage.get(attachment.storageKey)).not.toBeNull();
+
+        expect((await purge(creator.key, `ref-purge-${runId}`)).status).toBe(403);
+        expect(await purge(purger.key, `ref-purge-${runId}`)).toEqual({
+          status: 200,
+          body: { deletedTaskCount: 1 },
+        });
+        expect(await prisma.task.findUnique({ where: { id: made.body.id as string } })).toBeNull();
+        expect(await storage.get(attachment.storageKey)).toBeNull();
+        expect(await purge(purger.key, `ref-purge-${runId}`)).toEqual({
+          status: 200,
+          body: { deletedTaskCount: 0 },
+        });
+        expect((await purge(purger.key, 'bad ref')).status).toBe(400);
+      } finally {
+        await prisma.$disconnect();
+      }
+    });
   });
 
   it('serves MCP tools over /mcp as the authenticated user', async () => {
