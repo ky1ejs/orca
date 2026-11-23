@@ -55,6 +55,24 @@ function authHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Downloads a task attachment with the user's session token. A 401 is handled
+ * like the GraphQL client's auth errors: the cached token is dropped and the
+ * app is told to sign in again.
+ */
+export async function fetchAttachment(attachmentId: string, signal?: AbortSignal): Promise<Blob> {
+  const res = await fetch(`${BACKEND_URL}/attachments/${encodeURIComponent(attachmentId)}`, {
+    headers: authHeaders(await getToken()),
+    signal,
+  });
+  if (res.status === 401) {
+    clearCachedToken();
+    onAuthError?.();
+  }
+  if (!res.ok) throw new Error(`Attachment download failed (${res.status})`);
+  return res.blob();
+}
+
 function isForbiddenClose(event: unknown): boolean {
   return (
     event != null &&

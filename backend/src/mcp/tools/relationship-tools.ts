@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
-import { type McpToolsDeps, toolError, toolSuccess } from './helpers.js';
+import { type McpToolsDeps, flagExternalTasks, toolError, toolSuccess } from './helpers.js';
 
 export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps): void {
   server.registerTool(
@@ -22,7 +22,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
         mutation CreateTaskRelationship($input: CreateTaskRelationshipInput!) {
           createTaskRelationship(input: $input) {
             id type displayType
-            relatedTask { id displayId title status }
+            relatedTask { id displayId title status isExternal }
             createdAt
           }
         }
@@ -39,7 +39,9 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.createTaskRelationship, null, 2));
+        return toolSuccess(
+          JSON.stringify(flagExternalTasks(json.data.createTaskRelationship), null, 2),
+        );
       } catch (err) {
         return toolError(`Failed to execute GraphQL operation: ${err}`);
       }
@@ -92,7 +94,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
             id displayId
             relationships {
               id type displayType
-              relatedTask { id displayId title status }
+              relatedTask { id displayId title status isExternal }
               createdAt
             }
           }
@@ -108,7 +110,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.task, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.task), null, 2));
       } catch (err) {
         return toolError(`Failed to execute GraphQL operation: ${err}`);
       }

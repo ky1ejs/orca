@@ -6,6 +6,7 @@ import {
   resolveToken,
   toolError,
   toolSuccess,
+  flagExternalTasks,
 } from './helpers.js';
 
 export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps): void {
@@ -31,7 +32,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
         mutation CreateTaskRelationship($input: CreateTaskRelationshipInput!) {
           createTaskRelationship(input: $input) {
             id type displayType
-            relatedTask { id displayId title status }
+            relatedTask { id displayId title status isExternal }
             createdAt
           }
         }
@@ -48,7 +49,9 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.createTaskRelationship, null, 2));
+        return toolSuccess(
+          JSON.stringify(flagExternalTasks(json.data.createTaskRelationship), null, 2),
+        );
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -107,7 +110,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
             id displayId
             relationships {
               id type displayType
-              relatedTask { id displayId title status }
+              relatedTask { id displayId title status isExternal }
               createdAt
             }
           }
@@ -123,7 +126,7 @@ export function registerRelationshipTools(server: McpServer, deps: McpToolsDeps)
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.task, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.task), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }

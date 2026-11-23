@@ -7,6 +7,7 @@ import {
   resolveToken,
   toolError,
   toolSuccess,
+  flagExternalTasks,
 } from './helpers.js';
 
 export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
@@ -68,7 +69,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       const mutation = `
         mutation CreateTask($input: CreateTaskInput!) {
           createTask(input: $input) {
-            id displayId title description status priority projectId
+            id displayId title description status priority projectId isExternal
           }
         }
       `;
@@ -87,7 +88,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           return toolError(`Failed to create task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
-        return toolSuccess(JSON.stringify(json.data.createTask, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.createTask), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -131,7 +132,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       const mutation = `
         mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
           updateTask(id: $id, input: $input) {
-            id displayId title description status priority projectId
+            id displayId title description status priority projectId isExternal
             assignee { id name }
             labels { id name color }
           }
@@ -148,7 +149,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           return toolError(`Failed to update task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
-        return toolSuccess(JSON.stringify(json.data.updateTask, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.updateTask), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }

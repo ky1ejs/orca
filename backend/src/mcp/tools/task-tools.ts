@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
-import { type McpToolsDeps, toolError, toolSuccess } from './helpers.js';
+import { type McpToolsDeps, flagExternalTasks, toolError, toolSuccess } from './helpers.js';
 
 export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
   // The resolver links CREATED_FROM only when the source task exists in the
@@ -47,7 +47,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       const mutation = `
         mutation CreateTask($input: CreateTaskInput!) {
           createTask(input: $input) {
-            id displayId title description status priority projectId
+            id displayId title description status priority projectId isExternal
           }
         }
       `;
@@ -66,7 +66,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           return toolError(`Failed to create task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
-        return toolSuccess(JSON.stringify(json.data.createTask, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.createTask), null, 2));
       } catch (err) {
         return toolError(`Failed to execute GraphQL operation: ${err}`);
       }
@@ -107,7 +107,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
       const mutation = `
         mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
           updateTask(id: $id, input: $input) {
-            id displayId title description status priority projectId
+            id displayId title description status priority projectId isExternal
             assignee { id name }
             labels { id name color }
           }
@@ -124,7 +124,7 @@ export function registerTaskTools(server: McpServer, deps: McpToolsDeps): void {
           return toolError(`Failed to update task: ${JSON.stringify(json.errors ?? 'no data')}`);
         }
 
-        return toolSuccess(JSON.stringify(json.data.updateTask, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.updateTask), null, 2));
       } catch (err) {
         return toolError(`Failed to execute GraphQL operation: ${err}`);
       }

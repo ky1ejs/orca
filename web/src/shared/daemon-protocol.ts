@@ -98,6 +98,8 @@ export interface TaskMetadata {
   description: string | null;
   projectName: string | null;
   workspaceSlug: string;
+  /** The task came from outside the team; its text is untrusted. */
+  isExternal?: boolean;
 }
 
 export interface AgentLaunchParams {

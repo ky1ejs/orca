@@ -39,6 +39,15 @@ export function createLoaders(prisma: PrismaClient) {
       return taskIds.map((id) => map.get(id) ?? []);
     }),
 
+    attachmentsByTaskId: new DataLoader(async (taskIds: readonly string[]) => {
+      const attachments = await prisma.taskAttachment.findMany({
+        where: { taskId: { in: [...taskIds] } },
+        orderBy: { createdAt: 'asc' },
+      });
+      const grouped = groupBy(attachments, (a) => a.taskId);
+      return taskIds.map((id) => grouped.get(id) ?? []);
+    }),
+
     pullRequestsByTaskId: new DataLoader(async (taskIds: readonly string[]) => {
       const prs = await prisma.pullRequest.findMany({
         where: { taskId: { in: [...taskIds] } },

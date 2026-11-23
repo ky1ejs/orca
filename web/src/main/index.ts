@@ -25,6 +25,7 @@ import { logger } from './logger.js';
 import { exportDiagnostics } from './diagnostics.js';
 import { DockBadgeManager } from './dock-badge.js';
 import { TrayManager } from './tray-manager.js';
+import { isAllowedExternalUrl } from './external-links.js';
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);
@@ -92,12 +93,14 @@ function createWindow() {
 
   // Open links in the default browser instead of inside Electron
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (isAllowedExternalUrl(url)) shell.openExternal(url);
+    else logger.warn(`Refused to open link with a disallowed scheme: ${url}`);
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault();
-    shell.openExternal(url);
+    if (isAllowedExternalUrl(url)) shell.openExternal(url);
+    else logger.warn(`Refused to open link with a disallowed scheme: ${url}`);
   });
 
   if (process.env.NODE_ENV === 'development') {

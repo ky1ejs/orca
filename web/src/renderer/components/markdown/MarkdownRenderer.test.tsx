@@ -91,4 +91,43 @@ describe('MarkdownRenderer', () => {
       expect(screen.getByTestId('task-link-ORCA-1')).toBeInTheDocument();
     });
   });
+
+  it('renders images by default', () => {
+    render(<MarkdownRenderer content="![diagram](https://example.com/a.png)" />);
+    expect(screen.getByRole('img', { name: 'diagram' })).toBeInTheDocument();
+  });
+
+  it('shows only the alt text of images in untrusted text', () => {
+    render(<MarkdownRenderer content="![tracking pixel](https://example.com/a.png)" isUntrusted />);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('blocked-image')).toHaveTextContent('[image: tracking pixel]');
+  });
+
+  it('shows the real address of web links in untrusted text', () => {
+    render(<MarkdownRenderer content="[Your bank](https://evil.example/login)" isUntrusted />);
+    expect(screen.getByRole('link', { name: 'Your bank' })).toHaveAttribute(
+      'href',
+      'https://evil.example/login',
+    );
+    expect(screen.getByTestId('untrusted-link-url')).toHaveTextContent(
+      '(https://evil.example/login)',
+    );
+  });
+
+  it.each([
+    ['a relative path', '[Logs](../../x.command)'],
+    ['a file URL', '[Logs](file:///Applications/Calculator.app)'],
+    ['another orca URL', '[Connect](orca://github/callback?installation_id=1&workspaceId=w)'],
+  ])('turns %s into plain text in untrusted text', (_name, content) => {
+    render(<MarkdownRenderer content={content} isUntrusted />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByTestId('untrusted-link-text')).toHaveTextContent(/Logs|Connect/);
+  });
+
+  it('never links to orca URLs other than tasks, even in trusted text', () => {
+    render(<MarkdownRenderer content="[Connect](orca://github/callback?installation_id=1)" />);
+    expect(screen.getByText('Connect').closest('a')?.getAttribute('href') ?? '').not.toContain(
+      'orca://github',
+    );
+  });
 });

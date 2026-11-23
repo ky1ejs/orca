@@ -70,6 +70,7 @@ src/
 ├── index.ts                   — Server entry point
 ├── context.ts                 — GraphQL context (auth, Prisma client)
 ├── pubsub.ts                  — Pub/Sub for subscriptions
+├── attachments/               — Task attachment storage (S3 or a local folder) and GET /attachments/:id
 ├── auth/                      — JWT, password hashing, token ops, API keys (api-key.ts)
 ├── db/client.ts               — Prisma client init
 ├── mcp/
@@ -83,6 +84,7 @@ src/
 │   ├── scalars.ts             — Custom scalars (DateTime)
 │   ├── auth.ts                — Auth resolvers
 │   ├── api-key.ts             — API key management (workspace owners)
+│   ├── task-attachment.ts     — Task.attachments, taskAttachment, contentBase64
 │   ├── task.ts                — Task CRUD
 │   ├── project.ts             — Project CRUD
 │   ├── initiative.ts          — Initiative CRUD

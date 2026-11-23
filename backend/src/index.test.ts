@@ -4,7 +4,11 @@ import { createHash, randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { PrismaClient } from '@prisma/client';
 import { chromium, type Browser } from 'playwright-core';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { attachmentStorageKey, createFilesystemStorage } from './attachments/storage.js';
+import { signAccessToken } from './oauth/tokens.js';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -24,6 +28,7 @@ let serverProcess: ChildProcess;
 let authToken: string;
 let workspaceId: string;
 let workspaceSlug: string;
+const attachmentStorageDir = mkdtempSync(join(tmpdir(), 'orca-test-attachments-'));
 
 async function gql(
   query: string,
@@ -85,7 +90,12 @@ describe('server integration', () => {
     await new Promise<void>((resolve, reject) => {
       serverProcess = spawn('bun', ['run', 'src/index.ts'], {
         cwd: backendDir,
-        env: { ...process.env, PORT: String(TEST_PORT), JWT_SECRET: TEST_JWT_SECRET },
+        env: {
+          ...process.env,
+          PORT: String(TEST_PORT),
+          JWT_SECRET: TEST_JWT_SECRET,
+          ATTACHMENT_STORAGE_DIR: attachmentStorageDir,
+        },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
@@ -141,6 +151,7 @@ describe('server integration', () => {
 
   afterAll(() => {
     serverProcess?.kill();
+    rmSync(attachmentStorageDir, { recursive: true, force: true });
   });
 
   it('health check returns 200', async () => {
@@ -486,6 +497,140 @@ describe('server integration', () => {
         operationName: 'Delete',
         variables: { id: memberWorkspaceId },
       });
+    }
+  });
+
+  it('serves task attachments to workspace members only, over HTTP, GraphQL and MCP', async () => {
+    const prisma = new PrismaClient();
+    try {
+      const created = await gql(
+        `mutation Create($input: CreateTaskInput!) { createTask(input: $input) { id displayId } }`,
+        authToken,
+        {
+          operationName: 'Create',
+          variables: { input: { workspaceId, title: 'Has a screenshot' } },
+        },
+      );
+      const task = (created.body.data as { createTask: { id: string; displayId: string } })
+        .createTask;
+      const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const attachment = await prisma.taskAttachment.create({
+        data: {
+          taskId: task.id,
+          workspaceId,
+          filename: 'screenshot-1.png',
+          mimeType: 'image/png',
+          byteSize: bytes.byteLength,
+          storageKey: attachmentStorageKey(workspaceId, task.id, 'att-test'),
+        },
+      });
+      await createFilesystemStorage(attachmentStorageDir).put(
+        attachment.storageKey,
+        bytes,
+        'image/png',
+      );
+
+      const url = `http://127.0.0.1:${TEST_PORT}/attachments/${attachment.id}`;
+      const download = (token?: string) =>
+        fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+
+      expect((await download()).status).toBe(401);
+      // A real API key and a real OAuth access token are both refused: the
+      // route takes session JWTs only.
+      const keyRes = await gql(
+        `mutation Key($input: CreateApiKeyInput!) { createApiKey(input: $input) { key } }`,
+        authToken,
+        {
+          operationName: 'Key',
+          variables: { input: { workspaceId, name: 'attachments-test', scopes: ['TASKS_CREATE'] } },
+        },
+      );
+      const apiKey = (keyRes.body.data as { createApiKey: { key: string } }).createApiKey.key;
+      expect((await download(apiKey)).status).toBe(401);
+      const me = await gql('{ me { id } }', authToken);
+      const previousSecret = process.env.JWT_SECRET;
+      process.env.JWT_SECRET = TEST_JWT_SECRET;
+      const oauthToken = await signAccessToken({
+        userId: (me.body.data as { me: { id: string } }).me.id,
+        clientId: 'test-client',
+        resource: `http://127.0.0.1:${TEST_PORT}/mcp`,
+      });
+      process.env.JWT_SECRET = previousSecret;
+      expect((await download(oauthToken)).status).toBe(401);
+      const otherLogin = await gql(
+        `mutation { login(email: "other@orca.local", password: "test-password") { token } }`,
+      );
+      const otherToken = (otherLogin.body.data as { login: { token: string } }).login.token;
+      expect((await download(otherToken)).status).toBe(404);
+
+      const res = await download(authToken);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toBe('image/png');
+      expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(res.headers.get('cache-control')).toBe('private, no-store');
+      expect(res.headers.get('access-control-allow-origin')).toBe('*');
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+
+      const preflight = await fetch(url, { method: 'OPTIONS' });
+      expect(preflight.status).toBe(204);
+      expect(preflight.headers.get('access-control-allow-headers')).toBe('Authorization');
+
+      const viaGraphql = await gql(
+        `query T($id: ID!) { task(id: $id) { isExternal attachments { id filename byteSize } } }`,
+        authToken,
+        { operationName: 'T', variables: { id: task.id } },
+      );
+      expect(viaGraphql.body.data).toEqual({
+        task: {
+          isExternal: false,
+          attachments: [{ id: attachment.id, filename: 'screenshot-1.png', byteSize: 8 }],
+        },
+      });
+
+      const callTool = async (name: string, args: Record<string, unknown>) => {
+        const mcpRes = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: { name, arguments: args },
+          }),
+        });
+        return (await mcpRes.json()) as {
+          result: {
+            isError?: boolean;
+            content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+          };
+        };
+      };
+
+      // An external task carries the untrusted-input notice in every tool result.
+      await prisma.task.update({ where: { id: task.id }, data: { isExternal: true } });
+      const image = await callTool('get_task_attachment', { attachmentId: attachment.id });
+      expect(image.result.isError).toBeUndefined();
+      expect(image.result.content[0].text).toContain('untrusted input');
+      expect(image.result.content[1]).toEqual({
+        type: 'image',
+        mimeType: 'image/png',
+        data: Buffer.from(bytes).toString('base64'),
+      });
+      const details = await callTool('get_task', { id: task.id });
+      const parsed = JSON.parse(details.result.content[0].text!) as {
+        isExternal: boolean;
+        untrustedNotice?: string;
+        attachments: Array<{ id: string }>;
+      };
+      expect(parsed.isExternal).toBe(true);
+      expect(parsed.untrustedNotice).toContain('untrusted input');
+      expect(parsed.attachments.map((a) => a.id)).toEqual([attachment.id]);
+    } finally {
+      await prisma.$disconnect();
     }
   });
 

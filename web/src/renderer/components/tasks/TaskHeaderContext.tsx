@@ -22,6 +22,7 @@ interface TaskHeaderControls {
     description: string | null;
     projectName: string | null;
     workspaceSlug: string;
+    isExternal: boolean;
   };
   onAgentError: (error: { message: string; suggestion: string } | null) => void;
 }

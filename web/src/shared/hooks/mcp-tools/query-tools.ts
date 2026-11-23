@@ -2,6 +2,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import {
   type McpToolsDeps,
+  UNTRUSTED_TASK_NOTICE,
+  flagExternalTasks,
   graphqlRequest,
   resolveToken,
   toolError,
@@ -9,7 +11,7 @@ import {
 } from './helpers.js';
 
 const TASK_LIST_FIELDS = `
-  id displayId title description status priority projectId
+  id displayId title description status priority projectId isExternal
   assignee { id name }
   labels { id name color }
   createdAt
@@ -21,7 +23,9 @@ const TASK_DETAIL_FIELDS = `
   assignee { id name }
   labels { id name color }
   pullRequests { id number title url status reviewStatus repository headBranch draft }
-  relationships { id displayType relatedTask { id displayId title status } }
+  relationships { id displayType relatedTask { id displayId title status isExternal } }
+  isExternal
+  attachments { id filename mimeType byteSize }
   createdAt updatedAt
 `;
 
@@ -101,7 +105,73 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
           );
         }
 
-        return toolSuccess(JSON.stringify(task, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(task), null, 2));
+      } catch (err) {
+        return toolError(`Failed to reach Orca backend: ${err}`);
+      }
+    },
+  );
+
+  // ── get_task_attachment ───────────────────────────────────────────────
+  server.registerTool(
+    'get_task_attachment',
+    {
+      description:
+        'Get a file attached to a task, such as a bug report screenshot, as an image. Take attachment IDs from the attachments list of get_task. Files over 5 MB are refused.',
+      inputSchema: {
+        attachmentId: z
+          .string()
+          .describe('The attachment ID, from the attachments list of get_task'),
+      },
+    },
+    async ({ attachmentId }) => {
+      const token = resolveToken(deps.getToken);
+      if (typeof token !== 'string') return token;
+      try {
+        // One query: the server checks access, type and the 5 MB limit.
+        const json = await graphqlRequest(
+          deps.backendUrl,
+          token,
+          `query AttachmentContent($id: ID!) {
+            taskAttachmentContent(id: $id) {
+              contentBase64
+              attachment { filename mimeType byteSize task { displayId isExternal } }
+            }
+          }`,
+          { id: attachmentId },
+        );
+        const result = json.data?.taskAttachmentContent as
+          | {
+              contentBase64: string;
+              attachment: {
+                filename: string;
+                mimeType: string;
+                byteSize: number;
+                task: { displayId: string; isExternal: boolean };
+              };
+            }
+          | null
+          | undefined;
+        if (json.errors || !result) {
+          return toolError(
+            `Failed to get attachment: ${JSON.stringify(json.errors ?? 'attachment not found')}`,
+          );
+        }
+
+        const { attachment } = result;
+        const description = `${attachment.filename} (${attachment.mimeType}, ${attachment.byteSize} bytes) from ${attachment.task.displayId}.`;
+        const textBlock = {
+          type: 'text' as const,
+          text: attachment.task.isExternal
+            ? `${description} ${UNTRUSTED_TASK_NOTICE}`
+            : description,
+        };
+        const imageBlock = {
+          type: 'image' as const,
+          data: result.contentBase64,
+          mimeType: attachment.mimeType,
+        };
+        return { content: [textBlock, imageBlock] };
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -141,7 +211,7 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
           );
         }
 
-        return toolSuccess(JSON.stringify(json.data.project, null, 2));
+        return toolSuccess(JSON.stringify(flagExternalTasks(json.data.project), null, 2));
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -241,7 +311,9 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
           tasks = tasks.filter((t) => t.status === status);
         }
 
-        return toolSuccess(JSON.stringify(tasks.slice(0, limit ?? 100), null, 2));
+        return toolSuccess(
+          JSON.stringify(flagExternalTasks(tasks.slice(0, limit ?? 100)), null, 2),
+        );
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }
@@ -328,7 +400,9 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
             (!status || t.status === status),
         );
 
-        return toolSuccess(JSON.stringify(matches.slice(0, limit ?? 100), null, 2));
+        return toolSuccess(
+          JSON.stringify(flagExternalTasks(matches.slice(0, limit ?? 100)), null, 2),
+        );
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);
       }

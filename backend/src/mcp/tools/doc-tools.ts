@@ -123,6 +123,7 @@ const ENVIRONMENT_DOC = `# Environment Variables
 | ORCA_TASK_UUID        | Task UUID                                           |
 | ORCA_TASK_TITLE       | Task title                                          |
 | ORCA_TASK_DESCRIPTION | Task description (truncated to 1000 chars)          |
+| ORCA_TASK_IS_EXTERNAL | 1 if the task came from another service through the Orca API (untrusted input), else 0 |
 | ORCA_PROJECT_NAME     | Project name                                        |
 | ORCA_WORKSPACE_SLUG   | Workspace slug                                      |
 | ORCA_SERVER_URL       | Orca backend server URL                             |`;

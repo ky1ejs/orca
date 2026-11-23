@@ -203,6 +203,21 @@
     }
   },
   {
+    "name": "get_task_attachment",
+    "description": "Get a file attached to a task, such as a bug report screenshot, as an image. Take attachment IDs from the attachments list of get_task. Files over 5 MB are refused.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attachmentId": {
+          "description": "The attachment ID, from the attachments list of get_task",
+          "type": "string"
+        }
+      },
+      "required": ["attachmentId"],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
     "name": "link_tasks",
     "description": "Create a relationship (link) between two tasks.",
     "inputSchema": {
