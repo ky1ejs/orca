@@ -292,6 +292,203 @@ describe('server integration', () => {
     expect(deleteRes.body.errors).toBeUndefined();
   });
 
+  const apiKeysQuery = `query Keys($workspaceId: ID!) {
+    apiKeys(workspaceId: $workspaceId) { id revokedAt }
+  }`;
+
+  const errorCode = (body: { errors?: unknown }) =>
+    (body.errors as Array<{ extensions?: { code?: string } }> | undefined)?.[0]?.extensions?.code;
+
+  const loginAs = async (email: string) => {
+    const res = await gql(
+      `mutation Login($email: String!) { login(email: $email, password: "test-password") { token } }`,
+      undefined,
+      { operationName: 'Login', variables: { email } },
+    );
+    return (res.body.data as { login: { token: string } }).login.token;
+  };
+
+  const revokedAtAsOwner = async (wsId: string, keyId: string) => {
+    const res = await gql(apiKeysQuery, authToken, {
+      operationName: 'Keys',
+      variables: { workspaceId: wsId },
+    });
+    const keys = (res.body.data as { apiKeys: Array<{ id: string; revokedAt: string | null }> })
+      .apiKeys;
+    return keys.find((k) => k.id === keyId)?.revokedAt;
+  };
+
+  it('lets an owner create, list and revoke API keys, which JWT paths refuse', async () => {
+    const createRes = await gql(
+      `mutation Create($input: CreateApiKeyInput!) {
+        createApiKey(input: $input) { key apiKey { id name displayHint scopes revokedAt createdBy { id } } }
+      }`,
+      authToken,
+      {
+        operationName: 'Create',
+        variables: { input: { workspaceId, name: 'cut-api', scopes: ['TASKS_CREATE'] } },
+      },
+    );
+    expect(createRes.body.errors).toBeUndefined();
+    const created = (
+      createRes.body.data as {
+        createApiKey: {
+          key: string;
+          apiKey: { id: string; name: string; displayHint: string; revokedAt: string | null };
+        };
+      }
+    ).createApiKey;
+    expect(created.key).toMatch(/^orca_/);
+    expect(created.apiKey).toMatchObject({ name: 'cut-api', displayHint: created.key.slice(-4) });
+
+    const listRes = await gql(apiKeysQuery, authToken, {
+      operationName: 'Keys',
+      variables: { workspaceId },
+    });
+    const keys = (listRes.body.data as { apiKeys: Array<{ id: string }> }).apiKeys;
+    expect(keys.map((k) => k.id)).toContain(created.apiKey.id);
+    expect(JSON.stringify(listRes.body)).not.toContain(created.key);
+
+    // The key never authenticates as a user on GraphQL, MCP or the WebSocket.
+    const graphqlRes = await gql('{ workspaces { id } }', created.key);
+    expect((graphqlRes.body.errors as Array<{ message: string }>)[0].message).toContain(
+      'Missing or invalid authentication',
+    );
+    const mcpRes = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${created.key}`,
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    expect(mcpRes.status).toBe(401);
+    const wsResult = await new Promise<string>((resolve) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${TEST_PORT}/graphql`, 'graphql-transport-ws');
+      ws.onopen = () =>
+        ws.send(JSON.stringify({ type: 'connection_init', payload: { token: created.key } }));
+      ws.onmessage = (event) => {
+        resolve(JSON.parse(String(event.data)).type);
+        ws.close();
+      };
+      ws.onclose = (event) => resolve(`closed:${event.code}`);
+    });
+    // 4403 is what graphql-ws sends when onConnect refuses the connection;
+    // any other close (wrong path, crash) would be a different code.
+    expect(wsResult).toBe('closed:4403');
+
+    // Someone outside the workspace can neither list nor revoke the key.
+    const otherToken = await loginAs('other@orca.local');
+    const otherList = await gql(apiKeysQuery, otherToken, {
+      operationName: 'Keys',
+      variables: { workspaceId },
+    });
+    expect(errorCode(otherList.body)).toBe('NOT_FOUND');
+    const revokeQuery = `mutation Revoke($id: ID!) { revokeApiKey(id: $id) { id revokedAt } }`;
+    const otherRevoke = await gql(revokeQuery, otherToken, {
+      operationName: 'Revoke',
+      variables: { id: created.apiKey.id },
+    });
+    expect(errorCode(otherRevoke.body)).toBe('NOT_FOUND');
+    expect(await revokedAtAsOwner(workspaceId, created.apiKey.id)).toBeNull();
+
+    const revokeRes = await gql(revokeQuery, authToken, {
+      operationName: 'Revoke',
+      variables: { id: created.apiKey.id },
+    });
+    expect(revokeRes.body.errors).toBeUndefined();
+    expect(
+      (revokeRes.body.data as { revokeApiKey: { revokedAt: string | null } }).revokeApiKey
+        .revokedAt,
+    ).not.toBeNull();
+  });
+
+  it('refuses API key management to a workspace member who is not an owner', async () => {
+    // A separate workspace, so adding a member doesn't change the shared one.
+    const wsRes = await gql(
+      `mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+        createWorkspace(input: $input) { id }
+      }`,
+      authToken,
+      {
+        operationName: 'CreateWorkspace',
+        variables: { input: { name: 'Key Members', slug: 'key-members' } },
+      },
+    );
+    const memberWorkspaceId = (wsRes.body.data as { createWorkspace: { id: string } })
+      .createWorkspace.id;
+
+    try {
+      const addRes = await gql(
+        `mutation Add($input: AddMemberInput!) {
+          addMember(input: $input) {
+            ... on MemberAdded { member { id } }
+            ... on InvitationCreated { invitation { id } }
+          }
+        }`,
+        authToken,
+        {
+          operationName: 'Add',
+          variables: {
+            input: { workspaceId: memberWorkspaceId, email: 'other@orca.local', role: 'MEMBER' },
+          },
+        },
+      );
+      expect(addRes.body.errors).toBeUndefined();
+      const memberToken = await loginAs('other@orca.local');
+      const invitationId = (addRes.body.data as { addMember: { invitation?: { id: string } } })
+        .addMember.invitation?.id;
+      if (invitationId) {
+        const accept = await gql(
+          `mutation Accept($id: ID!) { acceptInvitation(id: $id) { id } }`,
+          memberToken,
+          { operationName: 'Accept', variables: { id: invitationId } },
+        );
+        expect(accept.body.errors).toBeUndefined();
+      }
+
+      const createQuery = `mutation Create($input: CreateApiKeyInput!) {
+        createApiKey(input: $input) { apiKey { id } }
+      }`;
+      const ownerCreate = await gql(createQuery, authToken, {
+        operationName: 'Create',
+        variables: {
+          input: { workspaceId: memberWorkspaceId, name: 'owner-key', scopes: ['TASKS_CREATE'] },
+        },
+      });
+      const keyId = (ownerCreate.body.data as { createApiKey: { apiKey: { id: string } } })
+        .createApiKey.apiKey.id;
+
+      const memberList = await gql(apiKeysQuery, memberToken, {
+        operationName: 'Keys',
+        variables: { workspaceId: memberWorkspaceId },
+      });
+      expect(errorCode(memberList.body)).toBe('NOT_FOUND');
+
+      const memberCreate = await gql(createQuery, memberToken, {
+        operationName: 'Create',
+        variables: {
+          input: { workspaceId: memberWorkspaceId, name: 'member-key', scopes: ['TASKS_CREATE'] },
+        },
+      });
+      expect(errorCode(memberCreate.body)).toBe('NOT_FOUND');
+
+      const memberRevoke = await gql(
+        `mutation Revoke($id: ID!) { revokeApiKey(id: $id) { id } }`,
+        memberToken,
+        { operationName: 'Revoke', variables: { id: keyId } },
+      );
+      expect(errorCode(memberRevoke.body)).toBe('NOT_FOUND');
+      expect(await revokedAtAsOwner(memberWorkspaceId, keyId)).toBeNull();
+    } finally {
+      await gql(`mutation Delete($id: ID!) { deleteWorkspace(id: $id) }`, authToken, {
+        operationName: 'Delete',
+        variables: { id: memberWorkspaceId },
+      });
+    }
+  });
+
   it('serves MCP tools over /mcp as the authenticated user', async () => {
     const callTool = async (name: string, args: Record<string, unknown>, token = authToken) => {
       const res = await fetch(`http://127.0.0.1:${TEST_PORT}/mcp`, {

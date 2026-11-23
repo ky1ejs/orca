@@ -22,6 +22,7 @@ const config: CodegenConfig = {
           WorkspaceMember: '@prisma/client#WorkspaceMembership as WorkspaceMembershipModel',
           WorkspaceInvitation: '@prisma/client#WorkspaceInvitation as WorkspaceInvitationModel',
           AuditEvent: '@prisma/client#AuditEvent as AuditEventModel',
+          ApiKey: '@prisma/client#ApiKey as ApiKeyModel',
           TaskRelationship:
             '../schema/task-relationship.js#TaskRelationshipParent as TaskRelationshipParent',
         },
@@ -35,6 +36,7 @@ const config: CodegenConfig = {
           AuditAction: '@prisma/client#AuditAction',
           AuditActorType: '@prisma/client#AuditActorType',
           TaskRelationshipType: '@prisma/client#TaskRelationshipType',
+          ApiKeyScope: '@prisma/client#ApiKeyScope',
         },
         useIndexSignature: true,
       },

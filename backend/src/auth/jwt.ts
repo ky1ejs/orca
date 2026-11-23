@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
+import { isApiKeyToken } from './api-key.js';
 
 export function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -25,9 +26,12 @@ export async function signJwt(payload: JwtPayload): Promise<string> {
 /**
  * Verifies a session JWT from `login`/`register`. Tokens with an audience are
  * OAuth access tokens scoped to another resource (see src/oauth/tokens.ts)
- * and are rejected here.
+ * and are rejected here, as are API keys, which only the public API accepts.
  */
 export async function verifyJwt(token: string): Promise<JwtPayload> {
+  if (isApiKeyToken(token)) {
+    throw new Error('API keys are only accepted by the public API');
+  }
   const { payload } = await jwtVerify(token, getSecret());
   if (payload.aud !== undefined) {
     throw new Error('Token is scoped to another resource');

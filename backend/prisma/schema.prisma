@@ -88,6 +88,7 @@ model User {
   assignedTasks     Task[]                @relation("assignedTasks")
   oauthCodes         OAuthAuthorizationCode[]
   oauthRefreshTokens OAuthRefreshToken[]
+  createdApiKeys     ApiKey[]
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 }
@@ -110,6 +111,7 @@ model Workspace {
   settings              WorkspaceSettings?
   auditEvents           AuditEvent[]
   taskRelationships     TaskRelationship[]
+  apiKeys               ApiKey[]
   deletedAt             DateTime?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -367,4 +369,29 @@ model OAuthRefreshToken {
   @@index([familyId])
   @@index([clientId, userId])
   @@index([expiresAt])
+}
+
+enum ApiKeyScope {
+  TASKS_CREATE
+  TASKS_DELETE_EXTERNAL
+}
+
+/// A credential for another service to call Orca's API on behalf of one
+/// workspace. Only the SHA-256 hash of the key is stored; the plaintext is
+/// shown once, when the key is created. Keys are revoked, never deleted.
+model ApiKey {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  /// Last 4 characters of the key, so people can tell keys apart.
+  displayHint String
+  hashedKey   String        @unique
+  scopes      ApiKeyScope[]
+  createdById String?
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([workspaceId])
 }

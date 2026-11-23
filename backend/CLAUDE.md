@@ -70,7 +70,7 @@ src/
 ├── index.ts                   — Server entry point
 ├── context.ts                 — GraphQL context (auth, Prisma client)
 ├── pubsub.ts                  — Pub/Sub for subscriptions
-├── auth/                      — JWT, password hashing, token ops
+├── auth/                      — JWT, password hashing, token ops, API keys (api-key.ts)
 ├── db/client.ts               — Prisma client init
 ├── mcp/
 │   ├── server.ts              — Remote MCP endpoint (`/mcp`, Streamable HTTP, OAuth or JWT auth)
@@ -82,6 +82,7 @@ src/
 │   ├── index.ts               — Schema composition
 │   ├── scalars.ts             — Custom scalars (DateTime)
 │   ├── auth.ts                — Auth resolvers
+│   ├── api-key.ts             — API key management (workspace owners)
 │   ├── task.ts                — Task CRUD
 │   ├── project.ts             — Project CRUD
 │   ├── initiative.ts          — Initiative CRUD

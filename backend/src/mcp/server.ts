@@ -6,6 +6,7 @@ import { createYoga, type YogaServerInstance } from 'graphql-yoga';
 import type { ServerContext } from '../context.js';
 import { createLoaders } from '../loaders.js';
 import { verifyJwt } from '../auth/jwt.js';
+import { isApiKeyToken } from '../auth/api-key.js';
 import { getPublicOrigin, mcpResourceUrl, protectedResourceMetadataUrl } from '../oauth/config.js';
 import { verifyAccessToken } from '../oauth/tokens.js';
 import type { GraphqlExecutor, GraphqlResult, McpToolsDeps } from './tools/helpers.js';
@@ -120,6 +121,8 @@ async function authenticate(request: Request, prisma: PrismaClient): Promise<str
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) return null;
   const token = header.slice('Bearer '.length);
+  // API keys belong to the public API (/api/v1) and never act as a user here.
+  if (isApiKeyToken(token)) return null;
 
   const resource = mcpResourceUrl(getPublicOrigin(request));
   let userId = await verifyAccessToken(token, resource);

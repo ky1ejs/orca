@@ -365,3 +365,28 @@ export const RemoveTaskRelationshipDocument = /* GraphQL */ `
     removeTaskRelationship(id: $id)
   }
 `;
+
+export const CreateApiKeyDocument = /* GraphQL */ `
+  mutation CreateApiKey($input: CreateApiKeyInput!) {
+    createApiKey(input: $input) {
+      key
+      apiKey {
+        id
+        name
+        displayHint
+        scopes
+        revokedAt
+        createdAt
+      }
+    }
+  }
+`;
+
+export const RevokeApiKeyDocument = /* GraphQL */ `
+  mutation RevokeApiKey($id: ID!) {
+    revokeApiKey(id: $id) {
+      id
+      revokedAt
+    }
+  }
+`;

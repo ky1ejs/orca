@@ -16,6 +16,7 @@ import { pullRequestFieldResolvers, pullRequestMutationResolvers } from './pull-
 import { workspaceSettingsResolvers } from './workspace-settings.js';
 import { githubInstallationResolvers } from './github-installation.js';
 import { auditEventResolvers } from './audit-event.js';
+import { apiKeyResolvers } from './api-key.js';
 import {
   taskRelationshipFieldResolvers,
   taskRelationshipMutationResolvers,
@@ -41,6 +42,7 @@ const resolvers: Resolvers = {
     ...membershipResolvers.Query,
     ...auditEventResolvers.Query,
     ...taskRelationshipQueryResolvers,
+    ...apiKeyResolvers.Query,
   },
   Mutation: {
     ...authResolvers.Mutation,
@@ -54,6 +56,7 @@ const resolvers: Resolvers = {
     ...githubInstallationResolvers.Mutation,
     ...pullRequestMutationResolvers,
     ...taskRelationshipMutationResolvers,
+    ...apiKeyResolvers.Mutation,
   },
   Subscription: {
     ...initiativeResolvers.Subscription,
@@ -77,6 +80,7 @@ const resolvers: Resolvers = {
   },
   TaskRelationship: taskRelationshipTypeResolvers,
   AuditEvent: auditEventResolvers.AuditEvent,
+  ApiKey: apiKeyResolvers.ApiKey,
   AuditActor: {
     __resolveType: (obj) => {
       if ('label' in obj) return 'SystemActor';

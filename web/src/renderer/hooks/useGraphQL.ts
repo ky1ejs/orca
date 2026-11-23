@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useSubscription } from 'urql';
-import { useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useSubscription, useClient } from 'urql';
+import { useCallback, useEffect, useState } from 'react';
 import {
   MeDocument,
   WorkspaceDocument,
@@ -9,6 +9,9 @@ import {
   WorkspaceMembersDocument,
   PendingInvitationsDocument,
   LabelsDocument,
+  ApiKeysDocument,
+  CreateApiKeyDocument,
+  RevokeApiKeyDocument,
   CreateWorkspaceDocument,
   UpdateWorkspaceDocument,
   DeleteWorkspaceDocument,
@@ -64,6 +67,7 @@ import type {
   UpdateLabelInput,
   AddMemberInput,
   UpdateMemberRoleInput,
+  CreateApiKeyInput,
 } from '../graphql/__generated__/generated.js';
 
 // Query hooks
@@ -330,6 +334,45 @@ export function useDeleteLabel() {
   const [result, executeMutation] = useMutation(DeleteLabelDocument);
   const deleteLabel = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
   return { ...result, deleteLabel };
+}
+
+// API key hooks
+
+export function useApiKeys(workspaceId: string) {
+  const [result, reexecute] = useQuery({
+    query: ApiKeysDocument,
+    variables: { workspaceId },
+    pause: !workspaceId,
+  });
+  return { ...result, refetch: reexecute };
+}
+
+/**
+ * Runs the mutation through the client rather than `useMutation`, which would
+ * keep the result, and so the one-time plaintext key, in hook state for as
+ * long as the component stays mounted. The caller decides how long to hold it.
+ */
+export function useCreateApiKey() {
+  const client = useClient();
+  const [fetching, setFetching] = useState(false);
+  const createApiKey = useCallback(
+    async (input: CreateApiKeyInput) => {
+      setFetching(true);
+      try {
+        return await client.mutation(CreateApiKeyDocument, { input }).toPromise();
+      } finally {
+        setFetching(false);
+      }
+    },
+    [client],
+  );
+  return { fetching, createApiKey };
+}
+
+export function useRevokeApiKey() {
+  const [result, executeMutation] = useMutation(RevokeApiKeyDocument);
+  const revokeApiKey = useCallback((id: string) => executeMutation({ id }), [executeMutation]);
+  return { ...result, revokeApiKey };
 }
 
 // Integrations hooks
