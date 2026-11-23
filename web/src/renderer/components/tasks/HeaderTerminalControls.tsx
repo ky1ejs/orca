@@ -10,15 +10,15 @@ import { usePreferences } from '../../preferences/context.js';
 import { useBootstrapStatus } from '../../hooks/useBootstrapStatus.js';
 import { BootstrapIndicator } from './BootstrapIndicator.js';
 import { usePlatform } from '../../platform/usePlatform.js';
-
-const EXTERNAL_LAUNCH_WARNING =
-  'This task was created by another service through the Orca API. Its description and attachments are untrusted input, and the agent will read them. Start an agent on it?';
+import { ExternalAgentStartDialog } from './ExternalAgentStartDialog.js';
 
 export function HeaderTerminalControls() {
   const platform = usePlatform();
   const controls = useTaskHeaderControls();
   const { launching, setLaunching } = useTaskLaunching();
   const [launchMenuOpen, setLaunchMenuOpen] = useState(false);
+  // An agent start waiting for confirmation, for an external task.
+  const [pendingStart, setPendingStart] = useState<(() => void) | null>(null);
   const launchMenuRef = useRef<HTMLDivElement>(null);
   const { agentLaunchMode, setAgentLaunchMode } = usePreferences();
   const activeSessionIds = useSessionActivity();
@@ -51,9 +51,29 @@ export function HeaderTerminalControls() {
     taskId,
   } = controls;
 
-  const handleLaunchAgent = async (options?: { planMode?: boolean }) => {
-    // External tasks are never started automatically: a person confirms here.
-    if (buildMetadata().isExternal && !window.confirm(EXTERNAL_LAUNCH_WARNING)) return;
+  // Every way of starting an agent goes through here: on an external task a
+  // person confirms first, and nothing starts one automatically.
+  const startConfirmingIfExternal = (start: () => void) => {
+    if (buildMetadata().isExternal) setPendingStart(() => start);
+    else start();
+  };
+
+  const confirmDialog = pendingStart && (
+    <ExternalAgentStartDialog
+      onConfirm={() => {
+        setPendingStart(null);
+        pendingStart();
+      }}
+      onCancel={() => setPendingStart(null)}
+    />
+  );
+
+  const handleLaunchAgent = (options?: { planMode?: boolean }) =>
+    startConfirmingIfExternal(() => void launchAgent(options));
+
+  const handleRestartAgent = () => startConfirmingIfExternal(() => void restartAgent());
+
+  const launchAgent = async (options?: { planMode?: boolean }) => {
     if (!projectDirectory) {
       onAgentError({
         message: 'No project directory set.',
@@ -90,7 +110,7 @@ export function HeaderTerminalControls() {
     refreshSessions();
   };
 
-  const handleRestartAgent = async () => {
+  const restartAgent = async () => {
     if (!errorSession) return;
     if (!projectDirectory) {
       onAgentError({
@@ -158,6 +178,7 @@ export function HeaderTerminalControls() {
   if (errorSession) {
     return (
       <div className="flex items-center px-6">
+        {confirmDialog}
         <button
           onClick={handleRestartAgent}
           className="px-2.5 py-1 bg-error-muted hover:bg-error-strong text-error text-label-sm rounded-md transition-colors inline-flex items-center"
@@ -180,6 +201,7 @@ export function HeaderTerminalControls() {
 
   return (
     <div className="flex items-center px-6 relative" ref={launchMenuRef}>
+      {confirmDialog}
       <div className="flex">
         <button
           onClick={() => handleLaunchAgent(isPlanDefault ? { planMode: true } : undefined)}

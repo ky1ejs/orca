@@ -4,6 +4,8 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 
 const mockLaunch = vi.fn();
+const mockRestart = vi.fn();
+let errorSession: { id: string; status: string } | undefined;
 let isExternal = false;
 
 vi.mock('./TaskHeaderContext.js', () => ({
@@ -11,7 +13,7 @@ vi.mock('./TaskHeaderContext.js', () => ({
     displayId: 'CUT-1',
     taskId: 'task-1',
     activeSession: undefined,
-    errorSession: undefined,
+    errorSession,
     projectDirectory: '/repo',
     refreshSessions: vi.fn(),
     buildMetadata: () => ({
@@ -27,7 +29,10 @@ vi.mock('./TaskHeaderContext.js', () => ({
   useTaskLaunching: () => ({ launching: false, setLaunching: vi.fn() }),
 }));
 vi.mock('../../platform/usePlatform.js', () => ({
-  usePlatform: () => ({ kind: 'electron', orca: { agent: { launch: mockLaunch } } }),
+  usePlatform: () => ({
+    kind: 'electron',
+    orca: { agent: { launch: mockLaunch, restart: mockRestart } },
+  }),
 }));
 vi.mock('../../hooks/useSessionActivity.js', () => ({ useSessionActivity: () => new Set() }));
 vi.mock('../../preferences/context.js', () => ({
@@ -41,13 +46,16 @@ vi.mock('../../../shared/perf.js', () => ({
 
 beforeEach(() => {
   isExternal = false;
+  errorSession = undefined;
   mockLaunch.mockResolvedValue({ success: true });
+  mockRestart.mockResolvedValue({ success: true });
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   mockLaunch.mockReset();
+  mockRestart.mockReset();
 });
 
 async function importAndRender() {
@@ -57,28 +65,43 @@ async function importAndRender() {
 
 describe('HeaderTerminalControls launch', () => {
   it('launches straight away for a task created by a person', async () => {
-    const confirm = vi.spyOn(window, 'confirm');
     await importAndRender();
     fireEvent.click(screen.getByTestId('agent-button'));
     await waitFor(() => expect(mockLaunch).toHaveBeenCalled());
-    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('external-agent-start-dialog')).not.toBeInTheDocument();
   });
 
-  it('asks before launching on an external task, and does nothing if declined', async () => {
+  it('asks before launching on an external task, and does nothing if cancelled', async () => {
     isExternal = true;
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await importAndRender();
     fireEvent.click(screen.getByTestId('agent-button'));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('untrusted input'));
+
+    expect(screen.getByTestId('external-agent-start-dialog')).toHaveTextContent('untrusted input');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByTestId('external-agent-start-dialog')).not.toBeInTheDocument();
     expect(mockLaunch).not.toHaveBeenCalled();
   });
 
   it('launches on an external task once the person confirms', async () => {
     isExternal = true;
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await importAndRender();
     fireEvent.click(screen.getByTestId('agent-button'));
+    fireEvent.click(screen.getByTestId('external-agent-start-confirm'));
     await waitFor(() => expect(mockLaunch).toHaveBeenCalled());
     expect(mockLaunch.mock.calls[0][3]).toMatchObject({ isExternal: true });
+  });
+
+  it('asks before restarting an errored agent on an external task', async () => {
+    isExternal = true;
+    errorSession = { id: 's1', status: 'error' };
+    await importAndRender();
+    fireEvent.click(screen.getByTestId('agent-button'));
+    expect(screen.getByTestId('external-agent-start-dialog')).toBeInTheDocument();
+    expect(mockRestart).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('external-agent-start-confirm'));
+    await waitFor(() => expect(mockRestart).toHaveBeenCalled());
   });
 });

@@ -56,33 +56,34 @@ export function createFilesystemStorage(directory: string): AttachmentStorage {
   };
 }
 
-interface S3Config {
-  bucket: string;
-  endpoint: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
+/** The part of Bun's S3 client this module uses, so tests can stub it. */
+interface S3ClientLike {
+  write(key: string, data: Uint8Array, options: { type: string }): Promise<unknown>;
+  file(key: string): { arrayBuffer(): Promise<ArrayBuffer> };
+  delete(key: string): Promise<unknown>;
 }
 
-function createS3Storage(config: S3Config): AttachmentStorage {
-  // Bun's built-in client; this module only runs it on the Bun server.
-  const client = new Bun.S3Client({
-    bucket: config.bucket,
-    endpoint: config.endpoint,
-    region: config.region,
-    accessKeyId: config.accessKeyId,
-    secretAccessKey: config.secretAccessKey,
-  });
+/** Bun reports a missing object as an S3Error whose code is the S3 error code. */
+function isMissingObjectError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === 'NoSuchKey' || code === 'NotFound';
+}
 
+export function createS3Storage(client: S3ClientLike): AttachmentStorage {
   return {
     kind: 's3',
     async put(key, data, contentType) {
       await client.write(key, data, { type: contentType });
     },
     async get(key) {
-      const file = client.file(key);
-      if (!(await file.exists())) return null;
-      return new Uint8Array(await file.arrayBuffer());
+      // One request: a missing object comes back as an error, rather than
+      // checking exists() first, which would race with a delete.
+      try {
+        return new Uint8Array(await client.file(key).arrayBuffer());
+      } catch (error) {
+        if (isMissingObjectError(error)) return null;
+        throw error;
+      }
     },
     async delete(keys) {
       await Promise.all(keys.map((key) => client.delete(key)));
@@ -94,8 +95,9 @@ function createS3Storage(config: S3Config): AttachmentStorage {
  * Picks storage from the environment:
  * - `BUCKET_NAME` with the `AWS_*` variables `fly storage create` sets: S3.
  * - `ATTACHMENT_STORAGE_DIR`: a local folder.
- * - Neither: null. Attachments are then unavailable, and the server says so
- *   at startup rather than failing, so it still runs before a bucket exists.
+ * - Neither, or `BUCKET_NAME` with a missing `AWS_*` variable: null.
+ *   Attachments are then unavailable, and the server logs why at startup rather
+ *   than failing, so it still runs before a bucket exists.
  */
 export function attachmentStorageFromEnv(
   env: Record<string, string | undefined> = process.env,
@@ -106,15 +108,22 @@ export function attachmentStorageFromEnv(
       (name) => !env[name],
     );
     if (missing.length > 0) {
-      throw new Error(`BUCKET_NAME is set but ${missing.join(', ')} is missing`);
+      // Half-configured storage disables attachments, not the whole server.
+      console.error(
+        `Attachment storage disabled: BUCKET_NAME is set but ${missing.join(', ')} is missing`,
+      );
+      return null;
     }
-    return createS3Storage({
-      bucket,
-      endpoint: env.AWS_ENDPOINT_URL_S3!,
-      region: env.AWS_REGION || 'auto',
-      accessKeyId: env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
-    });
+    // Bun's built-in client; this branch only runs on the Bun server.
+    return createS3Storage(
+      new Bun.S3Client({
+        bucket,
+        endpoint: env.AWS_ENDPOINT_URL_S3,
+        region: env.AWS_REGION || 'auto',
+        accessKeyId: env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+      }),
+    );
   }
   if (env.ATTACHMENT_STORAGE_DIR) {
     return createFilesystemStorage(join(env.ATTACHMENT_STORAGE_DIR));

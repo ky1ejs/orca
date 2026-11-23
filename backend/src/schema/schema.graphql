@@ -64,10 +64,11 @@ type TaskAttachment {
   mimeType: String!
   byteSize: Int!
   createdAt: DateTime!
-  """
-  The file, base64-encoded, for clients that can't fetch /attachments/:id,
-  such as MCP tools. Refused for files over 5 MB.
-  """
+}
+
+"An attachment's bytes, for clients that can't fetch /attachments/:id, such as MCP tools."
+type TaskAttachmentContent {
+  attachment: TaskAttachment!
   contentBase64: String!
 }
 
@@ -463,6 +464,11 @@ type Query {
     after: String
   ): AuditEventConnection!
   taskAttachment(id: ID!): TaskAttachment
+  """
+  One attachment's bytes, base64-encoded. Only PNG and JPEG files up to 5 MB;
+  larger files are downloaded from /attachments/:id.
+  """
+  taskAttachmentContent(id: ID!): TaskAttachmentContent!
   "The workspace's API keys, newest first. Workspace owners only."
   apiKeys(workspaceId: ID!): [ApiKey!]!
 }

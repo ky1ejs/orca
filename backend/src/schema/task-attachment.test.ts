@@ -40,7 +40,7 @@ function fakeStorage(data: Uint8Array<ArrayBuffer> | null): AttachmentStorage {
   };
 }
 
-const { Query, Task, TaskAttachment } = taskAttachmentResolvers;
+const { Query, Task } = taskAttachmentResolvers;
 
 afterEach(() => setAttachmentStorage(null));
 
@@ -69,39 +69,65 @@ describe('task attachment resolvers', () => {
     });
   });
 
-  it('lists a task’s attachments oldest first', async () => {
+  it('batches a task’s attachments through the loader', async () => {
     const ctx = createMockContext();
-    await Task.attachments({ id: 'task1' } as never, {}, ctx as never);
-    expect(ctx.prisma.taskAttachment.findMany).toHaveBeenCalledWith({
-      where: { taskId: 'task1' },
-      orderBy: { createdAt: 'asc' },
-    });
+    const load = vi.fn().mockResolvedValue([ATTACHMENT]);
+    await Task.attachments({ id: 'task1' } as never, {}, {
+      ...ctx,
+      loaders: { attachmentsByTaskId: { load } },
+    } as never);
+    expect(load).toHaveBeenCalledWith('task1');
   });
 
-  describe('TaskAttachment.contentBase64', () => {
-    it('returns the stored bytes as base64', async () => {
+  describe('Query.taskAttachmentContent', () => {
+    function content(ctx = createMockContext()) {
+      return Query.taskAttachmentContent({} as never, { id: 'att1' }, ctx as never);
+    }
+
+    it('returns the stored bytes as base64 with the attachment', async () => {
       setAttachmentStorage(fakeStorage(new Uint8Array([1, 2, 3, 4])));
-      expect(await TaskAttachment.contentBase64(ATTACHMENT)).toBe('AQIDBA==');
+      expect(await content()).toEqual({ attachment: ATTACHMENT, contentBase64: 'AQIDBA==' });
     });
 
-    it('refuses files over the inline limit without reading them', async () => {
+    it('gives a non-member the same error as a missing attachment', async () => {
+      setAttachmentStorage(fakeStorage(new Uint8Array([1])));
+      await expect(content(createMockContext(false))).rejects.toThrow('Attachment not found');
+    });
+
+    it('refuses files recorded as over the limit without reading them', async () => {
       const storage = fakeStorage(new Uint8Array());
       setAttachmentStorage(storage);
-      await expect(
-        TaskAttachment.contentBase64({ ...ATTACHMENT, byteSize: MAX_INLINE_ATTACHMENT_BYTES + 1 }),
-      ).rejects.toThrow('over 5 MB');
+      const ctx = createMockContext();
+      ctx.prisma.taskAttachment.findUnique.mockResolvedValue({
+        ...ATTACHMENT,
+        byteSize: MAX_INLINE_ATTACHMENT_BYTES + 1,
+      });
+      await expect(content(ctx)).rejects.toThrow('over 5 MB');
       expect(storage.get).not.toHaveBeenCalled();
     });
 
+    it('refuses stored bytes over the limit even when the record says less', async () => {
+      setAttachmentStorage(fakeStorage(new Uint8Array(MAX_INLINE_ATTACHMENT_BYTES + 1)));
+      await expect(content()).rejects.toThrow('over 5 MB');
+    });
+
+    it('refuses types that are not PNG or JPEG', async () => {
+      setAttachmentStorage(fakeStorage(new Uint8Array([1])));
+      const ctx = createMockContext();
+      ctx.prisma.taskAttachment.findUnique.mockResolvedValue({
+        ...ATTACHMENT,
+        mimeType: 'application/pdf',
+      });
+      await expect(content(ctx)).rejects.toThrow('Only PNG and JPEG');
+    });
+
     it('says when storage is not configured', async () => {
-      await expect(TaskAttachment.contentBase64(ATTACHMENT)).rejects.toThrow('not configured');
+      await expect(content()).rejects.toThrow('not configured');
     });
 
     it('treats a missing object as not found', async () => {
       setAttachmentStorage(fakeStorage(null));
-      await expect(TaskAttachment.contentBase64(ATTACHMENT)).rejects.toThrow(
-        'Attachment not found',
-      );
+      await expect(content()).rejects.toThrow('Attachment not found');
     });
   });
 });

@@ -92,6 +92,3 @@ export function flagExternalTasks<T>(value: T): T {
   if (copy.isExternal === true) copy.untrustedNotice = UNTRUSTED_TASK_NOTICE;
   return copy as T;
 }
-
-/** Largest attachment get_task_attachment returns, matching the backend's limit. */
-export const MAX_TOOL_ATTACHMENT_BYTES = 5 * 1024 * 1024;

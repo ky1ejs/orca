@@ -115,7 +115,7 @@ export const TaskDetailDescription = memo(function TaskDetailDescription({
           <span>Add a description...</span>
         </div>
       ) : (
-        <MarkdownRenderer content={description} allowImages={!isExternal} />
+        <MarkdownRenderer content={description} isUntrusted={isExternal} />
       )}
     </div>
   );

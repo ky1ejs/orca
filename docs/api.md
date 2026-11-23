@@ -23,7 +23,7 @@ The endpoints that use these scopes are not built yet; this page will describe t
 A task can have image attachments (PNG or JPEG), such as screenshots from a bug report. The task page shows them as thumbnails; clicking one opens it full size.
 
 - **Download:** `GET /attachments/:id` with a session JWT returns the file to members of the task's workspace. Anyone else gets 404, the same as for a missing attachment. API keys and OAuth tokens are refused.
-- **GraphQL:** `Task.attachments` lists them, `taskAttachment(id)` fetches one, and `TaskAttachment.contentBase64` returns the bytes for files up to 5 MB.
+- **GraphQL:** `Task.attachments` lists them and `taskAttachment(id)` fetches one. `taskAttachmentContent(id)` returns one file's bytes, base64-encoded, for PNG or JPEG files up to 5 MB. It is a top-level query, so one request reads at most one file.
 - **MCP:** `get_task` lists a task's attachments, and `get_task_attachment` returns one as an image an agent can read.
 - **Storage:** production uses the Tigris bucket from `fly storage create -a orca-api`. Locally, set `ATTACHMENT_STORAGE_DIR` in `backend/.env`. Without either, the server starts and logs that attachments are unavailable.
 
@@ -31,10 +31,12 @@ A task can have image attachments (PNG or JPEG), such as screenshots from a bug 
 
 Tasks created through the public API have `isExternal: true`. Their title, description and attachments come from outside the team, so Orca treats them as untrusted:
 
-- The task page shows an **External** badge, and images in the description show as their alt text.
-- MCP tool results add an `untrustedNotice` to every external task, and `get_task_attachment` repeats it.
-- Agents launched on the task get `ORCA_TASK_IS_EXTERNAL=1` and a system prompt line telling them not to follow instructions in it.
-- Starting an agent on an external task asks for confirmation first. Orca never starts one automatically.
+- The task page shows an **External** badge. In the description, images show as their alt text, and only `http`, `https` and `mailto` links stay clickable, with their address shown. Other links become plain text.
+- MCP tool results add an `untrustedNotice` to every external task, including related tasks and the results of `create_task` and `update_task`. `get_task_attachment` repeats it.
+- Agents launched on the task get `ORCA_TASK_IS_EXTERNAL=1`. Their system prompt warns that the task is untrusted and leaves out its title.
+- Starting or restarting an agent on an external task asks for confirmation first. Orca never starts one automatically.
+
+In every task, the desktop app opens only `http`, `https` and `mailto` links outside the app.
 
 An API key never acts as a person. `/graphql`, the GraphQL WebSocket and `/mcp` reject it as if no token were sent.
 

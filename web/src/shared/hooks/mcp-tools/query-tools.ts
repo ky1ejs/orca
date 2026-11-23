@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import {
   type McpToolsDeps,
-  MAX_TOOL_ATTACHMENT_BYTES,
   UNTRUSTED_TASK_NOTICE,
   flagExternalTasks,
   graphqlRequest,
@@ -24,7 +23,7 @@ const TASK_DETAIL_FIELDS = `
   assignee { id name }
   labels { id name color }
   pullRequests { id number title url status reviewStatus repository headBranch draft }
-  relationships { id displayType relatedTask { id displayId title status } }
+  relationships { id displayType relatedTask { id displayId title status isExternal } }
   isExternal
   attachments { id filename mimeType byteSize }
   createdAt updatedAt
@@ -128,56 +127,50 @@ export function registerQueryTools(server: McpServer, deps: McpToolsDeps): void 
     async ({ attachmentId }) => {
       const token = resolveToken(deps.getToken);
       if (typeof token !== 'string') return token;
-
       try {
-        const meta = await graphqlRequest(
+        // One query: the server checks access, type and the 5 MB limit.
+        const json = await graphqlRequest(
           deps.backendUrl,
           token,
-          `query AttachmentInfo($id: ID!) {
-            taskAttachment(id: $id) { id filename mimeType byteSize task { displayId isExternal } }
+          `query AttachmentContent($id: ID!) {
+            taskAttachmentContent(id: $id) {
+              contentBase64
+              attachment { filename mimeType byteSize task { displayId isExternal } }
+            }
           }`,
           { id: attachmentId },
         );
-        const info = meta.data?.taskAttachment as
+        const result = json.data?.taskAttachmentContent as
           | {
-              filename: string;
-              mimeType: string;
-              byteSize: number;
-              task: { displayId: string; isExternal: boolean };
+              contentBase64: string;
+              attachment: {
+                filename: string;
+                mimeType: string;
+                byteSize: number;
+                task: { displayId: string; isExternal: boolean };
+              };
             }
           | null
           | undefined;
-        if (meta.errors || !info) {
+        if (json.errors || !result) {
           return toolError(
-            `Failed to get attachment: ${JSON.stringify(meta.errors ?? 'attachment not found')}`,
-          );
-        }
-        if (info.byteSize > MAX_TOOL_ATTACHMENT_BYTES) {
-          return toolError(
-            `${info.filename} is ${info.byteSize} bytes, over the 5 MB limit for this tool.`,
+            `Failed to get attachment: ${JSON.stringify(json.errors ?? 'attachment not found')}`,
           );
         }
 
-        const contentResult = await graphqlRequest(
-          deps.backendUrl,
-          token,
-          `query AttachmentContent($id: ID!) { taskAttachment(id: $id) { contentBase64 } }`,
-          { id: attachmentId },
-        );
-        const data = (contentResult.data?.taskAttachment as { contentBase64?: string } | null)
-          ?.contentBase64;
-        if (contentResult.errors || !data) {
-          return toolError(
-            `Failed to get attachment: ${JSON.stringify(contentResult.errors ?? 'no content')}`,
-          );
-        }
-
-        const description = `${info.filename} (${info.mimeType}, ${info.byteSize} bytes) from ${info.task.displayId}.`;
+        const { attachment } = result;
+        const description = `${attachment.filename} (${attachment.mimeType}, ${attachment.byteSize} bytes) from ${attachment.task.displayId}.`;
         const textBlock = {
           type: 'text' as const,
-          text: info.task.isExternal ? `${description} ${UNTRUSTED_TASK_NOTICE}` : description,
+          text: attachment.task.isExternal
+            ? `${description} ${UNTRUSTED_TASK_NOTICE}`
+            : description,
         };
-        const imageBlock = { type: 'image' as const, data, mimeType: info.mimeType };
+        const imageBlock = {
+          type: 'image' as const,
+          data: result.contentBase64,
+          mimeType: attachment.mimeType,
+        };
         return { content: [textBlock, imageBlock] };
       } catch (err) {
         return toolError(`Failed to reach Orca backend: ${err}`);

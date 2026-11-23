@@ -8,6 +8,7 @@ import { resolve, dirname, join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { attachmentStorageKey, createFilesystemStorage } from './attachments/storage.js';
+import { signAccessToken } from './oauth/tokens.js';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -534,7 +535,28 @@ describe('server integration', () => {
         fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
 
       expect((await download()).status).toBe(401);
-      expect((await download('orca_not-a-session-token')).status).toBe(401);
+      // A real API key and a real OAuth access token are both refused: the
+      // route takes session JWTs only.
+      const keyRes = await gql(
+        `mutation Key($input: CreateApiKeyInput!) { createApiKey(input: $input) { key } }`,
+        authToken,
+        {
+          operationName: 'Key',
+          variables: { input: { workspaceId, name: 'attachments-test', scopes: ['TASKS_CREATE'] } },
+        },
+      );
+      const apiKey = (keyRes.body.data as { createApiKey: { key: string } }).createApiKey.key;
+      expect((await download(apiKey)).status).toBe(401);
+      const me = await gql('{ me { id } }', authToken);
+      const previousSecret = process.env.JWT_SECRET;
+      process.env.JWT_SECRET = TEST_JWT_SECRET;
+      const oauthToken = await signAccessToken({
+        userId: (me.body.data as { me: { id: string } }).me.id,
+        clientId: 'test-client',
+        resource: `http://127.0.0.1:${TEST_PORT}/mcp`,
+      });
+      process.env.JWT_SECRET = previousSecret;
+      expect((await download(oauthToken)).status).toBe(401);
       const otherLogin = await gql(
         `mutation { login(email: "other@orca.local", password: "test-password") { token } }`,
       );
@@ -545,6 +567,7 @@ describe('server integration', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toBe('image/png');
       expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(res.headers.get('cache-control')).toBe('private, no-store');
       expect(res.headers.get('access-control-allow-origin')).toBe('*');
       expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
 

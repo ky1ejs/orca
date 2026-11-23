@@ -225,7 +225,7 @@ export class DaemonStatusManager {
           if (metadata) {
             args.push(
               '--append-system-prompt',
-              buildOrcaSystemPrompt(metadata.displayId, metadata.title),
+              buildOrcaSystemPrompt(metadata.displayId, metadata.title, metadata.isExternal),
             );
           }
           this.manager.spawn(session.id, claudePath, args, effectiveWorkingDirectory, env);

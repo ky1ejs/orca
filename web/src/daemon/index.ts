@@ -37,7 +37,7 @@ import {
   DAEMON_CLI_SCRIPT,
 } from '../shared/daemon-protocol.js';
 import { buildMcpConfigJson, buildHooksConfigJson } from '../shared/hooks/settings.js';
-import { buildShellOrcaSystemPrompt } from '../shared/claude.js';
+import { buildShellOrcaSystemPrompts } from '../shared/claude.js';
 import { OutputPersistence } from './output-persistence.js';
 import { enrichPathFromLoginShellAsync } from '../shared/shell.js';
 import { logger } from './logger.js';
@@ -163,7 +163,7 @@ async function main(): Promise<void> {
       writeFileSync(DAEMON_CLAUDE_SETTINGS_FILE, buildHooksConfigJson(port));
 
       // Write CLI wrapper so shell sessions can run `orca` to launch Claude with MCP + hooks
-      const shellPrompt = buildShellOrcaSystemPrompt();
+      const shellPrompts = buildShellOrcaSystemPrompts();
       mkdirSync(DAEMON_CLI_DIR, { recursive: true });
       writeFileSync(
         DAEMON_CLI_SCRIPT,
@@ -175,7 +175,12 @@ async function main(): Promise<void> {
           '',
           '# Append task context as system prompt if launched from an Orca session',
           'if [[ -n "$ORCA_TASK_ID" ]]; then',
-          `  ARGS+=(--append-system-prompt "${shellPrompt}")`,
+          // An external task's title is untrusted, so its prompt leaves it out.
+          '  if [[ "$ORCA_TASK_IS_EXTERNAL" == "1" ]]; then',
+          `    ARGS+=(--append-system-prompt "${shellPrompts.external}")`,
+          '  else',
+          `    ARGS+=(--append-system-prompt "${shellPrompts.standard}")`,
+          '  fi',
           'fi',
           '',
           'exec claude "${ARGS[@]}" "$@"',
